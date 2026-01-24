@@ -1,0 +1,14 @@
+node_modules/
+dist/
+public/
+Dockerfile
+*.md
+package.json
+pnpm-lock.yaml
+*.js
+*.ts
+*.tsx
+tsconfig.json
+.vercel/
+.gitignore
+.astro/types.d.ts

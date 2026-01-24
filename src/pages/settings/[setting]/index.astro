@@ -1,0 +1,42 @@
+---
+import type { GetStaticPathsResult } from "astro";
+import { showComponent } from "~/lib/utils/showComponent";
+import "~/styles/settings-errors.scss";
+import "~/styles/settings.scss";
+
+export function getStaticPaths(): GetStaticPathsResult {
+  return [
+    { params: { setting: "proxy" } },
+    { params: { setting: "look" } },
+    { params: { setting: "transport" } },
+    { params: { setting: "wisp-or-bare" } },
+  ];
+}
+export const prerender: boolean = true;
+const { hash } = Astro.url;
+const { setting } = Astro.params;
+
+if (
+  setting !== "proxy" &&
+  setting !== "look" &&
+  setting !== "transport" &&
+  setting !== "wisp-or-bare"
+) {
+  Astro.redirect("/settings/#null", 302);
+}
+
+
+---
+
+<script is:inline src="/localforage/localforage.min.js"></script>
+
+{
+  hash === "#null" && (
+    <div class="settings-error-invalid-hash">
+      <p>Invalid Hash</p>
+      <span>Try removing {hash} from the URL.</span>
+    </div>
+  )
+}
+
+<div class="main"></div>

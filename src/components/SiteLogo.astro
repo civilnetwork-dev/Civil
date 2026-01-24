@@ -1,0 +1,29 @@
+---
+import { Logo } from "~/lib/logoDecode";
+import "~/styles/SiteLogo.scss";
+import join from "lodash.join";
+
+export interface Props {
+  additionalStyles?: string | Record<string, string>;
+}
+
+const { additionalStyles } = Astro.props;
+
+function styleObjectToString(obj: Record<string, string>) {
+  return join(
+    Object.entries(obj).map(([key, value]) => `${key}:${value}`),
+    ";"
+  );
+}
+
+let styleString = "";
+if (typeof additionalStyles === "string") {
+  styleString = additionalStyles;
+} else if (additionalStyles && typeof additionalStyles === "object") {
+  styleString = styleObjectToString(additionalStyles);
+}
+---
+
+<a href="/" style={styleString}>
+  <div set:html={new Logo().decode()} />
+</a>

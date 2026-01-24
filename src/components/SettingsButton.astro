@@ -1,0 +1,12 @@
+---
+import "~/styles/SettingsButton.scss";
+
+export interface Props {
+  innerText: string;
+  style?: string;
+}
+
+const { innerText, style } = Astro.props;
+---
+
+<button class="settings-button" style={style || ""}>{innerText}</button>

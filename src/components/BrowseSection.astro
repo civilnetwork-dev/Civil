@@ -1,0 +1,32 @@
+---
+import "~/styles/browser.scss";
+---
+
+<div class="browse-section">
+  <div class="top">
+    <input
+      type="text"
+      autocomplete="on"
+      spellcheck="false"
+      class="url-input"
+      placeholder="search or enter a url"
+      aria-expanded="false"
+      aria-controls="search-suggestions"
+      aria-label="Search input with suggestions"
+    />
+
+    <ul id="search-suggestions" class="suggestions" role="listbox"></ul>
+
+    <input
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      class="eval"
+      placeholder="javascript:"
+    />
+  </div>
+
+  <div class="bottom">
+    <iframe src="about:blank" style="display:none"></iframe>
+  </div>
+</div>

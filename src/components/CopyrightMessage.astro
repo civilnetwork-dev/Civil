@@ -1,0 +1,18 @@
+---
+import "~/styles/CopyrightMessage.scss";
+---
+
+<script>
+  (
+    document.getElementsByClassName("copyright")[0] as HTMLHeadingElement
+  ).textContent =
+    origin.length < 23
+      ? `Copyright ${new Date()
+          .getFullYear()
+          .toString()} ${origin.replace(/^https?:\/\//, "")}. All rights reserved.`
+      : `Copyright ${new Date()
+          .getFullYear()
+          .toString()}. All rights reserved.`;
+</script>
+
+<h4 class="copyright"></h4>

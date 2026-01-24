@@ -1,0 +1,51 @@
+.controls {
+  display: flex;
+  flex-direction: row;
+  justify-content: start;
+  align-items: center;
+  gap: 15px;
+  background-color: transparent;
+  border-radius: 35px;
+  height: 80%;
+  width: 25%;
+
+  div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #6c7086;
+    border-radius: 180px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    padding: 12px;
+    width: 50px;
+    height: 50px;
+    transition: 0.5s ease;
+
+    svg {
+      transition: 0.2s ease;
+    }
+
+    &:hover {
+      & svg.reload {
+        transform: rotate(+45deg);
+      }
+
+      & svg.back {
+        transform: translateX(-10%);
+      }
+
+      & svg.forwards {
+        transform: translateX(10%);
+      }
+
+      & svg.ab {
+        transform: rotate(-45deg) translate(-10%) !important;
+      }
+
+      & svg.fs {
+        transform: scale(+1.07);
+      }
+    }
+  }
+}

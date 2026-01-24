@@ -1,0 +1,8 @@
+onlyBuiltDependencies:
+  - "@biomejs/biome"
+  - "@mercuryworkshop/scramjet"
+  - "@parcel/watcher"
+  - bufferutil
+  - esbuild
+  - rammerhead
+  - sharp

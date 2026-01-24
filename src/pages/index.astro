@@ -1,0 +1,115 @@
+---
+import Scripts from "~/components/Scripts.astro";
+import BrowseSection from "~/components/BrowseSection.astro";
+import Navbar from "~/components/Navbar.astro";
+import SiteLogo from "~/components/SiteLogo.astro";
+
+import "~/styles/index.scss";
+import "@fontsource/schibsted-grotesk/500.css";
+import "@fontsource/montserrat/500.css";
+---
+
+<Scripts />
+
+<script>
+  import { Controls } from "~/lib/frameControls";
+  import eruda from "eruda";
+  //@ts-expect-error
+  import erudaDOM from "eruda-dom";
+  import type { Tool } from "eruda";
+
+  window.addEventListener("load", () => {
+    eruda.init({ autoScale: true });
+    eruda.add(erudaDOM as Tool);
+  });
+
+  const controls = new Controls(),
+    iframe = document.querySelectorAll("iframe")[0];
+
+  const openCloaked = document.getElementsByClassName(
+      "ab"
+    )[0] as HTMLDivElement,
+    fullscreen = document.getElementsByClassName("fs")[0] as HTMLDivElement;
+
+  openCloaked.onclick = () => {
+    if (localStorage.getItem("open-in-new")) {
+      open(iframe.contentWindow!.location.href);
+    }
+  };
+  fullscreen.onclick = () => {
+    controls.fullscreen(iframe);
+  };
+
+  import("gsap").then(gsapModule => {
+    const gsap = gsapModule.default;
+    let lastScrollTop = 0;
+    let canAnimate = true;
+    let animationTimeout: NodeJS.Timeout;
+
+    const body = document.body;
+    const hiddenContent =
+      document.querySelector<HTMLDivElement>(".hidden-info")!;
+
+    function handleScroll() {
+      const st = window.scrollY || document.documentElement.scrollTop;
+      const scrollIntensity = Math.abs(st - lastScrollTop);
+
+      if (scrollIntensity > 45 && canAnimate) {
+        if (st > lastScrollTop) {
+          gsap.to("body", {
+            duration: 0.5,
+            opacity: 0,
+            scale: 0.8,
+            y: 50,
+            onComplete: () => {
+              body.style.display = "none";
+              hiddenContent.style.display = "block";
+              gsap.to(hiddenContent, {
+                duration: 0.5,
+                opacity: 1,
+                scale: 1,
+                y: 0,
+              });
+            },
+          });
+        } else {
+          gsap.to(hiddenContent, {
+            duration: 0.5,
+            opacity: 0,
+            scale: 0.8,
+            y: 50,
+            onComplete: () => {
+              hiddenContent.style.display = "none";
+              body.style.display = "block";
+              gsap.to(body, { duration: 0.5, opacity: 1, scale: 1, y: 0 });
+            },
+          });
+        }
+
+        canAnimate = false;
+        clearTimeout(animationTimeout);
+        animationTimeout = setTimeout(() => {
+          canAnimate = true;
+        }, 4000);
+      }
+
+      lastScrollTop = st <= 0 ? 0 : st;
+    }
+
+    window.addEventListener("scroll", handleScroll);
+  });
+</script>
+
+<body data-bd-loaded="true">
+  <div id="row-layout-above">
+    <BrowseSection />
+  </div>
+
+  <Navbar />
+</body>
+
+<div class="hidden-info">
+  <h2>
+    C <SiteLogo additionalStyles={{ transform: "rotate(-45deg)" }} /> OMET Proxy
+  </h2>
+</div>

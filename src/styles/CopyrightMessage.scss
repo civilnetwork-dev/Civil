@@ -1,0 +1,10 @@
+@mixin CopyrightMessage {
+  color: #bac2de;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: "Montserrat", sans-serif;
+}
+
+h4.copyright {
+  @include CopyrightMessage();
+}

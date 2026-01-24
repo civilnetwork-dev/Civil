@@ -1,0 +1,17 @@
+---
+import "~/styles/SettingsSection.scss";
+
+export interface Props {
+  title: string;
+  initialState: string;
+  modified?: boolean;
+}
+
+const { title, modified = false, initialState = "Loading..." } = Astro.props;
+---
+
+<head>
+  <title>Comet Settings | {modified ? "Modified" : ""}</title>
+</head>
+
+<section id="settings-section"></section>

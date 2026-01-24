@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./src/*"]
+    },
+    "lib": ["WebWorker", "ESNext"],
+    "allowSyntheticDefaultImports": true
+  },
+  "extends": "astro/tsconfigs/strict",
+  "exclude": [
+    "dist",
+    "public",
+    "node_modules",
+    ".vscode",
+    "src/lib/browser.ts"
+  ],
+  "include": [
+    "tests/*",
+    "src/*",
+    "src/**/*.ts",
+    "src/**/*.astro",
+    "src/*.ts",
+    "src/**/*.module.scss",
+    "src/**/*.tsx",
+    "*.d.ts",
+    "index.ts",
+    "*.svelte"
+  ]
+}

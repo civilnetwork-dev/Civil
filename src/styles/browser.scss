@@ -1,0 +1,79 @@
+@mixin input {
+  background-color: transparent;
+  border: 3.05px solid #b4befe;
+  border-radius: 17.5px;
+  display: block;
+  justify-content: start;
+  align-items: center;
+  padding-left: 30px;
+  outline: none;
+  width: 30%;
+  height: 58%;
+  color: #9399b2;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: "Schibsted Grotesk", sans-serif;
+}
+
+@mixin placeholder {
+  color: #9399b2;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: "Schibsted Grotesk", sans-serif;
+}
+
+$bottom-height: 100% - 12%;
+
+.browse-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  align-items: center;
+  justify-content: center;
+  padding: 0px;
+  background-color: transparent;
+  border: none;
+  border-radius: 0px;
+  height: 100%;
+  width: 100%;
+
+  .top {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 7px;
+    background-color: #313244;
+    height: 12%;
+    width: 100%;
+
+    input {
+      @include input();
+      &::placeholder {
+        @include placeholder();
+      }
+      &:focus {
+        border: 4.1px solid #b4befe;
+      }
+    }
+  }
+
+  .bottom {
+    height: $bottom-height;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    /*not actually realistic??*/
+    background-color: #585b70;
+
+    iframe {
+      display: none;
+      border: none;
+      outline: none;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}

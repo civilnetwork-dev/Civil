@@ -1,0 +1,25 @@
+#nav-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  background-color: transparent;
+  border-radius: 35px;
+  height: 80%;
+  width: 17%;
+
+  div {
+    background-size: 76%;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    width: 50px;
+    height: 50px;
+    transition: 0.6s ease-in;
+
+    &:hover {
+      filter: brightness(75%);
+      scale: +1.14;
+    }
+  }
+}

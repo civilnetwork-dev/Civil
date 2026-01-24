@@ -1,0 +1,35 @@
+<script is:inline src="/baremux/index.js" defer></script>
+<script is:inline src="/ultraviolet/uv.bundle.js"></script>
+<script is:inline src="/ultraviolet/uv.config.js"></script>
+<script is:inline src="/scramjet/scramjet.all.js"></script>
+<script is:inline src="/meteor/meteor.codecs.js"></script>
+<script is:inline src="/meteor/meteor.config.js"></script>
+<script is:inline src="/meteor/meteor.bundle.js"></script>
+
+<script is:inline src="/sw.js"></script>
+
+<script>
+  import { InitBrowser } from "~/lib/browser";
+  import { registerSW } from "~/lib/registerSW";
+
+  const input = document.querySelector<HTMLInputElement>(".url-input")!;
+  const iframe = document.querySelector<HTMLIFrameElement>("iframe")!;
+
+  //@ts-expect-error
+  const { ScramjetController } = $scramjetLoadController();
+
+  //@ts-expect-error
+  window.scramjet = new ScramjetController({
+    prefix: "/scram/scramjet/",
+    files: {
+      wasm: "/scramjet/scramjet.wasm.wasm",
+      all: "/scramjet/scramjet.all.js",
+      sync: "/scramjet/scramjet.sync.js",
+    },
+  });
+  //@ts-expect-error
+  window.scramjet.init();
+
+  window.onload = () => (InitBrowser(iframe, input), registerSW());
+  document.title = "Comet";
+</script>

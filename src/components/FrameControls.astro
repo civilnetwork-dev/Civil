@@ -1,0 +1,117 @@
+---
+import "~/styles/FrameControls.scss";
+
+const { style } = Astro.props;
+---
+
+<script>
+  // @ts-nocheck
+  import { Controls } from "~/lib/frameControls";
+
+  const reload = document.getElementsByClassName("reload")[0] as HTMLDivElement,
+    goBack = document.getElementsByClassName("back")[0] as HTMLDivElement,
+    goForwards = document.getElementsByClassName(
+      "forwards"
+    )[0] as HTMLDivElement;
+
+  const iframe = document.querySelectorAll("iframe")[0];
+  const controls = new Controls();
+
+  reload.onclick = () => {
+    controls.reload(iframe);
+  };
+
+  goBack.onclick = () => {
+    controls.goBack(iframe);
+  };
+
+  goForwards.onclick = () => {
+    controls.goForth(iframe);
+  };
+</script>
+
+<div class="controls" style={style || ""}>
+  <div class="reload">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      stroke="currentColor"
+      fill="none"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      height="20"
+      width="20"
+      class="reload"
+      ><path
+        d="M19.933 13.041a8 8 0 1 1 -9.925 -8.788c3.899 -1 7.935 1.007 9.425 4.747"
+        stroke="#cdd6f4"></path><path d="M20 4v5h-5" stroke="#cdd6f4"
+      ></path></svg
+    >
+  </div>
+
+  <div class="back">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      stroke="currentColor"
+      fill="currentColor"
+      stroke-width="0"
+      viewBox="0 0 512 512"
+      height="50"
+      width="50"
+      class="back"
+      ><path
+        d="M216.4 163.7c5.1 5 5.1 13.3.1 18.4L155.8 243h231.3c7.1 0 12.9 5.8 12.9 13s-5.8 13-12.9 13H155.8l60.8 60.9c5 5.1 4.9 13.3-.1 18.4-5.1 5-13.2 5-18.3-.1l-82.4-83c-1.1-1.2-2-2.5-2.7-4.1-.7-1.6-1-3.3-1-5 0-3.4 1.3-6.6 3.7-9.1l82.4-83c4.9-5.2 13.1-5.3 18.2-.3z"
+        fill="#cdd6f4"></path></svg
+    >
+  </div>
+
+  <div class="forwards">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      stroke="currentColor"
+      fill="currentColor"
+      stroke-width="0"
+      viewBox="0 0 512 512"
+      height="50"
+      width="50"
+      class="forwards"
+      ><path
+        d="M295.6 163.7c-5.1 5-5.1 13.3-.1 18.4l60.8 60.9H124.9c-7.1 0-12.9 5.8-12.9 13s5.8 13 12.9 13h231.3l-60.8 60.9c-5 5.1-4.9 13.3.1 18.4 5.1 5 13.2 5 18.3-.1l82.4-83c1.1-1.2 2-2.5 2.7-4.1.7-1.6 1-3.3 1-5 0-3.4-1.3-6.6-3.7-9.1l-82.4-83c-4.9-5.2-13.1-5.3-18.2-.3z"
+        fill="#cdd6f4"></path></svg
+    >
+  </div>
+
+  <div class="ab">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      stroke="currentColor"
+      fill="currentColor"
+      stroke-width="0"
+      viewBox="0 0 256 256"
+      height="50"
+      width="50"
+      class="ab"
+      style="transform:rotate(-45deg)"
+      ><path
+        d="M223.85,47.12a16,16,0,0,0-15-15c-12.58-.75-44.73.4-71.41,27.07L132.69,64H74.36A15.91,15.91,0,0,0,63,68.68L28.7,103a16,16,0,0,0,9.07,27.16l38.47,5.37,44.21,44.21,5.37,38.49a15.94,15.94,0,0,0,10.78,12.92,16.11,16.11,0,0,0,5.1.83A15.91,15.91,0,0,0,153,227.3L187.32,193A15.91,15.91,0,0,0,192,181.64V123.31l4.77-4.77C223.45,91.86,224.6,59.71,223.85,47.12ZM74.36,80h42.33L77.16,119.52,40,114.34Zm74.41-9.45a76.65,76.65,0,0,1,59.11-22.47,76.46,76.46,0,0,1-22.42,59.16L128,164.68,91.32,128ZM176,181.64,141.67,216l-5.19-37.17L176,139.31Zm-74.16,9.5C97.34,201,82.29,224,40,224a8,8,0,0,1-8-8c0-42.29,23-57.34,32.86-61.85a8,8,0,0,1,6.64,14.56c-6.43,2.93-20.62,12.36-23.12,38.91,26.55-2.5,36-16.69,38.91-23.12a8,8,0,1,1,14.56,6.64Z"
+        fill="#cdd6f4"></path></svg
+    >
+  </div>
+
+  <div class="fs">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      stroke="currentColor"
+      fill="currentColor"
+      stroke-width="0"
+      viewBox="0 0 24 24"
+      height="50"
+      width="50"
+      class="fs"
+      ><path
+        d="M3.75 15a.75.75 0 0 1 .75.75v3.5c0 .138.112.25.25.25h3.5a.75.75 0 0 1 0 1.5h-3.5A1.75 1.75 0 0 1 3 19.25v-3.5a.75.75 0 0 1 .75-.75Zm16.5 0a.75.75 0 0 1 .75.75v3.5A1.75 1.75 0 0 1 19.25 21h-3.5a.75.75 0 0 1 0-1.5h3.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 .75-.75ZM4.75 4.5a.25.25 0 0 0-.25.25v3.5a.75.75 0 0 1-1.5 0v-3.5C3 3.784 3.784 3 4.75 3h3.5a.75.75 0 0 1 0 1.5ZM15 3.75a.75.75 0 0 1 .75-.75h3.5c.966 0 1.75.784 1.75 1.75v3.5a.75.75 0 0 1-1.5 0v-3.5a.25.25 0 0 0-.25-.25h-3.5a.75.75 0 0 1-.75-.75Z"
+        fill="#cdd6f4"></path></svg
+    >
+  </div>
+</div>

@@ -1,0 +1,32 @@
+---
+// filepath: src/components/settings/Proxy.astro
+import "~/styles/settings.scss";
+import "@fontsource/schibsted-grotesk/500.css";
+
+const availableProxies = [
+    { name: "Rammerhead", value: "rammerhead" },
+    { name: "Meteor", value: "meteor" },
+    { name: "Scramjet", value: "scramjet" },
+    { name: "Ultraviolet", value: "ultraviolet" },
+];
+---
+<div class="settings-section">
+    <h2>Proxy Settings</h2>
+    <div class="setting-item">
+        <label for="proxy-select">Select Proxy Engine:</label>
+        <select id="proxy-select">
+            {availableProxies.map((proxy) => (
+                <option value={proxy.value}>{proxy.name}</option>
+            ))}
+        </select>
+    </div>
+</div>
+
+<script type="module" is:inline>
+    import { ProxySettingsManager } from "~/lib/settings/ProxySettings";
+    const proxySettingsManager = ProxySettingsManager.bind({});
+
+    document.getElementById("proxy-select").addEventListener("change", (e) => {
+        proxySettingsManager.setProxy(e.target.value);
+    });
+</script>

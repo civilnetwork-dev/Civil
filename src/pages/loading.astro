@@ -1,0 +1,23 @@
+---
+import cx from "classix";
+import "tailwindcss/tailwind.css";
+import { SpinningCircles } from "astro-svg-loaders";
+
+export interface Props {
+  loader: "SpinningCircles" | "Rings";
+}
+
+const { loader = "Rings" } = Astro.props;
+---
+
+<body>
+  <div
+    class={cx(
+      "h-screen",
+      "w-full",
+      "bg-catppuccin-mocha-mantle",
+      "montserrat"
+    )}>
+    {}
+  </div>
+</body>

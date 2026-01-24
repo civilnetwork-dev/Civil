@@ -1,0 +1,27 @@
+---
+import SiteLogo from "~/components/SiteLogo.astro";
+import NavButtons from "~/components/NavButtons.astro";
+import FrameControls from "~/components/FrameControls.astro";
+import YT from "~/components/YouTubeIcon.astro";
+import CopyrightMessage from "~/components/CopyrightMessage.astro";
+
+import "~/styles/Navbar.scss";
+---
+
+<div id="navbar">
+  <SiteLogo />
+
+  <div id="slash-hr"></div>
+
+  <NavButtons />
+
+  <div id="slash-hr"></div>
+
+  <FrameControls />
+
+  <div id="slash-hr"></div>
+
+  <YT />
+
+  <CopyrightMessage />
+</div>
