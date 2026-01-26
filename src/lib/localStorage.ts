@@ -7,7 +7,8 @@ export const storage = {
   },
   get: (key: string) => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem(key);
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : item;
     }
   },
   remove: (key: string) => {

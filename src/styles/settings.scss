@@ -9,12 +9,10 @@
   }
 }
 
-$row-height: 100vh - 15vh;
-
 body {
   display: flex;
   flex-direction: column;
-  align-items: start;
+  align-items: stretch;
   justify-content: center;
   gap: 0px;
   background-color: #1e1e2e;
@@ -27,12 +25,44 @@ body {
     background-color: #313244;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
 
     h2 {
       font-family: "Schibsted Grotesk", sans-serif;
       color: #9399b2;
       font-size: 13px;
       font-weight: 500;
+    }
+
+    .setting-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px;
+
+      label {
+        font-family: "Schibsted Grotesk", sans-serif;
+        color: #9399b2;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+
+      select {
+        width: 200px;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #555b6e;
+        outline: none;
+        background-color: #1e1e2e;
+        color: #9399b2;
+        font-family: "Schibsted Grotesk", sans-serif;
+        font-size: 14px;
+      }
     }
   }
 }

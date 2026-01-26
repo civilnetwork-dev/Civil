@@ -1,6 +1,6 @@
 ---
 import type { GetStaticPathsResult } from "astro";
-import { showComponent } from "~/lib/utils/showComponent";
+import Proxy from "~/components/settings/Proxy.astro";
 import "~/styles/settings-errors.scss";
 import "~/styles/settings.scss";
 
@@ -25,7 +25,22 @@ if (
   Astro.redirect("/settings/#null", 302);
 }
 
+let SettingComponent: any = null;
 
+switch (setting) {
+  case "proxy":
+    SettingComponent = Proxy;
+    break;
+  case "look":
+    // TODO
+    break;
+  case "transport":
+    // TODO
+    break;
+  case "wisp-or-bare":
+    // TODO
+    break;
+}
 ---
 
 <script is:inline src="/localforage/localforage.min.js"></script>
@@ -39,4 +54,6 @@ if (
   )
 }
 
-<div class="main"></div>
+<div class="main">
+  {SettingComponent && <SettingComponent />}
+</div>
