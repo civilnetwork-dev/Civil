@@ -1,5 +1,6 @@
 //@ts-nocheck
 import { storage } from "./localStorage.ts";
+// credits to that Nucleon proxy for this workaround method
 import type * as _BareMux from "@mercuryworkshop/bare-mux";
 
 declare global {

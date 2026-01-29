@@ -1,6 +1,7 @@
 ---
 import type { GetStaticPathsResult } from "astro";
 import Proxy from "~/components/settings/Proxy.astro";
+import Transport from "~/components/settings/Transport.astro";
 import "~/styles/settings-errors.scss";
 import "~/styles/settings.scss";
 
@@ -16,15 +17,6 @@ export const prerender: boolean = true;
 const { hash } = Astro.url;
 const { setting } = Astro.params;
 
-if (
-  setting !== "proxy" &&
-  setting !== "look" &&
-  setting !== "transport" &&
-  setting !== "wisp-or-bare"
-) {
-  Astro.redirect("/settings/#null", 302);
-}
-
 let SettingComponent: any = null;
 
 switch (setting) {
@@ -35,7 +27,7 @@ switch (setting) {
     // TODO
     break;
   case "transport":
-    // TODO
+    SettingComponent = Transport;
     break;
   case "wisp-or-bare":
     // TODO

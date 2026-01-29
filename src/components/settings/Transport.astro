@@ -1,0 +1,66 @@
+---
+import "@fontsource/schibsted-grotesk/500.css";
+
+const availableTransports = [
+  { name: "Epoxy", value: "/epoxy/index.mjs" },
+  { name: "Libcurl", value: "/libcurl/index.mjs" },
+  { name: "BareModule3", value: "/baremodule/index.mjs" },
+];
+
+function whichTransportType() {
+  const values = availableTransports.map(t => t.value);
+
+  const result = values.find(transport => {
+    return transport.split("/")[2].endsWith("mjs");
+  });
+  
+  return result ? "mjs" : "cjs";
+}
+---
+
+<div class="settings-section">
+  <h2>Transport Settings</h2>
+  <div class="setting-item">
+    <label for="transport-select">Select Transport {whichTransportType() === "mjs" ? "Module" : "Script"}:</label>
+    <select id="transport-select">
+      {
+        availableTransports.map(transport => (
+          <option value={transport.value}>{transport.name}</option>
+        ))
+      }
+    </select>
+  </div>
+</div>
+
+<script>
+  import { TransportSettingsManager } from "../../lib/settings/TransportSettings";
+  import { storage } from "~/lib/localStorage";
+
+  function toTitleCase(str: string): string {
+    return str.replace(/\b\w/g, char => char.toUpperCase());
+  }
+
+  const transportSelect = document.getElementById(
+    "transport-select"
+  ) as HTMLSelectElement;
+
+  function initializeTransportSelect() {
+    const savedTransport = storage.get("transport") || "/scramjet/index.mjs";
+    if (savedTransport && transportSelect) {
+      transportSelect.value = savedTransport;
+      const titleCasedTransport = toTitleCase(savedTransport);
+      console.log(`loaded transport: ${titleCasedTransport}`);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeTransportSelect);
+  } else {
+    initializeTransportSelect();
+  }
+
+  transportSelect?.addEventListener("change", e => {
+    const selectedValue = (e.target as HTMLSelectElement).value;
+    TransportSettingsManager.setTransport(selectedValue as any);
+  });
+</script>

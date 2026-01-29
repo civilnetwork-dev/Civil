@@ -2,53 +2,57 @@
 import "@fontsource/schibsted-grotesk/500.css";
 
 const availableProxies = [
-    { name: "Rammerhead", value: "rammerhead" },
-    { name: "Meteor", value: "meteor" },
-    { name: "Scramjet", value: "scramjet" },
-    { name: "Ultraviolet", value: "ultraviolet" },
+  { name: "Rammerhead", value: "rammerhead" },
+  { name: "Meteor", value: "meteor" },
+  { name: "Scramjet", value: "scramjet" },
+  { name: "Ultraviolet", value: "ultraviolet" },
 ];
 ---
 
 <div class="settings-section">
-    <h2>Proxy Settings</h2>
-    <div class="setting-item">
-        <label for="proxy-select">Select Proxy Engine:</label>
-        <select id="proxy-select">
-            {availableProxies.map((proxy) => (
-                <option value={proxy.value}>{proxy.name}</option>
-            ))}
-        </select>
-    </div>
+  <h2>Proxy Settings</h2>
+  <div class="setting-item">
+    <label for="proxy-select">Select Proxy Engine:</label>
+    <select id="proxy-select">
+      {
+        availableProxies.map(proxy => (
+          <option value={proxy.value}>{proxy.name}</option>
+        ))
+      }
+    </select>
+  </div>
 </div>
 
 <script>
-    //duuuuude this browser compatibility thing really gets my on the hip smh
-    import { ProxySettingsManager } from "../../lib/settings/ProxySettings";
-    import { storage } from "~/lib/localStorage";
+  //duuuuude this browser compatibility thing really gets my on the hip smh
+  import { ProxySettingsManager } from "../../lib/settings/ProxySettings";
+  import { storage } from "~/lib/localStorage";
 
-    function toTitleCase(str: string): string {
-        return str.replace(/\b\w/g, (char) => char.toUpperCase());
-    }
+  function toTitleCase(str: string): string {
+    return str.replace(/\b\w/g, char => char.toUpperCase());
+  }
 
-    const proxySelect = document.getElementById("proxy-select") as HTMLSelectElement;
-    
-    function initializeProxySelect() {
-        const savedProxy = storage.get("proxy") || "scramjet";
-        if (savedProxy && proxySelect) {
-            proxySelect.value = savedProxy;
-            const titleCasedProxy = toTitleCase(savedProxy);
-            console.log(`loaded proxy: ${titleCasedProxy}`);
-        }
+  const proxySelect = document.getElementById(
+    "proxy-select"
+  ) as HTMLSelectElement;
+
+  function initializeProxySelect() {
+    const savedProxy = storage.get("proxy") || "scramjet";
+    if (savedProxy && proxySelect) {
+      proxySelect.value = savedProxy;
+      const titleCasedProxy = toTitleCase(savedProxy);
+      console.log(`loaded proxy: ${titleCasedProxy}`);
     }
-    
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initializeProxySelect);
-    } else {
-        initializeProxySelect();
-    }
-    
-    proxySelect?.addEventListener("change", (e) => {
-        const selectedValue = (e.target as HTMLSelectElement).value;
-        ProxySettingsManager.setProxy(selectedValue as any);
-    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializeProxySelect);
+  } else {
+    initializeProxySelect();
+  }
+
+  proxySelect?.addEventListener("change", e => {
+    const selectedValue = (e.target as HTMLSelectElement).value;
+    ProxySettingsManager.setProxy(selectedValue as any);
+  });
 </script>
