@@ -1,6 +1,6 @@
 ### Civil Proxy (formerly Comet)
 
-use **Dockerfile** to deploy on a web platform such as Koyeb or **Dockerfile.vps** to deploy on a VPS
+use **docker/Dockerfile** to deploy on http or **docker/vps.Dockerfile** to deploy on https
 
 **TODO:**
 

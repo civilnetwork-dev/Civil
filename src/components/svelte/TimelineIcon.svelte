@@ -1,7 +1,7 @@
 <script lang="ts">
 import { Timeline, TimelineElement } from "svelte-animated-timeline/src/lib";
-import { getGithubId } from "../../lib/githubUsernameToId";
-import generateId from "../../lib/generateElementId";
+import { getGithubId } from "~/lib/githubUsernameToId";
+import generateId from "~/lib/generateElementId";
 
 type ValidTimelineUsername =
   | "Null-n-V0id"

@@ -17,6 +17,7 @@ import node from "@astrojs/node";
 import svelte from "@astrojs/svelte";
 import { rimraf } from "rimraf";
 import { resolve } from "node:path";
+import createDevServer from "./config/devServer";
 
 const workerwarePath = resolve(import.meta.dirname, ".", "workerware", "src");
 
@@ -104,5 +105,8 @@ export default defineConfig({
       SVG: true,
     }),
     svelte(),
+    createDevServer({
+      reverseProxy: false,
+    }),
   ],
 });

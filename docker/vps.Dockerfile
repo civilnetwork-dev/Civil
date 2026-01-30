@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN npm i -g pnpm && pnpm i
+RUN npm i -g pnpm && pnpm i && pnpm build
 
 COPY . .
 

@@ -83,7 +83,7 @@ function routeRammerheadUpgrade(
 const bareOptions = {
   maintainer: {
     email: "prehistorical.dinosaurs@outlook.com",
-    website: "https://www.quartinal.com",
+    website: "https://quartinal.me",
   },
 } as BareServerOptions;
 

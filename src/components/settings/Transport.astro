@@ -13,7 +13,7 @@ function whichTransportType() {
   const result = values.find(transport => {
     return transport.split("/")[2].endsWith("mjs");
   });
-  
+
   return result ? "mjs" : "cjs";
 }
 ---
@@ -21,7 +21,11 @@ function whichTransportType() {
 <div class="settings-section">
   <h2>Transport Settings</h2>
   <div class="setting-item">
-    <label for="transport-select">Select Transport {whichTransportType() === "mjs" ? "Module" : "Script"}:</label>
+    <label for="transport-select"
+      >Select Transport {
+        whichTransportType() === "mjs" ? "Module" : "Script"
+      }:</label
+    >
     <select id="transport-select">
       {
         availableTransports.map(transport => (

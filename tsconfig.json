@@ -25,6 +25,7 @@
     "src/**/*.tsx",
     "*.d.ts",
     "index.ts",
-    "*.svelte"
+    "src/**/*.svelte",
+    "config/*.ts"
   ]
 }
