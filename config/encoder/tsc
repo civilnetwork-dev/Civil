@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+TSC="$PROJECT_ROOT/node_modules/.bin/tsc"
+
+if [ ! -f "$TSC" ]; then
+  echo "Error: tsc not found at $TSC"
+  exit 1
+fi
+
+args=()
+skip=0
+
+for arg in "$@"; do
+  if [[ "$arg" == "--outFile" ]]; then
+    skip=1
+    continue
+  fi
+
+  if [[ "$skip" == "1" ]]; then
+    skip=0
+    continue
+  fi
+
+  args+=("$arg")
+done
+
+exec "$TSC" \
+  --ignoreDeprecations 6.0 \
+  "${args[@]}"

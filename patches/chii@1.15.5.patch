@@ -1,0 +1,31 @@
+diff --git a/server/index.js b/server/index.js
+index 38a70b4cc47feefae257230ad5bfdf6d6dd620c1..7a1661ee34aa5cd3e4c3615ed11c051fddb97f83 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -30,7 +30,12 @@ async function start({
+   app.use(compress()).use(router(wss.channelManager, domain, cdn, basePath));
+ 
+   if (server) {
+-    server.on('request', app.callback());
++    const chiiHandler = app.callback();
++server.on('request', (req, res) => {
++  if (req.url && (req.url === basePath.slice(0, -1) || req.url.startsWith(basePath))) {
++    chiiHandler(req, res);
++  }
++});
+     wss.start(server);
+   } else {
+     util.log(`starting server at http://${domain}${basePath}`);
+diff --git a/server/lib/WebSocketServer.js b/server/lib/WebSocketServer.js
+index 840979d9064d98159356d44a7a9add8edbdc820e..460cae8230eee3b7ec70ff53d681626cbe1d501f 100644
+--- a/server/lib/WebSocketServer.js
++++ b/server/lib/WebSocketServer.js
+@@ -52,8 +52,6 @@ module.exports = class WebSocketServer {
+           }
+           wss.emit('connection', ws, request);
+         });
+-      } else {
+-        socket.destroy();
+       }
+     });
+   }

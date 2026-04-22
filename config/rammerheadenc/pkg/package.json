@@ -1,0 +1,15 @@
+{
+  "name": "rammerheadenc",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "rammerheadenc_bg.wasm",
+    "rammerheadenc.js",
+    "rammerheadenc.d.ts"
+  ],
+  "main": "rammerheadenc.js",
+  "types": "rammerheadenc.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

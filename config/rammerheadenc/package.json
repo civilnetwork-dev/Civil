@@ -1,0 +1,16 @@
+{
+  "name": "rammerheadenc",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "esbuild.js",
+  "keywords": [],
+  "author": "Jasper Quartarolo",
+  "packageManager": "pnpm@10.29.1",
+  "devDependencies": {
+    "esbuild": "^0.27.3",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1"
+  },
+  "type": "module"
+}

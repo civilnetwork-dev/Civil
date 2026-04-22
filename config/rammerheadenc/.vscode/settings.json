@@ -1,0 +1,3 @@
+{
+  "rust-analyzer.linkedProjects": ["./misc/rammerheadenc/Cargo.toml"]
+}

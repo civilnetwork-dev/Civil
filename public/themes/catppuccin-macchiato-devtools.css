@@ -1,0 +1,30 @@
+/* @name Catppuccin Macchiato */
+:root {
+    --color-background: #24273a;
+    --color-background-elevation-1: #1e2030;
+    --color-background-elevation-2: #181926;
+    --color-background-inverted: #cad3f5;
+    --color-primary: #8aadf4;
+    --color-primary-variant: #7dc4e4;
+    --color-secondary: #c6a0f6;
+    --color-error: #ed8796;
+    --color-warning: #eed49f;
+    --color-success: #a6da95;
+    --color-on-primary: #24273a;
+    --color-text-primary: #cad3f5;
+    --color-text-secondary: #a5adcb;
+    --color-text-disabled: #6e738d;
+    --color-details-hairline: #363a4f;
+    --color-accent-red: #ed8796;
+    --color-accent-orange: #f5a97f;
+    --color-accent-yellow: #eed49f;
+    --color-accent-green: #a6da95;
+    --color-accent-blue: #8aadf4;
+    --color-accent-purple: #c6a0f6;
+    --color-accent-teal: #8bd5ca;
+    --toolbar-bg-color: #1e2030;
+    --toolbar-color: #cad3f5;
+    --selection-bg-color: #363a4f;
+    --selection-inactive-bg-color: #2a2d3e;
+    --focus-ring-color: #8aadf4;
+}
