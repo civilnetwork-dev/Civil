@@ -1,0 +1,8 @@
+node_modules
+.vinxi
+.output
+.git
+.vscode
+dist
+tests/results.db
+tests/bench_results.json

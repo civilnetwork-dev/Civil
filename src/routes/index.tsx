@@ -52,10 +52,6 @@ function TimedLoadingAnimation() {
 }
 
 function RouteComponent() {
-    onMount(async () => {
-        await import("~/lib/initializeAnalytics.ts");
-    });
-
     return (
         <>
             <TimedLoadingAnimation />

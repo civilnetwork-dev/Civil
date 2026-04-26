@@ -157,15 +157,12 @@ class SearchBar
             );
 
             if (window.location.host === "civil.quartinal.me") {
-                import("@plausible-analytics/tracker").then(({ track }) => {
-                    track("Internal site visit", {
-                        props: {
-                            url: isUrl(term)
-                                ? proxy.value.decodeUrl!(term)
-                                : term,
-                        },
-                    });
-                });
+                window.umami?.track(
+                    "Internal site visit",
+                    isUrl(term)
+                        ? { url: proxy.value.decodeUrl!(term) }
+                        : { term },
+                );
             }
         });
     }
