@@ -1,5 +1,5 @@
 import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import { appsAdd, appsGetAll, appsRemove } from "~/api/apps";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/AppsPage.css";
@@ -32,7 +32,9 @@ export default function AppsPage() {
     const [adding, setAdding] = createSignal(false);
     const [addError, setAddError] = createSignal<string | null>(null);
 
-    onMount(() => setApps(appsGetAll()));
+    onSettled(() => {
+        setApps(appsGetAll());
+    });
 
     const handleAdd = async () => {
         const raw = input().trim();
@@ -108,17 +110,20 @@ export default function AppsPage() {
                     {app => (
                         // biome-ignore lint/a11y/noStaticElementInteractions: biome breaking my project lmao
                         // biome-ignore lint/a11y/useKeyWithClickEvents: biome breaking my project lmao
-                        <div class={s.appCard} onClick={() => handleOpen(app)}>
+                        <div
+                            class={s.appCard}
+                            onClick={() => handleOpen(app())}
+                        >
                             <button
                                 type="button"
                                 class={s.removeBtn}
                                 title="Remove"
-                                onClick={e => handleRemove(e, app.id)}
+                                onClick={e => handleRemove(e, app().id)}
                             >
                                 <TbOutlineX size={11} />
                             </button>
-                            <AppIcon icon={app.icon} name={app.name} />
-                            <span class={s.appName}>{app.name}</span>
+                            <AppIcon icon={app().icon} name={app().name} />
+                            <span class={s.appName}>{app().name}</span>
                         </div>
                     )}
                 </For>

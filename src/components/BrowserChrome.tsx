@@ -1,14 +1,13 @@
 import { TbOutlinePlus, TbOutlinePuzzle, TbOutlineWorld } from "solid-icons/tb";
 import {
-    batch,
     createMemo,
     createSignal,
+    createStore,
     For,
     onCleanup,
-    onMount,
+    onSettled,
     Show,
 } from "solid-js";
-import { createStore, produce } from "solid-js/store";
 import BookmarksBar from "~/components/BookmarksBar";
 import { ChiiPanel } from "~/components/ChiiPanel";
 import { useContextMenu } from "~/components/ContextMenu";
@@ -29,8 +28,8 @@ import {
     tabManager,
 } from "~/lib/TabManager";
 import {
+    cleanupChiiArtifacts,
     createIframeManager,
-    injectChiiIntoIframe,
 } from "~/lib/useIframeManager";
 import { registerTabMonitor } from "~/lib/useTabDrag";
 
@@ -75,51 +74,73 @@ export default function BrowserChrome() {
         const id = activeId();
         return id ? iframeMap.get(id) : undefined;
     });
+    const cleanupActiveChii = () => {
+        const iframe = activeIframe();
+        if (iframe) cleanupChiiArtifacts(iframe);
+    };
 
     const persist = () => saveSession(tabStore.tabs, activeId());
 
-    tabManager.on("tabAdded", tab => {
-        setTabStore("tabs", t => [...t, tab]);
+    const onTabAdded = (tab: Tab) => {
+        setTabStore(s => {
+            s.tabs = [...s.tabs, tab];
+        });
         setIframeIds(ids => [...ids, tab.id]);
         persist();
-    });
-    tabManager.on("tabRemoved", id =>
-        batch(() => {
-            setTabStore("tabs", t => t.filter(tab => tab.id !== id));
-            setIframeIds(ids => ids.filter(i => i !== id));
-            setActiveId(tabManager.activeId);
-            persist();
-        }),
-    );
-    tabManager.on("tabActivated", id => {
+    };
+    const onTabRemoved = (id: string) => {
+        setTabStore(s => {
+            s.tabs = s.tabs.filter(t => t.id !== id);
+        });
+        setIframeIds(ids => ids.filter(i => i !== id));
+        setActiveId(tabManager.activeId);
+        persist();
+    };
+    const onTabActivated = (id: string) => {
+        cleanupActiveChii();
         setActiveId(id);
         setChiiOpen(false);
         persist();
-    });
-    tabManager.on("tabUpdated", upd => {
-        setTabStore(
-            "tabs",
-            t => t.id === upd.id,
-            produce(t => {
-                t.title = upd.title;
-                t.url = upd.url;
-                t.isLoading = upd.isLoading;
-                t.favicon = upd.favicon;
-            }),
-        );
+    };
+    const onTabUpdated = (upd: Tab) => {
+        setTabStore(s => {
+            s.tabs = s.tabs.map(t =>
+                t.id === upd.id
+                    ? {
+                          ...t,
+                          title: upd.title,
+                          url: upd.url,
+                          isLoading: upd.isLoading,
+                          favicon: upd.favicon,
+                      }
+                    : t,
+            );
+        });
         persist();
-    });
-    tabManager.on("tabMoved", (id, toIndex) => {
-        setTabStore(
-            "tabs",
-            produce(tabs => {
-                const from = tabs.findIndex(t => t.id === id);
-                if (from === -1 || from === toIndex) return;
-                const [tab] = tabs.splice(from, 1);
-                tabs.splice(toIndex, 0, tab);
-            }),
-        );
+    };
+    const onTabMoved = (id: string, toIndex: number) => {
+        setTabStore(s => {
+            const arr = [...s.tabs];
+            const from = arr.findIndex(t => t.id === id);
+            if (from === -1 || from === toIndex) return;
+            const [tab] = arr.splice(from, 1);
+            arr.splice(toIndex, 0, tab);
+            s.tabs = arr;
+        });
         persist();
+    };
+
+    tabManager.on("tabAdded", onTabAdded);
+    tabManager.on("tabRemoved", onTabRemoved);
+    tabManager.on("tabActivated", onTabActivated);
+    tabManager.on("tabUpdated", onTabUpdated);
+    tabManager.on("tabMoved", onTabMoved);
+    onCleanup(() => {
+        tabManager.off("tabAdded", onTabAdded);
+        tabManager.off("tabRemoved", onTabRemoved);
+        tabManager.off("tabActivated", onTabActivated);
+        tabManager.off("tabUpdated", onTabUpdated);
+        tabManager.off("tabMoved", onTabMoved);
     });
 
     const ro = new ResizeObserver(entries => {
@@ -127,7 +148,7 @@ export default function BrowserChrome() {
     });
     onCleanup(() => ro.disconnect());
 
-    onMount(() => {
+    onSettled(() => {
         if (tabStripRef) ro.observe(tabStripRef);
 
         registerTabMonitor({ setDraggingId });
@@ -159,9 +180,6 @@ export default function BrowserChrome() {
             navigateIframe(tabId, url);
         };
         document.addEventListener("browser:navigate", onBrowserNavigate);
-        onCleanup(() =>
-            document.removeEventListener("browser:navigate", onBrowserNavigate),
-        );
 
         const onGlobalKey = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -170,7 +188,11 @@ export default function BrowserChrome() {
             }
         };
         window.addEventListener("keydown", onGlobalKey);
-        onCleanup(() => window.removeEventListener("keydown", onGlobalKey));
+
+        return () => {
+            document.removeEventListener("browser:navigate", onBrowserNavigate);
+            window.removeEventListener("keydown", onGlobalKey);
+        };
     });
 
     const openExtensions = () => {
@@ -235,17 +257,76 @@ export default function BrowserChrome() {
                               {
                                   label: "Cut",
                                   shortcut: "⌘X",
-                                  action: () => document.execCommand("cut"),
+                                  action: () => {
+                                      const active = document.activeElement as
+                                          | HTMLInputElement
+                                          | HTMLTextAreaElement
+                                          | null;
+                                      if (active && "setRangeText" in active) {
+                                          const start =
+                                              active.selectionStart ?? 0;
+                                          const end = active.selectionEnd ?? 0;
+                                          const cut = active.value.slice(
+                                              start,
+                                              end,
+                                          );
+                                          if (cut) {
+                                              navigator.clipboard.writeText(
+                                                  cut,
+                                              );
+                                              active.setRangeText(
+                                                  "",
+                                                  start,
+                                                  end,
+                                                  "end",
+                                              );
+                                              active.dispatchEvent(
+                                                  new Event("input", {
+                                                      bubbles: true,
+                                                  }),
+                                              );
+                                          }
+                                      }
+                                  },
                               },
                               {
                                   label: "Copy",
                                   shortcut: "⌘C",
-                                  action: () => document.execCommand("copy"),
+                                  action: () => {
+                                      const sel =
+                                          window.getSelection()?.toString() ??
+                                          "";
+                                      if (sel)
+                                          navigator.clipboard.writeText(sel);
+                                  },
                               },
                               {
                                   label: "Paste",
                                   shortcut: "⌘V",
-                                  action: () => document.execCommand("paste"),
+                                  action: () => {
+                                      navigator.clipboard
+                                          .readText()
+                                          .then(text => {
+                                              const el =
+                                                  document.activeElement as
+                                                      | HTMLInputElement
+                                                      | HTMLTextAreaElement
+                                                      | null;
+                                              if (el && "setRangeText" in el) {
+                                                  el.setRangeText(
+                                                      text,
+                                                      el.selectionStart ?? 0,
+                                                      el.selectionEnd ?? 0,
+                                                      "end",
+                                                  );
+                                                  el.dispatchEvent(
+                                                      new Event("input", {
+                                                          bubbles: true,
+                                                      }),
+                                                  );
+                                              }
+                                          });
+                                  },
                               },
                               { type: "separator" as const },
                           ]
@@ -258,11 +339,9 @@ export default function BrowserChrome() {
                             const iframe = iframeMap.get(id);
                             if (!iframe) return;
                             if (isInternalUrl(activeUrl())) return;
-                            injectChiiIntoIframe(iframe);
                             setChiiOpen(true);
                         },
                     },
-
                     { type: "separator" },
                     {
                         label: "Close Tab",
@@ -280,11 +359,11 @@ export default function BrowserChrome() {
                     <For each={tabStore.tabs}>
                         {tab => (
                             <TabPill
-                                tab={tab}
-                                active={tab.id === activeId()}
+                                tab={tab()}
+                                active={tab().id === activeId()}
                                 width={tabWidth()}
-                                isDragging={tab.id === draggingId()}
-                                onClose={() => tabManager.removeTab(tab.id)}
+                                isDragging={tab().id === draggingId()}
+                                onClose={() => tabManager.removeTab(tab().id)}
                                 setDraggingId={setDraggingId}
                                 getTabs={() => tabStore.tabs}
                                 getStrip={() => tabStripRef}
@@ -376,11 +455,11 @@ export default function BrowserChrome() {
                     {id => (
                         <iframe
                             title="Proxied browser-in-browser webpage"
-                            class={s.browserFrame}
-                            classList={{
-                                [s.browserFrameActive]: id === activeId(),
-                            }}
-                            ref={el => registerIframe(id, el)}
+                            class={[
+                                s.browserFrame,
+                                { [s.browserFrameActive]: id() === activeId() },
+                            ]}
+                            ref={el => registerIframe(id(), el)}
                         />
                     )}
                 </For>
@@ -403,8 +482,12 @@ export default function BrowserChrome() {
                 <Show when={chiiOpen() && activeIframe()}>
                     <ChiiPanel
                         targetIframe={activeIframe()!}
-                        onClose={() => setChiiOpen(false)}
+                        onClose={() => {
+                            cleanupActiveChii();
+                            setChiiOpen(false);
+                        }}
                         onDetach={url => {
+                            cleanupActiveChii();
                             window.open(url, "_blank", "width=1000,height=700");
                             setChiiOpen(false);
                         }}
@@ -412,7 +495,6 @@ export default function BrowserChrome() {
                 </Show>
             </div>
 
-            {/* Tab search overlay */}
             <Show when={showSearch()}>
                 <TabSearch
                     tabs={tabStore.tabs}

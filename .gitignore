@@ -1,9 +1,12 @@
+# Generated Directories & Files
+dist-config
 dist
 .wrangler
 .output
 .vercel
 .netlify
 .vinxi
+.nitro
 app.config.timestamp_*.js
 
 # Environment
@@ -15,6 +18,7 @@ app.config.timestamp_*.js
 
 # IDEs and editors
 /.idea
+/.cursor
 .project
 .classpath
 *.launch
@@ -31,5 +35,8 @@ Thumbs.db
 pnpm-lock.yaml
 pnpm-workspace.yaml
 
-routeTree.gen.ts
 auto-imports.d.ts
+
+# Generated Files
+*.tgz
+*.tar.gz

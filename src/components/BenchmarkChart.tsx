@@ -1,12 +1,5 @@
 import { init } from "echarts/core";
-import {
-    createEffect,
-    createMemo,
-    For,
-    onCleanup,
-    onMount,
-    Show,
-} from "solid-js";
+import { createEffect, createMemo, For, onSettled, Show } from "solid-js";
 
 import {
     axisBase,
@@ -236,7 +229,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
     let refLatency!: HTMLDivElement;
     let refSpeedup!: HTMLDivElement;
 
-    onMount(() => {
+    onSettled(() => {
         const maybeInit = (el: HTMLDivElement, opt: EChartsOption | object) => {
             if (!Object.keys(opt).length) return null;
             const c = init(el, null, { renderer: "canvas" });
@@ -248,21 +241,24 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
         const cLatency = maybeInit(refLatency, latencyOption());
         const cSpeedup = maybeInit(refSpeedup, speedupOption());
 
-        createEffect(() => {
-            const opt = throughputOption();
-            if (cThroughput && Object.keys(opt).length)
-                cThroughput.setOption(opt as EChartsOption, true);
-        });
-        createEffect(() => {
-            const opt = latencyOption();
-            if (cLatency && Object.keys(opt).length)
-                cLatency.setOption(opt as EChartsOption, true);
-        });
-        createEffect(() => {
-            const opt = speedupOption();
-            if (cSpeedup && Object.keys(opt).length)
-                cSpeedup.setOption(opt as EChartsOption, true);
-        });
+        if (cThroughput) {
+            createEffect(throughputOption, opt => {
+                if (Object.keys(opt).length)
+                    cThroughput.setOption(opt as EChartsOption, true);
+            });
+        }
+        if (cLatency) {
+            createEffect(latencyOption, opt => {
+                if (Object.keys(opt).length)
+                    cLatency.setOption(opt as EChartsOption, true);
+            });
+        }
+        if (cSpeedup) {
+            createEffect(speedupOption, opt => {
+                if (Object.keys(opt).length)
+                    cSpeedup.setOption(opt as EChartsOption, true);
+            });
+        }
 
         const charts = [cThroughput, cLatency, cSpeedup].filter(
             Boolean,
@@ -273,10 +269,10 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
         for (const el of [refThroughput, refLatency, refSpeedup])
             ro.observe(el);
 
-        onCleanup(() => {
+        return () => {
             ro.disconnect();
             for (const c of charts) c.dispose();
-        });
+        };
     });
 
     return (
@@ -313,7 +309,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 <div style={styles.pills}>
                     <For each={runs()}>
                         {run => {
-                            const m = getImplMeta(run.impl);
+                            const m = getImplMeta(run().impl);
                             return (
                                 <span style={pillStyle(m.color)}>
                                     <span style={dotStyle(m.color)} />
@@ -363,7 +359,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                     }
                                 >
                                     {heading => (
-                                        <th style={styles.th}>{heading}</th>
+                                        <th style={styles.th}>{heading()}</th>
                                     )}
                                 </For>
                             </tr>
@@ -371,7 +367,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                         <tbody>
                             <For each={runs()}>
                                 {(run, index) => {
-                                    const m = getImplMeta(run.impl);
+                                    const m = getImplMeta(run().impl);
                                     return (
                                         <tr>
                                             <td style={tableCellStyle(index())}>
@@ -384,7 +380,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                                     <span
                                                         style={`color:${colors.text}`}
                                                     >
-                                                        {run.impl}
+                                                        {run().impl}
                                                     </span>
                                                 </span>
                                             </td>
@@ -392,18 +388,18 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                                 style={`${tableCellStyle(index())};color:${m.color};font-weight:700`}
                                             >
                                                 {(
-                                                    run.ops_per_sec / 1e6
+                                                    run().ops_per_sec / 1e6
                                                 ).toFixed(4)}
                                             </td>
                                             <td
                                                 style={`${tableCellStyle(index())};color:${colors.subtext1}`}
                                             >
-                                                {run.avg_ns_per_op.toFixed(1)}
+                                                {run().avg_ns_per_op.toFixed(1)}
                                             </td>
                                             <td
                                                 style={`${tableCellStyle(index())};color:${colors.subtext1}`}
                                             >
-                                                {run.total_ms.toFixed(1)}
+                                                {run().total_ms.toFixed(1)}
                                             </td>
                                         </tr>
                                     );

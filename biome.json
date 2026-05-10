@@ -15,9 +15,10 @@
             "scripts/**",
             "misc/**",
             "!misc/apps/anura",
-            "server.ts",
+            "run.ts",
             "tsconfig.json",
-            "app.config.ts"
+            "app.config.ts",
+            "!src/routeTree.gen.ts"
         ]
     },
     "linter": {

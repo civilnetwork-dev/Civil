@@ -6,7 +6,11 @@ import {
     TbOutlineLayoutSidebarRight,
     TbOutlineX,
 } from "solid-icons/tb";
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onSettled } from "solid-js";
+import {
+    cleanupChiiArtifacts,
+    injectChiiIntoIframe,
+} from "~/lib/useIframeManager";
 import * as s from "~/styles/ChiiPanel.css";
 
 export type ChiiDockSide = "bottom" | "top" | "left" | "right";
@@ -23,6 +27,12 @@ const MIN_PX = 80;
 const CHII_HOST = window.location.host;
 const CHII_BASE = "/chii/";
 
+interface ChiiTarget {
+    id: string;
+    rtc?: boolean;
+    url?: string;
+}
+
 function nanoid(len: number): string {
     const chars =
         "ModuleSymbhasOwnPr-0123456789ABCDEFGHIJKLMNQRTUVWXYZcfgijkpqtvxz";
@@ -32,33 +42,50 @@ function nanoid(len: number): string {
     return id;
 }
 
-async function waitForTarget(
-    maxWaitMs = 5000,
-): Promise<{ id: string; rtc: boolean } | null> {
-    const interval = 200;
-    const attempts = maxWaitMs / interval;
-    for (let i = 0; i < attempts; i++) {
-        try {
-            const res = await fetch(`${CHII_BASE}targets`);
-            const { targets } = await res.json();
-            if (targets?.length) return targets[0];
-        } catch {}
-        await new Promise(r => setTimeout(r, interval));
-    }
-    return null;
+function buildDetachUrlForId(targetId: string): string {
+    const ws = location.protocol === "https:" ? "wss" : "ws";
+    const clientId = nanoid(6);
+    const clientPath = encodeURIComponent(
+        `${CHII_HOST}${CHII_BASE}client/${clientId}?target=${targetId}`,
+    );
+    return `${location.origin}${CHII_BASE}front_end/chii_app.html?${ws}=${clientPath}&rtc=false`;
 }
 
-async function buildDetachUrl(): Promise<string> {
-    const target = await waitForTarget();
-    if (target) {
-        const ws = location.protocol === "https:" ? "wss" : "ws";
-        const clientId = nanoid(6);
-        const clientPath = encodeURIComponent(
-            `${CHII_HOST}${CHII_BASE}client/${clientId}?target=${target.id}`,
-        );
-        return `${location.origin}${CHII_BASE}front_end/chii_app.html?${ws}=${clientPath}&rtc=${target.rtc ?? false}`;
+async function snapshotTargetIds(): Promise<Set<string>> {
+    try {
+        const res = await fetch(`${CHII_BASE}targets`, { cache: "no-store" });
+        const data = await res.json();
+        const targets = (data?.targets ?? []) as ChiiTarget[];
+        return new Set(targets.map(t => t.id));
+    } catch {
+        return new Set();
     }
-    return `${location.origin}${CHII_BASE}`;
+}
+
+async function waitForNewTarget(
+    knownIds: Set<string>,
+    expectedUrl: string | null,
+    maxWaitMs = 4000,
+): Promise<ChiiTarget | null> {
+    const interval = 250;
+    const attempts = Math.max(1, Math.floor(maxWaitMs / interval));
+    for (let i = 0; i < attempts; i++) {
+        await new Promise(r => setTimeout(r, interval));
+        try {
+            const res = await fetch(`${CHII_BASE}targets`, {
+                cache: "no-store",
+            });
+            const data = await res.json();
+            const targets = (data?.targets ?? []) as ChiiTarget[];
+            const newTargets = targets.filter(t => !knownIds.has(t.id));
+            const newTarget =
+                (expectedUrl
+                    ? newTargets.find(t => t.url === expectedUrl)
+                    : null) ?? newTargets[0];
+            if (newTarget) return newTarget;
+        } catch {}
+    }
+    return null;
 }
 
 function applyTargetSize(
@@ -123,25 +150,73 @@ function panelPositionStyle(
     return { top: "0", left: "0", bottom: "0", width: pct };
 }
 
+function dividerPositionStyle(side: ChiiDockSide): Record<string, string> {
+    if (side === "bottom")
+        return { top: "0", left: "0", right: "0", height: "4px" };
+    if (side === "top")
+        return { bottom: "0", left: "0", right: "0", height: "4px" };
+    if (side === "right")
+        return { left: "0", top: "0", bottom: "0", width: "4px" };
+    return { right: "0", top: "0", bottom: "0", width: "4px" };
+}
+
+function contentInsetStyle(side: ChiiDockSide): Record<string, string> {
+    if (side === "bottom")
+        return { top: "4px", left: "0", right: "0", bottom: "0" };
+    if (side === "top")
+        return { top: "0", left: "0", right: "0", bottom: "4px" };
+    if (side === "right")
+        return { left: "4px", top: "0", right: "0", bottom: "0" };
+    return { right: "4px", top: "0", left: "0", bottom: "0" };
+}
+
 export function ChiiPanel(props: ChiiPanelProps) {
     const [side, setSide] = createSignal<ChiiDockSide>(
         props.initialSide ?? "bottom",
     );
     const [size, setSize] = createSignal(0.4);
     const [dragging, setDragging] = createSignal(false);
-    const [devtoolsSrc, setDevtoolsSrc] = createSignal("");
 
     let devtoolsRef!: HTMLIFrameElement;
+    let disposed = false;
+    let initialized = false;
+    let activeTargetId: string | null = null;
 
     const isHoriz = () => side() === "left" || side() === "right";
+    const cleanupTargetArtifacts = () => {
+        cleanupChiiArtifacts(props.targetIframe);
+    };
 
-    onMount(async () => {
+    const resolveDevtoolsSrc = async () => {
+        const knownIds = await snapshotTargetIds();
+        const expectedUrl = (() => {
+            try {
+                return props.targetIframe.contentWindow?.location.href ?? null;
+            } catch {
+                return null;
+            }
+        })();
+        injectChiiIntoIframe(props.targetIframe, devtoolsRef);
+        const target = await waitForNewTarget(knownIds, expectedUrl, 4000);
+        if (disposed) return;
+        if (target) {
+            activeTargetId = target.id;
+            devtoolsRef.src = buildDetachUrlForId(target.id);
+        } else {
+            devtoolsRef.src = "about:blank";
+        }
+    };
+
+    onSettled(() => {
         applyTargetSize(props.targetIframe, side(), size());
-        try {
-            (props.targetIframe.contentWindow as any).ChiiDevtoolsIframe =
-                devtoolsRef;
-        } catch {}
-        setDevtoolsSrc(await buildDetachUrl());
+        cleanupTargetArtifacts();
+        if (initialized) return;
+        initialized = true;
+        void resolveDevtoolsSrc();
+    });
+
+    onCleanup(() => {
+        disposed = true;
     });
 
     const onPointerdown = (e: PointerEvent) => {
@@ -155,17 +230,17 @@ export function ChiiPanel(props: ChiiPanelProps) {
         const parent = (e.currentTarget as HTMLElement).parentElement;
         if (!parent) return;
         const rect = parent.getBoundingClientRect();
-        const s = side();
+        const cur = side();
         let ratio: number;
-        if (s === "bottom") ratio = 1 - (e.clientY - rect.top) / rect.height;
-        else if (s === "top") ratio = (e.clientY - rect.top) / rect.height;
-        else if (s === "right")
+        if (cur === "bottom") ratio = 1 - (e.clientY - rect.top) / rect.height;
+        else if (cur === "top") ratio = (e.clientY - rect.top) / rect.height;
+        else if (cur === "right")
             ratio = 1 - (e.clientX - rect.left) / rect.width;
         else ratio = (e.clientX - rect.left) / rect.width;
         const minRatio = MIN_PX / (isHoriz() ? rect.width : rect.height);
         const clamped = Math.max(minRatio, Math.min(1 - minRatio, ratio));
         setSize(clamped);
-        applyTargetSize(props.targetIframe, s, clamped);
+        applyTargetSize(props.targetIframe, cur, clamped);
     };
 
     const onPointerup = () => setDragging(false);
@@ -173,16 +248,21 @@ export function ChiiPanel(props: ChiiPanelProps) {
     const changeSide = (next: ChiiDockSide) => {
         setSide(next);
         applyTargetSize(props.targetIframe, next, size());
+        cleanupTargetArtifacts();
     };
 
     const handleClose = () => {
+        cleanupTargetArtifacts();
         resetTargetSize(props.targetIframe);
         props.onClose();
     };
 
     const handleDetach = async () => {
+        cleanupTargetArtifacts();
         resetTargetSize(props.targetIframe);
-        const url = await buildDetachUrl();
+        const url = activeTargetId
+            ? buildDetachUrlForId(activeTargetId)
+            : `${location.origin}${CHII_BASE}`;
         props.onDetach(url);
     };
 
@@ -208,60 +288,67 @@ export function ChiiPanel(props: ChiiPanelProps) {
             onPointerMove={onPointermove}
             onPointerUp={onPointerup}
         >
-            <Show when={side() === "bottom" || side() === "right"}>
-                <div
-                    class={dividerClass()}
-                    onPointerDown={onPointerdown}
-                    onPointerUp={onPointerup}
-                />
-            </Show>
-
-            <div class={s.toolbar}>
-                {sides.map(({ s: ds, icon }) => (
-                    <button
-                        type="button"
-                        title={`Dock ${ds}`}
-                        class={`${s.dockBtn}${side() === ds ? ` ${s.dockBtnActive}` : ""}`}
-                        onClick={() => changeSide(ds)}
-                    >
-                        {icon()}
-                    </button>
-                ))}
-                <div class={s.toolbarSpacer} />
-                <button
-                    type="button"
-                    title="Open in new window"
-                    class={s.detachBtn}
-                    onClick={() => {
-                        void handleDetach();
-                    }}
-                >
-                    <TbOutlineArrowUpRight size={14} />
-                </button>
-                <button
-                    type="button"
-                    title="Close devtools"
-                    class={s.closeBtn}
-                    onClick={handleClose}
-                >
-                    <TbOutlineX size={14} />
-                </button>
-            </div>
-
-            <iframe
-                ref={devtoolsRef}
-                src={devtoolsSrc()}
-                class={s.devtoolsFrame}
-                title="Chii DevTools"
+            <div
+                class={dividerClass()}
+                style={{
+                    position: "absolute",
+                    "z-index": "2",
+                    ...dividerPositionStyle(side()),
+                }}
+                onPointerDown={onPointerdown}
+                onPointerUp={onPointerup}
             />
 
-            <Show when={side() === "top" || side() === "left"}>
-                <div
-                    class={dividerClass()}
-                    onPointerDown={onPointerdown}
-                    onPointerUp={onPointerup}
+            <div
+                style={{
+                    position: "absolute",
+                    display: "flex",
+                    "flex-direction": "column",
+                    ...contentInsetStyle(side()),
+                }}
+            >
+                <div class={s.toolbar}>
+                    {sides.map(({ s: ds, icon }) => (
+                        <button
+                            type="button"
+                            title={`Dock ${ds}`}
+                            class={[
+                                s.dockBtn,
+                                { [s.dockBtnActive]: side() === ds },
+                            ]}
+                            onClick={() => changeSide(ds)}
+                        >
+                            {icon()}
+                        </button>
+                    ))}
+                    <div class={s.toolbarSpacer} />
+                    <button
+                        type="button"
+                        title="Open in new window"
+                        class={s.detachBtn}
+                        onClick={() => {
+                            void handleDetach();
+                        }}
+                    >
+                        <TbOutlineArrowUpRight size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        title="Close devtools"
+                        class={s.closeBtn}
+                        onClick={handleClose}
+                    >
+                        <TbOutlineX size={14} />
+                    </button>
+                </div>
+
+                <iframe
+                    ref={devtoolsRef}
+                    src=""
+                    class={s.devtoolsFrame}
+                    title="Chii DevTools"
                 />
-            </Show>
+            </div>
         </div>
     );
 }

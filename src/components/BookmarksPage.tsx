@@ -4,7 +4,7 @@ import {
     TbOutlineWorld,
     TbOutlineX,
 } from "solid-icons/tb";
-import { createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import { bookmarksGetAll, bookmarksRemove } from "~/api/bookmarks";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/BookmarksPage.css";
@@ -36,7 +36,9 @@ export default function BookmarksPage() {
     const [search, setSearch] = createSignal("");
     const [filter, setFilter] = createSignal<"all" | "recent">("all");
 
-    onMount(() => setBookmarks(bookmarksGetAll()));
+    onSettled(() => {
+        setBookmarks(bookmarksGetAll());
+    });
 
     const refresh = () => setBookmarks(bookmarksGetAll());
 
@@ -88,8 +90,7 @@ export default function BookmarksPage() {
                     class={`${s.sidebarItem}${filter() === "all" ? ` ${s.sidebarItemActive}` : ""}`}
                     onClick={() => setFilter("all")}
                 >
-                    <TbOutlineBookmark size={15} />
-                    All Bookmarks
+                    <TbOutlineBookmark size={15} /> All Bookmarks
                 </button>
                 <button
                     type="button"
@@ -136,8 +137,7 @@ export default function BookmarksPage() {
                                 class={s.clearBtn}
                                 onClick={handleClearAll}
                             >
-                                <TbOutlineTrash size={14} />
-                                Clear
+                                <TbOutlineTrash size={14} /> Clear
                             </button>
                         </Show>
                     </div>
@@ -156,17 +156,20 @@ export default function BookmarksPage() {
                         {bm => (
                             // biome-ignore lint/a11y/useKeyWithClickEvents: biome breaking my project lmao
                             // biome-ignore lint/a11y/noStaticElementInteractions: biome breaking my project lmao
-                            <div class={s.card} onClick={() => handleOpen(bm)}>
-                                <BookmarkFavicon favicon={bm.favicon} />
+                            <div
+                                class={s.card}
+                                onClick={() => handleOpen(bm())}
+                            >
+                                <BookmarkFavicon favicon={bm().favicon} />
                                 <div class={s.cardInfo}>
-                                    <div class={s.cardTitle}>{bm.title}</div>
-                                    <div class={s.cardUrl}>{bm.url}</div>
+                                    <div class={s.cardTitle}>{bm().title}</div>
+                                    <div class={s.cardUrl}>{bm().url}</div>
                                 </div>
                                 <button
                                     type="button"
                                     class={s.removeBtn}
                                     title="Remove bookmark"
-                                    onClick={e => handleRemove(e, bm.id)}
+                                    onClick={e => handleRemove(e, bm().id)}
                                 >
                                     <TbOutlineX size={15} />
                                 </button>

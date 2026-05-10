@@ -1,5 +1,7 @@
+import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
-import BanPage from "~/components/BanPage";
+
+const BanPage = clientOnly(() => import("~/components/BanPage"));
 
 export const Route = createFileRoute("/ban")({
     validateSearch: (search: Record<string, unknown>) => ({
@@ -9,6 +11,6 @@ export const Route = createFileRoute("/ban")({
 });
 
 function RouteComponent() {
-    const search = Route.useSearch();
-    return <BanPage banReason={search().reason} />;
+    const { reason } = Route.useSearch()();
+    return <BanPage banReason={reason} />;
 }

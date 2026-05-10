@@ -1,17 +1,16 @@
 // biome-ignore-all lint/a11y/noStaticElementInteractions: biome breaking my project lmao
 // biome-ignore-all lint/a11y/useKeyWithClickEvents: biome breaking my project lmao
+import { Portal } from "@solidjs/web";
 import {
     createContext,
     createSignal,
     For,
     type JSX,
-    onCleanup,
-    onMount,
+    onSettled,
     type ParentComponent,
     Show,
     useContext,
 } from "solid-js";
-import { Portal } from "solid-js/web";
 import * as s from "~/styles/ContextMenu.css";
 
 export interface ContextMenuItem {
@@ -80,7 +79,10 @@ function RenderItem(props: { item: ContextMenuItem }) {
         return (
             <div class={s.subMenuWrap}>
                 <div
-                    class={`${s.menuItem}${props.item.danger ? ` ${s.menuItemDanger}` : ""}`}
+                    class={[
+                        s.menuItem,
+                        { [s.menuItemDanger]: !!props.item.danger },
+                    ]}
                     style={
                         props.item.disabled
                             ? { opacity: "0.4", "pointer-events": "none" }
@@ -95,7 +97,7 @@ function RenderItem(props: { item: ContextMenuItem }) {
                 </div>
                 <div class={s.subMenu}>
                     <For each={props.item.children}>
-                        {child => <RenderItem item={child} />}
+                        {child => <RenderItem item={child()} />}
                     </For>
                 </div>
             </div>
@@ -104,7 +106,7 @@ function RenderItem(props: { item: ContextMenuItem }) {
 
     return (
         <div
-            class={`${s.menuItem}${props.item.danger ? ` ${s.menuItemDanger}` : ""}`}
+            class={[s.menuItem, { [s.menuItemDanger]: !!props.item.danger }]}
             style={
                 props.item.disabled
                     ? { opacity: "0.4", "pointer-events": "none" }
@@ -132,7 +134,7 @@ function ContextMenuPopup(props: { state: MenuState; onClose: () => void }) {
     let menuRef: HTMLDivElement | undefined;
     const [pos, setPos] = createSignal({ x: props.state.x, y: props.state.y });
 
-    onMount(() => {
+    onSettled(() => {
         if (menuRef) {
             const rect = menuRef.getBoundingClientRect();
             setPos(
@@ -163,14 +165,14 @@ function ContextMenuPopup(props: { state: MenuState; onClose: () => void }) {
             passive: true,
         });
 
-        onCleanup(() => {
+        return () => {
             restoreIframes();
             document.removeEventListener("pointerdown", onPointerDown, {
                 capture: true,
             });
             document.removeEventListener("keydown", onKey);
             window.removeEventListener("scroll", onScroll, { capture: true });
-        });
+        };
     });
 
     return (
@@ -190,7 +192,7 @@ function ContextMenuPopup(props: { state: MenuState; onClose: () => void }) {
                 onContextMenu={e => e.preventDefault()}
             >
                 <For each={props.state.items}>
-                    {item => <RenderItem item={item} />}
+                    {item => <RenderItem item={item()} />}
                 </For>
             </div>
         </Portal>
@@ -208,11 +210,11 @@ export const ContextMenuProvider: ParentComponent = props => {
     const close = () => setState(null);
 
     return (
-        <ContextMenuContext.Provider value={{ open, close }}>
+        <ContextMenuContext value={{ open, close }}>
             {props.children}
             <Show when={state()}>
                 {st => <ContextMenuPopup state={st()} onClose={close} />}
             </Show>
-        </ContextMenuContext.Provider>
+        </ContextMenuContext>
     );
 };

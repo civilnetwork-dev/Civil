@@ -118,53 +118,77 @@ class SearchBar
     }
 
     registerHandlers() {
-        const isUrl = (query: string) => {
-            try {
-                new URL(query);
-                return true;
-            } catch {}
-            return false;
-        };
-
         this.on("submit", (frame, term) => {
-            const storedProxy =
-                (localStorage.getItem("proxy") as "uv" | "scramjet") ||
-                "scramjet";
-            const proxy = this.proxyObjMap.find(p => p.name === storedProxy)!;
-
-            let normalizedTerm: string;
-
-            if (proxy.name === "uv") {
-                normalizedTerm = term;
-            } else {
-                if (isNavigableUrl(term)) {
-                    normalizedTerm = isUrl(term) ? term : `https://${term}`;
-                } else {
-                    const engine = this.searchEngineMap.find(
-                        eng =>
-                            eng.name ===
-                            (localStorage.getItem("search") || "google"),
-                    );
-                    normalizedTerm =
-                        engine?.value.replace("%s", encodeURIComponent(term)) ??
-                        `https://www.google.com/search?q=${encodeURIComponent(term)}`;
-                }
-            }
-
-            frame.contentWindow?.location.replace(
-                (proxy.name === "uv" ? "/~/uv/" : "") +
-                    proxy.value.encodeUrl!(normalizedTerm),
-            );
-
-            if (window.location.host === "civil.quartinal.me") {
-                window.umami?.track(
-                    "Internal site visit",
-                    isUrl(term)
-                        ? { url: proxy.value.decodeUrl!(term) }
-                        : { term },
-                );
-            }
+            void this.submitFrame(frame, term);
         });
+    }
+
+    private isAbsoluteUrl(query: string) {
+        try {
+            new URL(query);
+            return true;
+        } catch {}
+        return false;
+    }
+
+    private getSelectedProxy() {
+        const storedProxy =
+            (localStorage.getItem("proxy") as "uv" | "scramjet") || "scramjet";
+        return this.proxyObjMap.find(p => p.name === storedProxy)!;
+    }
+
+    private normalizeTerm(term: string, proxy: ProxyEntry) {
+        if (proxy.name === "uv") {
+            return term;
+        }
+
+        if (isNavigableUrl(term)) {
+            return this.isAbsoluteUrl(term) ? term : `https://${term}`;
+        }
+
+        const engine = this.searchEngineMap.find(
+            eng => eng.name === (localStorage.getItem("search") || "google"),
+        );
+        return (
+            engine?.value.replace("%s", encodeURIComponent(term)) ??
+            `https://www.google.com/search?q=${encodeURIComponent(term)}`
+        );
+    }
+
+    private createProxyUrl(term: string, proxy: ProxyEntry) {
+        return (
+            (proxy.name === "uv" ? "/~/uv/" : "") +
+            proxy.value.encodeUrl!(this.normalizeTerm(term, proxy))
+        );
+    }
+
+    private trackInternalVisit(term: string, proxy: ProxyEntry) {
+        if (window.location.host !== "civil.quartinal.me") {
+            return;
+        }
+
+        window.umami?.track(
+            "Internal site visit",
+            this.isAbsoluteUrl(term)
+                ? { url: proxy.value.decodeUrl!(term) }
+                : { term },
+        );
+    }
+
+    async submitFrame(frame: HTMLIFrameElement, term: string) {
+        await this.ready;
+
+        const proxy = this.getSelectedProxy();
+        frame.contentWindow?.location.replace(this.createProxyUrl(term, proxy));
+        this.trackInternalVisit(term, proxy);
+    }
+
+    async submitCurrentWindow(term: string) {
+        await this.ready;
+
+        const proxy = this.getSelectedProxy();
+        window.location.replace(this.createProxyUrl(term, proxy));
+        this.trackInternalVisit(term, proxy);
     }
 }
 

@@ -10,13 +10,14 @@
         "allowJs": true,
         "strict": true,
         "noEmit": true,
-        "types": ["vinxi/types/client", "bun", "serviceworker", "umami"],
+        "types": ["bun", "serviceworker", "umami"],
         "isolatedModules": true,
         "paths": {
             "~/*": ["./src/*"],
             "$wasm/*": ["config/rammerheadenc/dist/*", "config/encoder/*"],
             "$config/*": ["misc/config/*"],
-            "$tests/*": ["tests/*"]
+            "$tests/*": ["tests/*"],
+            "$assets/*": ["public/assets/*"]
         },
         "baseUrl": ".",
         "allowImportingTsExtensions": true,

@@ -1,17 +1,10 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: tab search */
 /** biome-ignore-all lint/a11y/useKeyWithClickEvents: tab search */
 import uFuzzy from "@leeoniya/ufuzzy";
+import { Portal } from "@solidjs/web";
 import { TbOutlineSearch, TbOutlineWorld } from "solid-icons/tb";
-import {
-    createEffect,
-    createMemo,
-    createSignal,
-    For,
-    onCleanup,
-    onMount,
-    Show,
-} from "solid-js";
-import { Portal } from "solid-js/web";
+import type { JSX } from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import type { Tab } from "~/lib/TabManager";
 import { isNewtabUrl } from "~/lib/TabManager";
 import * as s from "~/styles/TabSearch.css";
@@ -25,26 +18,22 @@ interface TabSearchProps {
     onClose: () => void;
 }
 
-function highlight(str: string, ranges: number[] | undefined): string {
-    if (!ranges || ranges.length === 0) return escapeHtml(str);
-    let out = "";
+function renderHighlightedText(
+    str: string,
+    ranges: number[] | undefined,
+): JSX.Element {
+    if (!ranges || ranges.length === 0) return str;
+    const parts: JSX.Element[] = [];
     let pos = 0;
     for (let i = 0; i < ranges.length; i += 2) {
         const start = ranges[i]!;
         const end = ranges[i + 1]!;
-        out += escapeHtml(str.slice(pos, start));
-        out += `<mark class="${s.matchMark}">${escapeHtml(str.slice(start, end))}</mark>`;
+        if (start > pos) parts.push(str.slice(pos, start));
+        parts.push(<mark class={s.matchMark}>{str.slice(start, end)}</mark>);
         pos = end;
     }
-    out += escapeHtml(str.slice(pos));
-    return out;
-}
-
-function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    if (pos < str.length) parts.push(str.slice(pos));
+    return <>{parts}</>;
 }
 
 export default function TabSearch(props: TabSearchProps) {
@@ -80,7 +69,7 @@ export default function TabSearch(props: TabSearchProps) {
 
         const sorted = order ?? idxs;
         return sorted.map(sortedIdx => {
-            const haystackIdx = info ? info.idx[sortedIdx]! : idxs[sortedIdx]!;
+            const haystackIdx = info ? info.idx[sortedIdx]! : sortedIdx;
             const tab = props.tabs[haystackIdx]!;
             const ranges = info?.ranges[sortedIdx];
 
@@ -108,23 +97,17 @@ export default function TabSearch(props: TabSearchProps) {
         });
     });
 
-    createEffect(() => {
-        results();
-        setCursor(0);
-    });
-
-    createEffect(() => {
-        const idx = cursor();
-        const child = listRef?.children[idx] as HTMLElement | undefined;
-        child?.scrollIntoView({ block: "nearest" });
-    });
-
     const close = () => {
         setLeaving(true);
         setTimeout(props.onClose, 210);
     };
 
-    onMount(() => {
+    const scrollCursorIntoView = (idx: number) => {
+        const child = listRef?.children[idx] as HTMLElement | undefined;
+        child?.scrollIntoView({ block: "nearest" });
+    };
+
+    onSettled(() => {
         inputRef?.focus();
 
         const onKey = (e: KeyboardEvent) => {
@@ -136,10 +119,14 @@ export default function TabSearch(props: TabSearchProps) {
             const res = results();
             if (e.key === "ArrowDown") {
                 e.preventDefault();
-                setCursor(c => Math.min(c + 1, res.length - 1));
+                const next = Math.min(cursor() + 1, res.length - 1);
+                setCursor(next);
+                scrollCursorIntoView(next);
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
-                setCursor(c => Math.max(c - 1, 0));
+                const prev = Math.max(cursor() - 1, 0);
+                setCursor(prev);
+                scrollCursorIntoView(prev);
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 const item = res[cursor()];
@@ -151,24 +138,19 @@ export default function TabSearch(props: TabSearchProps) {
         };
 
         window.addEventListener("keydown", onKey, { capture: true });
-        onCleanup(() =>
-            window.removeEventListener("keydown", onKey, { capture: true }),
-        );
+        return () =>
+            window.removeEventListener("keydown", onKey, { capture: true });
     });
 
     return (
         <Portal>
             <div
-                class={s.backdrop}
-                classList={{ [s.backdropLeaving]: leaving() }}
+                class={[s.backdrop, { [s.backdropLeaving]: leaving() }]}
                 onMouseDown={e => {
                     if (e.target === e.currentTarget) close();
                 }}
             >
-                <div
-                    class={s.panel}
-                    classList={{ [s.panelLeaving]: leaving() }}
-                >
+                <div class={[s.panel, { [s.panelLeaving]: leaving() }]}>
                     <div class={s.inputRow}>
                         <span class={s.searchIcon}>
                             <TbOutlineSearch size={16} />
@@ -179,13 +161,15 @@ export default function TabSearch(props: TabSearchProps) {
                             type="text"
                             placeholder="Search tabs…"
                             value={query()}
-                            onInput={e => setQuery(e.currentTarget.value)}
+                            onInput={e => {
+                                setQuery(e.currentTarget.value);
+                                setCursor(0);
+                            }}
                             spellcheck={false}
                             autocomplete="off"
                         />
                         <span class={s.hint}>
-                            {results().length} tab
-                            {results().length === 1 ? "" : "s"}
+                            {`${results().length} ${results().length === 1 ? "tab" : "tabs"}`}
                         </span>
                     </div>
 
@@ -193,26 +177,33 @@ export default function TabSearch(props: TabSearchProps) {
                         <For each={results()}>
                             {(item, idx) => {
                                 const isActive = () =>
-                                    item.tab.id === props.activeId;
+                                    item().tab.id === props.activeId;
                                 const isCursor = () => idx() === cursor();
                                 const isNewtab = () =>
-                                    isNewtabUrl(item.tab.url);
-
+                                    isNewtabUrl(item().tab.url);
                                 return (
                                     <div
-                                        class={s.resultItem}
-                                        classList={{
-                                            [s.resultItemActive]: isCursor(),
-                                            [s.resultItemCurrent]: isActive(),
+                                        class={[
+                                            s.resultItem,
+                                            {
+                                                [s.resultItemActive]:
+                                                    isCursor(),
+                                            },
+                                            {
+                                                [s.resultItemCurrent]:
+                                                    isActive(),
+                                            },
+                                        ]}
+                                        onMouseEnter={() => {
+                                            setCursor(idx());
                                         }}
-                                        onMouseEnter={() => setCursor(idx())}
                                         onClick={() => {
-                                            props.onActivate(item.tab.id);
+                                            props.onActivate(item().tab.id);
                                             close();
                                         }}
                                     >
                                         <Show
-                                            when={item.tab.favicon}
+                                            when={item().tab.favicon}
                                             fallback={
                                                 <span class={s.faviconFallback}>
                                                     <TbOutlineWorld size={13} />
@@ -221,27 +212,25 @@ export default function TabSearch(props: TabSearchProps) {
                                         >
                                             <img
                                                 class={s.favicon}
-                                                src={item.tab.favicon}
+                                                src={item().tab.favicon}
                                                 alt=""
                                             />
                                         </Show>
 
                                         <div class={s.resultText}>
-                                            <span
-                                                class={s.resultTitle}
-                                                innerHTML={highlight(
-                                                    item.tab.title,
-                                                    item.titleRanges,
+                                            <span class={s.resultTitle}>
+                                                {renderHighlightedText(
+                                                    item().tab.title,
+                                                    item().titleRanges,
                                                 )}
-                                            />
+                                            </span>
                                             <Show when={!isNewtab()}>
-                                                <span
-                                                    class={s.resultUrl}
-                                                    innerHTML={highlight(
-                                                        item.tab.url,
-                                                        item.urlRanges,
+                                                <span class={s.resultUrl}>
+                                                    {renderHighlightedText(
+                                                        item().tab.url,
+                                                        item().urlRanges,
                                                     )}
-                                                />
+                                                </span>
                                             </Show>
                                         </div>
 
@@ -269,17 +258,14 @@ export default function TabSearch(props: TabSearchProps) {
 
                     <div class={s.footer}>
                         <span class={s.footerKey}>
-                            <kbd class={s.kbd}>↑</kbd>
-                            <kbd class={s.kbd}>↓</kbd>
-                            navigate
+                            <kbd class={s.kbd}>↑</kbd>{" "}
+                            <kbd class={s.kbd}>↓</kbd> navigate
                         </span>
                         <span class={s.footerKey}>
-                            <kbd class={s.kbd}>↵</kbd>
-                            switch
+                            <kbd class={s.kbd}>↵</kbd> switch
                         </span>
                         <span class={s.footerKey}>
-                            <kbd class={s.kbd}>Esc</kbd>
-                            close
+                            <kbd class={s.kbd}>Esc</kbd> close
                         </span>
                     </div>
                 </div>

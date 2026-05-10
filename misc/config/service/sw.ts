@@ -86,14 +86,72 @@ async function serveCivilExt(request: Request): Promise<Response | null> {
     }
 }
 
+const CIVIL_CHII_PREAMBLE = `<script>
+(function(){
+  try {
+    if (!window.__civilNativeWebSocket) {
+      window.__civilNativeWebSocket = window.WebSocket;
+    }
+    if (!window.__civilNativeFetch) {
+      window.__civilNativeFetch = window.fetch && window.fetch.bind(window);
+    }
+    if (!window.__civilNativeXHR) {
+      window.__civilNativeXHR = window.XMLHttpRequest;
+    }
+    if (!window.__civilNativeMessageChannel) {
+      window.__civilNativeMessageChannel = window.MessageChannel;
+    }
+    if (!window.__civilNativeMessagePort) {
+      window.__civilNativeMessagePort = window.MessagePort;
+    }
+  } catch(e) {}
+})();
+</script>`;
+
+async function injectChiiPreamble(response: Response): Promise<Response> {
+    try {
+        const ct = response.headers.get("content-type") || "";
+        if (!ct.toLowerCase().includes("text/html")) return response;
+
+        const text = await response.text();
+        let modified: string;
+        if (/<head[^>]*>/i.test(text)) {
+            modified = text.replace(
+                /<head([^>]*)>/i,
+                `<head$1>${CIVIL_CHII_PREAMBLE}`,
+            );
+        } else if (/<html[^>]*>/i.test(text)) {
+            modified = text.replace(
+                /<html([^>]*)>/i,
+                `<html$1>${CIVIL_CHII_PREAMBLE}`,
+            );
+        } else {
+            modified = CIVIL_CHII_PREAMBLE + text;
+        }
+
+        const headers = new Headers(response.headers);
+        headers.delete("content-length");
+        return new Response(modified, {
+            status: response.status,
+            statusText: response.statusText,
+            headers,
+        });
+    } catch {
+        return response;
+    }
+}
+
 async function swResponse(event: FetchEvent) {
     const { request } = event;
     const url = new URL(request.url);
 
-    // Handle /civil-ext/ paths before the proxy layer
     if (url.pathname.startsWith("/civil-ext/")) {
         const extResponse = await serveCivilExt(request);
         if (extResponse) return extResponse;
+    }
+
+    if (url.pathname === "/chii" || url.pathname.startsWith("/chii/")) {
+        return fetch(request);
     }
 
     const { uv, scramjet } = await ready;
@@ -103,9 +161,11 @@ async function swResponse(event: FetchEvent) {
     if (
         request.url.startsWith(self.location.origin + self.__uv$config.prefix)
     ) {
-        return await uv.fetch(event);
+        const response = await uv.fetch(event);
+        return injectChiiPreamble(response);
     } else if (scramjet.route(event)) {
-        return await scramjet.fetch(event);
+        const response = await scramjet.fetch(event);
+        return injectChiiPreamble(response);
     }
 
     return await fetch(request);

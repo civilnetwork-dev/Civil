@@ -1,5 +1,5 @@
 import { DotLottie } from "@lottiefiles/dotlottie-web";
-import { createSignal, onCleanup, onMount } from "solid-js";
+import { createSignal, onCleanup, onSettled } from "solid-js";
 import * as s from "~/styles/LoadingAnimation.css";
 
 interface LoadingAnimationProps {
@@ -37,7 +37,7 @@ export default function LoadingAnimation({ iframed }: LoadingAnimationProps) {
     const [visible, setVisible] = createSignal(true);
     let containerRef: HTMLDivElement | undefined;
 
-    onMount(() => {
+    onSettled(() => {
         if (!containerRef) return;
 
         const anim = new DotLottie({
@@ -74,11 +74,13 @@ export default function LoadingAnimation({ iframed }: LoadingAnimationProps) {
             <div class={s.loadingLottie} ref={containerRef} />
             <div class={s.loadingStatusWrapper}>
                 <span
-                    class={s.loadingStatus}
-                    classList={{
-                        [s.loadingStatusShown]: visible(),
-                        [s.loadingStatusHidden]: !visible(),
-                    }}
+                    class={[
+                        s.loadingStatus,
+                        {
+                            [s.loadingStatusShown]: visible(),
+                            [s.loadingStatusHidden]: !visible(),
+                        },
+                    ]}
                 >
                     {statuses[currentIndex()]}
                 </span>

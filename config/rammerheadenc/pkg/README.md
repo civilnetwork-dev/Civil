@@ -1,1 +1,0 @@
-basically this is just a fanc(ier|y) rammerhead encode project written in rust and typescript that aims for a tiny and lower level api that is more convenient and efficient for storage and the sake of most web proxies

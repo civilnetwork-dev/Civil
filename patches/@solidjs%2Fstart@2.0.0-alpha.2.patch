@@ -1,0 +1,1056 @@
+diff --git a/node_modules/@solidjs/start/.bun-tag-145a91d971d16dfc b/.bun-tag-145a91d971d16dfc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-3bb796df51aaac48 b/.bun-tag-3bb796df51aaac48
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-85352234737b35eb b/.bun-tag-85352234737b35eb
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-87a463bbd410cdf8 b/.bun-tag-87a463bbd410cdf8
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-8bacf47c98e61a21 b/.bun-tag-8bacf47c98e61a21
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-984dce2167003eaf b/.bun-tag-984dce2167003eaf
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-b65fc677ed48c294 b/.bun-tag-b65fc677ed48c294
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-cfe7a6669a699f2c b/.bun-tag-cfe7a6669a699f2c
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-ec9160bd1e348919 b/.bun-tag-ec9160bd1e348919
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@solidjs/start/.bun-tag-f0dda49567c15707 b/.bun-tag-f0dda49567c15707
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/client/StartClient.jsx b/dist/client/StartClient.jsx
+index 0abd322b08ab05455de0cc809aee9f0d44dcee63..d87f4b093e985915ef5975ad943750a274469c01 100644
+--- a/dist/client/StartClient.jsx
++++ b/dist/client/StartClient.jsx
+@@ -1,6 +1,6 @@
+ // @refresh skip
+ import App from "solid-start:app";
+-import { ErrorBoundary } from "../shared/ErrorBoundary.jsx";
++import { Errored } from "../shared/ErrorBoundary.jsx";
+ function Dummy(props) {
+     return props.children;
+ }
+@@ -11,16 +11,16 @@ function Dummy(props) {
+ export function StartClient() {
+     return (<Dummy>
+       <Dummy>
+-        <ErrorBoundary>
++        <Errored>
+           <App />
+-        </ErrorBoundary>
++        </Errored>
+       </Dummy>
+     </Dummy>);
+ }
+ export function StartClientTanstack() {
+     return (<Dummy>
+-      <ErrorBoundary>
++      <Errored>
+         <App />
+-      </ErrorBoundary>
++      </Errored>
+     </Dummy>);
+ }
+diff --git a/dist/config/fs-routes/tree-shake.js b/dist/config/fs-routes/tree-shake.js
+index db7091ea05f3a1360dede4475cfc2395f2d5aa90..9ceb6ebb3629773c615055c82664becf6cdf4d27 100644
+--- a/dist/config/fs-routes/tree-shake.js
++++ b/dist/config/fs-routes/tree-shake.js
+@@ -1,264 +1,96 @@
+ // All credit for this work goes to the amazing Next.js team.
+ // https://github.com/vercel/next.js/blob/canary/packages/next/build/babel/plugins/next-ssg-transform.ts
+-// This is adapted to work with routeData functions. It can be run in two modes, one which preserves the routeData and the Component in the same file, and one which creates a
++// This is adapted to work with routeData functions. Ported from Babel visitors to oxc-parser + oxc-transform.
++import { parseSync } from "oxc-parser";
++import { transformSync } from "oxc-transform";
+ import { basename } from "pathe";
+-function treeShakeTransform({ types: t }) {
+-    function getIdentifier(path) {
+-        const parentPath = path.parentPath;
+-        if (parentPath.type === "VariableDeclarator") {
+-            const pp = parentPath;
+-            const name = pp.get("id");
+-            return name.node.type === "Identifier" ? name : null;
++
++function treeShakeOxc(code, filename, pick) {
++    const result = parseSync(filename, code, { sourceType: "module" });
++    const removals = [];
++    const usedBindings = new Set();
++
++    // Collect all binding names referenced inside kept exports
++    function collectRefs(node) {
++        if (!node || typeof node !== "object") return;
++        if (node.type === "Identifier") usedBindings.add(node.name);
++        for (const key of Object.keys(node)) {
++            if (key === "type") continue;
++            const child = node[key];
++            if (Array.isArray(child)) child.forEach(collectRefs);
++            else if (child && typeof child === "object" && child.type) collectRefs(child);
+         }
+-        if (parentPath.type === "AssignmentExpression") {
+-            const pp = parentPath;
+-            const name = pp.get("left");
+-            return name.node.type === "Identifier" ? name : null;
+-        }
+-        if (path.node.type === "ArrowFunctionExpression") {
+-            return null;
+-        }
+-        return path.node.id && path.node.id.type === "Identifier" ? path.get("id") : null;
+     }
+-    function isIdentifierReferenced(ident) {
+-        const b = ident.scope.getBinding(ident.node.name);
+-        if (b?.referenced) {
+-            if (b.path.type === "FunctionDeclaration") {
+-                return !b.constantViolations
+-                    .concat(b.referencePaths)
+-                    .every(ref => ref.findParent(p => p === b.path));
++
++    for (const node of result.program.body) {
++        if (node.type === "ExportDefaultDeclaration") {
++            if (!pick.includes("default")) {
++                removals.push([node.start, node.end]);
++            } else {
++                collectRefs(node.declaration);
++            }
++        } else if (node.type === "ExportNamedDeclaration") {
++            if (node.declaration) {
++                let names = [];
++                if (node.declaration.type === "VariableDeclaration") {
++                    names = node.declaration.declarations.map(d => d.id?.name).filter(Boolean);
++                } else if (node.declaration.id?.name) {
++                    names = [node.declaration.id.name];
++                }
++                const keep = names.some(n => pick.includes(n));
++                if (!keep) {
++                    removals.push([node.start, node.end]);
++                } else {
++                    collectRefs(node.declaration);
++                }
++            } else if (node.specifiers?.length) {
++                const keepSpecs = node.specifiers.filter(s => {
++                    const name = s.exported?.name ?? s.exported?.value;
++                    return pick.includes(name);
++                });
++                if (keepSpecs.length === 0) {
++                    removals.push([node.start, node.end]);
++                } else {
++                    keepSpecs.forEach(s => usedBindings.add(s.local?.name));
++                }
++            }
++        } else if (node.type === "ImportDeclaration") {
++            if (node.source.value.endsWith(".css") && !pick.includes("$css")) {
++                removals.push([node.start, node.end]);
+             }
+-            return true;
+         }
+-        return false;
+     }
+-    function markFunction(path, state) {
+-        const ident = getIdentifier(path);
+-        if (ident && ident.node && isIdentifierReferenced(ident)) {
+-            state.refs.add(ident);
++
++    // Second pass: remove top-level declarations not referenced by kept exports
++    for (const node of result.program.body) {
++        if (removals.some(([s, e]) => s === node.start)) continue;
++        if (node.type === "VariableDeclaration" || node.type === "FunctionDeclaration" || node.type === "ClassDeclaration") {
++            let names = [];
++            if (node.type === "VariableDeclaration") {
++                names = node.declarations.map(d => d.id?.name).filter(Boolean);
++            } else if (node.id?.name) {
++                names = [node.id.name];
++            }
++            if (names.length && names.every(n => !usedBindings.has(n))) {
++                removals.push([node.start, node.end]);
++            }
+         }
+     }
+-    function markImport(path, state) {
+-        const local = path.get("local");
+-        if (isIdentifierReferenced(local)) {
+-            state.refs.add(local);
+-        }
++
++    removals.sort((a, b) => b[0] - a[0]);
++    let out = code;
++    for (const [start, end] of removals) {
++        out = out.slice(0, start) + out.slice(end);
+     }
+-    return {
+-        visitor: {
+-            Program: {
+-                enter(path, state) {
+-                    state.refs = new Set();
+-                    state.done = false;
+-                    path.traverse({
+-                        VariableDeclarator(variablePath, variableState) {
+-                            if (variablePath.node.id.type === "Identifier") {
+-                                const local = variablePath.get("id");
+-                                if (isIdentifierReferenced(local)) {
+-                                    variableState.refs.add(local);
+-                                }
+-                            }
+-                            else if (variablePath.node.id.type === "ObjectPattern") {
+-                                const pattern = variablePath.get("id");
+-                                const properties = pattern.get("properties");
+-                                properties.forEach(p => {
+-                                    const local = p.get(p.node.type === "ObjectProperty"
+-                                        ? "value"
+-                                        : p.node.type === "RestElement"
+-                                            ? "argument"
+-                                            : (() => {
+-                                                throw new Error("invariant");
+-                                            })());
+-                                    if (isIdentifierReferenced(local)) {
+-                                        variableState.refs.add(local);
+-                                    }
+-                                });
+-                            }
+-                            else if (variablePath.node.id.type === "ArrayPattern") {
+-                                const pattern = variablePath.get("id");
+-                                const elements = pattern.get("elements");
+-                                elements.forEach(e => {
+-                                    let local;
+-                                    if (e.node && e.node.type === "Identifier") {
+-                                        local = e;
+-                                    }
+-                                    else if (e.node && e.node.type === "RestElement") {
+-                                        local = e.get("argument");
+-                                    }
+-                                    else {
+-                                        return;
+-                                    }
+-                                    if (isIdentifierReferenced(local)) {
+-                                        variableState.refs.add(local);
+-                                    }
+-                                });
+-                            }
+-                        },
+-                        ExportDefaultDeclaration(exportNamedPath) {
+-                            // if opts.keep is true, we don't remove the routeData export
+-                            if (state.opts.pick && !state.opts.pick.includes("default")) {
+-                                exportNamedPath.remove();
+-                            }
+-                        },
+-                        ExportNamedDeclaration(exportNamedPath) {
+-                            // if opts.keep is false, we don't remove the routeData export
+-                            if (!state.opts.pick) {
+-                                return;
+-                            }
+-                            const specifiers = exportNamedPath.get("specifiers");
+-                            if (specifiers.length) {
+-                                specifiers.forEach(s => {
+-                                    if (t.isIdentifier(s.node.exported)
+-                                        ? s.node.exported.name
+-                                        : state.opts.pick.includes(s.node.exported.value)) {
+-                                        s.remove();
+-                                    }
+-                                });
+-                                if (exportNamedPath.node.specifiers.length < 1) {
+-                                    exportNamedPath.remove();
+-                                }
+-                                return;
+-                            }
+-                            const decl = exportNamedPath.get("declaration");
+-                            if (decl == null || decl.node == null) {
+-                                return;
+-                            }
+-                            switch (decl.node.type) {
+-                                case "FunctionDeclaration": {
+-                                    const name = decl.node.id?.name;
+-                                    if (name && state.opts.pick && !state.opts.pick.includes(name)) {
+-                                        exportNamedPath.remove();
+-                                    }
+-                                    break;
+-                                }
+-                                case "VariableDeclaration": {
+-                                    const inner = decl.get("declarations");
+-                                    inner.forEach(d => {
+-                                        if (d.node.id.type !== "Identifier") {
+-                                            return;
+-                                        }
+-                                        const name = d.node.id.name;
+-                                        if (state.opts.pick && !state.opts.pick.includes(name)) {
+-                                            d.remove();
+-                                        }
+-                                    });
+-                                    break;
+-                                }
+-                                default: {
+-                                    break;
+-                                }
+-                            }
+-                        },
+-                        FunctionDeclaration: markFunction,
+-                        FunctionExpression: markFunction,
+-                        ArrowFunctionExpression: markFunction,
+-                        ImportSpecifier: markImport,
+-                        ImportDefaultSpecifier: markImport,
+-                        ImportNamespaceSpecifier: markImport,
+-                        ImportDeclaration: (path, state) => {
+-                            if (path.node.source.value.endsWith(".css") &&
+-                                state.opts.pick &&
+-                                !state.opts.pick.includes("$css")) {
+-                                path.remove();
+-                            }
+-                        },
+-                    }, state);
+-                    const refs = state.refs;
+-                    let count = 0;
+-                    const sweepFunction = (sweepPath) => {
+-                        const ident = getIdentifier(sweepPath);
+-                        if (ident && ident.node && refs.has(ident) && !isIdentifierReferenced(ident)) {
+-                            ++count;
+-                            if (t.isAssignmentExpression(sweepPath.parentPath) ||
+-                                t.isVariableDeclarator(sweepPath.parentPath)) {
+-                                sweepPath.parentPath.remove();
+-                            }
+-                            else {
+-                                sweepPath.remove();
+-                            }
+-                        }
+-                    };
+-                    function sweepImport(sweepPath) {
+-                        const local = sweepPath.get("local");
+-                        if (refs.has(local) && !isIdentifierReferenced(local)) {
+-                            ++count;
+-                            sweepPath.remove();
+-                            if (sweepPath.parent.specifiers.length === 0) {
+-                                sweepPath.parentPath.remove();
+-                            }
+-                        }
+-                    }
+-                    do {
+-                        path.scope.crawl();
+-                        count = 0;
+-                        path.traverse({
+-                            VariableDeclarator(variablePath) {
+-                                if (variablePath.node.id.type === "Identifier") {
+-                                    const local = variablePath.get("id");
+-                                    if (refs.has(local) && !isIdentifierReferenced(local)) {
+-                                        ++count;
+-                                        variablePath.remove();
+-                                    }
+-                                }
+-                                else if (variablePath.node.id.type === "ObjectPattern") {
+-                                    const pattern = variablePath.get("id");
+-                                    const beforeCount = count;
+-                                    const properties = pattern.get("properties");
+-                                    properties.forEach(p => {
+-                                        const local = p.get(p.node.type === "ObjectProperty"
+-                                            ? "value"
+-                                            : p.node.type === "RestElement"
+-                                                ? "argument"
+-                                                : (() => {
+-                                                    throw new Error("invariant");
+-                                                })());
+-                                        if (refs.has(local) && !isIdentifierReferenced(local)) {
+-                                            ++count;
+-                                            p.remove();
+-                                        }
+-                                    });
+-                                    if (beforeCount !== count && pattern.get("properties").length < 1) {
+-                                        variablePath.remove();
+-                                    }
+-                                }
+-                                else if (variablePath.node.id.type === "ArrayPattern") {
+-                                    const pattern = variablePath.get("id");
+-                                    const beforeCount = count;
+-                                    const elements = pattern.get("elements");
+-                                    elements.forEach(e => {
+-                                        let local;
+-                                        if (e.node && e.node.type === "Identifier") {
+-                                            local = e;
+-                                        }
+-                                        else if (e.node && e.node.type === "RestElement") {
+-                                            local = e.get("argument");
+-                                        }
+-                                        else {
+-                                            return;
+-                                        }
+-                                        if (refs.has(local) && !isIdentifierReferenced(local)) {
+-                                            ++count;
+-                                            e.remove();
+-                                        }
+-                                    });
+-                                    if (beforeCount !== count && pattern.get("elements").length < 1) {
+-                                        variablePath.remove();
+-                                    }
+-                                }
+-                            },
+-                            FunctionDeclaration: sweepFunction,
+-                            FunctionExpression: sweepFunction,
+-                            ArrowFunctionExpression: sweepFunction,
+-                            ImportSpecifier: sweepImport,
+-                            ImportDefaultSpecifier: sweepImport,
+-                            ImportNamespaceSpecifier: sweepImport,
+-                        });
+-                    } while (count);
+-                },
+-            },
+-        },
+-    };
++
++    const stripped = transformSync(filename, out, {
++        typescript: {},
++        jsx: "preserve",
++        sourcemap: true,
++    });
++    return stripped;
+ }
++
+ export function treeShake() {
+     let config;
+     const cache = {};
+@@ -267,20 +99,10 @@ export function treeShake() {
+         const [path, queryString] = id.split("?");
+         const query = new URLSearchParams(queryString);
+         if (query.has("pick")) {
+-            const babel = await import("@babel/core");
+-            const transformed = await babel.transformAsync(code, {
+-                plugins: [[treeShakeTransform, { pick: query.getAll("pick") }]],
+-                parserOpts: {
+-                    plugins: ["jsx", "typescript"],
+-                },
+-                filename: basename(id),
+-                ast: false,
+-                sourceMaps: true,
+-                configFile: false,
+-                babelrc: false,
+-                sourceFileName: id,
+-            });
+-            return transformed;
++            const pick = query.getAll("pick");
++            const result = treeShakeOxc(code, basename(id), pick);
++            if (!result?.code) return null;
++            return { code: result.code, map: result.map };
+         }
+     }
+     return {
+@@ -298,44 +120,27 @@ export function treeShake() {
+                 const newCode = await ctx.read();
+                 for (const [id, code] of Object.entries(cache[ctx.file])) {
+                     const transformed = await transform(id, newCode);
+-                    if (!transformed)
+-                        continue;
++                    if (!transformed) continue;
+                     const { code: transformedCode } = transformed;
+                     if (transformedCode !== code) {
+                         const mod = server.moduleGraph.getModuleById(id);
+-                        if (mod)
+-                            mods.push(mod);
++                        if (mod) mods.push(mod);
+                     }
+                     cache[ctx.file] ??= {};
+                     cache[ctx.file][id] = transformedCode;
+-                    // server.moduleGraph.setModuleSource(id, code);
+                 }
+                 return mods;
+             }
+-            // 	const mods = [];
+-            // 	[...server.moduleGraph.urlToModuleMap.entries()].forEach(([url, m]) => {
+-            // 		if (m.file === ctx.file && m.id.includes("pick=")) {
+-            // 			if (!m.id.includes("pick=loader")) {
+-            // 				mods.push(m);
+-            // 			}
+-            // 		}
+-            // 	});
+-            // 	return mods;
+-            // 	// this.router.updateRoute(ctx.path);
+-            // }
+         },
+         async transform(code, id) {
+             const [path, queryString] = id.split("?");
+-            if (!path)
+-                return;
++            if (!path) return;
+             const query = new URLSearchParams(queryString);
+             const ext = path.split(".").pop();
+-            if (!ext)
+-                return;
++            if (!ext) return;
+             if (query.has("pick") && ["js", "jsx", "ts", "tsx"].includes(ext)) {
+                 const transformed = await transform(id, code);
+-                if (!transformed?.code)
+-                    return;
++                if (!transformed?.code) return;
+                 cache[path] ??= {};
+                 cache[path][id] = transformed.code;
+                 return {
+diff --git a/dist/config/index.d.ts b/dist/config/index.d.ts
+index 28be31ae8ca289b330a8029c55ad1804cd883c93..92112ac90f34a4bc199ec9e797984e2a88ccd9d3 100644
+--- a/dist/config/index.d.ts
++++ b/dist/config/index.d.ts
+@@ -1,7 +1,7 @@
+ import { type PluginOption } from "vite";
+-import { type Options as SolidOptions } from "vite-plugin-solid";
++import { type SolidOxcOptions } from "@oxc-solid-js/vite";
+ export interface SolidStartOptions {
+-    solid?: Partial<SolidOptions>;
++    solid?: Partial<SolidOxcOptions>;
+     ssr?: boolean;
+     routeDir?: string;
+     extensions?: string[];
+diff --git a/dist/config/index.js b/dist/config/index.js
+index 308b813b970ecbcf2c2b83294d59f5dc0e710035..0774ae69754cc1cca4def7a55a335ad5d85dea7d 100644
+--- a/dist/config/index.js
++++ b/dist/config/index.js
+@@ -4,7 +4,7 @@ import { globSync } from "node:fs";
+ import { extname, isAbsolute, join } from "node:path";
+ import { fileURLToPath } from "node:url";
+ import { normalizePath } from "vite";
+-import solid from "vite-plugin-solid";
++import solidOxc from "@oxc-solid-js/vite";
+ import { DEFAULT_EXTENSIONS, VIRTUAL_MODULES, VITE_ENVIRONMENTS } from "./constants.js";
+ import { devServer } from "./dev-server.js";
+ import { SolidStartClientFileRouter, SolidStartServerFileRouter } from "./fs-router.js";
+@@ -42,9 +42,11 @@ export function solidStart(options) {
+             name: "solid-start:config",
+             enforce: "pre",
+             configEnvironment(name) {
++                if (name === "client") {
++                    return {};
++                }
+                 return {
+                     resolve: {
+-                        // remove when https://github.com/solidjs/vite-plugin-solid/pull/228 is released
+                         externalConditions: ["solid", "node"],
+                     },
+                 };
+@@ -204,14 +206,21 @@ export function solidStart(options) {
+             name: "solid-start:capture-client-bundle",
+             enforce: "post",
+             generateBundle(_options, bundle) {
+-                globalThis.START_CLIENT_BUNDLE = bundle;
++                if (this.environment?.name === VITE_ENVIRONMENTS.client) {
++                    globalThis.START_CLIENT_BUNDLE = bundle;
++                }
+             },
+         },
+         devServer(),
+-        solid({
+-            ...start.solid,
+-            ssr: true,
+-            extensions: extensions.map(ext => `.${ext}`),
++        solidOxc({
++            exclude: [/node_modules\/(?!(?:@solidjs\/[^/]*|@tanstack\/solid-router[^/]*|solid-icons|solid-js)\/)/],
++            solid_condition: false,
++            hydratable: start.solid?.hydratable ?? true,
++            module_name: start.solid?.module_name,
++            delegate_events: start.solid?.delegate_events,
++            wrap_conditionals: start.solid?.wrap_conditionals,
++            context_to_custom_elements: start.solid?.context_to_custom_elements,
++            builtIns: start.solid?.builtIns,
+         }),
+     ];
+ }
+diff --git a/dist/config/lazy.js b/dist/config/lazy.js
+index 35ac4c9d23ccf022cca3f218fb3a0acaa11f2394..f66452236a36715b410b0ad7d754b55e0992c4c0 100644
+--- a/dist/config/lazy.js
++++ b/dist/config/lazy.js
+@@ -1,55 +1,40 @@
+-import babel from "@babel/core";
+-import * as t from "@babel/types";
++import { parseSync } from "oxc-parser";
++import { transformSync } from "oxc-transform";
+ import { sep as osSep } from "path";
+ import { basename, relative, sep } from "path/posix";
+ import { VITE_ENVIRONMENTS } from "./constants.js";
+-const idTransform = (id) => {
+-    return {
+-        visitor: {
+-            Program(path) {
+-                path.node.body.unshift(t.exportNamedDeclaration(t.variableDeclaration("const", [
+-                    t.variableDeclarator(t.identifier("id$$"), t.stringLiteral(id)),
+-                ])));
+-            },
+-        },
+-    };
+-};
+-const importTransform = () => {
+-    return {
+-        visitor: {
+-            ImportDeclaration(path) {
+-                if (path.node.source.value !== "solid-js")
+-                    return;
+-                path.traverse({
+-                    ImportSpecifier(subPath) {
+-                        if (subPath.node.local.name !== "lazy")
+-                            return;
+-                        subPath.remove();
+-                        path.insertAfter(t.importDeclaration([t.importSpecifier(t.identifier("lazy"), t.identifier("lazy"))], t.stringLiteral("@solidjs/start/server")));
+-                    },
+-                });
+-            },
+-        },
+-    };
+-};
+-const fileEndingRegex = /(ts|js)x(\?.*)?$/;
++
++function rewriteLazyImport(code, filename) {
++    const result = parseSync(filename, code, { sourceType: "module" });
++    const patches = [];
++    for (const node of result.program.body) {
++        if (node.type !== "ImportDeclaration" || node.source.value !== "solid-js") continue;
++        const lazySpec = node.specifiers.find(s => s.local?.name === "lazy");
++        if (!lazySpec) continue;
++        if (node.specifiers.length === 1) {
++            patches.push([node.start, node.end, ""]);
++        } else {
++            const remaining = node.specifiers.filter(s => s.local?.name !== "lazy");
++            const newSpecs = remaining.map(s => {
++                if (s.type === "ImportDefaultSpecifier") return s.local.name;
++                if (s.local.name === s.imported.name) return s.local.name;
++                return s.imported.name + " as " + s.local.name;
++            }).join(", ");
++            patches.push([node.start, node.end, `import { ${newSpecs} } from "solid-js";`]);
++        }
++        patches.push([node.end, node.end, `\nimport { lazy } from "@solidjs/start/server";`]);
++    }
++    patches.sort((a, b) => b[0] - a[0]);
++    let out = code;
++    for (const [start, end, rep] of patches) {
++        out = out.slice(0, start) + rep + out.slice(end);
++    }
++    return out;
++}
++
++const fileEndingRegex = /(ts|js)x?(\?.*)?$/;
+ const lazy = () => {
+     const cwd = process.cwd().replaceAll(osSep, sep);
+-    /**
+-     * Maps module ids to their client-specific shared chunk names.
+-     * Modules in shared chunks need to find their assets via the chunk name, instead of their module id.
+-     *
+-     * Vite includes assets of such modules in the manifest via the chunk name:
+-     * https://github.com/vitejs/vite/blob/4be37a8389c67873880f826b01fe40137e1c29a7/packages/vite/src/node/plugins/manifest.ts#L179
+-     * https://github.com/vitejs/vite/blob/4be37a8389c67873880f826b01fe40137e1c29a7/packages/vite/src/node/plugins/manifest.ts#L319
+-     *
+-     * Rollup occassionally creates shared chunks automatically,
+-     * but they can also be manually created by the user via:
+-     * https://rollupjs.org/configuration-options/#output-manualchunks
+-     *
+-     * More infos on Rollup's logic:
+-     * https://github.com/rollup/rollup/issues/3772#issuecomment-689955168
+-     */
+     const sharedChunkNames = {};
+     return {
+         name: "solid-lazy-css",
+@@ -60,8 +45,6 @@ const lazy = () => {
+             for (const chunk of Object.values(bundle)) {
+                 if (chunk.type !== "chunk" || !chunk.isDynamicEntry || chunk.facadeModuleId)
+                     continue;
+-                // Has to follow Vites implementation:
+-                // https://github.com/vitejs/vite/blob/4be37a8389c67873880f826b01fe40137e1c29a7/packages/vite/src/node/plugins/manifest.ts#L179
+                 const chunkName = `_${basename(chunk.fileName)}`;
+                 for (const id of chunk.moduleIds) {
+                     sharedChunkNames[id] = chunkName;
+@@ -73,39 +56,29 @@ const lazy = () => {
+                 return;
+             if (!id.match(fileEndingRegex))
+                 return;
+-            // The transformed files either import "lazy" or css files
+-            // Therefore we skip, if the src doesn't have any import
+             if (src.indexOf("import") === -1)
+                 return;
+-            const plugins = [];
+             const hasDefaultExport = src.indexOf("export default") !== -1;
++            const hasLazy = src.indexOf("lazy(") !== -1;
++            if (!hasDefaultExport && !hasLazy)
++                return;
++            let code = src;
++            if (hasLazy)
++                code = rewriteLazyImport(code, basename(id));
+             if (hasDefaultExport) {
+                 const localId = relative(cwd, id);
+                 const chunkName = sharedChunkNames[id];
+-                plugins.push(idTransform(chunkName ?? localId));
+-            }
+-            const hasLazy = src.indexOf("lazy(") !== -1;
+-            if (hasLazy)
+-                plugins.push(importTransform());
+-            if (!plugins.length) {
+-                return;
++                const idVal = chunkName ?? localId;
++                code = `export const id$$ = ${JSON.stringify(idVal)};\n` + code;
+             }
+-            const transformed = await babel.transformAsync(src, {
+-                plugins,
+-                parserOpts: {
+-                    plugins: ["jsx", "typescript"],
+-                },
+-                filename: basename(id),
+-                ast: false,
+-                sourceMaps: true,
+-                configFile: false,
+-                babelrc: false,
+-                sourceFileName: id,
++            const result = transformSync(basename(id), code, {
++                typescript: {},
++                jsx: "preserve",
++                sourcemap: true,
+             });
+-            if (!transformed?.code)
++            if (!result?.code)
+                 return;
+-            const { code, map } = transformed;
+-            return { code, map };
++            return { code: result.code, map: result.map };
+         },
+     };
+ };
+diff --git a/dist/config/manifest.js b/dist/config/manifest.js
+index 3bcdc386f8c487a2197441f8625a0b283263153f..0fed6118af8fb2488da73620583a598e3aaa7c3d 100644
+--- a/dist/config/manifest.js
++++ b/dist/config/manifest.js
+@@ -1,11 +1,21 @@
++import { readFileSync } from "node:fs";
++import { isAbsolute, join } from "node:path";
+ import { findStylesInModuleGraph } from "../server/collect-styles.js";
+ import { VIRTUAL_MODULES } from "./constants.js";
+ import { wrapId } from "./vite-utils.js";
+ export function manifest(start) {
+     let devServer = undefined;
++    let clientOutDir = undefined;
+     return {
+         name: "solid-start:manifest-plugin",
+         enforce: "pre",
++        configResolved(config) {
++            const clientEnv = config.environments?.["client"];
++            const rawOutDir = clientEnv?.build?.outDir || "dist/client";
++            clientOutDir = isAbsolute(rawOutDir)
++                ? rawOutDir
++                : join(config.root, rawOutDir);
++        },
+         configureServer(server) {
+             devServer = server;
+         },
+@@ -32,10 +42,16 @@ export function manifest(start) {
+                     clientViteManifest = {};
+                 }
+                 else {
+-                    const entry = Object.values(globalThis.START_CLIENT_BUNDLE).find(v => "isEntry" in v && v.isEntry);
+-                    if (!entry)
+-                        throw new Error("No client entry found");
+-                    clientViteManifest = JSON.parse(globalThis.START_CLIENT_BUNDLE[".vite/manifest.json"].source);
++                    const manifestPath = join(clientOutDir, ".vite/manifest.json");
++                    try {
++                        clientViteManifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
++                    } catch {
++                        const asset = globalThis.START_CLIENT_BUNDLE?.[".vite/manifest.json"];
++                        const src = asset?.source;
++                        if (!src)
++                            throw new Error(`Client manifest not found at ${manifestPath} and not in bundle`);
++                        clientViteManifest = JSON.parse(typeof src === "string" ? src : new TextDecoder().decode(src));
++                    }
+                 }
+                 return `export const clientViteManifest = ${JSON.stringify(clientViteManifest)};`;
+             }
+diff --git a/dist/server/StartServer.jsx b/dist/server/StartServer.jsx
+index 296c6ef98f206dda13b1329c4db5b21e6dba94c8..ebca88833774e4990109b6e92e3318ff5883010a 100644
+--- a/dist/server/StartServer.jsx
++++ b/dist/server/StartServer.jsx
+@@ -1,6 +1,6 @@
+ import { Hydration, HydrationScript, NoHydration, getRequestEvent, ssr } from "solid-js/web";
+ import App from "solid-start:app";
+-import { ErrorBoundary, TopErrorBoundary } from "../shared/ErrorBoundary.jsx";
++import { Errored, TopErrored } from "../shared/ErrorBoundary.jsx";
+ import { useAssets } from "./assets/index.js";
+ import PatchVirtualDevStyles from "./assets/PatchVirtualDevStyles.jsx";
+ import { getSsrManifest } from "./manifest/ssr-manifest.js";
+@@ -16,19 +16,19 @@ export function StartServer(props) {
+     useAssets(context.assets, nonce);
+     return (<NoHydration>
+       {docType}
+-      <TopErrorBoundary>
++      <TopErrored>
+         <props.document assets={<HydrationScript />} scripts={<>
+               <PatchVirtualDevStyles nonce={nonce}/>
+               <script type="module" nonce={nonce} async src={getSsrManifest("client").path(import.meta.env.START_CLIENT_ENTRY)}/>
+             </>}>
+           {!import.meta.env.START_ISLANDS ? (<Hydration>
+-              <ErrorBoundary>
++              <Errored>
+                 <App />
+-              </ErrorBoundary>
+-            </Hydration>) : (<ErrorBoundary>
++              </Errored>
++            </Hydration>) : (<Errored>
+               <App />
+-            </ErrorBoundary>)}
++            </Errored>)}
+         </props.document>
+-      </TopErrorBoundary>
++      </TopErrored>
+     </NoHydration>);
+ }
+diff --git a/dist/server/assets/render.jsx b/dist/server/assets/render.jsx
+index 0aeea411c087e1cb11df3eca4e33cdd31d6a2eac..adc5778c6814bba95fc174ce8e901c2d3e427e9c 100644
+--- a/dist/server/assets/render.jsx
++++ b/dist/server/assets/render.jsx
+@@ -1,14 +1,31 @@
++import { ssr } from "@solidjs/web";
++
++function attrsToHtml(attrs) {
++    if (!attrs) return "";
++    let out = "";
++    for (const [k, v] of Object.entries(attrs)) {
++        if (v == null || v === false) continue;
++        if (v === true) {
++            out += ` ${k}`;
++        } else {
++            const s = String(v);
++            out += ` ${k}="${s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}"`;
++        }
++    }
++    return out;
++}
++
+ const assetMap = {
+-    style: (props) => (<style {...props.attrs}>{props.children}</style>),
+-    link: (props) => <link {...props.attrs}/>,
+-    script: (props) => {
+-        return props.attrs.src ? (<script {...props.attrs} id={props.key}>
+-        {" "}
+-      </script>) : null;
+-    },
+-    noscript: (props) => (<noscript {...props.attrs}>{props.children}</noscript>),
++    style: (props) => ssr(`<style${attrsToHtml(props.attrs)}>${props.children || ""}</style>`),
++    link: (props) => ssr(`<link${attrsToHtml(props.attrs)}>`),
++    script: (props) =>
++        props.attrs?.src
++            ? ssr(`<script${attrsToHtml({ ...props.attrs, id: props.key })}> </script>`)
++            : null,
++    noscript: (props) => ssr(`<noscript${attrsToHtml(props.attrs)}>${props.children || ""}</noscript>`),
+ };
++
+ export function renderAsset(asset, nonce) {
+-    let { tag, attrs: { key, ...attrs } = { key: undefined }, children, } = asset;
++    let { tag, attrs: { key, ...attrs } = { key: undefined }, children } = asset;
+     return assetMap[tag]({ attrs: { ...attrs, nonce }, key, children });
+ }
+diff --git a/dist/server/fetchEvent.js b/dist/server/fetchEvent.js
+index dbaecf4b4c882fa56e2370068742231453dd2139..a2b00df8405be152241f7f67e69cb9e802b5818d 100644
+--- a/dist/server/fetchEvent.js
++++ b/dist/server/fetchEvent.js
+@@ -1,5 +1,5 @@
+ import { getRequestIP } from "h3";
+-import { provideRequestEvent } from "solid-js/web/storage";
++import { provideRequestEvent } from "@solidjs/web/storage";
+ const FETCH_EVENT_CONTEXT = "solidFetchEvent";
+ export function createFetchEvent(event) {
+     return {
+diff --git a/dist/shared/ErrorBoundary.jsx b/dist/shared/ErrorBoundary.jsx
+index 38996413ed084ca16e00fa069aa31cad32865741..552d1682400fe1a94ad3eedc36acbba873bb122f 100644
+--- a/dist/shared/ErrorBoundary.jsx
++++ b/dist/shared/ErrorBoundary.jsx
+@@ -1,36 +1,60 @@
+ // @refresh skip
+-import { ErrorBoundary as DefaultErrorBoundary, catchError } from "solid-js";
++import { Errored as DefaultErrored } from "solid-js";
+ import { isServer } from "solid-js/web";
+ import { HttpStatusCode } from "./HttpStatusCode.js";
+ import { DevOverlay } from "./dev-overlay/index.jsx";
+-export const ErrorBoundary = import.meta.env.DEV && import.meta.env.START_DEV_OVERLAY
++import { createSignal } from "solid-js";
++
++export const Errored =
++  import.meta.env.DEV && import.meta.env.START_DEV_OVERLAY
+     ? (props) => <DevOverlay>{props.children}</DevOverlay>
+     : (props) => {
+         const message = isServer
+-            ? "500 | Internal Server Error"
+-            : "Error | Uncaught Client Exception";
+-        return (<DefaultErrorBoundary fallback={error => {
+-                console.error(error);
+-                return (<>
+-                  <span style="font-size:1.5em;text-align:center;position:fixed;left:0px;bottom:55%;width:100%;">
++          ? "500 | Internal Server Error"
++          : "Error | Uncaught Client Exception";
++
++        return (
++          <DefaultErrored
++            fallback={(error) => {
++              console.error(error);
++              return (
++                <>
++                  <span
++                    style="font-size:1.5em;text-align:center;position:fixed;left:0px;bottom:55%;width:100%;"
++                  >
+                     {message}
+                   </span>
+-                  <HttpStatusCode code={500}/>
+-                </>);
+-            }}>
++                  <HttpStatusCode code={500} />
++                </>
++              );
++            }}
++          >
+             {props.children}
+-          </DefaultErrorBoundary>);
+-    };
+-export const TopErrorBoundary = (props) => {
+-    let isError = false;
+-    const res = catchError(() => props.children, err => {
++          </DefaultErrored>
++        );
++      };
++
++export const TopErrored = (props) => {
++  const [, setIsError] = createSignal(false);
++
++  return (
++    <DefaultErrored
++      fallback={(err) => {
+         console.error(err);
+-        isError = !!err;
+-    });
+-    return isError ? (<>
+-      <span style="font-size:1.5em;text-align:center;position:fixed;left:0px;bottom:55%;width:100%;">
+-        500 | Internal Server Error
+-      </span>
+-      <HttpStatusCode code={500}/>
+-    </>) : (res);
++        setIsError(true);
++        return (
++          <>
++            <span
++              style="font-size:1.5em;text-align:center;position:fixed;left:0px;bottom:55%;width:100%;"
++            >
++              500 | Internal Server Error
++            </span>
++            <HttpStatusCode code={500} />
++          </>
++        );
++      }}
++    >
++      {props.children}
++    </DefaultErrored>
++  );
+ };
+diff --git a/dist/shared/clientOnly.js b/dist/shared/clientOnly.js
+index a0c4d4d161e1d4f0237e7164bbe9d805bd8fff34..cefcc972260567f8eab40194517b89f70d70d9f5 100644
+--- a/dist/shared/clientOnly.js
++++ b/dist/shared/clientOnly.js
+@@ -1,5 +1,5 @@
+-import { createMemo, createSignal, onMount, sharedConfig, splitProps, untrack } from "solid-js";
+-import { isServer } from "solid-js/web";
++import { createMemo, createSignal, onSettled, sharedConfig, omit, untrack } from "solid-js";
++import { isServer } from "@solidjs/web";
+ /**
+  *
+  * Read more: https://docs.solidjs.com/solid-start/reference/client/client-only
+@@ -13,12 +13,13 @@ export default function clientOnly(fn, options = {}) {
+     return (props) => {
+         let Comp;
+         let m;
+-        const [, rest] = splitProps(props, ["fallback"]);
++        const [, rest] = [undefined, omit(props, "fallback")];
++
+         options.lazy && load(fn, setComp);
+         if ((Comp = comp()) && !sharedConfig.context)
+             return Comp(rest);
+         const [mounted, setMounted] = createSignal(!sharedConfig.context);
+-        onMount(() => setMounted(true));
++        onSettled(() => setMounted(true));
+         return createMemo(() => ((Comp = comp()), (m = mounted()), untrack(() => (Comp && m ? Comp(rest) : props.fallback))));
+     };
+ }
+diff --git a/dist/shared/dev-overlay/index.jsx b/dist/shared/dev-overlay/index.jsx
+index 2b62b83de0e5924485d832868b122de1aac9650a..2636bc5bc837a7547b8b87e8ead8419aaca78d2e 100644
+--- a/dist/shared/dev-overlay/index.jsx
++++ b/dist/shared/dev-overlay/index.jsx
+@@ -1,5 +1,5 @@
+ // @refresh skip
+-import { ErrorBoundary, Show, createEffect, createSignal, onCleanup, resetErrorBoundaries, } from "solid-js";
++import { Errored, Show, createEffect, createSignal, onCleanup } from "solid-js";
+ import { HttpStatusCode } from "../HttpStatusCode.js";
+ import clientOnly from "../clientOnly.js";
+ const DevOverlayDialog = import.meta.env.PROD
+@@ -9,7 +9,6 @@ export function DevOverlay(props) {
+     const [errors, setErrors] = createSignal([]);
+     function resetError() {
+         setErrors([]);
+-        resetErrorBoundaries();
+     }
+     function pushError(error) {
+         console.error(error);
+@@ -25,12 +24,12 @@ export function DevOverlay(props) {
+         });
+     });
+     return (<>
+-      <ErrorBoundary fallback={error => {
++      <Errored fallback={error => {
+             pushError(error);
+             return <HttpStatusCode code={500}/>;
+         }}>
+         {props.children}
+-      </ErrorBoundary>
++      </Errored>
+       <Show when={errors().length}>
+         <HttpStatusCode code={500}/>
+         <DevOverlayDialog errors={errors()} resetError={resetError}/>
+diff --git a/package.json b/package.json
+index b6e28e78751fb8c1a998c17b1fd380916e9025d4..9e9789ccc6fe1da2a5aa7e2030663d12423ec904 100644
+--- a/package.json
++++ b/package.json
+@@ -18,33 +18,32 @@
+     "access": "public"
+   },
+   "dependencies": {
+-    "@babel/core": "^7.28.3",
+-    "@babel/traverse": "^7.28.3",
+-    "@babel/types": "^7.28.5",
++    "@babel/core": "^7.29.0",
++    "@babel/traverse": "^7.29.0",
++    "@babel/types": "^7.29.0",
+     "@solidjs/meta": "^0.29.4",
+-    "@tanstack/server-functions-plugin": "1.134.5",
++    "@tanstack/server-functions-plugin": "1.142.1",
+     "@types/babel__traverse": "^7.28.0",
+-    "@types/micromatch": "^4.0.9",
+-    "cookie-es": "^2.0.0",
+-    "defu": "^6.1.4",
++    "@types/micromatch": "^4.0.10",
++    "cookie-es": "^3.1.1",
++    "defu": "^6.1.7",
+     "error-stack-parser": "^2.1.4",
+-    "es-module-lexer": "^1.7.0",
+-    "esbuild": "^0.25.3",
++    "es-module-lexer": "^2.1.0",
++    "esbuild": "^0.28.0",
+     "fast-glob": "^3.3.3",
+-    "h3": "npm:h3@2.0.1-rc.4",
++    "h3": "npm:h3@2.0.1-rc.21",
+     "html-to-image": "^1.11.13",
+     "micromatch": "^4.0.8",
+-    "path-to-regexp": "^8.2.0",
++    "path-to-regexp": "^8.4.2",
+     "pathe": "^2.0.3",
+     "radix3": "^1.1.2",
+-    "seroval": "^1.4.1",
+-    "seroval-plugins": "^1.4.0",
++    "seroval": "^1.5.2",
++    "seroval-plugins": "^1.5.2",
+     "shiki": "^1.26.1",
+-    "solid-js": "^1.9.9",
++    "solid-js": "2.0.0-beta.10",
+     "source-map-js": "^1.2.1",
+-    "srvx": "^0.9.1",
+-    "terracotta": "^1.0.6",
+-    "vite-plugin-solid": "^2.11.9"
++    "srvx": "^0.11.15",
++    "terracotta": "^1.1.0"
+   },
+   "engines": {
+     "node": ">=22"

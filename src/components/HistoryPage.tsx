@@ -1,5 +1,5 @@
 import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import {
     historyClear,
     historyDelete,
@@ -16,8 +16,8 @@ export default function HistoryPage() {
         historyGetMethod(),
     );
 
-    onMount(async () => {
-        setEntries(await historyGetAll());
+    onSettled(() => {
+        historyGetAll().then(all => setEntries(all));
     });
 
     const handleClear = async () => {
@@ -80,7 +80,7 @@ export default function HistoryPage() {
                     {entry => (
                         <div class={s.entry}>
                             <Show
-                                when={entry.favicon}
+                                when={entry().favicon}
                                 fallback={
                                     <TbOutlineWorld
                                         size={16}
@@ -89,7 +89,7 @@ export default function HistoryPage() {
                                 }
                             >
                                 <img
-                                    src={entry.favicon}
+                                    src={entry().favicon}
                                     class={s.favicon}
                                     alt=""
                                     onError={e => {
@@ -101,18 +101,18 @@ export default function HistoryPage() {
                             </Show>
                             <div class={s.entryInfo}>
                                 <div class={s.entryTitle}>
-                                    {entry.title || entry.url}
+                                    {entry().title || entry().url}
                                 </div>
-                                <div class={s.entryUrl}>{entry.url}</div>
+                                <div class={s.entryUrl}>{entry().url}</div>
                             </div>
                             <span class={s.entryTime}>
-                                {formatTime(entry.visitedAt)}
+                                {formatTime(entry().visitedAt)}
                             </span>
                             <button
                                 type="button"
                                 class={s.deleteBtn}
                                 title="Remove"
-                                onClick={() => handleDelete(entry.id)}
+                                onClick={() => handleDelete(entry().id)}
                             >
                                 <TbOutlineX size={14} />
                             </button>

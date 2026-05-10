@@ -4,7 +4,7 @@ import {
     TbOutlineUpload,
     TbOutlineX,
 } from "solid-icons/tb";
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import {
     extensionsGetAll,
     extensionsInstallFromUrl,
@@ -56,7 +56,7 @@ export default function ExtensionsPage() {
     const [installing, setInstalling] = createSignal(false);
     const [error, setError] = createSignal<string | null>(null);
 
-    onMount(() => {
+    onSettled(() => {
         setExtensions(extensionsGetAll());
     });
 
@@ -162,8 +162,7 @@ export default function ExtensionsPage() {
                     </Show>
                 </button>
                 <label class={s.uploadBtnLabel}>
-                    <TbOutlineUpload size={14} />
-                    Upload file
+                    <TbOutlineUpload size={14} /> Upload file
                     <input
                         type="file"
                         accept=".crx,.xpi"
@@ -197,12 +196,12 @@ export default function ExtensionsPage() {
                     <For each={crxExts()}>
                         {ext => (
                             <div class={s.card}>
-                                <ExtensionIcon ext={ext} />
+                                <ExtensionIcon ext={ext()} />
                                 <div class={s.cardInfo}>
-                                    <div class={s.cardName}>{ext.name}</div>
+                                    <div class={s.cardName}>{ext().name}</div>
                                     <div class={s.cardMeta}>
-                                        v{ext.version} ·{" "}
-                                        {ext.manifest.description ?? ""}
+                                        v{ext().version} ·{" "}
+                                        {ext().manifest.description ?? ""}
                                     </div>
                                 </div>
                                 <span
@@ -211,14 +210,14 @@ export default function ExtensionsPage() {
                                     CRX
                                 </span>
                                 <ToggleSwitch
-                                    checked={ext.enabled}
-                                    onChange={v => handleToggle(ext.id, v)}
+                                    checked={ext().enabled}
+                                    onChange={v => handleToggle(ext().id, v)}
                                 />
                                 <button
                                     type="button"
                                     class={s.removeBtn}
                                     title="Uninstall"
-                                    onClick={() => handleUninstall(ext.id)}
+                                    onClick={() => handleUninstall(ext().id)}
                                 >
                                     <TbOutlineX size={15} />
                                 </button>
@@ -234,12 +233,12 @@ export default function ExtensionsPage() {
                     <For each={xpiExts()}>
                         {ext => (
                             <div class={s.card}>
-                                <ExtensionIcon ext={ext} />
+                                <ExtensionIcon ext={ext()} />
                                 <div class={s.cardInfo}>
-                                    <div class={s.cardName}>{ext.name}</div>
+                                    <div class={s.cardName}>{ext().name}</div>
                                     <div class={s.cardMeta}>
-                                        v{ext.version} ·{" "}
-                                        {ext.manifest.description ?? ""}
+                                        v{ext().version} ·{" "}
+                                        {ext().manifest.description ?? ""}
                                     </div>
                                 </div>
                                 <span
@@ -248,14 +247,14 @@ export default function ExtensionsPage() {
                                     XPI
                                 </span>
                                 <ToggleSwitch
-                                    checked={ext.enabled}
-                                    onChange={v => handleToggle(ext.id, v)}
+                                    checked={ext().enabled}
+                                    onChange={v => handleToggle(ext().id, v)}
                                 />
                                 <button
                                     type="button"
                                     class={s.removeBtn}
                                     title="Uninstall"
-                                    onClick={() => handleUninstall(ext.id)}
+                                    onClick={() => handleUninstall(ext().id)}
                                 >
                                     <TbOutlineX size={15} />
                                 </button>

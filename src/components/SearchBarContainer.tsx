@@ -8,12 +8,6 @@ export default function SearchBarContainer(props: { inline?: boolean }) {
 
     const [suggestions, setSuggestions] = createSignal<string[]>([]);
 
-    const getIframe = () => {
-        const frame = window.frameElement;
-        if (frame instanceof HTMLIFrameElement) return frame;
-        return null;
-    };
-
     const handleSubmit = (value: string) => {
         bar.lastUrlSearched = value;
         bar.url = value;
@@ -23,8 +17,13 @@ export default function SearchBarContainer(props: { inline?: boolean }) {
 
         setSuggestions([]);
 
-        const iframe = getIframe();
-        if (iframe) {
+        if (typeof window !== "undefined" && window.self !== window.top) {
+            void bar.submitCurrentWindow(value);
+            return;
+        }
+
+        const iframe = window.frameElement;
+        if (iframe instanceof HTMLIFrameElement) {
             bar.emit("submit", iframe, value);
         }
     };
@@ -44,12 +43,13 @@ export default function SearchBarContainer(props: { inline?: boolean }) {
                             {item => (
                                 <li
                                     class={s.sbRow}
-                                    onClick={() => handleSubmit(item)}
+                                    onClick={() => handleSubmit(item())}
                                     onKeyDown={e =>
-                                        e.key === "Enter" && handleSubmit(item)
+                                        e.key === "Enter" &&
+                                        handleSubmit(item())
                                     }
                                 >
-                                    {item}
+                                    {item()}
                                 </li>
                             )}
                         </For>

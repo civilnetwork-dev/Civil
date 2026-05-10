@@ -13,6 +13,13 @@ export const loadingContainer = style({
     inset: 0,
     overflow: "hidden",
     zIndex: 100,
+    opacity: 1,
+    transition: "opacity 600ms cubic-bezier(0.86, 0, 0.07, 1)",
+});
+
+export const loadingContainerHidden = style({
+    opacity: 0,
+    pointerEvents: "none",
 });
 
 export const loadingLottie = style({

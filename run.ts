@@ -6,6 +6,7 @@ import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
 import { start as startChii } from "chii";
 import compression from "compression";
 import express from "express";
+import { toNodeHandler } from "h3/node";
 
 import createRammerhead from "rammerhead";
 
@@ -38,10 +39,11 @@ import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 import { logging, server as wisp } from "@mercuryworkshop/wisp-js/server";
 import { createBareServer } from "@tomphttp/bare-server-node";
 import { XMLParser } from "fast-xml-parser";
+import sirv from "sirv";
 import { WebSocketServer } from "ws";
 import xior from "xior";
 
-import packageJson from "./package.json" with { type: "json" };
+import { scripts } from "./package.json";
 
 class RammerheadRouting {
     static #scopes: string[] & { length: 15 } = [
@@ -86,23 +88,17 @@ class RammerheadRouting {
 
 import { $ } from "bun";
 
-import { createColors } from "picocolors";
+import { blue, yellow } from "picocolors";
 
-const { yellow, blue } = createColors();
+const build = () => $`bunx ${scripts.build}`;
 
-const build = () => $`bunx ${packageJson.scripts.build}`;
-
-if (
-    !(
-        existsSync(resolve(import.meta.dirname, ".vinxi")) ||
-        existsSync(resolve(import.meta.dirname, ".output"))
-    )
-) {
+if (!existsSync(resolve(import.meta.dirname, "dist"))) {
     console.log(yellow("no build found, building..."));
     build();
 }
 
 const app = express();
+const PORT = Number(process.env.PORT ?? 9876);
 const server = createServer((req, res) => {
     if (req.url?.startsWith("/chii/") || req.url === "/chii") return;
     app(req, res);
@@ -110,13 +106,13 @@ const server = createServer((req, res) => {
 await startChii({
     server,
     basePath: "/chii/",
+    domain: process.env.CHII_DOMAIN ?? `localhost:${PORT}`,
 });
 
 const wss = new WebSocketServer({ noServer: true });
 
 const GOOGLE_URL =
     "https://clients1.google.com/complete/search?hl=en&output=toolbar&q=";
-const PORT = Number(process.env.PORT) || 9876;
 
 app.use(compression());
 
@@ -147,17 +143,19 @@ app.use((req, res, next) => {
     if (RammerheadRouting.shouldRoute(req)) {
         RammerheadRouting.routeRequest(rammerhead, req, res);
     } else if (bare.shouldRoute(req)) {
-        bare.routeRequest(req, res);
+        bare.routeRequest(req, res).catch(console.error);
     } else {
         next();
     }
 });
 
-const { handler: ssrHandler } = await import("./.output/server/index.mjs");
+const { default: ssrHandler } = await import(
+    "dist/nitro/vite/services/ssr/index.js"
+);
 
-app.use(express.static(resolve(import.meta.dirname, ".output/public")));
-app.use(express.static(resolve(import.meta.dirname, ".output/public/_build")));
-app.use(express.static(resolve(import.meta.dirname, "dist")));
+app.use(sirv(resolve(import.meta.dirname, "dist/client")));
+app.use(sirv(resolve(import.meta.dirname, "dist/client/_build")));
+app.use(sirv(resolve(import.meta.dirname, "dist-config")));
 
 const parser = new XMLParser({
     ignoreAttributes: false,
@@ -183,7 +181,7 @@ wss.on("connection", ws => {
     });
 });
 
-app.use(ssrHandler);
+app.use(toNodeHandler(ssrHandler));
 
 function shouldRouteWisp(req: Request, endingUrl?: string) {
     return req.url?.endsWith(endingUrl || "/wisp/");
@@ -195,7 +193,7 @@ server.on("upgrade", (req: Request, socket: Socket, head) => {
     if (RammerheadRouting.shouldRoute(req)) {
         RammerheadRouting.routeUpgrade(rammerhead, req, socket, head);
     } else if (bare.shouldRoute(req)) {
-        bare.routeUpgrade(req, socket, head);
+        bare.routeUpgrade(req, socket, head).catch(console.error);
     } else if (shouldRouteWisp(req)) {
         wisp.routeRequest(req, socket, head);
     } else if (req.url?.endsWith("/suggestions")) {
@@ -203,7 +201,7 @@ server.on("upgrade", (req: Request, socket: Socket, head) => {
             wss.emit("connection", ws, req);
         });
     } else {
-        socket.destroy();
+        return;
     }
 });
 

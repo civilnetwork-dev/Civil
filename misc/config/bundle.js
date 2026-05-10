@@ -21,7 +21,7 @@ const { green } = createColors();
 
 const useVisualizer = process.argv.includes("--visualize");
 
-await rimraf("../../dist");
+await rimraf("../../dist-config");
 
 const basePlugins = [
     alias({
@@ -46,10 +46,14 @@ const basePlugins = [
             exclude: [
                 "config",
                 "tests",
-                "server.ts",
+                "run.ts",
                 "src",
                 "misc/apps",
                 "*.config.ts",
+                "types",
+                "patches",
+                "dist",
+                "public",
             ],
         },
     }),
@@ -140,7 +144,7 @@ const wasmDencodeBundle = await rollup({
         ...(useVisualizer
             ? [
                   visualizer({
-                      filename: "../../dist/stats/wasm_dencode.html",
+                      filename: "../../dist-config/stats/wasm_dencode.html",
                       open: false,
                   }),
               ]
@@ -149,7 +153,7 @@ const wasmDencodeBundle = await rollup({
 });
 
 const { output: wdOutput } = await wasmDencodeBundle.write({
-    dir: "../../dist",
+    dir: "../../dist-config",
     format: "iife",
     entryFileNames: "wasm_dencode.js",
     name: "__wasmDencode",
@@ -175,7 +179,7 @@ for (const [name, file] of Object.entries(otherInput)) {
             ...(useVisualizer
                 ? [
                       visualizer({
-                          filename: `../../dist/stats/${name}.html`,
+                          filename: `../../dist-config/stats/${name}.html`,
                           open: false,
                       }),
                   ]
@@ -184,7 +188,7 @@ for (const [name, file] of Object.entries(otherInput)) {
     });
 
     const { output } = await bundle.write({
-        dir: "../../dist",
+        dir: "../../dist-config",
         format: "iife",
         entryFileNames: `${name}.js`,
         name,
@@ -211,7 +215,7 @@ const swBundle = await rollup({
         ...(useVisualizer
             ? [
                   visualizer({
-                      filename: "../../dist/stats/sw.html",
+                      filename: "../../dist-config/stats/sw.html",
                       open: false,
                   }),
               ]
@@ -220,7 +224,7 @@ const swBundle = await rollup({
 });
 
 const { output: swOutput } = await swBundle.write({
-    dir: "../../dist",
+    dir: "../../dist-config",
     format: "iife",
     entryFileNames: "sw.js",
     name: "sw",
@@ -238,5 +242,5 @@ for (const chunk of swOutput) {
 
 await copyFile(
     "../../config/encoder/xor_encoder.wasm",
-    "../../dist/xor_encoder.wasm",
+    "../../dist-config/xor_encoder.wasm",
 );

@@ -16,9 +16,9 @@ export default function SearchBar() {
 
     const showIframe = () => hasSubmitted() && iframeUrl() !== "";
 
-    createEffect(() => {
+    createEffect(showIframe, value => {
         if (!hostRef) return;
-        hostRef.style.alignItems = showIframe() ? "flex-start" : "center";
+        hostRef.style.alignItems = value ? "flex-start" : "center";
     });
 
     const handleSubmit = (value: string) => {
@@ -47,19 +47,22 @@ export default function SearchBar() {
 
                 <Show when={suggestions().length > 0}>
                     <ul
-                        class={s.sbDropdown}
-                        classList={{ [s.sbDropdownBlur]: showIframe() }}
+                        class={[
+                            s.sbDropdown,
+                            { [s.sbDropdownBlur]: showIframe() },
+                        ]}
                     >
                         <For each={suggestions()}>
                             {item => (
                                 <li
                                     class={s.sbRow}
-                                    onClick={() => handleSubmit(item)}
+                                    onClick={() => handleSubmit(item())}
                                     onKeyDown={e =>
-                                        e.key === "Enter" && handleSubmit(item)
+                                        e.key === "Enter" &&
+                                        handleSubmit(item())
                                     }
                                 >
-                                    {item}
+                                    {item()}
                                 </li>
                             )}
                         </For>
@@ -70,8 +73,10 @@ export default function SearchBar() {
                     <iframe
                         ref={iframeRef}
                         title="Search suggestions"
-                        class="sb-frame"
-                        classList={{ "sb-frame--visible": iframeVisible() }}
+                        class={[
+                            "sb-frame",
+                            { "sb-frame--visible": iframeVisible() },
+                        ]}
                     />
                 </Show>
             </div>

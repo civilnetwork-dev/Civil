@@ -49,12 +49,13 @@ export default function SearchBar() {
                             {item => (
                                 <li
                                     class={s.sbRow}
-                                    onClick={() => handleSubmit(item)}
+                                    onClick={() => handleSubmit(item())}
                                     onKeyDown={e =>
-                                        e.key === "Enter" && handleSubmit(item)
+                                        e.key === "Enter" &&
+                                        handleSubmit(item())
                                     }
                                 >
-                                    {item}
+                                    {item()}
                                 </li>
                             )}
                         </For>

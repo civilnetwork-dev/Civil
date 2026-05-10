@@ -1,5 +1,5 @@
-import { createSignal, For, onMount, Show } from "solid-js";
-import { Portal } from "solid-js/web";
+import { Portal } from "@solidjs/web";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import {
     extensionsGetAll,
     extensionsResolveIcon,
@@ -39,7 +39,7 @@ export default function ExtensionIconBar() {
     const [icons, setIcons] = createSignal<ExtIconState[]>([]);
     const [popup, setPopup] = createSignal<PopupState | null>(null);
 
-    onMount(() => {
+    onSettled(() => {
         const all = extensionsGetAll().filter(e => e.enabled);
         const resolved = all.map(ext => {
             const manifest = ext.manifest as ChromeManifest;
@@ -84,24 +84,26 @@ export default function ExtensionIconBar() {
                         <button
                             type="button"
                             class={s.extBtn}
-                            title={item.ext.name}
-                            onClick={e => handleClick(e, item)}
+                            title={item().ext.name}
+                            onClick={e => handleClick(e, item())}
                         >
                             <Show
-                                when={item.iconUrl}
+                                when={item().iconUrl}
                                 fallback={
                                     <span class={s.extIconFallback}>
-                                        {item.ext.name
-                                            .slice(0, 2)
+                                        {item()
+                                            .ext.name.slice(0, 2)
                                             .toUpperCase()}
                                     </span>
                                 }
                             >
-                                <img
-                                    src={item.iconUrl!}
-                                    class={s.extIcon}
-                                    alt={item.ext.name}
-                                />
+                                {url => (
+                                    <img
+                                        src={url()}
+                                        class={s.extIcon}
+                                        alt={item().ext.name}
+                                    />
+                                )}
                             </Show>
                         </button>
                     )}

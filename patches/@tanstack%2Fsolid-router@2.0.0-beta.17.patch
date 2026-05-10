@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index 80e9346b9a3bdf8437c8c5fe1a5cc57f6e68a595..94ffc405acac88abbbcc7bd405e213eb4ded8fff 100644
+--- a/package.json
++++ b/package.json
+@@ -109,7 +109,7 @@
+   },
+   "peerDependencies": {
+     "@solidjs/web": ">=2.0.0-0 <3.0.0",
+-    "solid-js": ">=2.0.0-0 <3.0.0"
++    "solid-js": ">=2.0.0-beta.0 <3.0.0"
+   },
+   "bin": {
+     "intent": "./bin/intent.js"

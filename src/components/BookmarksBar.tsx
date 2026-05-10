@@ -1,6 +1,6 @@
 import { FaRegularBookmark, FaSolidBookmark } from "solid-icons/fa";
 import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import {
     bookmarksAdd,
     bookmarksGetAll,
@@ -45,7 +45,9 @@ export default function BookmarksBar(props: BookmarksBarProps) {
     const isBookmarked = () =>
         !isNewtab() && bookmarksIsBookmarked(props.activeUrl);
 
-    onMount(() => setBookmarks(bookmarksGetAll()));
+    onSettled(() => {
+        setBookmarks(bookmarksGetAll());
+    });
 
     const refresh = () => setBookmarks(bookmarksGetAll());
 
@@ -83,16 +85,18 @@ export default function BookmarksBar(props: BookmarksBarProps) {
                     <button
                         type="button"
                         class={s.bookmark}
-                        title={bm.url}
-                        onClick={() => props.onNavigate(bm.url)}
+                        title={bm().url}
+                        onClick={() => props.onNavigate(bm().url)}
                     >
-                        <BookmarkFavicon favicon={bm.favicon} />
-                        <span class={s.bookmarkLabel}>{bm.title}</span>
+                        <BookmarkFavicon favicon={bm().favicon} />
+                        <span class={s.bookmarkLabel}>{bm().title}</span>
                         {/** biome-ignore lint/a11y/noStaticElementInteractions: biome breaking my project lmao */}
                         {/** biome-ignore lint/a11y/useKeyWithClickEvents: biome breaking my project lmao */}
                         <span
                             class={s.bookmarkRemove}
-                            onClick={e => handleRemove(e as MouseEvent, bm.id)}
+                            onClick={e =>
+                                handleRemove(e as MouseEvent, bm().id)
+                            }
                         >
                             <TbOutlineX size={10} />
                         </span>

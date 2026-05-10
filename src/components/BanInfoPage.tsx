@@ -1,4 +1,4 @@
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
 import * as s from "~/styles/BanInfoPage.css";
 
 const PAGE_SIZE = 50;
@@ -9,42 +9,55 @@ export default function BanInfoPage() {
     const [visibleCount, setVisibleCount] = createSignal(PAGE_SIZE);
     const [loading, setLoading] = createSignal(true);
     let sentinelRef!: HTMLDivElement;
-    let observer: IntersectionObserver;
-
-    onMount(async () => {
-        const metaRes = await fetch(
-            "https://raw.githubusercontent.com/Bon-Appetit/porn-domains/refs/heads/main/meta.json",
-        );
-        const meta = await metaRes.json();
-        const blocklistUrl = `https://raw.githubusercontent.com/Bon-Appetit/porn-domains/refs/heads/main/${meta.blocklist.name}`;
-
-        const listRes = await fetch(blocklistUrl);
-        const text = await listRes.text();
-        const list = text
-            .split("\n")
-            .map(d => d.trim())
-            .filter(d => d.length > 0);
-
-        setDomains(list);
-        setLoading(false);
-
-        observer = new IntersectionObserver(
-            entries => {
-                if (entries[0].isIntersecting) {
-                    setVisibleCount(c => c + PAGE_SIZE);
-                }
-            },
-            { threshold: 0.1 },
-        );
-
-        if (sentinelRef) observer.observe(sentinelRef);
-    });
-
-    onCleanup(() => observer?.disconnect());
 
     const cappedDomains = () => domains().slice(0, maxCount());
     const visibleDomains = () => cappedDomains().slice(0, visibleCount());
     const hasMore = () => visibleCount() < cappedDomains().length;
+
+    const checkForMore = () => {
+        if (loading() || !hasMore() || !sentinelRef) {
+            return;
+        }
+
+        const rect = sentinelRef.getBoundingClientRect();
+        if (rect.top <= window.innerHeight + 160) {
+            setVisibleCount(count =>
+                Math.min(count + PAGE_SIZE, cappedDomains().length),
+            );
+            queueMicrotask(() => requestAnimationFrame(checkForMore));
+        }
+    };
+
+    onSettled(() => {
+        const load = async () => {
+            const metaRes = await fetch(
+                "https://raw.githubusercontent.com/Bon-Appetit/porn-domains/refs/heads/main/meta.json",
+            );
+            const meta = await metaRes.json();
+            const blocklistUrl = `https://raw.githubusercontent.com/Bon-Appetit/porn-domains/refs/heads/main/${meta.blocklist.name}`;
+
+            const listRes = await fetch(blocklistUrl);
+            const text = await listRes.text();
+            const list = text
+                .split("\n")
+                .map(d => d.trim())
+                .filter(d => d.length > 0);
+
+            setDomains(list);
+            setLoading(false);
+            queueMicrotask(() => requestAnimationFrame(checkForMore));
+        };
+
+        window.addEventListener("scroll", checkForMore, { passive: true });
+        window.addEventListener("resize", checkForMore);
+
+        void load();
+
+        return () => {
+            window.removeEventListener("scroll", checkForMore);
+            window.removeEventListener("resize", checkForMore);
+        };
+    });
 
     return (
         <div class={s.banInfoRoot}>
@@ -65,15 +78,16 @@ export default function BanInfoPage() {
                             if (!Number.isNaN(val) && val > 0) {
                                 setMaxCount(val);
                                 setVisibleCount(PAGE_SIZE);
+                                queueMicrotask(() =>
+                                    requestAnimationFrame(checkForMore),
+                                );
                             }
                         }}
                     />
                 </div>
                 <Show when={!loading()}>
                     <span class={s.statsText}>
-                        Showing {visibleDomains().length.toLocaleString()} of{" "}
-                        {cappedDomains().length.toLocaleString()} entries (
-                        {domains().length.toLocaleString()} total)
+                        {`Showing ${visibleDomains().length.toLocaleString()} of ${cappedDomains().length.toLocaleString()} entries (${domains().length.toLocaleString()} total)`}
                     </span>
                 </Show>
             </div>
@@ -84,7 +98,7 @@ export default function BanInfoPage() {
             >
                 <div class={s.scrollContainer}>
                     <For each={visibleDomains()}>
-                        {domain => <div class={s.domainItem}>{domain}</div>}
+                        {domain => <div class={s.domainItem}>{domain()}</div>}
                     </For>
 
                     <Show

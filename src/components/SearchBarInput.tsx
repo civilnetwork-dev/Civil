@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount } from "solid-js";
+import { createSignal, onSettled } from "solid-js";
 import { WS_URL } from "~/lib/browserHelpers";
 import genBCKey from "~/lib/genBCKey";
 import * as s from "~/styles/SearchBar.css";
@@ -48,7 +48,7 @@ export default function SearchBarInput(props: Props) {
         props.onSubmit(value);
     };
 
-    onMount(() => {
+    onSettled(() => {
         ws = new WebSocket(WS_URL);
         ws.onmessage = event => {
             try {
@@ -63,36 +63,38 @@ export default function SearchBarInput(props: Props) {
                 setQuery(event.data.value);
             }
         };
-        onCleanup(() => {
+
+        return () => {
             ws?.close();
             channel.close();
-        });
+        };
     });
 
     return (
-        <div
-            class={s.sbInputWrapper}
-            classList={{ [s.sbInputWrapperBlur]: props.showBlur }}
+        <form
+            class={[
+                s.sbInputWrapper,
+                { [s.sbInputWrapperBlur]: props.showBlur },
+            ]}
+            onSubmit={e => {
+                e.preventDefault();
+                handleSubmit();
+            }}
         >
             <input
                 ref={inputRef}
                 class={s.sbInput}
                 value={query()}
                 onInput={e => handleInput(e.currentTarget.value)}
-                onKeyDown={e => e.key === "Enter" && handleSubmit()}
                 placeholder="Search or enter a URL"
                 autofocus
                 spellcheck={false}
                 autocomplete="off"
                 data-enable-grammarly="false"
             />
-            <button
-                type="button"
-                class={s.sbButton}
-                onClick={() => handleSubmit()}
-            >
+            <button type="submit" class={s.sbButton}>
                 Unblock
             </button>
-        </div>
+        </form>
     );
 }

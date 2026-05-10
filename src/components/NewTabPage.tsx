@@ -7,13 +7,19 @@ export default function NewTabPage() {
         <div class={s.newtabRoot}>
             <div class={s.welcomeText}>
                 <h1>Welcome to Civil Proxy!</h1>
-                <Show when={window.self !== window.top}>
+                <Show
+                    when={
+                        typeof window !== "undefined" &&
+                        window.self !== window.top
+                    }
+                >
                     <div class={s.searchbarWrap}>
                         <SearchBarContainer inline />
                     </div>
                 </Show>
                 <p>
-                    It's <b>your</b> web proxy.
+                    It's <b>your</b>
+                    {"\u0020"}web proxy.
                 </p>
             </div>
         </div>

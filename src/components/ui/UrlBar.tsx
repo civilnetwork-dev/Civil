@@ -19,7 +19,6 @@ interface UrlBarProps {
     onBack: () => void;
     onForward: () => void;
     onRefresh: () => void;
-    /** called when the user triggers tab search (Ctrl+K or clicking the search icon) */
     onTabSearch: () => void;
 }
 
@@ -83,8 +82,10 @@ export function UrlBar(props: UrlBarProps) {
         <div class={s.urlbar}>
             <button
                 type="button"
-                class={s.urlbarNavBtn}
-                classList={{ [s.urlbarNavBtnDim]: !props.canBack }}
+                class={[
+                    s.urlbarNavBtn,
+                    { [s.urlbarNavBtnDim]: !props.canBack },
+                ]}
                 title="Back"
                 disabled={!props.canBack}
                 onClick={props.onBack}
@@ -93,8 +94,10 @@ export function UrlBar(props: UrlBarProps) {
             </button>
             <button
                 type="button"
-                class={s.urlbarNavBtn}
-                classList={{ [s.urlbarNavBtnDim]: !props.canForward }}
+                class={[
+                    s.urlbarNavBtn,
+                    { [s.urlbarNavBtnDim]: !props.canForward },
+                ]}
                 title="Forward"
                 disabled={!props.canForward}
                 onClick={props.onForward}
@@ -121,11 +124,13 @@ export function UrlBar(props: UrlBarProps) {
 
             <div class={s.urlbarOmniboxWrap}>
                 <div
-                    class={s.urlbarOmnibox}
-                    classList={{
-                        [s.urlbarOmniboxFocus]:
-                            editing() || suggestions().length > 0,
-                    }}
+                    class={[
+                        s.urlbarOmnibox,
+                        {
+                            [s.urlbarOmniboxFocus]:
+                                editing() || suggestions().length > 0,
+                        },
+                    ]}
                 >
                     <Show when={!props.isNewtab && !editing()}>
                         <span class={s.urlbarLock}>
@@ -193,18 +198,18 @@ export function UrlBar(props: UrlBarProps) {
                                     }}
                                     onClick={() => {
                                         suppressBlur = false;
-                                        commit(suggestion);
+                                        commit(suggestion());
                                         inputRef?.blur();
                                     }}
                                     onKeyDown={e => {
                                         if (e.key === "Enter") {
                                             suppressBlur = false;
-                                            commit(suggestion);
+                                            commit(suggestion());
                                             inputRef?.blur();
                                         }
                                     }}
                                 >
-                                    {suggestion}
+                                    {suggestion()}
                                 </li>
                             )}
                         </For>
