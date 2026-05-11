@@ -43,8 +43,6 @@ import sirv from "sirv";
 import { WebSocketServer } from "ws";
 import xior from "xior";
 
-import { scripts } from "./package.json";
-
 class RammerheadRouting {
     static #scopes: string[] & { length: 15 } = [
         "/rammerhead.js",
@@ -86,11 +84,8 @@ class RammerheadRouting {
     }
 }
 
-import { $ } from "bun";
-
 import { blue, yellow } from "picocolors";
-
-const build = () => $`bunx ${scripts.build}`;
+import { build } from "vite";
 
 if (!existsSync(resolve(import.meta.dirname, "dist"))) {
     console.log(yellow("no build found, building..."));

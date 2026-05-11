@@ -1,6 +1,6 @@
 FROM oven/bun:alpine AS builder
 
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash gcompat libstdc++ libgcc
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN ./build.sh && rm -rf tests node_modules/.cache
 
 FROM oven/bun:alpine
 
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash gcompat libstdc++ libgcc
 
 WORKDIR /app
 
