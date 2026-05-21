@@ -35,8 +35,7 @@ Thumbs.db
 pnpm-lock.yaml
 pnpm-workspace.yaml
 
-auto-imports.d.ts
-
 # Generated Files
 *.tgz
 *.tar.gz
+*.node

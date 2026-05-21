@@ -1,3 +1,4 @@
+import { MetaProvider } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import {
     createRootRoute,
@@ -43,12 +44,14 @@ function RouterLoadingAnimation() {
 
 function RootComponent() {
     return (
-        <ContextMenuProvider>
-            <RouterLoadingAnimation />
-            <Loading>
-                <Outlet />
-                <Devtools />
-            </Loading>
-        </ContextMenuProvider>
+        <MetaProvider>
+            <ContextMenuProvider>
+                <RouterLoadingAnimation />
+                <Loading>
+                    <Outlet />
+                    <Devtools />
+                </Loading>
+            </ContextMenuProvider>
+        </MetaProvider>
     );
 }

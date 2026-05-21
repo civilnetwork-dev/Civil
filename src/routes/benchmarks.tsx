@@ -1,3 +1,4 @@
+import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
 import results from "$tests/bench_results.json" with { type: "json" };
@@ -13,6 +14,11 @@ export const Route = createFileRoute("/benchmarks")({
 function RouteComponent() {
     return (
         <main>
+            <Title>Benchmarks | Civil Proxy</Title>
+            <Meta
+                name="description"
+                content="Performance benchmark results comparing Civil Proxy against other proxy solutions."
+            />
             <BenchmarkChart data={results} />
         </main>
     );

@@ -1,3 +1,6 @@
+import { execFileSync } from "node:child_process";
+import { globSync as glob, statSync as stat } from "node:fs";
+import { basename } from "node:path";
 import solidOxc from "@oxc-solid-js/vite";
 import devtoolsJson from "@silvenon/vite-plugin-devtools-json";
 import { solidStart } from "@solidjs/start/config";
@@ -9,11 +12,38 @@ import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import biome from "vite-plugin-biome";
 import { BLOCK_AI_ALLOW_REST, robots } from "vite-plugin-robots-ts";
-import { sitemapPlugin as sitemap } from "vite-plugin-sitemap-from-routes";
+import { sitemap } from "vite-plugin-sitemap-ts";
 
 const cssTargets = browserslistToTargets(
     browserslist("last 2 years, > 0.5%, not dead"),
 );
+
+function gitCommitCount(file: string): number {
+    try {
+        const out = execFileSync("git", ["log", "--oneline", "--", file], {
+            encoding: "utf8",
+        });
+        return out.trim().split("\n").filter(Boolean).length;
+    } catch {
+        return 0;
+    }
+}
+
+function toChangefreq(
+    commits: number,
+): "always" | "daily" | "weekly" | "monthly" | "yearly" | "never" {
+    if (commits <= 1) return "yearly";
+    if (commits <= 3) return "monthly";
+    if (commits <= 8) return "weekly";
+    if (commits <= 20) return "daily";
+    return "always";
+}
+
+const routeFiles = glob("src/routes/*.tsx").filter(
+    f => !basename(f).startsWith("_"),
+);
+const commitCounts = routeFiles.map(f => gitCommitCount(f));
+const maxCommits = Math.max(...commitCounts, 1);
 
 export default defineConfig(() => {
     return {
@@ -34,6 +64,7 @@ export default defineConfig(() => {
         environments: {
             client: {
                 resolve: {
+                    conditions: ["solid", "browser"],
                     externalConditions: ["browser"],
                 },
             },
@@ -62,7 +93,7 @@ export default defineConfig(() => {
                     },
                 },
             },
-            sourcemap: "hidden" as const,
+            sourcemap: true,
         },
         css: {
             transformer: "lightningcss" as const,
@@ -73,7 +104,7 @@ export default defineConfig(() => {
             },
         },
         plugins: [
-            tanstackRouter({ target: "solid" }),
+            tanstackRouter({ target: "solid", autoCodeSplitting: true }),
             solidOxc(),
             solidStart({
                 middleware: "./src/middleware.ts",
@@ -97,8 +128,21 @@ export default defineConfig(() => {
                 unsafe: false,
             }),
             sitemap({
-                baseUrl: "https://civil.quartinal.me",
-                routesFile: "src/routeTree.gen.ts",
+                hostname: "https://civil.quartinal.me",
+                routes: routeFiles.map((file, i) => {
+                    const name = basename(file, ".tsx");
+                    const commits = commitCounts[i];
+                    return {
+                        loc: name === "index" ? "/" : `/${name}`,
+                        lastmod: stat(file).mtime.toISOString().split("T")[0],
+                        changefreq: toChangefreq(commits),
+                        priority:
+                            Math.round(
+                                (0.1 + (commits / maxCommits) * 0.9) * 10,
+                            ) / 10,
+                    };
+                }),
+                outDir: "dist/client",
             }),
             robots({
                 content: BLOCK_AI_ALLOW_REST.replace(

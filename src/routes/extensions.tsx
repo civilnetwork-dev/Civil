@@ -1,3 +1,4 @@
+import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
 
@@ -10,5 +11,14 @@ export const Route = createFileRoute("/extensions")({
 });
 
 function RouteComponent() {
-    return <ExtensionsPage />;
+    return (
+        <>
+            <Title>Extensions | Civil Proxy</Title>
+            <Meta
+                name="description"
+                content="Manage and install extensions to enhance your Civil Proxy experience."
+            />
+            <ExtensionsPage />
+        </>
+    );
 }

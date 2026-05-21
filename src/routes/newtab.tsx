@@ -1,3 +1,4 @@
+import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
 
@@ -8,5 +9,18 @@ export const Route = createFileRoute("/newtab")({
 });
 
 function RouteComponent() {
-    return <NewTabPage />;
+    return (
+        <>
+            <Title>New Tab | Civil Proxy</Title>
+            <Meta
+                name="description"
+                content="Your personalized new tab page powered by Civil Proxy."
+            />
+            <Meta
+                name="keywords"
+                content="Unblocking, Proxy, Securly, Iboss, Blocksi, Lightspeed, GoGuardian"
+            />
+            <NewTabPage />
+        </>
+    );
 }

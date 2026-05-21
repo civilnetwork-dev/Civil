@@ -1,3 +1,4 @@
+import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
 
@@ -8,5 +9,14 @@ export const Route = createFileRoute("/history")({
 });
 
 function RouteComponent() {
-    return <HistoryPage />;
+    return (
+        <>
+            <Title>History | Civil Proxy</Title>
+            <Meta
+                name="description"
+                content="View your browsing history in Civil Proxy."
+            />
+            <HistoryPage />
+        </>
+    );
 }

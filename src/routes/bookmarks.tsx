@@ -1,3 +1,4 @@
+import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
 
@@ -8,5 +9,14 @@ export const Route = createFileRoute("/bookmarks")({
 });
 
 function RouteComponent() {
-    return <BookmarksPage />;
+    return (
+        <>
+            <Title>Bookmarks | Civil Proxy</Title>
+            <Meta
+                name="description"
+                content="Your saved bookmarks in Civil Proxy."
+            />
+            <BookmarksPage />
+        </>
+    );
 }

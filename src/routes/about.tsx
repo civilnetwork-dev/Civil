@@ -1,3 +1,4 @@
+import { Meta, Title } from "@solidjs/meta";
 import { createFileRoute } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/about")({
@@ -7,6 +8,11 @@ export const Route = createFileRoute("/about")({
 function RouteComponent() {
     return (
         <main>
+            <Title>About | Civil Proxy</Title>
+            <Meta
+                name="description"
+                content="Learn about Civil Proxy — an open-source web proxy built for speed, privacy, and freedom."
+            />
             <h1>About</h1>
         </main>
     );

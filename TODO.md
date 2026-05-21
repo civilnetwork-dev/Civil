@@ -13,5 +13,5 @@
 
 - Stuff that are doable right now:
 	- [x] Add a Not Found page
-    - [ ] Add a settings page
+  	- [ ] Add a settings page
 	- [ ] Add obfuscation directly in web pages proxied by UltraViolet or ScramJet

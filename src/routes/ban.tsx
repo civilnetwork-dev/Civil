@@ -1,3 +1,4 @@
+import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
 
@@ -12,5 +13,14 @@ export const Route = createFileRoute("/ban")({
 
 function RouteComponent() {
     const { reason } = Route.useSearch()();
-    return <BanPage banReason={reason} />;
+    return (
+        <>
+            <Title>Banned | Civil Proxy</Title>
+            <Meta
+                name="description"
+                content="Access to this content has been restricted."
+            />
+            <BanPage banReason={reason} />
+        </>
+    );
 }

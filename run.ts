@@ -78,7 +78,7 @@ class RammerheadRouting {
         rammerhead: Server,
         req: Request,
         socket: Socket,
-        head: any,
+        head: Buffer,
     ) {
         rammerhead.emit("upgrade", req, socket, head);
     }
@@ -121,7 +121,7 @@ const servicePathMaps: Record<string, string> = {
 };
 
 Object.entries(servicePathMaps).forEach(([route, path]) => {
-    app.use(route, express.static(path));
+    app.use(route, sirv(path));
 });
 
 const rammerheadReverseProxy = Boolean(process.env.REVERSE_PROXY) || false;
@@ -178,13 +178,13 @@ wss.on("connection", ws => {
 
 app.use(toNodeHandler(ssrHandler));
 
-function shouldRouteWisp(req: Request, endingUrl?: string) {
-    return req.url?.endsWith(endingUrl || "/wisp/");
+function shouldRouteWisp(req: Request) {
+    return req.url?.endsWith("/wisp/");
 }
 
 logging.set_level(logging.ERROR);
 
-server.on("upgrade", (req: Request, socket: Socket, head) => {
+server.on("upgrade", (req: Request, socket: Socket, head: Buffer) => {
     if (RammerheadRouting.shouldRoute(req)) {
         RammerheadRouting.routeUpgrade(rammerhead, req, socket, head);
     } else if (bare.shouldRoute(req)) {
