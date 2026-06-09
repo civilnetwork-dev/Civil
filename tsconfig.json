@@ -13,15 +13,15 @@
         "types": ["bun", "serviceworker", "umami"],
         "isolatedModules": true,
         "paths": {
-            "~/*": ["./src/*"],
-            "$wasm/*": ["config/rammerheadenc/dist/*", "config/encoder/*"],
+            "~/*": ["src/*"],
+            "$wasm/*": ["config/encoder/*"],
             "$config/*": ["misc/config/*"],
-            "$tests/*": ["tests/*"],
-            "$assets/*": ["public/assets/*"]
+            "$tests/*": ["tests/*"]
         },
         "baseUrl": ".",
         "allowImportingTsExtensions": true,
         "ignoreDeprecations": "6.0",
         "noUncheckedSideEffectImports": false
-    }
+    },
+    "exclude": ["node_modules"]
 }

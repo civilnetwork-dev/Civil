@@ -1,12 +1,15 @@
-import type * as _BareMux from "@mercuryworkshop/bare-mux";
-import type { ScramjetController } from "@mercuryworkshop/scramjet";
 import type { UVConfig } from "@titaniumnetwork-dev/ultraviolet";
 import { EventEmitter } from "tseep";
 import { registerSw, setupBareMux } from "./swUtils";
 
+interface ScramjetLike {
+    encodeUrl: (s: string) => string;
+    decodeUrl: (s: string) => string;
+}
+
 interface ProxyEntry {
     name: "uv" | "scramjet";
-    value: UVConfig | ScramjetController;
+    value: UVConfig | ScramjetLike;
 }
 
 interface ISearchBar {
@@ -24,10 +27,6 @@ interface ISearchBar {
         name: string;
         value: `${string}?q=%s`;
     }[];
-}
-
-declare global {
-    var BareMux: typeof _BareMux;
 }
 
 function isNavigableUrl(term: string): boolean {
@@ -58,8 +57,9 @@ class SearchBar
         super();
 
         const runSetup = async () => {
-            await setupBareMux();
             await registerSw();
+            await setupBareMux();
+            await (window as any).scramjetReady;
         };
 
         if (document.readyState === "complete") {
@@ -156,9 +156,11 @@ class SearchBar
     }
 
     private createProxyUrl(term: string, proxy: ProxyEntry) {
+        if (!proxy.value?.encodeUrl)
+            throw new Error(`Proxy "${proxy.name}" not ready`);
         return (
             (proxy.name === "uv" ? "/~/uv/" : "") +
-            proxy.value.encodeUrl!(this.normalizeTerm(term, proxy))
+            proxy.value.encodeUrl(this.normalizeTerm(term, proxy))
         );
     }
 
@@ -179,7 +181,19 @@ class SearchBar
         await this.ready;
 
         const proxy = this.getSelectedProxy();
-        frame.contentWindow?.location.replace(this.createProxyUrl(term, proxy));
+        if (proxy.name === "scramjet") {
+            const controller = window.scramjet;
+            const existing = controller.frames?.find(
+                (f: any) => f.element === frame,
+            );
+            (existing ?? controller.createFrame(frame)).go(
+                this.normalizeTerm(term, proxy),
+            );
+        } else {
+            frame.contentWindow?.location.replace(
+                this.createProxyUrl(term, proxy),
+            );
+        }
         this.trackInternalVisit(term, proxy);
     }
 
@@ -187,7 +201,11 @@ class SearchBar
         await this.ready;
 
         const proxy = this.getSelectedProxy();
-        window.location.replace(this.createProxyUrl(term, proxy));
+        const url =
+            proxy.name === "scramjet"
+                ? this.normalizeTerm(term, proxy)
+                : this.createProxyUrl(term, proxy);
+        window.location.replace(url);
         this.trackInternalVisit(term, proxy);
     }
 }

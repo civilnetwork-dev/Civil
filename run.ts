@@ -7,31 +7,36 @@ import { start as startChii } from "chii";
 import compression from "compression";
 import express from "express";
 import { toNodeHandler } from "h3/node";
-
 import createRammerhead from "rammerhead";
+import { createDatabaseMiddleware } from "./misc/database/index";
 
-const transportModulePrefix = "node_modules/@mercuryworkshop";
-const { epoxyPath, libcurlPath, baremodulePath } = {
+const mwModulePrefix = "node_modules/@mercuryworkshop";
+const { epoxyPath, libcurlPath, bareTransportPath, scramjetControllerPath } = {
     epoxyPath: resolve(
         import.meta.dirname,
-        transportModulePrefix,
+        mwModulePrefix,
         "epoxy-transport/dist",
     ),
     libcurlPath: resolve(
         import.meta.dirname,
-        transportModulePrefix,
+        mwModulePrefix,
         "libcurl-transport/dist",
     ),
-    baremodulePath: resolve(
+    bareTransportPath: resolve(
         import.meta.dirname,
-        transportModulePrefix,
-        "bare-as-module3/dist",
+        mwModulePrefix,
+        "bare-transport/dist",
+    ),
+    scramjetControllerPath: resolve(
+        import.meta.dirname,
+        mwModulePrefix,
+        "scramjet-controller/dist",
     ),
 };
 
 import type {
+    ServerResponse as ExpressResponse,
     IncomingMessage as Request,
-    ServerResponse as Response,
     Server,
 } from "node:http";
 import type { Socket } from "node:net";
@@ -70,7 +75,11 @@ class RammerheadRouting {
         );
     }
 
-    static routeRequest(rammerhead: Server, req: Request, res: Response) {
+    static routeRequest(
+        rammerhead: Server,
+        req: Request,
+        res: ExpressResponse,
+    ) {
         rammerhead.emit("request", req, res);
     }
 
@@ -86,6 +95,13 @@ class RammerheadRouting {
 
 import { blue, yellow } from "picocolors";
 import { build } from "vite";
+import { useFilterBlockerMiddleware } from "./misc/filters/filterBlockerMiddleware";
+import { useFortiGuardMiddleware } from "./misc/filters/fortiguard/middleware";
+import { useGoGuardianMiddleware } from "./misc/filters/goguardian/middleware";
+// import { useLanSchoolMiddleware } from "./misc/filters/lanschool/air/middleware";
+import { useLinewizeMiddleware } from "./misc/filters/linewize/middleware";
+import { useSecurlyMiddleware } from "./misc/filters/securly/middleware";
+import { useSharedFilterMiddleware } from "./misc/filters/sharedMiddleware";
 
 if (!existsSync(resolve(import.meta.dirname, "dist"))) {
     console.log(yellow("no build found, building..."));
@@ -110,14 +126,29 @@ const GOOGLE_URL =
     "https://clients1.google.com/complete/search?hl=en&output=toolbar&q=";
 
 app.use(compression());
+app.use(express.json());
+app.use(createDatabaseMiddleware());
+
+useFilterBlockerMiddleware(app);
+useSharedFilterMiddleware(app, "/filterCheck");
+useSecurlyMiddleware(app);
+useGoGuardianMiddleware(app);
+useLinewizeMiddleware(app);
+// useLanSchoolMiddleware(app);
+useFortiGuardMiddleware(app);
 
 const servicePathMaps: Record<string, string> = {
     "/uv": uvPath,
     "/scramjet": scramjetPath,
+    "/scramjetController": scramjetControllerPath,
     "/epoxy": epoxyPath,
     "/libcurl": libcurlPath,
-    "/baremod": baremodulePath,
+    "/bare-transport": bareTransportPath,
     "/baremux": baremuxPath,
+    "/baremuxTransport": resolve(
+        import.meta.dirname,
+        "dist-config/baremux-transport",
+    ),
 };
 
 Object.entries(servicePathMaps).forEach(([route, path]) => {

@@ -49,6 +49,7 @@ const basePlugins = [
                 "run.ts",
                 "src",
                 "misc/apps",
+                "misc/filters",
                 "*.config.ts",
                 "types",
                 "patches",
@@ -238,6 +239,35 @@ await swBundle.close();
 
 for (const chunk of swOutput) {
     console.log(green(chunk.fileName));
+}
+
+const baremuxTransportBundle = await rollup({
+    input: "./baremux/transport.ts",
+    treeshake: {
+        propertyReadSideEffects: false,
+        unknownGlobalSideEffects: false,
+    },
+    plugins: [
+        ...basePlugins.slice(0, 1),
+        basePlugins[1],
+        nodeResolve({ browser: true }),
+        commonjs(),
+        basePlugins[3],
+    ],
+});
+
+const { output: baremuxOutput } = await baremuxTransportBundle.write({
+    dir: "../../dist-config/baremux-transport",
+    format: "es",
+    entryFileNames: "index.mjs",
+    compact: true,
+    generatedCode: { arrowFunctions: true, constBindings: true },
+});
+
+await baremuxTransportBundle.close();
+
+for (const chunk of baremuxOutput) {
+    console.log(green("baremux-transport/" + chunk.fileName));
 }
 
 await copyFile(

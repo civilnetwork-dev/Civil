@@ -39,3 +39,4 @@ pnpm-workspace.yaml
 *.tgz
 *.tar.gz
 *.node
+!misc/vite/files/*.node

@@ -18,10 +18,17 @@ export default function NewTabPage() {
                     </div>
                 </Show>
                 <p>
-                    It's <b>your</b>
+                    It's {"\u0020"}
+                    <b>your</b>
                     {"\u0020"}web proxy.
                 </p>
             </div>
+
+            <span>
+                Note that we now use AdMaven to help us earn from this site, as
+                it's open-source. You may get unnecessary advertisements at
+                times.
+            </span>
         </div>
     );
 }

@@ -1,0 +1,6 @@
+- [x] Implement ChromeOS support
+- [x] Finish the category bit parsing
+- [ ] Add Windows, macOS, & Securly Home/Pass/Flex support
+- [ ] Implement legacy extension support
+- [ ] Add support for more categories
+- [ ] Make an example

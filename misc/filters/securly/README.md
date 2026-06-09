@@ -1,0 +1,1 @@
+This is a comprehensive and feature-filled Securly Filter checker that checks the status of proxy links against Securly's Crextn API's. It doesn't include Zod schema validation due to Securly's isolation from other filters as a filter extension.

@@ -50,6 +50,12 @@ globalStyle(`.${welcomeText} p:hover`, {
     color: vars.color.sapphire,
 });
 
+globalStyle(`.${newtabRoot} span`, {
+    color: vars.color.lavender,
+    fontSize: "20px",
+    fontWeight: 400,
+});
+
 export const searchbarWrap = style({
     position: "relative",
     width: "100%",

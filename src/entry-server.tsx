@@ -4,10 +4,12 @@ import { router } from "./router";
 
 const proxyScripts = [
     "/wasm_dencode.js",
+    "/baremux/index.js",
     "/uv/uv.bundle.js",
     "/uv_config.js",
     "/uv/uv.sw.js",
-    "/scramjet/scramjet.all.js",
+    "/scramjet/scramjet.js",
+    "/scramjetController/controller.api.js",
     "/scramjet_init.js",
 ];
 
@@ -25,12 +27,7 @@ export default createHandler(() => (
                             name="viewport"
                             content="width=device-width, initial-scale=1"
                         />
-                        <meta
-                            name="monetag"
-                            content="f94d7876b7e462cd4c58ca3c9f3b3c7c"
-                        />
                         <link rel="icon" href="/favicon.ico" />
-                        {isProxy && <script src="/baremux/index.js" />}
                         {isProxy && (
                             <For each={proxyScripts}>
                                 {path => <script defer src={path()} />}

@@ -20,6 +20,7 @@ function RouteComponent() {
                 name="keywords"
                 content="Unblocking, Proxy, Securly, Iboss, Blocksi, Lightspeed, GoGuardian"
             />
+            <Meta name="admaven-placement" content="BqjkErjk8" />
             <NewTabPage />
         </>
     );
