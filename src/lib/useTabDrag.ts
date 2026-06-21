@@ -5,11 +5,10 @@ import {
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview";
 import { preventUnhandled } from "@atlaskit/pragmatic-drag-and-drop/prevent-unhandled";
+// biome-ignore lint/correctness/noUnusedImports: biome just stop dude
 import { reorder } from "@atlaskit/pragmatic-drag-and-drop/reorder";
 import { onCleanup } from "solid-js";
 import type { Tab } from "~/lib/TabManager";
-
-export { reorder };
 
 const TAB_DATA_KEY = "civil-tab-id";
 

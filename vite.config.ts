@@ -122,6 +122,9 @@ export default defineConfig(() => {
                     publicDir: "dist/client",
                 },
                 buildDir: "dist/nitro",
+                rolldownConfig: {
+                    external: ["@better-auth/kysely-adapter", "kysely"],
+                },
             }),
             vanillaExtract(),
             biome({

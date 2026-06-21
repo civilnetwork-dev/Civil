@@ -8,6 +8,34 @@
             "when": 1780887698267,
             "tag": "0000_supreme_falcon",
             "breakpoints": true
+        },
+        {
+            "idx": 1,
+            "version": "7",
+            "when": 1781120437455,
+            "tag": "0001_strange_supernaut",
+            "breakpoints": true
+        },
+        {
+            "idx": 2,
+            "version": "7",
+            "when": 1781405956877,
+            "tag": "0002_old_living_mummy",
+            "breakpoints": true
+        },
+        {
+            "idx": 3,
+            "version": "7",
+            "when": 1781475688981,
+            "tag": "0003_red_shen",
+            "breakpoints": true
+        },
+        {
+            "idx": 4,
+            "version": "7",
+            "when": 1781814404837,
+            "tag": "0004_sweet_purifiers",
+            "breakpoints": true
         }
     ]
 }

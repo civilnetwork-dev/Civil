@@ -1,7 +1,7 @@
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
 
-export enum BlocksiAction {
+enum BlocksiAction {
     Allow = 0,
     Block = 1,
     Warn = 2,
@@ -111,7 +111,7 @@ const DEFAULT_RATING_BASE_URL = "https://service1.blocksi.net";
 /**
  * Extracted from Blocksi extension categories.
  */
-export const BLOCKSI_CATEGORIES: Record<number, CategoryDefinition> = {
+const BLOCKSI_CATEGORIES: Record<number, CategoryDefinition> = {
     100: {
         id: 100,
         name: "Malicious Websites",
@@ -507,7 +507,7 @@ function createDecision(params: {
     };
 }
 
-export class BlocksiFilterChecker {
+class BlocksiFilterChecker {
     private readonly http: XiorInstance;
 
     private readonly options: Required<

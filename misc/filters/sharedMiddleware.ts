@@ -6,6 +6,7 @@ import {
     QueryBuilder,
 } from "patreon-api.ts";
 import { RateLimiterMemory, type RateLimiterRes } from "rate-limiter-flexible";
+import { posthog } from "./posthog";
 import "dotenv/config";
 import { auth } from "../database/auth";
 import { cached, sessionKey } from "../database/cache";
@@ -181,12 +182,11 @@ function createSharedFilterMiddleware(route: `/${string}`): RequestHandler {
             return next();
         }
 
+        let userId: string | null = null;
         try {
             const token = extractToken(req);
             const session = await resolveSession(token);
-            const userId = session?.user
-                ? (session.user as { id: string }).id
-                : null;
+            userId = session?.user ? (session.user as { id: string }).id : null;
 
             const dollarsPaid = userId ? await getPatreonDollars(userId) : 0;
             const points = calculateLimit(dollarsPaid);
@@ -213,6 +213,16 @@ function createSharedFilterMiddleware(route: `/${string}`): RequestHandler {
                 const retryAfterSeconds = Math.ceil(
                     rateLimitError.msBeforeNext / 1000,
                 );
+                posthog.capture({
+                    distinctId: userId ?? req.ip ?? "unknown",
+                    event: "filter_rate_limited",
+                    properties: {
+                        userId,
+                        ip: req.ip,
+                        route,
+                        retryAfterSeconds,
+                    },
+                });
                 res.setHeader("Retry-After", String(retryAfterSeconds));
                 res.setHeader("RateLimit-Remaining", "0");
                 return res
@@ -220,6 +230,16 @@ function createSharedFilterMiddleware(route: `/${string}`): RequestHandler {
                     .json({ error: "Too many requests", retryAfterSeconds });
             }
 
+            posthog.capture({
+                distinctId: userId ?? req.ip ?? "unknown",
+                event: "filter_middleware_error",
+                properties: {
+                    userId,
+                    ip: req.ip,
+                    route,
+                    error: String(error),
+                },
+            });
             return next(error);
         }
     };

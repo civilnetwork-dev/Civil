@@ -1,14 +1,17 @@
 import { BiRegularLeftArrowAlt, BiRegularRightArrowAlt } from "solid-icons/bi";
 import {
     TbOutlineArrowRight,
+    TbOutlineClock,
     TbOutlineLock,
     TbOutlineRefresh,
     TbOutlineSearch,
 } from "solid-icons/tb";
 import { createSignal, For, Show } from "solid-js";
+import { historySearch } from "~/api/history";
 import { displayUrl, isProbablyUrl, WS_URL } from "~/lib/browserHelpers";
 import { resolveUrl } from "~/lib/TabManager";
 import * as s from "~/styles/BrowserChrome.css";
+import type { CivilHistoryEntry } from "~/types";
 
 interface UrlBarProps {
     value: string;
@@ -26,6 +29,9 @@ export function UrlBar(props: UrlBarProps) {
     const [editing, setEditing] = createSignal(false);
     const [draft, setDraft] = createSignal("");
     const [suggestions, setSuggestions] = createSignal<string[]>([]);
+    const [historySuggestions, setHistorySuggestions] = createSignal<
+        CivilHistoryEntry[]
+    >([]);
     let ws: WebSocket | null = null;
     let inputRef: HTMLInputElement | undefined;
     let suppressBlur = false;
@@ -49,14 +55,19 @@ export function UrlBar(props: UrlBarProps) {
     const display = () =>
         editing() ? draft() : props.isNewtab ? "" : displayUrl(props.value);
 
+    const clearSuggestions = () => {
+        setSuggestions([]);
+        setHistorySuggestions([]);
+    };
+
     const commit = (value = draft()) => {
         const v = value.trim();
         if (!v) {
             setEditing(false);
-            setSuggestions([]);
+            clearSuggestions();
             return;
         }
-        setSuggestions([]);
+        clearSuggestions();
         setEditing(false);
         closeWs();
         const resolved = resolveUrl(v);
@@ -66,9 +77,13 @@ export function UrlBar(props: UrlBarProps) {
     const handleInput = (v: string) => {
         setDraft(v);
         if (!v) {
-            setSuggestions([]);
+            clearSuggestions();
             return;
         }
+        // History search always runs
+        historySearch(v)
+            .then(setHistorySuggestions)
+            .catch(() => setHistorySuggestions([]));
         if (!isProbablyUrl(v)) {
             openWs();
             if (ws?.readyState === WebSocket.OPEN)
@@ -128,7 +143,9 @@ export function UrlBar(props: UrlBarProps) {
                         s.urlbarOmnibox,
                         {
                             [s.urlbarOmniboxFocus]:
-                                editing() || suggestions().length > 0,
+                                editing() ||
+                                suggestions().length > 0 ||
+                                historySuggestions().length > 0,
                         },
                     ]}
                 >
@@ -157,13 +174,13 @@ export function UrlBar(props: UrlBarProps) {
                         onBlur={() => {
                             if (suppressBlur) return;
                             setEditing(false);
-                            setSuggestions([]);
+                            clearSuggestions();
                             closeWs();
                         }}
                         onKeyDown={e => {
                             if (e.key === "Enter") commit();
                             if (e.key === "Escape") {
-                                setSuggestions([]);
+                                clearSuggestions();
                                 setEditing(false);
                                 inputRef?.blur();
                             }
@@ -187,8 +204,72 @@ export function UrlBar(props: UrlBarProps) {
                     </button>
                 </div>
 
-                <Show when={suggestions().length > 0}>
+                <Show
+                    when={
+                        historySuggestions().length > 0 ||
+                        suggestions().length > 0
+                    }
+                >
                     <ul class={s.urlbarSuggestions}>
+                        <For each={historySuggestions()}>
+                            {entry => (
+                                <li
+                                    class={s.urlbarHistoryRow}
+                                    onMouseDown={() => {
+                                        suppressBlur = true;
+                                    }}
+                                    onClick={() => {
+                                        suppressBlur = false;
+                                        commit(entry().url);
+                                        inputRef?.blur();
+                                    }}
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter") {
+                                            suppressBlur = false;
+                                            commit(entry().url);
+                                            inputRef?.blur();
+                                        }
+                                    }}
+                                >
+                                    <Show
+                                        when={entry().favicon}
+                                        fallback={
+                                            <TbOutlineClock
+                                                size={14}
+                                                class={s.urlbarHistoryFavicon}
+                                            />
+                                        }
+                                    >
+                                        <img
+                                            src={entry().favicon}
+                                            class={s.urlbarHistoryFavicon}
+                                            alt=""
+                                            onError={e => {
+                                                (
+                                                    e.currentTarget as HTMLImageElement
+                                                ).style.display = "none";
+                                            }}
+                                        />
+                                    </Show>
+                                    <div class={s.urlbarHistoryInfo}>
+                                        <div class={s.urlbarHistoryTitle}>
+                                            {entry().title || entry().url}
+                                        </div>
+                                        <div class={s.urlbarHistoryUrl}>
+                                            {entry().url}
+                                        </div>
+                                    </div>
+                                </li>
+                            )}
+                        </For>
+                        <Show
+                            when={
+                                historySuggestions().length > 0 &&
+                                suggestions().length > 0
+                            }
+                        >
+                            <div class={s.urlbarSuggestionDivider} />
+                        </Show>
                         <For each={suggestions()}>
                             {suggestion => (
                                 <li

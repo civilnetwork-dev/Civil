@@ -1,7 +1,7 @@
 import { extensionsApplyToIframe } from "~/api/extensions";
 import { historyAdd } from "~/api/history";
 import { iframeSetCurrentSrc } from "~/api/iframe";
-import { displayUrl, normalizeNav } from "~/lib/browserHelpers";
+import { displayUrl, gstaticFavicon, normalizeNav } from "~/lib/browserHelpers";
 import { buildChiiInjectScript } from "~/lib/buildChiiInjectScript";
 import { trackVisit } from "~/lib/db";
 import type searchBar from "~/lib/SearchBar";
@@ -19,15 +19,19 @@ if (import.meta.hot) {
     });
 }
 
+function setNodeStylesToHidden(node: HTMLElement) {
+    node.style.setProperty("display", "none", "important");
+    node.style.setProperty("visibility", "hidden", "important");
+    node.style.setProperty("opacity", "0", "important");
+    node.style.setProperty("pointer-events", "none", "important");
+}
+
 function hideChiiGhostNodes(doc: Document): void {
     try {
         const ghostNodes = doc.querySelectorAll(".__chobitsu-hide__");
         ghostNodes.forEach(node => {
             if (!(node instanceof HTMLElement)) return;
-            node.style.setProperty("display", "none", "important");
-            node.style.setProperty("visibility", "hidden", "important");
-            node.style.setProperty("opacity", "0", "important");
-            node.style.setProperty("pointer-events", "none", "important");
+            setNodeStylesToHidden(node);
         });
     } catch {}
 }
@@ -43,18 +47,7 @@ function ensureChiiGhostCleanup(doc: Document): void {
                 if (!(node instanceof Element)) continue;
                 if (node.classList.contains("__chobitsu-hide__")) {
                     if (node instanceof HTMLElement) {
-                        node.style.setProperty("display", "none", "important");
-                        node.style.setProperty(
-                            "visibility",
-                            "hidden",
-                            "important",
-                        );
-                        node.style.setProperty("opacity", "0", "important");
-                        node.style.setProperty(
-                            "pointer-events",
-                            "none",
-                            "important",
-                        );
+                        setNodeStylesToHidden(node);
                     }
                     continue;
                 }
@@ -382,29 +375,23 @@ export function createIframeManager(
 
             try {
                 const docTitle = el.contentDocument?.title;
-                const favicon =
-                    el.contentDocument?.querySelector<HTMLLinkElement>(
-                        'link[rel*="icon"]',
-                    )?.href;
+                const tabUrl =
+                    tabManager.tabs.find(t => t.id === id)?.url ?? href;
+                const favicon = isInternalUrl(tabUrl)
+                    ? "/favicon.ico"
+                    : gstaticFavicon(normalizeNav(tabUrl));
+                const resolvedTitle =
+                    docTitle || displayUrl(tabUrl) || "Untitled";
                 tabManager.updateTab(id, {
                     isLoading: false,
-                    title:
-                        docTitle ||
-                        displayUrl(
-                            tabManager.tabs.find(t => t.id === id)?.url ?? "",
-                        ) ||
-                        "Untitled",
+                    title: resolvedTitle,
                     favicon,
                 });
 
                 if (!isInternalUrl(href)) {
-                    const tab = tabManager.tabs.find(t => t.id === id);
                     void historyAdd({
-                        url: href,
-                        title:
-                            docTitle ||
-                            displayUrl(tab?.url ?? href) ||
-                            "Untitled",
+                        url: tabUrl,
+                        title: resolvedTitle,
                         visitedAt: Date.now(),
                         favicon,
                     });

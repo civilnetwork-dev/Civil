@@ -9,6 +9,7 @@ import {
 } from "~/api/history";
 import * as s from "~/styles/HistoryPage.css";
 import type { CivilHistoryEntry, HistoryStorageMethod } from "~/types";
+import { Select } from "./ui/Select";
 
 export default function HistoryPage() {
     const [entries, setEntries] = createSignal<CivilHistoryEntry[]>([]);
@@ -49,18 +50,14 @@ export default function HistoryPage() {
             <div class={s.header}>
                 <span class={s.title}>History</span>
                 <div class={s.controls}>
-                    <select
-                        class={s.methodSelect}
+                    <Select
                         value={method()}
-                        onChange={e =>
-                            handleMethodChange(
-                                e.currentTarget.value as HistoryStorageMethod,
-                            )
-                        }
-                    >
-                        <option value="localstorage">localStorage</option>
-                        <option value="indexeddb">IndexedDB</option>
-                    </select>
+                        options={[
+                            { value: "localstorage", label: "localStorage" },
+                            { value: "indexeddb", label: "IndexedDB" },
+                        ]}
+                        onChange={handleMethodChange}
+                    />
                     <button
                         type="button"
                         class={s.clearBtn}

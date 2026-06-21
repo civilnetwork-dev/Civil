@@ -10,7 +10,7 @@
         "allowJs": true,
         "strict": true,
         "noEmit": true,
-        "types": ["bun", "serviceworker", "umami"],
+        "types": ["bun", "serviceworker"],
         "isolatedModules": true,
         "paths": {
             "~/*": ["src/*"],

@@ -8,7 +8,17 @@ import compression from "compression";
 import express from "express";
 import { toNodeHandler } from "h3/node";
 import createRammerhead from "rammerhead";
-import { createDatabaseMiddleware } from "./misc/database/index";
+import {
+    auth,
+    banUser,
+    cached,
+    createDatabaseMiddleware,
+    initBannedDomains,
+    isUserBanned,
+    matchBannedDomain,
+    redis,
+    sessionKey,
+} from "./misc/database/index";
 
 const mwModulePrefix = "node_modules/@mercuryworkshop";
 const { epoxyPath, libcurlPath, bareTransportPath, scramjetControllerPath } = {
@@ -47,6 +57,9 @@ import { XMLParser } from "fast-xml-parser";
 import sirv from "sirv";
 import { WebSocketServer } from "ws";
 import xior from "xior";
+import { createGoGuardianKeysRouter } from "./misc/goguardian-keys/api";
+import { createSchoolDistrictsRouter } from "./misc/school-districts/api";
+import { setupSchoolDistricts } from "./misc/school-districts/setup";
 
 class RammerheadRouting {
     static #scopes: string[] & { length: 15 } = [
@@ -95,6 +108,7 @@ class RammerheadRouting {
 
 import { blue, yellow } from "picocolors";
 import { build } from "vite";
+import { useBlocksiMiddleware } from "./misc/filters/blocksi/middleware";
 import { useFilterBlockerMiddleware } from "./misc/filters/filterBlockerMiddleware";
 import { useFortiGuardMiddleware } from "./misc/filters/fortiguard/middleware";
 import { useGoGuardianMiddleware } from "./misc/filters/goguardian/middleware";
@@ -117,16 +131,88 @@ const server = createServer((req, res) => {
 await startChii({
     server,
     basePath: "/chii/",
-    domain: process.env.CHII_DOMAIN ?? `localhost:${PORT}`,
+    domain: process.env.CHII_DOMAIN || `localhost:${PORT}`,
 });
 
 const wss = new WebSocketServer({ noServer: true });
+const wispWss = new WebSocketServer({ noServer: true });
+
+function buildWispClosePacket(streamId: number): Uint8Array {
+    const buf = new Uint8Array(6);
+    const view = new DataView(buf.buffer);
+    view.setUint8(0, 0x04);
+    view.setUint32(1, streamId, true);
+    view.setUint8(5, 0x48); // HostBlocked
+    return buf;
+}
+
+class TrackedWispConnection extends wisp.ServerConnection {
+    private _userId: string | null;
+
+    constructor(
+        ws: unknown,
+        path: string,
+        userId: string | null,
+        opts?: unknown,
+    ) {
+        super(ws, path, opts);
+        this._userId = userId;
+    }
+
+    override create_stream(
+        streamId: number,
+        type: number,
+        hostname: string,
+        port: number,
+    ) {
+        if (matchBannedDomain(`https://${hostname}`)) {
+            this._handleBannedDomain(streamId).catch(console.error);
+            return;
+        }
+        super.create_stream(streamId, type, hostname, port);
+    }
+
+    private async _handleBannedDomain(streamId: number) {
+        this.ws.ws.send(buildWispClosePacket(streamId));
+
+        if (!this._userId) return;
+
+        const key = `wisp:violations:${this._userId}`;
+        const count = await redis.incr(key);
+        await redis.expire(key, 86400);
+
+        if (count >= 5) {
+            await banUser(
+                this._userId,
+                "Repeatedly accessed restricted domains via proxy",
+            );
+            this.ws.close(1008, "Banned for accessing restricted content");
+        }
+    }
+}
 
 const GOOGLE_URL =
     "https://clients1.google.com/complete/search?hl=en&output=toolbar&q=";
 
+initBannedDomains().catch(err =>
+    console.error("Failed to load banned domains list:", err),
+);
+
+setupSchoolDistricts().catch(err =>
+    console.error("Failed to setup school districts:", err),
+);
+
+if (process.env.REVERSE_PROXY) {
+    app.set("trust proxy", 1);
+}
 app.use(compression());
 app.use(express.json());
+app.use((req, _res, next) => {
+    if (!req.headers["x-forwarded-for"] && !req.headers["x-real-ip"]) {
+        req.headers["x-forwarded-for"] = req.socket.remoteAddress ?? "";
+    }
+    next();
+});
 app.use(createDatabaseMiddleware());
 
 useFilterBlockerMiddleware(app);
@@ -136,6 +222,135 @@ useGoGuardianMiddleware(app);
 useLinewizeMiddleware(app);
 // useLanSchoolMiddleware(app);
 useFortiGuardMiddleware(app);
+useBlocksiMiddleware(app);
+
+app.get("/api/ip-location", async (req, res) => {
+    const raw =
+        (req.headers["x-forwarded-for"] as string | undefined)
+            ?.split(",")[0]
+            ?.trim() ||
+        (req.headers["x-real-ip"] as string | undefined) ||
+        req.socket.remoteAddress ||
+        "";
+    const ip = raw.replace(/^::ffff:/, "");
+    try {
+        const geoip = await import("doc999tor-fast-geoip");
+        const info = await geoip.default.lookup(ip);
+        if (!info)
+            return void res.status(404).json({ error: "Location not found" });
+        const [lat, lon] = info.ll as [number, number];
+        res.json({ lat, lon, city: info.city, country: info.country });
+    } catch {
+        res.status(500).json({ error: "GeoIP lookup failed" });
+    }
+});
+
+app.use("/api/school-districts", createSchoolDistrictsRouter());
+app.use("/api/goguardian", createGoGuardianKeysRouter());
+
+app.use("/health", (_req, res) => res.json({ ok: true }));
+
+app.get("/api/favicon", async (req, res) => {
+    const url = req.query.url as string | undefined;
+    const size = (req.query.size as string | undefined) ?? "32";
+    if (!url) return void res.status(400).end();
+    try {
+        const parsed = new URL(url);
+        if (
+            parsed.hostname === "localhost" ||
+            parsed.hostname === "127.0.0.1" ||
+            parsed.hostname.endsWith(".local")
+        ) {
+            return void res.redirect(301, "/favicon.ico");
+        }
+    } catch {}
+    try {
+        const { data, status, headers } = await xior.get<ArrayBuffer>(
+            "https://t2.gstatic.com/faviconV2",
+            {
+                params: {
+                    client: "SOCIAL",
+                    type: "FAVICON",
+                    fallback_opts: ["TYPE", "SIZE", "URL"].join(","),
+                    url,
+                    size,
+                },
+                responseType: "arraybuffer",
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (compatible; CivilProxy/1.0)",
+                },
+                validateStatus: () => true,
+            },
+        );
+        if (status !== 200) return void res.status(404).end();
+        res.set(
+            "Content-Type",
+            (headers as unknown as Record<string, string>)["content-type"] ??
+                "image/png",
+        );
+        res.set("Cache-Control", "public, max-age=86400, immutable");
+        res.end(Buffer.from(data));
+    } catch {
+        res.status(404).end();
+    }
+});
+
+app.use("/api/check-banned", (req, res) => {
+    const url = req.query.url as string | undefined;
+    if (!url) return res.json({ banned: false });
+    const matched = matchBannedDomain(url);
+    return res.json({ banned: matched !== null });
+});
+
+app.use("/api/violations", async (req, res) => {
+    const bearer = req.headers.authorization?.replace("Bearer ", "");
+    const token =
+        bearer ??
+        req.headers.cookie
+            ?.split(";")
+            .find(c => c.trim().startsWith("better-auth.session_token="))
+            ?.split("=")[1]
+            ?.trim();
+
+    if (!token) {
+        return res.json({
+            authenticated: false,
+            banned: false,
+            violations: 0,
+            maxViolations: 5,
+        });
+    }
+
+    const session = await auth.api
+        .getSession({
+            headers: new Headers({
+                cookie: `better-auth.session_token=${token}`,
+                authorization: `Bearer ${token}`,
+            }),
+        })
+        .catch(() => null);
+
+    if (!session?.user) {
+        return res.json({
+            authenticated: false,
+            banned: false,
+            violations: 0,
+            maxViolations: 5,
+        });
+    }
+
+    const user = session.user;
+    const raw = await redis.get(`wisp:violations:${user.id}`).catch(() => null);
+
+    return res.json({
+        authenticated: true,
+        banned: Boolean(user.isBanned),
+        banReason: user.banReason ?? null,
+        bannedAt: user.bannedAt ?? null,
+        violations: parseInt(raw ?? "0", 10),
+        maxViolations: 5,
+    });
+});
 
 const servicePathMaps: Record<string, string> = {
     "/uv": uvPath,
@@ -215,19 +430,73 @@ function shouldRouteWisp(req: Request) {
 
 logging.set_level(logging.ERROR);
 
-server.on("upgrade", (req: Request, socket: Socket, head: Buffer) => {
-    if (RammerheadRouting.shouldRoute(req)) {
-        RammerheadRouting.routeUpgrade(rammerhead, req, socket, head);
-    } else if (bare.shouldRoute(req)) {
-        bare.routeUpgrade(req, socket, head).catch(console.error);
-    } else if (shouldRouteWisp(req)) {
-        wisp.routeRequest(req, socket, head);
-    } else if (req.url?.endsWith("/suggestions")) {
-        wss.handleUpgrade(req, socket, head, ws => {
-            wss.emit("connection", ws, req);
-        });
-    } else {
-        return;
+server.on("upgrade", async (req: Request, socket: Socket, head: Buffer) => {
+    try {
+        if (RammerheadRouting.shouldRoute(req)) {
+            RammerheadRouting.routeUpgrade(rammerhead, req, socket, head);
+        } else if (bare.shouldRoute(req)) {
+            bare.routeUpgrade(req, socket, head).catch(console.error);
+        } else if (shouldRouteWisp(req)) {
+            const token =
+                req.headers.authorization?.replace("Bearer ", "") ||
+                req.headers.cookie
+                    ?.split(";")
+                    .find(c =>
+                        c.trim().startsWith("better-auth.session_token="),
+                    )
+                    ?.split("=")[1]
+                    ?.trim();
+            const session = token
+                ? await cached(
+                      sessionKey(token),
+                      () =>
+                          auth.api.getSession({
+                              headers: new Headers({
+                                  cookie: `better-auth.session_token=${token}`,
+                                  authorization: `Bearer ${token}`,
+                              }),
+                          }),
+                      60,
+                  ).catch(() => null)
+                : null;
+            const userId =
+                (session?.user as { id?: string } | undefined)?.id ?? null;
+
+            if (userId && (await isUserBanned(userId))) {
+                socket.write(
+                    "HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n",
+                );
+                socket.destroy();
+                return;
+            }
+
+            const connOpts = {
+                wisp_version:
+                    req.headers["sec-websocket-protocol"] &&
+                    wisp.options.wisp_version === 2
+                        ? 2
+                        : 1,
+            };
+
+            wispWss.handleUpgrade(req, socket, head, ws => {
+                const conn = new TrackedWispConnection(
+                    ws,
+                    req.url!,
+                    userId,
+                    connOpts,
+                );
+                conn.setup()
+                    .then(() => conn.run())
+                    .catch(console.error);
+            });
+        } else if (req.url?.endsWith("/suggestions")) {
+            wss.handleUpgrade(req, socket, head, ws => {
+                wss.emit("connection", ws, req);
+            });
+        }
+    } catch (err) {
+        console.error("WebSocket upgrade error:", err);
+        socket.destroy();
     }
 });
 

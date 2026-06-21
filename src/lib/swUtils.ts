@@ -54,19 +54,31 @@ async function waitForServiceWorkerController(
 }
 
 function trackFilterInformation(data: SwResponseMessage): void {
-    if (!isProductionHost()) return;
-
     if (data.type === "CHECK_FILTERS_RESULT") {
-        window.umami?.track("Filter information", {
-            filters: data.filters,
-        });
+        if (isProductionHost()) {
+            window.posthog.capture("Filter information", {
+                filters: data.filters,
+            });
+        }
+
+        localStorage.setItem("detectedFilters", JSON.stringify(data.filters));
+        window.dispatchEvent(
+            new CustomEvent("detectedFiltersUpdated", {
+                detail: data.filters,
+            }),
+        );
 
         return;
     }
 
-    window.umami?.track("Filter information error", {
-        message: data.message,
-    });
+    if (isProductionHost()) {
+        window.posthog.captureException(data.message);
+    }
+
+    localStorage.setItem("detectedFilters", JSON.stringify([]));
+    window.dispatchEvent(
+        new CustomEvent("detectedFiltersUpdated", { detail: [] }),
+    );
 }
 
 async function requestFilterCheck(
@@ -116,18 +128,6 @@ async function registerSw(): Promise<void> {
     }
 }
 
-async function unregisterSw(): Promise<void> {
-    if (!("serviceWorker" in navigator)) return;
-
-    const registrations = await navigator.serviceWorker.getRegistrations();
-
-    await Promise.all(
-        registrations.map(async registration => {
-            await registration.unregister();
-        }),
-    );
-}
-
 async function setupBareMux(): Promise<void> {
     const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
     const bareServerUrl = `${location.origin}/bare/`;
@@ -153,4 +153,4 @@ async function setupBareMux(): Promise<void> {
     });
 }
 
-export { registerSw, setupBareMux, unregisterSw };
+export { registerSw, setupBareMux };

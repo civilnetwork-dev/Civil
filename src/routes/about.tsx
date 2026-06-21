@@ -13,7 +13,7 @@ function RouteComponent() {
                 name="description"
                 content="Learn about Civil Proxy — an open-source web proxy built for speed, privacy, and freedom."
             />
-            <h1>About</h1>
+            <h1>This isn't finished yet. It will be soon!</h1>
         </main>
     );
 }

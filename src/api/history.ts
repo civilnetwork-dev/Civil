@@ -77,3 +77,26 @@ export function historySetMethod(method: HistoryStorageMethod): void {
 export function historyGetMethod(): HistoryStorageMethod {
     return getMethod();
 }
+
+export async function historySearch(
+    query: string,
+    limit = 6,
+): Promise<CivilHistoryEntry[]> {
+    const q = query.toLowerCase();
+    const all = await historyGetAll();
+    const seen = new Set<string>();
+    const out: CivilHistoryEntry[] = [];
+    for (const entry of all) {
+        if (out.length >= limit) break;
+        if (/\/~\/(uv|scramjet)\//.test(entry.url)) continue;
+        if (seen.has(entry.url)) continue;
+        if (
+            entry.url.toLowerCase().includes(q) ||
+            (entry.title ?? "").toLowerCase().includes(q)
+        ) {
+            seen.add(entry.url);
+            out.push(entry);
+        }
+    }
+    return out;
+}

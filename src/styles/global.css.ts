@@ -18,6 +18,10 @@ globalStyle("body", {
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
 });
 
+globalStyle("button, input, textarea, select", {
+    fontFamily: "inherit",
+});
+
 globalStyle("*::-webkit-scrollbar", {
     display: "none",
 });

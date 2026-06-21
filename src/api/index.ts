@@ -72,7 +72,7 @@ async function getIDB(): Promise<IDBDatabase> {
     return _dbRef;
 }
 
-export const civil = {
+const civil = {
     browser: {
         /**
          * Manage proxied app shortcuts pinned to the apps page.

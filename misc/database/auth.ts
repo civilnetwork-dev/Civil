@@ -17,6 +17,14 @@ export const auth = betterAuth({
     secret: process.env.BETTER_AUTH_SECRET!,
     baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:9876",
     basePath: "/api/auth",
+    advanced: {
+        database: {
+            generateId: "uuid",
+        },
+        ipAddress: {
+            ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
+        },
+    },
     plugins: [
         anonymous(),
         genericOAuth({
@@ -38,9 +46,15 @@ export const auth = betterAuth({
     },
     user: {
         additionalFields: {
+            isAnonymous: {
+                type: "boolean",
+                defaultValue: false,
+                returned: true,
+            },
+            isAdmin: { type: "boolean", defaultValue: false, returned: true },
             isBanned: { type: "boolean", defaultValue: false, returned: true },
-            banReason: { type: "string", nullable: true, returned: true },
-            bannedAt: { type: "date", nullable: true, returned: true },
+            banReason: { type: "string", required: false, returned: true },
+            bannedAt: { type: "date", required: false, returned: true },
         },
     },
     telemetry: {

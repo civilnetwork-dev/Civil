@@ -1,3 +1,4 @@
+import { createRoot, createSignal } from "solid-js";
 import type { CivilBookmark } from "~/types";
 
 const LS_KEY = "civil-bookmarks";
@@ -10,12 +11,24 @@ function load(): CivilBookmark[] {
     }
 }
 
-function save(bookmarks: CivilBookmark[]): void {
-    localStorage.setItem(LS_KEY, JSON.stringify(bookmarks));
+function save(bms: CivilBookmark[]): void {
+    localStorage.setItem(LS_KEY, JSON.stringify(bms));
 }
 
+const [bookmarks, setBookmarks] = createRoot(() =>
+    createSignal<CivilBookmark[]>(typeof window !== "undefined" ? load() : []),
+);
+
+if (typeof window !== "undefined") {
+    window.addEventListener("storage", e => {
+        if (e.key === LS_KEY) setBookmarks(load());
+    });
+}
+
+export { bookmarks };
+
 export function bookmarksGetAll(): CivilBookmark[] {
-    return load();
+    return bookmarks();
 }
 
 export function bookmarksAdd(
@@ -30,20 +43,22 @@ export function bookmarksAdd(
         favicon,
         addedAt: Date.now(),
     };
-    const all = load();
-    all.push(bookmark);
-    save(all);
+    const next = [...bookmarks(), bookmark];
+    save(next);
+    setBookmarks(next);
     return bookmark;
 }
 
 export function bookmarksRemove(id: string): void {
-    save(load().filter(b => b.id !== id));
+    const next = bookmarks().filter(b => b.id !== id);
+    save(next);
+    setBookmarks(next);
 }
 
 export function bookmarksIsBookmarked(url: string): boolean {
-    return load().some(b => b.url === url);
+    return bookmarks().some(b => b.url === url);
 }
 
 export function bookmarksGetByUrl(url: string): CivilBookmark | null {
-    return load().find(b => b.url === url) ?? null;
+    return bookmarks().find(b => b.url === url) ?? null;
 }

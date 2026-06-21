@@ -3,17 +3,21 @@ import {
     boolean,
     index,
     pgTable,
+    serial,
     text,
     timestamp,
+    uniqueIndex,
     uuid,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    name: text("name").notNull().default(""),
-    email: text("email").notNull().unique(),
+    name: text("name"),
+    email: text("email").unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
+    isAnonymous: boolean("is_anonymous").notNull().default(false),
+    isAdmin: boolean("is_admin").notNull().default(false),
     isBanned: boolean("is_banned").notNull().default(false),
     banReason: text("ban_reason"),
     bannedAt: timestamp("banned_at", { withTimezone: true }),
@@ -59,7 +63,6 @@ export const accounts = pgTable("accounts", {
         withTimezone: true,
     }),
     scope: text("scope"),
-    password: text("password"),
     createdAt: timestamp("created_at", { withTimezone: true })
         .notNull()
         .defaultNow(),
@@ -89,6 +92,7 @@ export const visits = pgTable(
             .notNull()
             .references(() => users.id, { onDelete: "cascade" }),
         url: text("url").notNull(),
+        ipAddress: text("ip_address"),
         visitedAt: timestamp("visited_at", { withTimezone: true })
             .notNull()
             .defaultNow(),
@@ -99,6 +103,32 @@ export const visits = pgTable(
     ],
 );
 
+export const goguardianManifestKeys = pgTable(
+    "goguardian_manifest_keys",
+    {
+        id: serial("id").primaryKey(),
+        manifestKey: text("manifest_key").notNull(),
+        extensionId: text("extension_id").notNull(),
+        schoolDistrictLeaId: text("school_district_lea_id"),
+        schoolDistrictName: text("school_district_name"),
+        submittedByUserId: uuid("submitted_by_user_id").references(
+            () => users.id,
+            { onDelete: "set null" },
+        ),
+        submittedAt: timestamp("submitted_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    },
+    t => [
+        uniqueIndex("goguardian_manifest_keys_extension_id_idx").on(
+            t.extensionId,
+        ),
+        index("goguardian_manifest_keys_lea_id_idx").on(t.schoolDistrictLeaId),
+    ],
+);
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Visit = typeof visits.$inferSelect;
+export type GoGuardianManifestKey = typeof goguardianManifestKeys.$inferSelect;

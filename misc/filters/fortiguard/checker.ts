@@ -82,7 +82,7 @@ const FortiGuardRatingSchema = z.union([
     }),
 ]);
 
-export const FORTIGUARD_CATEGORY_GROUPS: Record<number, string> = {
+const FORTIGUARD_CATEGORY_GROUPS: Record<number, string> = {
     0: "Unrated",
     1: "Potentially Liable",
     2: "Adult/Mature Content",
@@ -92,10 +92,7 @@ export const FORTIGUARD_CATEGORY_GROUPS: Record<number, string> = {
     7: "General Interest - Business",
 };
 
-export const FORTIGUARD_CATEGORIES: Record<
-    number,
-    { name: string; group: string }
-> = {
+const FORTIGUARD_CATEGORIES: Record<number, { name: string; group: string }> = {
     0: {
         name: "Not Rated",
         group: FORTIGUARD_CATEGORY_GROUPS[0],

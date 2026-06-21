@@ -138,6 +138,75 @@ async function injectChiiPreamble(response: Response): Promise<Response> {
     }
 }
 
+const SCRAMJET_PREFIX = "/~/scramjet/";
+
+function decodeScramjetUrl(s: string): string {
+    const b: number[] = [];
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === "%" && i + 2 < s.length) {
+            b.push(parseInt(s.slice(i + 1, i + 3), 16));
+            i += 2;
+        } else b.push(s.charCodeAt(i));
+    }
+    for (let i = 1; i < b.length; i += 2) b[i] ^= 2;
+    try {
+        return decodeURIComponent(String.fromCharCode(...b));
+    } catch {
+        return s;
+    }
+}
+
+function decodeProxiedUrl(encodedUrl: string): string | null {
+    try {
+        const origin = self.location.origin;
+        const uvPrefix = self.__uv$config.prefix as string;
+
+        if (encodedUrl.startsWith(origin + uvPrefix)) {
+            const encoded = encodedUrl.slice((origin + uvPrefix).length);
+            return self.__uv$config.decodeUrl!(encoded.split("?")[0]);
+        } else if (encodedUrl.startsWith(origin + SCRAMJET_PREFIX)) {
+            const afterPrefix = encodedUrl
+                .slice((origin + SCRAMJET_PREFIX).length)
+                .split("?")[0];
+            const segments = afterPrefix.split("/").filter(Boolean);
+            const lastSegment = segments[segments.length - 1];
+            if (!lastSegment) return null;
+            return decodeScramjetUrl(lastSegment);
+        }
+    } catch {}
+    return null;
+}
+
+const bannedCache = new Map<string, { banned: boolean; expiresAt: number }>();
+
+async function checkBanned(originalUrl: string): Promise<boolean> {
+    let hostname: string;
+    try {
+        hostname = new URL(originalUrl).hostname
+            .toLowerCase()
+            .replace(/^www\./, "");
+    } catch {
+        return false;
+    }
+
+    const cached = bannedCache.get(hostname);
+    if (cached && Date.now() < cached.expiresAt) return cached.banned;
+
+    try {
+        const res = await fetch(
+            `/api/check-banned?url=${encodeURIComponent(originalUrl)}`,
+        );
+        const data: { banned: boolean } = await res.json();
+        bannedCache.set(hostname, {
+            banned: data.banned,
+            expiresAt: Date.now() + 5 * 60 * 1000,
+        });
+        return data.banned;
+    } catch {
+        return false;
+    }
+}
+
 async function swResponse(event: FetchEvent) {
     const { request } = event;
     const url = new URL(request.url);
@@ -153,12 +222,34 @@ async function swResponse(event: FetchEvent) {
 
     const { uv } = await ready;
 
+    const originalUrl = decodeProxiedUrl(request.url);
+    if (originalUrl && (await checkBanned(originalUrl))) {
+        if (request.mode === "navigate") {
+            let hostname = originalUrl;
+            try {
+                hostname = new URL(originalUrl).hostname;
+            } catch {}
+            return Response.redirect(
+                `${self.location.origin}/ban?reason=${encodeURIComponent(`${hostname} is restricted by this proxy`)}`,
+                302,
+            );
+        }
+        return new Response(null, { status: 403 });
+    }
+
     if (
         request.url.startsWith(self.location.origin + self.__uv$config.prefix)
     ) {
         const response = await uv.fetch(event);
         return injectChiiPreamble(response);
-    } else if (($scramjetController as any).shouldRoute(event)) {
+    } else if (
+        request.url.startsWith(
+            self.location.origin +
+                (($scramjetController as any).config?.prefix ??
+                    SCRAMJET_PREFIX),
+        ) &&
+        ($scramjetController as any).shouldRoute(event)
+    ) {
         const response = (await ($scramjetController as any).route(
             event,
         )) as Response;
@@ -327,7 +418,6 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
     const data = event.data as { type?: string } | undefined;
 
     if (data?.type !== "CHECK_FILTERS") {
-        console.warn("Wrong event type:", data?.type);
         return;
     }
 

@@ -162,9 +162,7 @@ function toBrokerDecision(value: string): BrokerResponse["decision"] {
     }
 }
 
-export function parseBrokerResponse(
-    input: string | null | undefined,
-): BrokerResponse {
+function parseBrokerResponse(input: string | null | undefined): BrokerResponse {
     const raw = input?.trim() || DEFAULT_BROKER_ERROR_RESPONSE;
 
     const fields = raw.split(":");

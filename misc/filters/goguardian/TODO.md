@@ -1,1 +1,1 @@
-- [ ] Make an example
+- [x] Make an example

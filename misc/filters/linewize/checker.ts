@@ -4,9 +4,9 @@ import xior, { type XiorError, type XiorInstance } from "xior";
 import { z } from "zod";
 import { getLatestLinewizeConnectVersion } from "./getLatestVersion";
 
-export const LINEWIZE_CONNECT_CHROME_ID = "ddfbkhpmcdbciejenfcolaaiebnjcbfc";
+const LINEWIZE_CONNECT_CHROME_ID = "ddfbkhpmcdbciejenfcolaaiebnjcbfc";
 
-export const LINEWIZE_REGIONS = [
+const LINEWIZE_REGIONS = [
     "beta-1",
     "sit",
     "syd-1",
@@ -162,7 +162,7 @@ export function generateDeviceId(): string {
     return cachedGeneratedDeviceId;
 }
 
-export function getConfigurationGatewayUrl(region: LinewizeRegion): string {
+function getConfigurationGatewayUrl(region: LinewizeRegion): string {
     return `https://configuration-gw.${region}.linewize.net`;
 }
 
@@ -406,7 +406,7 @@ async function fetchLinewizeConfigForRegion(options: {
     });
 }
 
-export function discoverLinewizeConfig(
+function discoverLinewizeConfig(
     config: AutoLinewizeCheckerConfig,
     client: XiorInstance = xior.create(),
 ): ResultAsync<LinewizeDiscoveredConfig, CheckerError> {
@@ -510,7 +510,7 @@ export function createAutoLinewizeFilterChecker(
     });
 }
 
-export class LinewizeFilterChecker {
+class LinewizeFilterChecker {
     private readonly client: XiorInstance;
     private readonly config: Required<
         Omit<LinewizeCheckerConfig, "authToken">

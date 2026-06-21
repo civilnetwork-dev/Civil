@@ -116,6 +116,9 @@ export const domainItem = style({
 });
 
 export const loadingText = style({
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
     color: vars.color.overlay1,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "16px",
@@ -137,5 +140,119 @@ export const endText = style({
     fontWeight: 400,
     textAlign: "center",
     padding: "16px 0",
+    cursor: "default",
+});
+
+export const statusSection = style({
+    width: "100%",
+    maxWidth: "680px",
+});
+
+export const strikeCard = style({
+    background: vars.color.surface0,
+    border: `1px solid ${vars.color.surface1}`,
+    borderRadius: "12px",
+    padding: "16px 20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+});
+
+export const strikeHeader = style({
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+});
+
+export const strikeLabel = style({
+    color: vars.color.subtext1,
+    fontFamily: '"Rubik", sans-serif',
+    fontSize: "14px",
+    fontWeight: 500,
+    cursor: "default",
+});
+
+export const strikeCount = style({
+    color: vars.color.text,
+    fontFamily: '"Rubik", sans-serif',
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "default",
+});
+
+export const strikeTrack = style({
+    height: "6px",
+    borderRadius: "999px",
+    background: vars.color.surface1,
+    overflow: "hidden",
+});
+
+export const strikeFill = style({
+    height: "100%",
+    borderRadius: "999px",
+    background: "var(--fill-color, #a6e3a1)",
+    transition: "width 0.3s ease",
+});
+
+export const policyText = style({
+    color: vars.color.overlay1,
+    fontFamily: '"Rubik", sans-serif',
+    fontSize: "12px",
+    fontWeight: 400,
+    lineHeight: "1.5",
+    margin: 0,
+    cursor: "default",
+});
+
+export const bannedBanner = style({
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "14px",
+    background: `color-mix(in srgb, ${vars.color.red} 12%, ${vars.color.surface0})`,
+    border: `1px solid ${vars.color.red}`,
+    borderRadius: "12px",
+    padding: "16px 20px",
+});
+
+export const bannedIcon = style({
+    width: "28px",
+    height: "28px",
+    flexShrink: 0,
+    color: vars.color.red,
+});
+
+export const loadingIcon = style({
+    width: "16px",
+    height: "16px",
+    flexShrink: 0,
+});
+
+export const bannedInfo = style({
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+});
+
+export const bannedTitle = style({
+    color: vars.color.red,
+    fontFamily: '"Rubik", sans-serif',
+    fontSize: "15px",
+    fontWeight: 600,
+    cursor: "default",
+});
+
+export const bannedReason = style({
+    color: vars.color.subtext0,
+    fontFamily: '"Rubik", sans-serif',
+    fontSize: "13px",
+    fontWeight: 400,
+    cursor: "default",
+});
+
+export const bannedDate = style({
+    color: vars.color.overlay1,
+    fontFamily: '"Rubik", sans-serif',
+    fontSize: "12px",
+    fontWeight: 400,
     cursor: "default",
 });

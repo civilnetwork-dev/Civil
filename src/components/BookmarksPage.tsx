@@ -4,8 +4,8 @@ import {
     TbOutlineWorld,
     TbOutlineX,
 } from "solid-icons/tb";
-import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
-import { bookmarksGetAll, bookmarksRemove } from "~/api/bookmarks";
+import { createMemo, createSignal, For, Show } from "solid-js";
+import { bookmarks, bookmarksRemove } from "~/api/bookmarks";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/BookmarksPage.css";
 import type { CivilBookmark } from "~/types";
@@ -32,15 +32,8 @@ function BookmarkFavicon(props: { favicon?: string }) {
 }
 
 export default function BookmarksPage() {
-    const [bookmarks, setBookmarks] = createSignal<CivilBookmark[]>([]);
     const [search, setSearch] = createSignal("");
     const [filter, setFilter] = createSignal<"all" | "recent">("all");
-
-    onSettled(() => {
-        setBookmarks(bookmarksGetAll());
-    });
-
-    const refresh = () => setBookmarks(bookmarksGetAll());
 
     const filtered = createMemo(() => {
         let list = bookmarks();
@@ -71,14 +64,10 @@ export default function BookmarksPage() {
     const handleRemove = (e: MouseEvent, id: string) => {
         e.stopPropagation();
         bookmarksRemove(id);
-        refresh();
     };
 
     const handleClearAll = () => {
-        filtered().forEach(b => {
-            bookmarksRemove(b.id);
-        });
-        refresh();
+        for (const b of filtered()) bookmarksRemove(b.id);
     };
 
     return (

@@ -1,6 +1,10 @@
 import type { Tab } from "~/lib/TabManager";
 import { BROWSER_URLS } from "~/lib/TabManager";
 
+export function gstaticFavicon(url: string, size = 32): string {
+    return `/api/favicon?url=${encodeURIComponent(url)}&size=${size}`;
+}
+
 export const WS_URL = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/suggestions`;
 
 export function displayUrl(raw: string): string {
@@ -29,7 +33,7 @@ export function normalizeNav(term: string): string {
     return term;
 }
 
-export interface TabHistoryEntry {
+interface TabHistoryEntry {
     stack: string[];
     cursor: number;
 }

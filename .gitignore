@@ -1,3 +1,6 @@
+# Docker Persistent Data
+data/
+
 # Generated Directories & Files
 dist-config
 dist
@@ -39,4 +42,4 @@ pnpm-workspace.yaml
 *.tgz
 *.tar.gz
 *.node
-!misc/vite/files/*.node
+*.sqlite

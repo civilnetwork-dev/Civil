@@ -538,6 +538,6 @@ export const chromeWebRequest = {
     },
 };
 
-export function emitChromeEvent(event: string, ...args: unknown[]): void {
+function emitChromeEvent(event: string, ...args: unknown[]): void {
     emit(event, ...args);
 }

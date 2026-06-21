@@ -8,7 +8,7 @@ const TAB_R = "10px";
 
 const spinAnim = keyframes({ to: { transform: "rotate(360deg)" } });
 
-export const suggInAnim = keyframes({
+const suggInAnim = keyframes({
     from: { opacity: 0 },
     to: { opacity: 1 },
 });
@@ -392,7 +392,7 @@ export const urlbarGoBtn = style({
 
 export const urlbarSuggestions = style({
     position: "absolute",
-    top: "100%",
+    top: "calc(100% - 1.5px)",
     left: "-1.5px",
     right: "-1.5px",
     background: vars.color.mantle,
@@ -433,6 +433,60 @@ globalStyle(
     },
 );
 
+export const urlbarHistoryRow = style({
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "6px 12px",
+    fontSize: "12.5px",
+    fontFamily: "inherit",
+    cursor: "pointer",
+    transition: `background ${T_FAST}`,
+    selectors: {
+        "& + &": { borderTop: `1px solid ${vars.color.surface0}` },
+        "&:hover": { background: vars.color.surface0 },
+    },
+});
+
+export const urlbarHistoryFavicon = style({
+    width: "14px",
+    height: "14px",
+    borderRadius: "3px",
+    objectFit: "contain",
+    flexShrink: 0,
+    color: vars.color.overlay1,
+});
+
+export const urlbarHistoryInfo = style({
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "1px",
+});
+
+export const urlbarHistoryTitle = style({
+    color: vars.color.text,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    fontSize: "12.5px",
+});
+
+export const urlbarHistoryUrl = style({
+    color: vars.color.subtext0,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    fontSize: "11px",
+});
+
+export const urlbarSuggestionDivider = style({
+    height: "1px",
+    background: vars.color.surface1,
+    margin: "2px 0",
+});
+
 export const browserViewport = style({
     flex: 1,
     minHeight: 0,
@@ -446,11 +500,15 @@ export const browserFrame = style({
     width: "100%",
     height: "100%",
     border: "none",
-    display: "none",
+    visibility: "hidden",
+    pointerEvents: "none",
     background: "#fff",
 });
 
-export const browserFrameActive = style({ display: "block" });
+export const browserFrameActive = style({
+    visibility: "visible",
+    pointerEvents: "auto",
+});
 
 export const browserEmpty = style({
     display: "flex",

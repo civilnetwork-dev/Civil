@@ -13,16 +13,23 @@ export async function cached<T>(
     ttl = 300,
     tags: string[] = [],
 ): Promise<T> {
-    const hit = await redis.getBuffer(key);
-    if (hit) return decode(hit) as T;
+    try {
+        const hit = await redis.getBuffer(key);
+        if (hit) return decode(hit) as T;
+    } catch {
+        return fn();
+    }
 
     const value = await fn();
-    const buf = Buffer.from(encode(value));
-    await redis.set(key, buf, "EX", ttl);
 
-    for (const tag of tags) {
-        await redis.sadd(`tag:${tag}`, key);
-    }
+    try {
+        const buf = Buffer.from(encode(value));
+        await redis.set(key, buf, "EX", ttl);
+
+        for (const tag of tags) {
+            await redis.sadd(`tag:${tag}`, key);
+        }
+    } catch {}
 
     return value;
 }

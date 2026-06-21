@@ -50,7 +50,7 @@ export function createDatabaseMiddleware() {
         const { url } = req.body as { url?: string };
         if (!url) return void res.status(400).json({ error: "url required" });
 
-        await recordVisit(userId, url);
+        await recordVisit(userId, url, req.ip ?? null);
         res.json({ ok: true });
     });
 

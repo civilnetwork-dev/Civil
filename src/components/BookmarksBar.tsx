@@ -1,15 +1,14 @@
 import { FaRegularBookmark, FaSolidBookmark } from "solid-icons/fa";
 import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
-import { createSignal, For, onSettled, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import {
+    bookmarks,
     bookmarksAdd,
-    bookmarksGetAll,
     bookmarksIsBookmarked,
     bookmarksRemove,
 } from "~/api/bookmarks";
 import { isNewtabUrl } from "~/lib/TabManager";
 import * as s from "~/styles/BookmarksBar.css";
-import type { CivilBookmark } from "~/types";
 
 function BookmarkFavicon(props: { favicon?: string }) {
     const [failed, setFailed] = createSignal(false);
@@ -40,39 +39,27 @@ interface BookmarksBarProps {
 }
 
 export default function BookmarksBar(props: BookmarksBarProps) {
-    const [bookmarks, setBookmarks] = createSignal<CivilBookmark[]>([]);
     const isNewtab = () => isNewtabUrl(props.activeUrl);
     const isBookmarked = () =>
         !isNewtab() && bookmarksIsBookmarked(props.activeUrl);
 
-    onSettled(() => {
-        setBookmarks(bookmarksGetAll());
-    });
-
-    const refresh = () => setBookmarks(bookmarksGetAll());
-
     const handleAdd = () => {
         if (isNewtab() || !props.activeUrl) return;
         if (isBookmarked()) {
-            const b = bookmarksGetAll().find(b => b.url === props.activeUrl);
-            if (b) {
-                bookmarksRemove(b.id);
-                refresh();
-            }
+            const b = bookmarks().find(b => b.url === props.activeUrl);
+            if (b) bookmarksRemove(b.id);
         } else {
             bookmarksAdd(
                 props.activeUrl,
                 props.activeTitle,
                 props.activeFavicon,
             );
-            refresh();
         }
     };
 
     const handleRemove = (e: MouseEvent, id: string) => {
         e.stopPropagation();
         bookmarksRemove(id);
-        refresh();
     };
 
     return (

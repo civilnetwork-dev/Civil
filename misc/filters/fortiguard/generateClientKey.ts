@@ -2,7 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 let cachedClientKey: string | undefined;
 
-export function generateClientKey(bytes = 32): string {
+function generateClientKey(bytes = 32): string {
     return randomBytes(bytes).toString("hex");
 }
 
@@ -23,7 +23,7 @@ export function rotateClientKey(bytes = 32): string {
     return cachedClientKey;
 }
 
-export function signClientKey(clientKey: string, secret: string): string {
+function signClientKey(clientKey: string, secret: string): string {
     return createHmac("sha256", secret).update(clientKey).digest("hex");
 }
 

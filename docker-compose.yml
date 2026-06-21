@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: civil
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: civil
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U civil -d civil"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --save 60 1 --loglevel warning
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${PORT:-9876}:9876"
+    volumes:
+      - ./data/school-districts:/app/misc/school-districts/data
+    environment:
+      PORT: 9876
+      REVERSE_PROXY: "true"
+      DATABASE_URL: postgresql://civil:${DB_PASSWORD}@postgres:5432/civil
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      PATREON_CLIENT_ID: ${PATREON_CLIENT_ID}
+      PATREON_CLIENT_SECRET: ${PATREON_CLIENT_SECRET}
+      CHII_DOMAIN: ${CHII_DOMAIN:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9876/health 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  drizzle-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4983:4983"
+    environment:
+      DATABASE_URL: postgresql://civil:${DB_PASSWORD}@postgres:5432/civil
+    command: ["sh", "-c", "bun run db:studio"]
+

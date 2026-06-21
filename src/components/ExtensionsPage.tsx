@@ -1,5 +1,6 @@
 import {
     TbOutlineLink,
+    TbOutlineLoader,
     TbOutlinePuzzle,
     TbOutlineUpload,
     TbOutlineX,
@@ -158,7 +159,7 @@ export default function ExtensionsPage() {
                             </>
                         }
                     >
-                        Installing…
+                        <TbOutlineLoader size={14} /> Installing
                     </Show>
                 </button>
                 <label class={s.uploadBtnLabel}>

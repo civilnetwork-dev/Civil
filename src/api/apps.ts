@@ -1,3 +1,4 @@
+import { gstaticFavicon } from "~/lib/browserHelpers";
 import type { CivilApp } from "~/types";
 
 const LS_KEY = "civil-apps";
@@ -30,22 +31,8 @@ async function fetchWithCors(url: string): Promise<Response> {
 }
 
 async function fetchIcon(pageUrl: string): Promise<string | null> {
-    console.log("[civil/apps] fetchIcon() for:", pageUrl);
     try {
-        const res = await fetchWithCors(pageUrl);
-        const html = await res.text();
-        const doc = new DOMParser().parseFromString(html, "text/html");
-
-        const iconEl = doc.querySelector<HTMLLinkElement>(
-            'link[rel~="icon"], link[rel~="apple-touch-icon"], link[rel~="shortcut"]',
-        );
-        const href = iconEl?.getAttribute("href");
-        const iconUrl = href
-            ? new URL(href, pageUrl).href
-            : `${new URL(pageUrl).origin}/favicon.ico`;
-
-        console.log("[civil/apps] fetchIcon(): raw icon url:", iconUrl);
-        return await compressIcon(iconUrl);
+        return await compressIcon(gstaticFavicon(pageUrl, 64));
     } catch (e) {
         console.warn("[civil/apps] fetchIcon() failed:", e);
         return null;

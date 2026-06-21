@@ -1,4 +1,5 @@
 import type { Express, RequestHandler } from "express";
+import { posthog } from "./posthog";
 
 type Domain = `${string}.${string}`;
 
@@ -64,6 +65,11 @@ export function createFilterBlockerMiddleware(options?: {
         const hostname = normalizeHostname(rawHost);
 
         if (isBlockedHostname(hostname, domains)) {
+            posthog.capture({
+                distinctId: req.ip ?? "unknown",
+                event: "filter_hostname_blocked",
+                properties: { hostname },
+            });
             res.status(403).json({
                 blocked: true,
                 reason: "Requested hostname matches a blocked domain.",

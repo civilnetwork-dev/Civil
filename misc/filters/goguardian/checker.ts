@@ -2,6 +2,7 @@ import { err, ok, ResultAsync } from "neverthrow";
 import { getDomain } from "tldts";
 import xior, { type XiorError } from "xior";
 import { z } from "zod";
+import { generateGoGuardianAuthToken } from "./generateAuthToken";
 
 export type GoGuardianVerdict = "ALLOW" | "BLOCK" | "UNKNOWN";
 
@@ -10,11 +11,9 @@ export type GoGuardianError =
     | { type: "NETWORK"; message: string; status?: number; body?: unknown }
     | { type: "PARSE"; message: string; body?: unknown };
 
-export interface GoGuardianAuthCheckerOptions {
-    authToken: string;
-    extensionVersion: string;
-    timeoutMs?: number;
-}
+export type GoGuardianAuthCheckerOptions =
+    | { authToken: string; extensionVersion: string; timeoutMs?: number }
+    | { orgRands: string[]; extensionVersion: string; timeoutMs?: number };
 
 export interface GoGuardianCheckInput {
     url: string;
@@ -46,9 +45,16 @@ const ProxyModelSchema = z.looseObject({
     proxy_keywords: z.array(z.string()).optional(),
 });
 
+const ThreatLevelSchema = z.looseObject({
+    keywords: z.array(z.string()).optional(),
+});
+
 const ThreatsModelSchema = z.looseObject({
     keywords: z.array(z.string()).optional(),
     threat_keywords: z.array(z.string()).optional(),
+    medium: ThreatLevelSchema.optional(),
+    high: ThreatLevelSchema.optional(),
+    veryHigh: ThreatLevelSchema.optional(),
 });
 
 function normalizeUrl(input: string): URL | null {
@@ -82,6 +88,20 @@ function matchKeywords(content: string, keywords: string[]): string[] {
     return keywords.filter(keyword => includesKeyword(content, keyword));
 }
 
+function resolveAuthToken(
+    options: GoGuardianAuthCheckerOptions,
+): ResultAsync<string, GoGuardianError> {
+    if ("authToken" in options) {
+        return ResultAsync.fromSafePromise(Promise.resolve(options.authToken));
+    }
+
+    return generateGoGuardianAuthToken({
+        orgRands: options.orgRands,
+        extensionVersion: options.extensionVersion,
+        timeoutMs: options.timeoutMs,
+    });
+}
+
 export function checkGoGuardianFilterAuthenticated(
     input: GoGuardianCheckInput,
     options: GoGuardianAuthCheckerOptions,
@@ -100,133 +120,140 @@ export function checkGoGuardianFilterAuthenticated(
         ).andThen(x => x);
     }
 
-    const client = xior.create({
-        timeout: options.timeoutMs ?? 10_000,
-        headers: {
-            Authorization: options.authToken,
-            "Comprand-Authorization": options.authToken,
-            extensionversion: options.extensionVersion,
-            accept: "application/json",
-        },
-    });
+    return resolveAuthToken(options).andThen(authToken => {
+        const client = xior.create({
+            timeout: options.timeoutMs ?? 10_000,
+            headers: {
+                Authorization: authToken,
+                "Comprand-Authorization": authToken,
+                extensionversion: options.extensionVersion,
+                accept: "application/json",
+            },
+        });
 
-    const fetchProxyVersion = ResultAsync.fromPromise(
-        client.get(
-            "https://snat.goguardian.com/api/v1/ext/smart-filtering/models/proxies/version/current",
-        ),
-        toNetworkError,
-    ).andThen(res => {
-        const parsed = VersionSchema.safeParse(res.data);
+        const fetchProxyVersion = ResultAsync.fromPromise(
+            client.get(
+                "https://snat.goguardian.com/api/v1/ext/smart-filtering/models/proxies/version/current",
+            ),
+            toNetworkError,
+        ).andThen(res => {
+            const parsed = VersionSchema.safeParse(res.data);
 
-        return parsed.success
-            ? ok(parsed.data.version)
-            : err({
-                  type: "PARSE" as const,
-                  message: "Invalid proxy model version response.",
-                  body: res.data,
-              });
-    });
+            return parsed.success
+                ? ok(parsed.data.version)
+                : err({
+                      type: "PARSE" as const,
+                      message: "Invalid proxy model version response.",
+                      body: res.data,
+                  });
+        });
 
-    const fetchThreatsVersion = ResultAsync.fromPromise(
-        client.get(
-            "https://snat.goguardian.com/api/v1/ext/smart-filtering/models/threats/version/current",
-        ),
-        toNetworkError,
-    ).andThen(res => {
-        const parsed = VersionSchema.safeParse(res.data);
+        const fetchThreatsVersion = ResultAsync.fromPromise(
+            client.get(
+                "https://snat.goguardian.com/api/v1/ext/smart-filtering/models/threats/version/current",
+            ),
+            toNetworkError,
+        ).andThen(res => {
+            const parsed = VersionSchema.safeParse(res.data);
 
-        return parsed.success
-            ? ok(parsed.data.version)
-            : err({
-                  type: "PARSE" as const,
-                  message: "Invalid threats model version response.",
-                  body: res.data,
-              });
-    });
+            return parsed.success
+                ? ok(parsed.data.version)
+                : err({
+                      type: "PARSE" as const,
+                      message: "Invalid threats model version response.",
+                      body: res.data,
+                  });
+        });
 
-    return fetchProxyVersion.andThen(proxyVersion =>
-        fetchThreatsVersion.andThen(threatsVersion =>
-            ResultAsync.fromPromise(
-                Promise.all([
-                    client.get(
-                        `https://snat.goguardian.com/api/v1/ext/smart-filtering/models/proxies/${proxyVersion}/model.json`,
-                    ),
-                    client.get(
-                        `https://snat.goguardian.com/api/v1/ext/smart-filtering/models/threats/${threatsVersion}/model.json`,
-                    ),
-                ]),
-                toNetworkError,
-            ).andThen(([proxyRes, threatsRes]) => {
-                const proxyParsed = ProxyModelSchema.safeParse(proxyRes.data);
-                const threatsParsed = ThreatsModelSchema.safeParse(
-                    threatsRes.data,
-                );
+        return fetchProxyVersion.andThen(proxyVersion =>
+            fetchThreatsVersion.andThen(threatsVersion =>
+                ResultAsync.fromPromise(
+                    Promise.all([
+                        client.get(
+                            `https://snat.goguardian.com/api/v1/ext/smart-filtering/models/proxies/${proxyVersion}/model.json`,
+                        ),
+                        client.get(
+                            `https://snat.goguardian.com/api/v1/ext/smart-filtering/models/threats/${threatsVersion}/model.json`,
+                        ),
+                    ]),
+                    toNetworkError,
+                ).andThen(([proxyRes, threatsRes]) => {
+                    const proxyParsed = ProxyModelSchema.safeParse(
+                        proxyRes.data,
+                    );
+                    const threatsParsed = ThreatsModelSchema.safeParse(
+                        threatsRes.data,
+                    );
 
-                if (!proxyParsed.success) {
-                    return err({
-                        type: "PARSE" as const,
-                        message: "Invalid proxy model response.",
-                        body: proxyRes.data,
+                    if (!proxyParsed.success) {
+                        return err({
+                            type: "PARSE" as const,
+                            message: "Invalid proxy model response.",
+                            body: proxyRes.data,
+                        });
+                    }
+
+                    if (!threatsParsed.success) {
+                        return err({
+                            type: "PARSE" as const,
+                            message: "Invalid threats model response.",
+                            body: threatsRes.data,
+                        });
+                    }
+
+                    const searchableText = [
+                        normalized.href,
+                        normalized.hostname,
+                        getDomain(normalized.hostname) ?? "",
+                        input.title ?? "",
+                        input.text ?? "",
+                    ]
+                        .join(" ")
+                        .toLowerCase();
+
+                    const proxyKeywords = proxyParsed.data.proxy_keywords ?? [];
+
+                    const threatKeywords = [
+                        ...(threatsParsed.data.keywords ?? []),
+                        ...(threatsParsed.data.threat_keywords ?? []),
+                        ...(threatsParsed.data.medium?.keywords ?? []),
+                        ...(threatsParsed.data.high?.keywords ?? []),
+                        ...(threatsParsed.data.veryHigh?.keywords ?? []),
+                    ];
+
+                    const matchedProxyKeywords = matchKeywords(
+                        searchableText,
+                        proxyKeywords,
+                    );
+
+                    const matchedThreatKeywords = matchKeywords(
+                        searchableText,
+                        threatKeywords,
+                    );
+
+                    const verdict: GoGuardianVerdict =
+                        matchedProxyKeywords.length > 0 ||
+                        matchedThreatKeywords.length > 0
+                            ? "BLOCK"
+                            : "UNKNOWN";
+
+                    return ok({
+                        inputUrl: input.url,
+                        normalizedUrl: normalized.href,
+                        hostname: normalized.hostname,
+                        domain: getDomain(normalized.hostname),
+                        verdict,
+                        matchedProxyKeywords,
+                        matchedThreatKeywords,
+                        proxyModelVersion: proxyVersion,
+                        threatsModelVersion: threatsVersion,
+                        rawModels: {
+                            proxy: proxyRes.data,
+                            threats: threatsRes.data,
+                        },
                     });
-                }
-
-                if (!threatsParsed.success) {
-                    return err({
-                        type: "PARSE" as const,
-                        message: "Invalid threats model response.",
-                        body: threatsRes.data,
-                    });
-                }
-
-                const searchableText = [
-                    normalized.href,
-                    normalized.hostname,
-                    getDomain(normalized.hostname) ?? "",
-                    input.title ?? "",
-                    input.text ?? "",
-                ]
-                    .join(" ")
-                    .toLowerCase();
-
-                const proxyKeywords = proxyParsed.data.proxy_keywords ?? [];
-
-                const threatKeywords = [
-                    ...(threatsParsed.data.keywords ?? []),
-                    ...(threatsParsed.data.threat_keywords ?? []),
-                ];
-
-                const matchedProxyKeywords = matchKeywords(
-                    searchableText,
-                    proxyKeywords,
-                );
-
-                const matchedThreatKeywords = matchKeywords(
-                    searchableText,
-                    threatKeywords,
-                );
-
-                const verdict: GoGuardianVerdict =
-                    matchedProxyKeywords.length > 0 ||
-                    matchedThreatKeywords.length > 0
-                        ? "BLOCK"
-                        : "UNKNOWN";
-
-                return ok({
-                    inputUrl: input.url,
-                    normalizedUrl: normalized.href,
-                    hostname: normalized.hostname,
-                    domain: getDomain(normalized.hostname),
-                    verdict,
-                    matchedProxyKeywords,
-                    matchedThreatKeywords,
-                    proxyModelVersion: proxyVersion,
-                    threatsModelVersion: threatsVersion,
-                    rawModels: {
-                        proxy: proxyRes.data,
-                        threats: threatsRes.data,
-                    },
-                });
-            }),
-        ),
-    );
+                }),
+            ),
+        );
+    });
 }

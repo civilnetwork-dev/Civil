@@ -1,5 +1,6 @@
 export { auth } from "./auth";
-export { cached, invalidate, invalidateTag, redis } from "./cache";
+export { initBannedDomains, matchBannedDomain } from "./bannedDomains";
+export { cached, invalidate, invalidateTag, redis, sessionKey } from "./cache";
 export { db } from "./db";
 export { createDatabaseMiddleware } from "./middleware";
 export * from "./models/user";

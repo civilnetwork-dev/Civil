@@ -1,11 +1,42 @@
 import { createSchema, createYoga } from "graphql-yoga";
+import { auth } from "./auth";
+import { cached, sessionKey } from "./cache";
 import { banUser, getUser, isUserBanned, unbanUser } from "./models/user";
 import { recordVisit } from "./models/visit";
+
+type AdminUser = { isAdmin?: boolean };
+
+async function resolveSession(token: string | undefined) {
+    if (!token) return null;
+    return cached(
+        sessionKey(token),
+        () =>
+            auth.api.getSession({
+                headers: new Headers({
+                    cookie: `better-auth.session_token=${token}`,
+                    authorization: `Bearer ${token}`,
+                }),
+            }),
+        60,
+    ).catch(() => null);
+}
+
+function extractToken(request: Request): string | undefined {
+    const bearer = request.headers.get("authorization")?.replace("Bearer ", "");
+    if (bearer) return bearer;
+    return request.headers
+        .get("cookie")
+        ?.split(";")
+        .find(c => c.trim().startsWith("better-auth.session_token="))
+        ?.split("=")[1]
+        ?.trim();
+}
 
 const schema = createSchema({
     typeDefs: `
         type User {
             id: ID!
+            isAdmin: Boolean!
             isBanned: Boolean!
             banReason: String
             bannedAt: String
@@ -46,12 +77,26 @@ const schema = createSchema({
                     return { ok: false, error: (err as Error).message };
                 }
             },
-            banUser: (
+            banUser: async (
                 _: unknown,
                 { userId, reason }: { userId: string; reason: string },
-            ) => banUser(userId, reason),
-            unbanUser: (_: unknown, { userId }: { userId: string }) =>
-                unbanUser(userId),
+                ctx: { session: Awaited<ReturnType<typeof resolveSession>> },
+            ) => {
+                if (!(ctx.session?.user as AdminUser | undefined)?.isAdmin) {
+                    throw new Error("Forbidden: admin privileges required");
+                }
+                return banUser(userId, reason);
+            },
+            unbanUser: async (
+                _: unknown,
+                { userId }: { userId: string },
+                ctx: { session: Awaited<ReturnType<typeof resolveSession>> },
+            ) => {
+                if (!(ctx.session?.user as AdminUser | undefined)?.isAdmin) {
+                    throw new Error("Forbidden: admin privileges required");
+                }
+                return unbanUser(userId);
+            },
         },
     },
 });
@@ -61,4 +106,9 @@ export const yoga = createYoga({
     graphqlEndpoint: "/graphql",
     landingPage: false,
     logging: false,
+    context: async ({ request }) => {
+        const token = extractToken(request);
+        const session = await resolveSession(token);
+        return { session };
+    },
 });

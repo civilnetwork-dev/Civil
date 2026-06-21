@@ -46,7 +46,7 @@ export function isInternalUrl(url: string): boolean {
     return Object.values(BROWSER_URLS).some(v => url === v);
 }
 
-export type TabManagerEvents = {
+type TabManagerEvents = {
     tabAdded: (tab: Tab) => void;
     tabRemoved: (id: string) => void;
     tabActivated: (id: string) => void;
@@ -54,7 +54,7 @@ export type TabManagerEvents = {
     tabMoved: (id: string, toIndex: number) => void;
 };
 
-export class TabManager extends EventEmitter<TabManagerEvents> {
+class TabManager extends EventEmitter<TabManagerEvents> {
     private _tabs: Tab[] = [];
     private _activeId: string | null = null;
 

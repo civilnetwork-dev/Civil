@@ -5,12 +5,6 @@ import { auth } from "../../misc/database/auth";
 import { cached, sessionKey } from "../../misc/database/cache";
 import { getUser } from "../../misc/database/models/user";
 import { recordVisit } from "../../misc/database/models/visit";
-import type { User } from "../../misc/database/schema";
-
-export interface AuthenticatedContext {
-    user: User;
-    trackVisit: (url: string) => Promise<void>;
-}
 
 function extractTokenFromHeaders(headers: Headers): string | undefined {
     const bearer = headers.get("authorization")?.replace("Bearer ", "");
@@ -36,19 +30,17 @@ async function getSessionFromRequest() {
     ).catch(() => null);
 }
 
-export async function getAuthenticatedContext(): Promise<AuthenticatedContext | null> {
-    const session = await getSessionFromRequest();
-    if (!session?.user) return null;
-
-    const userId = (session.user as { id: string }).id;
-    const user = await getUser(userId);
-    if (!user || user.isBanned) return null;
-
-    return {
-        user,
-        trackVisit: (url: string) =>
-            recordVisit(userId, url).then(() => void 0),
-    };
+function extractIp(): string | null {
+    try {
+        const req = getWebRequest();
+        return (
+            req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+            req?.headers.get("x-real-ip") ??
+            null
+        );
+    } catch {
+        return null;
+    }
 }
 
 export async function trackVisit(url: string): Promise<{
@@ -82,6 +74,6 @@ export async function trackVisit(url: string): Promise<{
         return { ok: false, userBanned: true, banReason: user.banReason };
     }
 
-    await recordVisit(userId, url);
+    await recordVisit(userId, url, extractIp());
     return { ok: true, userBanned: false, banReason: null };
 }

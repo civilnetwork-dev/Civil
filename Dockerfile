@@ -24,4 +24,4 @@ ENV REVERSE_PROXY=true
 
 EXPOSE 9876
 
-CMD ["bun", "run", "start"]
+CMD ["sh", "-c", "bun run db:migrate && bun run start"]

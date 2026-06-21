@@ -59,7 +59,7 @@ export function getImplMeta(impl: string): ImplMetadata {
     return IMPL_METADATA["Civil C++/WebAssembly encoding method"];
 }
 
-export const FONT = '"Rubik", sans-serif';
+const FONT = '"Rubik", sans-serif';
 
 export const axisBase = {
     axisLine: { lineStyle: { color: colors.surface2 } },

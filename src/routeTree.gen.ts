@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as NewtabRouteImport } from './routes/newtab'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
+import { Route as CheckfiltersRouteImport } from './routes/checkfilters'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as BenchmarksRouteImport } from './routes/benchmarks'
 import { Route as BaninfoRouteImport } from './routes/baninfo'
@@ -33,6 +34,11 @@ const HistoryRoute = HistoryRouteImport.update({
 const ExtensionsRoute = ExtensionsRouteImport.update({
   id: '/extensions',
   path: '/extensions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckfiltersRoute = CheckfiltersRouteImport.update({
+  id: '/checkfilters',
+  path: '/checkfilters',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookmarksRoute = BookmarksRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/baninfo': typeof BaninfoRoute
   '/benchmarks': typeof BenchmarksRoute
   '/bookmarks': typeof BookmarksRoute
+  '/checkfilters': typeof CheckfiltersRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
   '/newtab': typeof NewtabRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/baninfo': typeof BaninfoRoute
   '/benchmarks': typeof BenchmarksRoute
   '/bookmarks': typeof BookmarksRoute
+  '/checkfilters': typeof CheckfiltersRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
   '/newtab': typeof NewtabRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/baninfo': typeof BaninfoRoute
   '/benchmarks': typeof BenchmarksRoute
   '/bookmarks': typeof BookmarksRoute
+  '/checkfilters': typeof CheckfiltersRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
   '/newtab': typeof NewtabRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/baninfo'
     | '/benchmarks'
     | '/bookmarks'
+    | '/checkfilters'
     | '/extensions'
     | '/history'
     | '/newtab'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/baninfo'
     | '/benchmarks'
     | '/bookmarks'
+    | '/checkfilters'
     | '/extensions'
     | '/history'
     | '/newtab'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/baninfo'
     | '/benchmarks'
     | '/bookmarks'
+    | '/checkfilters'
     | '/extensions'
     | '/history'
     | '/newtab'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   BaninfoRoute: typeof BaninfoRoute
   BenchmarksRoute: typeof BenchmarksRoute
   BookmarksRoute: typeof BookmarksRoute
+  CheckfiltersRoute: typeof CheckfiltersRoute
   ExtensionsRoute: typeof ExtensionsRoute
   HistoryRoute: typeof HistoryRoute
   NewtabRoute: typeof NewtabRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/solid-router' {
       path: '/extensions'
       fullPath: '/extensions'
       preLoaderRoute: typeof ExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkfilters': {
+      id: '/checkfilters'
+      path: '/checkfilters'
+      fullPath: '/checkfilters'
+      preLoaderRoute: typeof CheckfiltersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookmarks': {
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   BaninfoRoute: BaninfoRoute,
   BenchmarksRoute: BenchmarksRoute,
   BookmarksRoute: BookmarksRoute,
+  CheckfiltersRoute: CheckfiltersRoute,
   ExtensionsRoute: ExtensionsRoute,
   HistoryRoute: HistoryRoute,
   NewtabRoute: NewtabRoute,
