@@ -56,7 +56,7 @@ async function waitForServiceWorkerController(
 function trackFilterInformation(data: SwResponseMessage): void {
     if (data.type === "CHECK_FILTERS_RESULT") {
         if (isProductionHost()) {
-            window.posthog.capture("Filter information", {
+            window.posthog?.capture("Filter information", {
                 filters: data.filters,
             });
         }
@@ -72,7 +72,7 @@ function trackFilterInformation(data: SwResponseMessage): void {
     }
 
     if (isProductionHost()) {
-        window.posthog.captureException(data.message);
+        window.posthog?.captureException(data.message);
     }
 
     localStorage.setItem("detectedFilters", JSON.stringify([]));

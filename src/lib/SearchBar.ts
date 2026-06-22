@@ -169,7 +169,7 @@ class SearchBar
             return;
         }
 
-        window.posthog.capture(
+        window.posthog?.capture(
             "Internal site visit",
             this.isAbsoluteUrl(term)
                 ? { url: proxy.value.decodeUrl!(term) }

@@ -25,8 +25,8 @@ export default function NewTabPage() {
             </div>
 
             <span>
-                Note that we now use AdMaven to help us earn from this site, as
-                it's open-source. You may get unnecessary advertisements at
+                Note that we now use HilltopAds to help us earn from this site,
+                as it's open-source. You may get unnecessary advertisements at
                 times.
             </span>
         </div>

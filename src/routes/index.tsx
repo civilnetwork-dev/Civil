@@ -11,10 +11,37 @@ export const Route = createFileRoute("/")({
 
 function RouteComponent() {
     onSettled(() => {
-        const script = document.createElement("script");
-        script.dataset.cfasync = "false";
-        script.src = "https://dcbbwymp1bhlf.cloudfront.net/?wbbcd=1361688";
-        document.head.appendChild(script);
+        if (document.getElementById("__civil_deliciouslip__")) return;
+
+        try {
+            for (const k of Object.keys(localStorage)) {
+                if (k.startsWith("kad") || k.startsWith("__ipcnt")) {
+                    localStorage.removeItem(k);
+                }
+            }
+        } catch {}
+
+        const last = document.scripts[document.scripts.length - 1];
+        const s = document.createElement("script") as HTMLScriptElement & {
+            settings?: Record<string, unknown>;
+        };
+        s.id = "__civil_deliciouslip__";
+        s.settings = {
+            freq: {
+                pagelim: 10,
+                qty: 6,
+                period: 86400,
+                distance: 90,
+                context: "domain",
+                max: 0,
+            },
+            soundOn: false,
+        };
+        s.src =
+            "https://deliciouslip.com/b/XBVjs.d/G/lH0RYqWCcs/OecmJ9GuVZIUflhkAP/Twczw/OXDOc/1aOlTaMRtuNdzEAr4LNcz/U/5TNgwA";
+        s.async = true;
+        s.referrerPolicy = "no-referrer-when-downgrade";
+        last.parentNode!.insertBefore(s, last);
     });
 
     return (
