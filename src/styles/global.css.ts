@@ -9,6 +9,13 @@ globalStyle("*, *::before, *::after", {
     boxSizing: "border-box",
 });
 
+globalStyle("*, *::before, *::after", {
+    transitionDuration: "0s !important",
+    transitionDelay: "0s !important",
+    animationDuration: "0s !important",
+    animationDelay: "0s !important",
+});
+
 globalStyle("html, body", {
     backgroundColor: vars.color.base,
     overflowX: "hidden",

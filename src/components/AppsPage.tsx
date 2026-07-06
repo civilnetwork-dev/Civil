@@ -1,6 +1,6 @@
 import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
-import { createSignal, For, onSettled, Show } from "solid-js";
-import { appsAdd, appsGetAll, appsRemove } from "~/api/apps";
+import { createSignal, For, Show } from "solid-js";
+import { apps, appsAdd, appsRemove } from "~/api/apps";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/AppsPage.css";
 import type { CivilApp } from "~/types";
@@ -27,14 +27,9 @@ function AppIcon(props: { icon: string | null; name: string }) {
 }
 
 export default function AppsPage() {
-    const [apps, setApps] = createSignal<CivilApp[]>([]);
     const [input, setInput] = createSignal("");
     const [adding, setAdding] = createSignal(false);
     const [addError, setAddError] = createSignal<string | null>(null);
-
-    onSettled(() => {
-        setApps(appsGetAll());
-    });
 
     const handleAdd = async () => {
         const raw = input().trim();
@@ -49,7 +44,6 @@ export default function AppsPage() {
                 url = `https://${url}`;
             }
             await appsAdd(url);
-            setApps(appsGetAll());
             setInput("");
         } catch (e) {
             setAddError(e instanceof Error ? e.message : "Failed to add app");
@@ -71,7 +65,6 @@ export default function AppsPage() {
     const handleRemove = (e: MouseEvent, id: string) => {
         e.stopPropagation();
         appsRemove(id);
-        setApps(appsGetAll());
     };
 
     return (

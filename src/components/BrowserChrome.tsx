@@ -8,6 +8,7 @@ import {
     onSettled,
     Show,
 } from "solid-js";
+import { extensionCivilTabIdFromChromeId } from "~/api/extensionRuntime";
 import BookmarksBar from "~/components/BookmarksBar";
 import { ChiiPanel } from "~/components/ChiiPanel";
 import { useContextMenu } from "~/components/ContextMenu";
@@ -47,7 +48,8 @@ export default function BrowserChrome() {
     const [showSearch, setShowSearch] = createSignal(false);
     const [chiiOpen, setChiiOpen] = createSignal(false);
 
-    const { getHistory, pushHistory, canBack, canForward } = createTabHistory();
+    const { pushHistory, back, forward, canBack, canForward } =
+        createTabHistory();
     const { iframeMap, navigateIframe, navigate, registerIframe } =
         createIframeManager(bar, pushHistory);
 
@@ -181,6 +183,215 @@ export default function BrowserChrome() {
         };
         document.addEventListener("browser:navigate", onBrowserNavigate);
 
+        // Debug: log events from extension shims
+        const onCivilDebug = (e: Event) => {
+            console.log("[civil-debug]", (e as CustomEvent).detail);
+        };
+        window.addEventListener("__civilDebug", onCivilDebug);
+
+        // Dedup guard: prevents infinite-loop if background calls tabs.create
+        // repeatedly for the same page before the first one finishes building.
+        const _pendingExtPages = new Set<string>();
+
+        const onBrowserNewTab = async (e: Event) => {
+            const { url } = (e as CustomEvent<{ url?: string }>).detail ?? {};
+            console.log("[Civil] browser:newtab fired, url=", url);
+
+            if (url) {
+                const origin = window.location.origin;
+
+                let extId: string | undefined;
+                let pagePath: string | undefined;
+                let hashSearch = "";
+
+                // Pattern (a): same-origin /civil-ext/{extId}/{page}.html
+                const civilMatch = /^\/civil-ext\/([^/]+)\/(.+\.html?)/.exec(
+                    (() => {
+                        try {
+                            return new URL(url, origin).pathname;
+                        } catch {
+                            return "";
+                        }
+                    })(),
+                );
+                if (civilMatch && url.startsWith(origin)) {
+                    extId = civilMatch[1];
+                    pagePath = civilMatch[2];
+                    try {
+                        const u = new URL(url, origin);
+                        hashSearch = u.search + u.hash;
+                    } catch {}
+                }
+
+                // Pattern (b): chrome-extension://{extId}/{page}.html[#hash]
+                if (!extId) {
+                    const ceMatch =
+                        /^chrome-extension:\/\/([^/]+)\/(.+\.html?)(.*)$/.exec(
+                            url,
+                        );
+                    if (ceMatch) {
+                        extId = ceMatch[1];
+                        pagePath = ceMatch[2];
+                        hashSearch = ceMatch[3] ?? "";
+                    }
+                }
+
+                if (!extId && /tampermonkey\.net/i.test(url)) {
+                    try {
+                        const u = new URL(url);
+                        // Script URL may appear in hash or query string after "url="
+                        const combined = u.hash + "&" + u.search;
+                        const scriptUrlMatch = /[?&#]url=([^&]+)/.exec(
+                            combined,
+                        );
+                        const scriptUrl = scriptUrlMatch
+                            ? decodeURIComponent(scriptUrlMatch[1]!)
+                            : null;
+                        if (scriptUrl && /\.user\.(js|ts)/.test(scriptUrl)) {
+                            // Find the enabled TM extension
+                            const { extensionsGetAll } = await import(
+                                "~/api/extensions"
+                            );
+                            const TM_IDS = new Set([
+                                "dhdgffkkebhmkfjojejmpbldmpobfkfo",
+                                "lcmhijbkigalmkeommnijlpobloojgfn",
+                                "gcalenpjmijncebpfijmoaglllgpjagf",
+                                "iikmkjmpaadaobahmlepeloendndfphd",
+                                "clngdbkpkpeebahjckkjfobafhncgmne",
+                            ]);
+                            const tmExt = extensionsGetAll().find(
+                                e => e.enabled && TM_IDS.has(e.id),
+                            );
+                            if (tmExt) {
+                                extId = tmExt.id;
+                                pagePath = "options.html";
+                                // TM options.html uses hash router: #nav=install&url=SCRIPT_URL
+                                hashSearch = `#nav=install&url=${encodeURIComponent(scriptUrl)}`;
+                                console.log(
+                                    "[Civil] intercepted TM web-install URL -> local options.html",
+                                    scriptUrl,
+                                );
+                            }
+                        }
+                    } catch {}
+                }
+
+                console.log("[Civil] browser:newtab pattern match:", {
+                    extId,
+                    pagePath,
+                    hashSearch,
+                });
+                if (extId && pagePath) {
+                    const safeKey = pagePath.replace(/[^a-z0-9]/gi, "-");
+                    const cacheKey = `${extId}--${safeKey}`;
+                    const safeHash = hashSearch
+                        .replace(/[^a-z0-9]/gi, "-")
+                        .slice(0, 80);
+                    const dedupKey = safeHash
+                        ? `${cacheKey}--${safeHash}`
+                        : cacheKey;
+
+                    // Dedup: skip if already building this exact page+hash
+                    if (_pendingExtPages.has(dedupKey)) return;
+                    _pendingExtPages.add(dedupKey);
+
+                    const servePrefix = pagePath.startsWith("options")
+                        ? "options-tab"
+                        : pagePath.startsWith("ask")
+                          ? "ask-tab"
+                          : "action-popup";
+
+                    // Build the extension page BEFORE creating the tab, then
+                    // create the tab with the final served URL. This avoids two
+                    // races that surfaced as a router 404: (1) navigate() no-ops
+                    // if the iframe hasn't mounted yet, and (2) the served
+                    // /{servePrefix}/{cacheKey} entry may not be registered when
+                    // navigation fires. Creating the tab with the internal URL
+                    // after the build lets registerIframe's restore path load it
+                    // deterministically (isInternalUrl -> iframe.src = url).
+                    void (async () => {
+                        try {
+                            const [
+                                { extensionsGetById },
+                                { buildExtensionPageSrcDoc },
+                            ] = await Promise.all([
+                                import("~/api/extensions"),
+                                import("~/api/extensionRuntime"),
+                            ]);
+                            const ext = extensionsGetById(extId!);
+                            if (!ext) return;
+                            await buildExtensionPageSrcDoc(
+                                ext,
+                                pagePath!,
+                                "popup",
+                                cacheKey,
+                            );
+                            const t = tabManager.createTab(
+                                `${origin}/${servePrefix}/${cacheKey}${hashSearch}`,
+                            );
+                            tabManager.activateTab(t.id);
+                        } catch (err) {
+                            console.warn(
+                                "[Civil] buildExtensionPageSrcDoc failed:",
+                                err,
+                            );
+                        } finally {
+                            _pendingExtPages.delete(dedupKey);
+                        }
+                    })();
+                    return;
+                }
+            }
+
+            const t = tabManager.createTab(url ?? "browser:newtab");
+            tabManager.activateTab(t.id);
+        };
+        document.addEventListener("browser:newtab", onBrowserNewTab);
+
+        const onBrowserCloseTab = (e: Event) => {
+            const { chromeTabIds } =
+                (e as CustomEvent<{ chromeTabIds?: number[] }>).detail ?? {};
+            if (!chromeTabIds?.length) return;
+            for (const chromeId of chromeTabIds) {
+                const civilId = extensionCivilTabIdFromChromeId(chromeId);
+                if (civilId) tabManager.removeTab(civilId);
+            }
+        };
+        document.addEventListener("browser:closetab", onBrowserCloseTab);
+
+        const onUserscriptInstall = (e: Event) => {
+            const { url, source } =
+                (e as CustomEvent<{ url?: string; source?: string }>).detail ??
+                {};
+            if (!url || !source) return;
+            void import("~/api/extensions").then(({ extensionsGetAll }) => {
+                const BroadcastChannel = (
+                    window as unknown as Record<string, unknown>
+                ).BroadcastChannel as typeof window.BroadcastChannel;
+                for (const ext of extensionsGetAll().filter(x => x.enabled)) {
+                    const bus = new BroadcastChannel(`civil-ext-bus-${ext.id}`);
+                    const reqId = Math.random().toString(36).slice(2);
+                    bus.postMessage({
+                        kind: "sendMessageExternal",
+                        reqId,
+                        from: `civil-userscript-${Math.random().toString(36).slice(2)}`,
+                        contextType: "content",
+                        message: {
+                            action: "userscript",
+                            source,
+                            url,
+                        },
+                        sender: { id: ext.id, url },
+                    });
+                    setTimeout(() => bus.close(), 500);
+                }
+            });
+        };
+        window.addEventListener(
+            "browser:userscript-install",
+            onUserscriptInstall,
+        );
+
         const onGlobalKey = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "k") {
                 e.preventDefault();
@@ -191,6 +402,13 @@ export default function BrowserChrome() {
 
         return () => {
             document.removeEventListener("browser:navigate", onBrowserNavigate);
+            document.removeEventListener("browser:newtab", onBrowserNewTab);
+            document.removeEventListener("browser:closetab", onBrowserCloseTab);
+            window.removeEventListener("__civilDebug", onCivilDebug);
+            window.removeEventListener(
+                "browser:userscript-install",
+                onUserscriptInstall,
+            );
             window.removeEventListener("keydown", onGlobalKey);
         };
     });
@@ -397,21 +615,13 @@ export default function BrowserChrome() {
                         }}
                         onBack={() => {
                             const id = activeId();
-                            if (!id) return;
-                            const h = getHistory(id);
-                            if (h.cursor > 0) {
-                                h.cursor--;
-                                navigateIframe(id, h.stack[h.cursor]);
-                            }
+                            const url = back(id);
+                            if (id && url) navigateIframe(id, url);
                         }}
                         onForward={() => {
                             const id = activeId();
-                            if (!id) return;
-                            const h = getHistory(id);
-                            if (h.cursor < h.stack.length - 1) {
-                                h.cursor++;
-                                navigateIframe(id, h.stack[h.cursor]);
-                            }
+                            const url = forward(id);
+                            if (id && url) navigateIframe(id, url);
                         }}
                         onRefresh={() => {
                             const id = activeId();

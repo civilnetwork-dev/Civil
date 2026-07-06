@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js";
 import type { Tab } from "~/lib/TabManager";
 import { BROWSER_URLS } from "~/lib/TabManager";
 
@@ -40,29 +41,69 @@ interface TabHistoryEntry {
 
 export function createTabHistory() {
     const historyMap = new Map<string, TabHistoryEntry>();
+    // Bumped on every stack/cursor change so canBack/canForward stay reactive.
+    const [version, setVersion] = createSignal(0);
+    const bump = () => setVersion(v => v + 1);
 
     const getHistory = (id: string): TabHistoryEntry => {
         if (!historyMap.has(id)) historyMap.set(id, { stack: [], cursor: -1 });
         return historyMap.get(id)!;
     };
 
+    // Push a visited URL. Deduped against the entry at the current cursor, so
+    // it's safe to call from BOTH programmatic navigation and the iframe load
+    // handler (every Scramjet frame change), and re-loading the same URL during
+    // back/forward doesn't corrupt the stack.
     const pushHistory = (id: string, url: string) => {
         const h = getHistory(id);
+        if (h.stack[h.cursor] === url) return;
         h.stack = h.stack.slice(0, h.cursor + 1);
         h.stack.push(url);
         h.cursor = h.stack.length - 1;
+        bump();
     };
 
-    const canBack = (id: string | null): boolean =>
-        id ? getHistory(id).cursor > 0 : false;
+    // Move the cursor and return the URL to load, or null if not possible.
+    const back = (id: string | null): string | null => {
+        if (!id) return null;
+        const h = getHistory(id);
+        if (h.cursor <= 0) return null;
+        h.cursor--;
+        bump();
+        return h.stack[h.cursor] ?? null;
+    };
+
+    const forward = (id: string | null): string | null => {
+        if (!id) return null;
+        const h = getHistory(id);
+        if (h.cursor >= h.stack.length - 1) return null;
+        h.cursor++;
+        bump();
+        return h.stack[h.cursor] ?? null;
+    };
+
+    const canBack = (id: string | null): boolean => {
+        version();
+        return id ? getHistory(id).cursor > 0 : false;
+    };
 
     const canForward = (id: string | null): boolean => {
+        version();
         if (!id) return false;
         const h = getHistory(id);
         return h.cursor < h.stack.length - 1;
     };
 
-    return { historyMap, getHistory, pushHistory, canBack, canForward };
+    return {
+        historyMap,
+        getHistory,
+        pushHistory,
+        back,
+        forward,
+        canBack,
+        canForward,
+        version,
+    };
 }
 
 const STORAGE_KEY = "browser-session";

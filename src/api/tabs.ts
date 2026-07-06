@@ -7,6 +7,27 @@ import type {
     CivilTabUpdateProperties,
 } from "~/types";
 
+type TabUpdateChangeInfo = {
+    status?: "loading" | "complete";
+    url?: string;
+    title?: string;
+    favIconUrl?: string;
+};
+
+const _tabLoadingState = new Map<string, boolean>();
+
+tabManager.on("tabAdded", tab => {
+    _tabLoadingState.set(tab.id, tab.isLoading);
+});
+
+tabManager.on("tabRemoved", id => {
+    _tabLoadingState.delete(id);
+});
+
+for (const tab of tabManager.tabs) {
+    _tabLoadingState.set(tab.id, tab.isLoading);
+}
+
 function toInfo(
     tab: Tab,
     index: number,
@@ -56,6 +77,7 @@ export function tabsQuery(query: CivilTabQueryInfo): CivilTabInfo[] {
  */
 export function tabsCreate(props: CivilTabCreateProperties = {}): CivilTabInfo {
     const t = tabManager.createTab(props.url ?? "browser:newtab");
+    _tabLoadingState.set(t.id, t.isLoading);
     if (props.active !== false) tabManager.activateTab(t.id);
     return toInfo(t, tabManager.tabs.length - 1, tabManager.activeId);
 }
@@ -70,7 +92,6 @@ export function tabsUpdate(
     const tab = tabManager.tabs.find(t => t.id === id);
     if (!tab) return null;
     if (props.url) {
-        tabManager.updateTab(id, { url: props.url });
         document.dispatchEvent(
             new CustomEvent("browser:navigate", {
                 detail: { tabId: id, url: props.url },
@@ -140,10 +161,34 @@ export function tabsOnRemoved(cb: (id: string) => void): () => void {
 /**
  * Subscribe to tab update events.
  */
-export function tabsOnUpdated(cb: (tab: CivilTabInfo) => void): () => void {
+export function tabsOnUpdated(
+    cb: (
+        tabId: string,
+        changeInfo: TabUpdateChangeInfo,
+        tab: CivilTabInfo,
+    ) => void,
+): () => void {
     const handler = (tab: Tab) => {
         const idx = tabManager.tabs.findIndex(t => t.id === tab.id);
-        cb(toInfo(tab, idx, tabManager.activeId));
+        const prevLoading = _tabLoadingState.get(tab.id);
+        const nextLoading = tab.isLoading;
+        _tabLoadingState.set(tab.id, nextLoading);
+
+        const changeInfo: TabUpdateChangeInfo = {
+            url: tab.url,
+        };
+
+        if (tab.title) changeInfo.title = tab.title;
+        if (tab.favicon) changeInfo.favIconUrl = tab.favicon;
+        if (
+            prevLoading === undefined
+                ? nextLoading
+                : prevLoading !== nextLoading
+        ) {
+            changeInfo.status = nextLoading ? "loading" : "complete";
+        }
+
+        cb(tab.id, changeInfo, toInfo(tab, idx, tabManager.activeId));
     };
     tabManager.on("tabUpdated", handler);
     return () => tabManager.off("tabUpdated", handler);

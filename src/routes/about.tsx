@@ -11,7 +11,7 @@ function RouteComponent() {
             <Title>About | Civil Proxy</Title>
             <Meta
                 name="description"
-                content="Learn about Civil Proxy — an open-source web proxy built for speed, privacy, and freedom."
+                content="Learn about Civil Proxy - an open-source web proxy built for speed, privacy, and freedom."
             />
             <h1>This isn't finished yet. It will be soon!</h1>
         </main>

@@ -162,7 +162,7 @@ const civil = {
         },
 
         /**
-         * TFS (TerbiumOS File System) instance — OPFS-backed virtual filesystem.
+         * TFS (TerbiumOS File System) instance - OPFS-backed virtual filesystem.
          * All methods are from TerbiumOS/tfs. Requires async initialization.
          */
         get fs() {

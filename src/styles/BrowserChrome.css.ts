@@ -241,6 +241,8 @@ export const tabDragClone = style({
 
 export const spin = style({
     animation: `${spinAnim} 0.75s linear infinite`,
+    // Functional loader: opt back in past the global motion-kill.
+    animationDuration: "0.75s !important",
     transformOrigin: "center",
 });
 
@@ -324,6 +326,7 @@ export const urlbarOmniboxWrap = style({
 
 export const urlbarOmnibox = style({
     flex: 1,
+    boxSizing: "border-box",
     display: "flex",
     alignItems: "center",
     gap: "6px",
@@ -392,9 +395,10 @@ export const urlbarGoBtn = style({
 
 export const urlbarSuggestions = style({
     position: "absolute",
+    boxSizing: "border-box",
     top: "calc(100% - 1.5px)",
-    left: "-1.5px",
-    right: "-1.5px",
+    left: 0,
+    right: 0,
     background: vars.color.mantle,
     border: `1.5px solid ${vars.color.lavender}`,
     borderTop: "none",

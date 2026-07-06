@@ -39,6 +39,7 @@ export interface ChromeManifest {
     name: string;
     version: string;
     description?: string;
+    default_locale?: string;
     icons?: Record<string, string>;
     background?: {
         service_worker?: string;

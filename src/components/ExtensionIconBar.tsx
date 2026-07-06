@@ -1,5 +1,6 @@
 import { Portal } from "@solidjs/web";
 import { createSignal, For, onSettled, Show } from "solid-js";
+import { buildExtensionPageSrcDoc } from "~/api/extensionRuntime";
 import {
     extensionsGetAll,
     extensionsResolveIcon,
@@ -35,6 +36,14 @@ function clampPopup(x: number, y: number): { x: number; y: number } {
     };
 }
 
+function getPopupPath(manifest: ChromeManifest): string | null {
+    return (
+        manifest.action?.default_popup ??
+        manifest.browser_action?.default_popup ??
+        null
+    );
+}
+
 export default function ExtensionIconBar() {
     const [icons, setIcons] = createSignal<ExtIconState[]>([]);
     const [popup, setPopup] = createSignal<PopupState | null>(null);
@@ -50,7 +59,7 @@ export default function ExtensionIconBar() {
         setIcons(resolved);
     });
 
-    const handleClick = (e: MouseEvent, item: ExtIconState) => {
+    const handleClick = async (e: MouseEvent, item: ExtIconState) => {
         if (!item.popupUrl) return;
 
         const btn = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -64,9 +73,19 @@ export default function ExtensionIconBar() {
             return;
         }
 
+        const popupPath = getPopupPath(item.ext.manifest as ChromeManifest);
+        if (!popupPath) return;
+
+        try {
+            await buildExtensionPageSrcDoc(item.ext, popupPath, "popup");
+        } catch (err) {
+            console.warn("[civil/extensions] popup load failed:", err);
+            return;
+        }
+
         setPopup({
             extId: item.ext.id,
-            popupUrl: item.popupUrl,
+            popupUrl: `/action-popup/${item.ext.id}`,
             x,
             y,
             width: POPUP_W,

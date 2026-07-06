@@ -1,29 +1,14 @@
-import { createRoot, createSignal } from "solid-js";
+import { createReactiveJSON, lsSetJSON } from "~/lib/reactiveStorage";
 import type { CivilBookmark } from "~/types";
 
 const LS_KEY = "civil-bookmarks";
 
-function load(): CivilBookmark[] {
-    try {
-        return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]");
-    } catch {
-        return [];
-    }
-}
-
 function save(bms: CivilBookmark[]): void {
-    localStorage.setItem(LS_KEY, JSON.stringify(bms));
+    lsSetJSON(LS_KEY, bms);
 }
 
-const [bookmarks, setBookmarks] = createRoot(() =>
-    createSignal<CivilBookmark[]>(typeof window !== "undefined" ? load() : []),
-);
-
-if (typeof window !== "undefined") {
-    window.addEventListener("storage", e => {
-        if (e.key === LS_KEY) setBookmarks(load());
-    });
-}
+/** Live, reactive bookmarks list. Updates on add/remove in any tab. */
+const bookmarks = createReactiveJSON<CivilBookmark[]>(LS_KEY, []);
 
 export { bookmarks };
 
@@ -43,16 +28,12 @@ export function bookmarksAdd(
         favicon,
         addedAt: Date.now(),
     };
-    const next = [...bookmarks(), bookmark];
-    save(next);
-    setBookmarks(next);
+    save([...bookmarks(), bookmark]);
     return bookmark;
 }
 
 export function bookmarksRemove(id: string): void {
-    const next = bookmarks().filter(b => b.id !== id);
-    save(next);
-    setBookmarks(next);
+    save(bookmarks().filter(b => b.id !== id));
 }
 
 export function bookmarksIsBookmarked(url: string): boolean {

@@ -249,6 +249,15 @@ export function ChiiPanel(props: ChiiPanelProps) {
         setSide(next);
         applyTargetSize(props.targetIframe, next, size());
         cleanupTargetArtifacts();
+        // Chii redraws its inspect/ghost overlay AFTER the relayout, so a single
+        // synchronous sweep misses the re-created node (seen on top/left docks).
+        // Sweep again on the next frames + a short tail.
+        requestAnimationFrame(() => {
+            cleanupTargetArtifacts();
+            requestAnimationFrame(cleanupTargetArtifacts);
+        });
+        for (const delay of [120, 400])
+            setTimeout(cleanupTargetArtifacts, delay);
     };
 
     const handleClose = () => {

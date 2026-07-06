@@ -1,7 +1,7 @@
 import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
-import { onSettled } from "solid-js";
+import { onCleanup, onSettled } from "solid-js";
 
 const Browser = clientOnly(() => import("~/components/BrowserChrome.tsx"));
 
@@ -11,37 +11,17 @@ export const Route = createFileRoute("/")({
 
 function RouteComponent() {
     onSettled(() => {
-        if (document.getElementById("__civil_deliciouslip__")) return;
+        const script = document.createElement("script");
 
-        try {
-            for (const k of Object.keys(localStorage)) {
-                if (k.startsWith("kad") || k.startsWith("__ipcnt")) {
-                    localStorage.removeItem(k);
-                }
-            }
-        } catch {}
+        script.async = true;
+        script.src =
+            "https://ss.mrmnd.com/static/5b2c8f79-d86d-4662-97a4-d489f053bf3e.js";
 
-        const last = document.scripts[document.scripts.length - 1];
-        const s = document.createElement("script") as HTMLScriptElement & {
-            settings?: Record<string, unknown>;
-        };
-        s.id = "__civil_deliciouslip__";
-        s.settings = {
-            freq: {
-                pagelim: 10,
-                qty: 6,
-                period: 86400,
-                distance: 90,
-                context: "domain",
-                max: 0,
-            },
-            soundOn: false,
-        };
-        s.src =
-            "https://deliciouslip.com/b/XBVjs.d/G/lH0RYqWCcs/OecmJ9GuVZIUflhkAP/Twczw/OXDOc/1aOlTaMRtuNdzEAr4LNcz/U/5TNgwA";
-        s.async = true;
-        s.referrerPolicy = "no-referrer-when-downgrade";
-        last.parentNode!.insertBefore(s, last);
+        document.head.appendChild(script);
+
+        onCleanup(() => {
+            script.remove();
+        });
     });
 
     return (
@@ -73,7 +53,6 @@ function RouteComponent() {
                     "Filter Checker",
                 ].join(", ")}
             />
-            <Meta name="admaven-placement" content="BqjkErjk8" />
             <Browser />
         </main>
     );

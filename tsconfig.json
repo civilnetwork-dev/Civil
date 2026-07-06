@@ -10,7 +10,7 @@
         "allowJs": true,
         "strict": true,
         "noEmit": true,
-        "types": ["bun", "serviceworker"],
+        "types": ["bun", "serviceworker", "chrome"],
         "isolatedModules": true,
         "paths": {
             "~/*": ["src/*"],
@@ -23,5 +23,5 @@
         "ignoreDeprecations": "6.0",
         "noUncheckedSideEffectImports": false
     },
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", ".claude/worktrees"]
 }

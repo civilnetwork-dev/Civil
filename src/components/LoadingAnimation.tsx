@@ -6,36 +6,31 @@ interface LoadingAnimationProps {
     iframed?: boolean;
 }
 
-const FADE_DURATION = 400;
-const DISPLAY_DURATION = 600;
-
-export default function LoadingAnimation({ iframed }: LoadingAnimationProps) {
-    const statuses = (
-        iframed
-            ? [
-                  "Requesting Rammerhead session",
-                  "Encoding URL with _rhs prefix",
-                  "Getting Rammerhead session from localStorage",
-                  "Redirecting to requested proxied webpage",
-                  "Encoding URL to codec",
-                  "Getting transport from localStorage",
-                  "Getting proxy from localStorage",
-                  "Setting up SW and BareMux",
-                  "Connecting to WISP server",
-                  `Registering SW ${typeof window !== "undefined" ? localStorage.getItem("sw") : ""}`,
-                  "Fetching ScramJet configuration",
-                  "Fetching UV configuration",
-              ]
-            : [
-                  "Loading page",
-                  "Getting assets from cache",
-                  "Registering page as a PWA",
-              ]
-    ).map(status => `${status}...`);
-
-    const [currentIndex, setCurrentIndex] = createSignal(0);
+export default function LoadingAnimation(_props: LoadingAnimationProps) {
     const [visible, setVisible] = createSignal(true);
+    const [liveStatus, setLiveStatus] = createSignal<string | null>(
+        "Loading...",
+    );
     let containerRef: HTMLDivElement | undefined;
+
+    const formatResource = (url: string): string => {
+        try {
+            const u = new URL(url, window.location.href);
+            return u.pathname.split("/").pop() || u.hostname;
+        } catch {
+            return url;
+        }
+    };
+
+    const isExternal = (url: string): boolean => {
+        try {
+            return (
+                new URL(url, window.location.href).host !== window.location.host
+            );
+        } catch {
+            return false;
+        }
+    };
 
     onSettled(() => {
         if (!containerRef) return;
@@ -49,22 +44,92 @@ export default function LoadingAnimation({ iframed }: LoadingAnimationProps) {
         containerRef.appendChild(anim.canvas as Node);
 
         let aborted = false;
-        let timeout: ReturnType<typeof setTimeout>;
+        let liveTimer: ReturnType<typeof setTimeout> | undefined;
 
-        const cycle = () => {
-            setVisible(false);
-            timeout = setTimeout(() => {
-                if (aborted) return;
-                setCurrentIndex(i => (i + 1) % statuses.length);
-                setVisible(true);
-                timeout = setTimeout(cycle, DISPLAY_DURATION + FADE_DURATION);
-            }, FADE_DURATION);
+        const pushLive = (text: string) => {
+            if (aborted) return;
+            setLiveStatus(text);
+            setVisible(true);
+            clearTimeout(liveTimer);
+            liveTimer = setTimeout(() => setLiveStatus(null), 1600);
         };
-        timeout = setTimeout(cycle, DISPLAY_DURATION);
+
+        const tracked = new Set([
+            "script",
+            "fetch",
+            "xmlhttprequest",
+            "link",
+            "css",
+            "beacon",
+        ]);
+        let perfObserver: PerformanceObserver | undefined;
+        if (typeof PerformanceObserver !== "undefined") {
+            perfObserver = new PerformanceObserver(list => {
+                for (const entry of list.getEntries()) {
+                    const res = entry as PerformanceResourceTiming;
+                    if (res.initiatorType && !tracked.has(res.initiatorType)) {
+                        continue;
+                    }
+                    const verb = isExternal(res.name) ? "Fetching" : "Loading";
+                    pushLive(`${verb} ${formatResource(res.name)}...`);
+                }
+            });
+            try {
+                perfObserver.observe({ type: "resource", buffered: true });
+            } catch {}
+        }
+
+        let restoreRegister: (() => void) | undefined;
+        const swContainer =
+            typeof navigator !== "undefined"
+                ? navigator.serviceWorker
+                : undefined;
+        if (swContainer) {
+            void swContainer.getRegistrations().then(regs => {
+                for (const reg of regs) {
+                    const active = reg.installing ?? reg.waiting ?? reg.active;
+                    if (active && active.state !== "activated") {
+                        pushLive(`Registering ${reg.scope}...`);
+                    }
+                }
+            });
+
+            const onControllerChange = () =>
+                pushLive("Service worker activated...");
+            swContainer.addEventListener(
+                "controllerchange",
+                onControllerChange,
+            );
+
+            const originalRegister = swContainer.register.bind(swContainer);
+            try {
+                swContainer.register = ((
+                    scriptURL: string | URL,
+                    options?: RegistrationOptions,
+                ) => {
+                    pushLive(
+                        `Registering ${formatResource(String(scriptURL))}...`,
+                    );
+                    return originalRegister(scriptURL, options);
+                }) as typeof swContainer.register;
+                restoreRegister = () => {
+                    swContainer.register = originalRegister;
+                };
+            } catch {}
+
+            onCleanup(() => {
+                swContainer.removeEventListener(
+                    "controllerchange",
+                    onControllerChange,
+                );
+                restoreRegister?.();
+            });
+        }
 
         onCleanup(() => {
             aborted = true;
-            clearTimeout(timeout);
+            clearTimeout(liveTimer);
+            perfObserver?.disconnect();
             anim.destroy();
         });
     });
@@ -82,7 +147,7 @@ export default function LoadingAnimation({ iframed }: LoadingAnimationProps) {
                         },
                     ]}
                 >
-                    {statuses[currentIndex()]}
+                    {liveStatus() ?? "Loading..."}
                 </span>
             </div>
         </div>

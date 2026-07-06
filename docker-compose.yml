@@ -41,7 +41,7 @@ services:
     ports:
       - "${PORT:-9876}:9876"
     volumes:
-      - ./data/school-districts:/app/misc/school-districts/data
+      - ./data/schoolDistricts:/app/misc/schoolDistricts/data
     environment:
       PORT: 9876
       REVERSE_PROXY: "true"

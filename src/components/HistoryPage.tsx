@@ -1,12 +1,14 @@
 import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
 import { createSignal, For, onSettled, Show } from "solid-js";
 import {
+    HISTORY_LS_KEY,
     historyClear,
     historyDelete,
     historyGetAll,
     historyGetMethod,
     historySetMethod,
 } from "~/api/history";
+import { onLsChange } from "~/lib/reactiveStorage";
 import * as s from "~/styles/HistoryPage.css";
 import type { CivilHistoryEntry, HistoryStorageMethod } from "~/types";
 import { Select } from "./ui/Select";
@@ -17,8 +19,17 @@ export default function HistoryPage() {
         historyGetMethod(),
     );
 
+    const reload = () => {
+        void historyGetAll().then(all => setEntries(all));
+    };
+
+    // Initial load + live-update the localStorage-backed history when it
+    // changes here or in another tab; the returned unsubscribe runs on unmount.
+    // (IndexedDB writes don't touch localStorage, so that path still relies on
+    // the explicit reloads in the handlers below.)
     onSettled(() => {
-        historyGetAll().then(all => setEntries(all));
+        reload();
+        return onLsChange(HISTORY_LS_KEY, reload);
     });
 
     const handleClear = async () => {

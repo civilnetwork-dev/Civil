@@ -1,10 +1,7 @@
 import * as BareMux from "@mercuryworkshop/bare-mux";
+import { getFilters } from "$config/service/filterDetect";
 
-type SwRequestMessage = {
-    type: "CHECK_FILTERS";
-};
-
-type SwResponseMessage =
+type FilterCheckResult =
     | {
           type: "CHECK_FILTERS_RESULT";
           filters: string[];
@@ -18,42 +15,7 @@ function isProductionHost(): boolean {
     return window.location.host === "civil.quartinal.me";
 }
 
-async function waitForServiceWorkerController(
-    registration: ServiceWorkerRegistration,
-): Promise<ServiceWorker> {
-    if (navigator.serviceWorker.controller) {
-        return navigator.serviceWorker.controller;
-    }
-
-    if (registration.active) {
-        return registration.active;
-    }
-
-    return new Promise<ServiceWorker>((resolve, reject) => {
-        const timeout = window.setTimeout(() => {
-            reject(
-                new Error("Timed out waiting for service worker controller."),
-            );
-        }, 5_000);
-
-        navigator.serviceWorker.addEventListener(
-            "controllerchange",
-            () => {
-                window.clearTimeout(timeout);
-
-                const controller = navigator.serviceWorker.controller;
-                if (controller) resolve(controller);
-                else
-                    reject(
-                        new Error("Service worker controller was unavailable."),
-                    );
-            },
-            { once: true },
-        );
-    });
-}
-
-function trackFilterInformation(data: SwResponseMessage): void {
+function trackFilterInformation(data: FilterCheckResult): void {
     if (data.type === "CHECK_FILTERS_RESULT") {
         if (isProductionHost()) {
             window.posthog?.capture("Filter information", {
@@ -81,16 +43,27 @@ function trackFilterInformation(data: SwResponseMessage): void {
     );
 }
 
-async function requestFilterCheck(
-    registration: ServiceWorkerRegistration,
-): Promise<void> {
-    const worker = await waitForServiceWorkerController(registration);
+function readDetectedFilters(): string[] {
+    try {
+        const raw = localStorage.getItem("detectedFilters");
+        return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+        return [];
+    }
+}
 
-    const message: SwRequestMessage = {
-        type: "CHECK_FILTERS",
-    };
-
-    worker.postMessage(message);
+async function checkFiltersNow(): Promise<string[]> {
+    try {
+        const filters = await getFilters();
+        trackFilterInformation({ type: "CHECK_FILTERS_RESULT", filters });
+        return filters;
+    } catch (error) {
+        trackFilterInformation({
+            type: "CHECK_FILTERS_ERROR",
+            message: error instanceof Error ? error.message : String(error),
+        });
+        return readDetectedFilters();
+    }
 }
 
 async function registerSw(): Promise<void> {
@@ -104,25 +77,17 @@ async function registerSw(): Promise<void> {
     }
 
     try {
-        navigator.serviceWorker.addEventListener(
-            "message",
-            (event: MessageEvent<SwResponseMessage>) => {
-                trackFilterInformation(event.data);
-            },
-        );
-
         const registration = await navigator.serviceWorker.register("/sw.js", {
             scope: "/",
+            updateViaCache: "none",
         });
 
-        registration.onupdatefound = () => {
-            registration.update().catch(error => {
-                console.error("Service worker update failed:", error);
-            });
-        };
+        await registration.update();
 
         await navigator.serviceWorker.ready;
-        await requestFilterCheck(registration);
+        // Detect installed filters in the page (see checkFiltersNow): the page's
+        // fetch sees extensions the already-running SW would miss.
+        await checkFiltersNow();
     } catch (error) {
         console.error("Service worker registration failed:", error);
     }
@@ -153,4 +118,4 @@ async function setupBareMux(): Promise<void> {
     });
 }
 
-export { registerSw, setupBareMux };
+export { checkFiltersNow, registerSw, setupBareMux };

@@ -1,20 +1,19 @@
 import { gstaticFavicon } from "~/lib/browserHelpers";
+import { createReactiveJSON, lsSetJSON } from "~/lib/reactiveStorage";
 import type { CivilApp } from "~/types";
 
 const LS_KEY = "civil-apps";
 
+/** Live, reactive list of installed apps. Updates on any add/remove. */
+export const apps = createReactiveJSON<CivilApp[]>(LS_KEY, []);
+
 function load(): CivilApp[] {
-    try {
-        return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]");
-    } catch (e) {
-        console.error("[civil/apps] load() parse failed:", e);
-        return [];
-    }
+    return apps();
 }
 
-function save(apps: CivilApp[]): void {
+function save(list: CivilApp[]): void {
     try {
-        localStorage.setItem(LS_KEY, JSON.stringify(apps));
+        lsSetJSON(LS_KEY, list);
     } catch (e) {
         console.error("[civil/apps] save() failed:", e);
     }
@@ -93,7 +92,7 @@ export async function appsAdd(url: string): Promise<CivilApp> {
     ]);
 
     console.log(
-        "[civil/apps] appsAdd() resolved — title:",
+        "[civil/apps] appsAdd() resolved - title:",
         title,
         "icon length:",
         icon?.length ?? 0,

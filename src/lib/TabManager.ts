@@ -43,6 +43,19 @@ export function isNewtabUrl(url: string) {
 
 export function isInternalUrl(url: string): boolean {
     if (url === "about:blank" || url.startsWith("browser:")) return true;
+    try {
+        const origin =
+            typeof window !== "undefined" ? window.location.origin : "";
+        if (origin && url.startsWith(`${origin}/civil-ext/`)) return true;
+        // Pre-shimmed extension pages cached by buildExtensionPageSrcDoc.
+        if (origin && url.startsWith(`${origin}/action-popup/`)) return true;
+        // Options-page variant: served at /options-tab/ so TM's pathname check
+        // `indexOf("/options") === 0` passes, enabling full dashboard UI.
+        if (origin && url.startsWith(`${origin}/options-tab/`)) return true;
+        // Ask-page variant: served at /ask-tab/ so TM's pathname check
+        // `indexOf("/ask") === 0` passes for the install confirmation dialog.
+        if (origin && url.startsWith(`${origin}/ask-tab/`)) return true;
+    } catch {}
     return Object.values(BROWSER_URLS).some(v => url === v);
 }
 

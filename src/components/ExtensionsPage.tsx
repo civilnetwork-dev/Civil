@@ -2,11 +2,14 @@ import {
     TbOutlineLink,
     TbOutlineLoader,
     TbOutlinePuzzle,
+    TbOutlineRefresh,
     TbOutlineUpload,
     TbOutlineX,
 } from "solid-icons/tb";
-import { createSignal, For, onSettled, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import {
+    type ExtensionUpdateResult,
+    extensionsCheckForUpdates,
     extensionsGetAll,
     extensionsInstallFromUrl,
     extensionsResolveIcon,
@@ -19,6 +22,26 @@ import type { CivilExtension } from "~/types";
 type ExtensionListItem = Omit<CivilExtension, "files"> & {
     files?: Map<string, Uint8Array>;
 };
+
+function summarizeUpdates(results: ExtensionUpdateResult[]): string {
+    if (results.length === 0) return "No extensions to update.";
+    const updated = results.filter(r => r.status === "updated");
+    const errored = results.filter(r => r.status === "error");
+    const parts: string[] = [];
+    if (updated.length) {
+        parts.push(
+            "Updated " +
+                updated.map(r => `${r.name} → v${r.toVersion}`).join(", "),
+        );
+    }
+    if (errored.length) {
+        parts.push(
+            "Failed: " + errored.map(r => `${r.name} (${r.error})`).join(", "),
+        );
+    }
+    if (parts.length === 0) return "All extensions are up to date.";
+    return parts.join(" · ");
+}
 
 function ExtensionIcon(props: { ext: ExtensionListItem }) {
     const iconUrl = () =>
@@ -52,14 +75,15 @@ function ToggleSwitch(props: {
 }
 
 export default function ExtensionsPage() {
-    const [extensions, setExtensions] = createSignal<ExtensionListItem[]>([]);
+    // Reactive extension index: reading extensions() inside JSX or a memo
+    // re-runs on any install / uninstall / enable-toggle / update, since each
+    // routes through saveIndex, which notifies the reactive store.
+    const extensions = (): ExtensionListItem[] => extensionsGetAll();
     const [urlInput, setUrlInput] = createSignal("");
     const [installing, setInstalling] = createSignal(false);
     const [error, setError] = createSignal<string | null>(null);
-
-    onSettled(() => {
-        setExtensions(extensionsGetAll());
-    });
+    const [checking, setChecking] = createSignal(false);
+    const [updateStatus, setUpdateStatus] = createSignal<string | null>(null);
 
     const handleInstallUrl = async () => {
         const url = urlInput().trim();
@@ -67,8 +91,11 @@ export default function ExtensionsPage() {
         setInstalling(true);
         setError(null);
         try {
-            await extensionsInstallFromUrl(url);
-            setExtensions(extensionsGetAll());
+            const ext = await extensionsInstallFromUrl(url);
+            const { launchExtensionBackground } = await import(
+                "~/api/extensionRuntime"
+            );
+            await launchExtensionBackground(ext);
             setUrlInput("");
         } catch (e) {
             setError(
@@ -91,17 +118,24 @@ export default function ExtensionsPage() {
                 const { extensionsInstallCrx } = await import(
                     "~/api/extensions"
                 );
-                await extensionsInstallCrx(bytes);
+                const ext = await extensionsInstallCrx(bytes);
+                const { launchExtensionBackground } = await import(
+                    "~/api/extensionRuntime"
+                );
+                await launchExtensionBackground(ext);
             } else if (file.name.endsWith(".xpi")) {
                 const { extensionsInstallXpi } = await import(
                     "~/api/extensions"
                 );
-                await extensionsInstallXpi(bytes);
+                const ext = await extensionsInstallXpi(bytes);
+                const { launchExtensionBackground } = await import(
+                    "~/api/extensionRuntime"
+                );
+                await launchExtensionBackground(ext);
             } else {
                 setError("Only .crx and .xpi files are supported");
                 return;
             }
-            setExtensions(extensionsGetAll());
         } catch (err) {
             setError(
                 err instanceof Error
@@ -114,14 +148,39 @@ export default function ExtensionsPage() {
         }
     };
 
+    const handleCheckUpdates = async () => {
+        setChecking(true);
+        setError(null);
+        setUpdateStatus(null);
+        try {
+            const results = await extensionsCheckForUpdates();
+
+            const updated = results.filter(r => r.status === "updated");
+            if (updated.length) {
+                const { launchExtensionBackground } = await import(
+                    "~/api/extensionRuntime"
+                );
+                for (const r of updated) {
+                    const ext = extensionsGetAll().find(e => e.id === r.id);
+                    if (ext) await launchExtensionBackground(ext);
+                }
+            }
+            setUpdateStatus(summarizeUpdates(results));
+        } catch (e) {
+            setError(
+                e instanceof Error ? e.message : "Failed to check for updates",
+            );
+        } finally {
+            setChecking(false);
+        }
+    };
+
     const handleToggle = (id: string, enabled: boolean) => {
         extensionsSetEnabled(id, enabled);
-        setExtensions(extensionsGetAll());
     };
 
     const handleUninstall = async (id: string) => {
         await extensionsUninstall(id);
-        setExtensions(extensionsGetAll());
     };
 
     const crxExts = () => extensions().filter(e => e.type === "crx");
@@ -171,7 +230,36 @@ export default function ExtensionsPage() {
                         onChange={handleFileUpload}
                     />
                 </label>
+                <button
+                    type="button"
+                    class={s.installBtn}
+                    onClick={handleCheckUpdates}
+                    disabled={checking() || extensions().length === 0}
+                >
+                    <Show
+                        when={checking()}
+                        fallback={
+                            <>
+                                <TbOutlineRefresh size={14} /> Check for updates
+                            </>
+                        }
+                    >
+                        <TbOutlineLoader size={14} /> Checking
+                    </Show>
+                </button>
             </div>
+
+            <Show when={updateStatus()}>
+                <p
+                    style={{
+                        color: "var(--civil-color-text-muted, #888)",
+                        "font-size": "13px",
+                        "margin-bottom": "16px",
+                    }}
+                >
+                    {updateStatus()}
+                </p>
+            </Show>
 
             <Show when={error()}>
                 <p

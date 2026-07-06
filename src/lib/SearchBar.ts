@@ -1,5 +1,10 @@
 import type { UVConfig } from "@titaniumnetwork-dev/ultraviolet";
 import { EventEmitter } from "tseep";
+import {
+    type BestProxy,
+    fetchBestProxy,
+    measureAndReportCompat,
+} from "./bestProxy";
 import { registerSw, setupBareMux } from "./swUtils";
 
 interface ScramjetLike {
@@ -137,6 +142,15 @@ class SearchBar
         return this.proxyObjMap.find(p => p.name === storedProxy)!;
     }
 
+    // Pick the proxy for THIS navigation only. The finder's per-host decision
+    // wins when present; otherwise fall back to the user's stored default.
+    // Nothing global is mutated, so concurrent navigations don't interfere.
+    private pickProxy(cfg: BestProxy | null): ProxyEntry {
+        const name = cfg?.proxy;
+        const entry = name && this.proxyObjMap.find(p => p.name === name);
+        return entry || this.getSelectedProxy();
+    }
+
     private normalizeTerm(term: string, proxy: ProxyEntry) {
         if (proxy.name === "uv") {
             return term;
@@ -177,30 +191,64 @@ class SearchBar
         );
     }
 
+    private async applyFrameTransport(
+        sframe: any,
+        key: string | undefined,
+    ): Promise<void> {
+        if (!key) return;
+        try {
+            const getT = (window as any).__civilGetTransport as
+                | ((k: string) => Promise<unknown>)
+                | undefined;
+            if (!getT) return;
+            const t = await getT(key);
+            if (!t) return;
+            if (sframe?.controller) sframe.controller.transport = t;
+            if (sframe?.fetchHandler?.client)
+                sframe.fetchHandler.client.transport = t;
+            this.debugInfo = {
+                ...this.debugInfo,
+                currentTransport: `/${key}/index.mjs`,
+            };
+        } catch {}
+    }
+
     async submitFrame(frame: HTMLIFrameElement, term: string) {
         await this.ready;
+        const cfg = await fetchBestProxy(term);
+        const proxy = this.pickProxy(cfg);
 
-        const proxy = this.getSelectedProxy();
         if (proxy.name === "scramjet") {
             const controller = window.scramjet;
             const existing = controller.frames?.find(
                 (f: any) => f.element === frame,
             );
-            (existing ?? controller.createFrame(frame)).go(
-                this.normalizeTerm(term, proxy),
-            );
+            const sframe = existing ?? controller.createFrame(frame);
+            await this.applyFrameTransport(sframe, cfg?.transport);
+            sframe.go(this.normalizeTerm(term, proxy));
         } else {
             frame.contentWindow?.location.replace(
                 this.createProxyUrl(term, proxy),
             );
         }
         this.trackInternalVisit(term, proxy);
+        // Fire-and-forget: measure real proxy correctness in the loaded frame
+        // and feed it back to refine the stored decision ("a bit of WPT").
+        if (proxy.name === "scramjet" || proxy.name === "uv") {
+            void measureAndReportCompat(
+                frame,
+                term,
+                proxy.name,
+                cfg?.transport,
+            );
+        }
     }
 
     async submitCurrentWindow(term: string) {
         await this.ready;
+        const cfg = await fetchBestProxy(term);
+        const proxy = this.pickProxy(cfg);
 
-        const proxy = this.getSelectedProxy();
         const url =
             proxy.name === "scramjet"
                 ? this.normalizeTerm(term, proxy)

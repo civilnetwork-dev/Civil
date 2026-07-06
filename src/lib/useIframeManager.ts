@@ -1,9 +1,13 @@
-import { extensionsApplyToIframe } from "~/api/extensions";
+import {
+    dispatchExtensionBrowserEvent,
+    extensionChromeTabId,
+    extensionsLaunchBackgrounds,
+    injectExtensionShimsIntoIframe,
+} from "~/api/extensionRuntime";
 import { historyAdd } from "~/api/history";
 import { iframeSetCurrentSrc } from "~/api/iframe";
 import { displayUrl, gstaticFavicon, normalizeNav } from "~/lib/browserHelpers";
 import { buildChiiInjectScript } from "~/lib/buildChiiInjectScript";
-import { trackVisit } from "~/lib/db";
 import type searchBar from "~/lib/SearchBar";
 import { isInternalUrl, resolveUrl, tabManager } from "~/lib/TabManager";
 
@@ -12,6 +16,49 @@ type BarInstance = ReturnType<typeof searchBar>;
 let chiiTargetScriptTextPromise: Promise<string> | null = null;
 const chiiSocketBridgeWindows = new WeakSet<Window>();
 const chiiGhostCleanupDocs = new WeakSet<Document>();
+
+function decodeProxyUrl(href: string): string {
+    try {
+        const url = new URL(href);
+        if (url.pathname.startsWith("/~/scramjet/")) {
+            const encoded = url.pathname.split("/").filter(Boolean).at(-1);
+            if (encoded && window.scramjet?.decodeUrl) {
+                return window.scramjet.decodeUrl(encoded);
+            }
+        }
+
+        const uv = window.__uv$config;
+        const uvPrefix = uv?.prefix as string | undefined;
+        if (uvPrefix && url.pathname.startsWith(uvPrefix) && uv.decodeUrl) {
+            return uv.decodeUrl(url.pathname.slice(uvPrefix.length));
+        }
+    } catch {}
+    return href;
+}
+
+function extensionTab(
+    civilTabId: string,
+    url: string,
+    status: "loading" | "complete",
+) {
+    const tab = tabManager.tabs.find(item => item.id === civilTabId);
+    const index = tabManager.tabs.findIndex(item => item.id === civilTabId);
+    return {
+        id: extensionChromeTabId(civilTabId),
+        civilTabId,
+        index,
+        windowId: 1,
+        active: tabManager.activeId === civilTabId,
+        highlighted: tabManager.activeId === civilTabId,
+        pinned: false,
+        incognito: false,
+        status,
+        url,
+        pendingUrl: status === "loading" ? url : undefined,
+        title: tab?.title ?? "",
+        favIconUrl: tab?.favicon,
+    };
+}
 // Reset cache when hot-reloaded so patching always uses latest logic.
 if (import.meta.hot) {
     import.meta.hot.accept(() => {
@@ -26,12 +73,23 @@ function setNodeStylesToHidden(node: HTMLElement) {
     node.style.setProperty("pointer-events", "none", "important");
 }
 
+// chii/chobitsu injects hidden helper nodes it marks with `__chobitsu-hide__`.
+// Match that plus any chobitsu-namespaced class so late-renamed variants are
+// caught too.
+const CHII_GHOST_SELECTOR = '.__chobitsu-hide__, [class*="__chobitsu"]';
+
+function isChiiGhost(el: Element): boolean {
+    try {
+        return el.matches(CHII_GHOST_SELECTOR);
+    } catch {
+        return false;
+    }
+}
+
 function hideChiiGhostNodes(doc: Document): void {
     try {
-        const ghostNodes = doc.querySelectorAll(".__chobitsu-hide__");
-        ghostNodes.forEach(node => {
-            if (!(node instanceof HTMLElement)) return;
-            setNodeStylesToHidden(node);
+        doc.querySelectorAll(CHII_GHOST_SELECTOR).forEach(node => {
+            if (node instanceof HTMLElement) setNodeStylesToHidden(node);
         });
     } catch {}
 }
@@ -43,30 +101,22 @@ function ensureChiiGhostCleanup(doc: Document): void {
 
     const observer = new MutationObserver(records => {
         for (const record of records) {
+            if (record.type === "attributes") {
+                const t = record.target;
+                if (t instanceof HTMLElement && isChiiGhost(t)) {
+                    setNodeStylesToHidden(t);
+                }
+                continue;
+            }
             for (const node of record.addedNodes) {
                 if (!(node instanceof Element)) continue;
-                if (node.classList.contains("__chobitsu-hide__")) {
-                    if (node instanceof HTMLElement) {
-                        setNodeStylesToHidden(node);
-                    }
-                    continue;
+                if (node instanceof HTMLElement && isChiiGhost(node)) {
+                    setNodeStylesToHidden(node);
                 }
-                const nestedGhosts =
-                    node.querySelectorAll(".__chobitsu-hide__");
-                nestedGhosts.forEach(ghost => {
-                    if (!(ghost instanceof HTMLElement)) return;
-                    ghost.style.setProperty("display", "none", "important");
-                    ghost.style.setProperty(
-                        "visibility",
-                        "hidden",
-                        "important",
-                    );
-                    ghost.style.setProperty("opacity", "0", "important");
-                    ghost.style.setProperty(
-                        "pointer-events",
-                        "none",
-                        "important",
-                    );
+                node.querySelectorAll(CHII_GHOST_SELECTOR).forEach(ghost => {
+                    if (ghost instanceof HTMLElement) {
+                        setNodeStylesToHidden(ghost);
+                    }
                 });
             }
         }
@@ -78,6 +128,8 @@ function ensureChiiGhostCleanup(doc: Document): void {
     observer.observe(root, {
         childList: true,
         subtree: true,
+        attributes: true,
+        attributeFilter: ["class"],
     });
 }
 
@@ -280,19 +332,33 @@ export function injectChiiIntoIframe(
                 ensureChiiGhostCleanup(doc);
                 bindChiiGlobals(win, doc, devtoolsIframe);
 
-                const existing = doc.getElementById("__civil_chii__");
-                if (existing) {
-                    existing.remove();
-                }
+                const code = buildChiiInjectScript(targetScriptText);
 
-                const script = doc.createElement("script");
-                script.id = "__civil_chii__";
-                script.type = "text/javascript";
-                script.textContent = buildChiiInjectScript(targetScriptText);
-                bindChiiGlobals(win, doc, devtoolsIframe);
-                (doc.body ?? doc.head ?? doc.documentElement)?.appendChild(
-                    script,
-                );
+                // Scramjet/UV block <script>-tag injection from executing on
+                // proxied pages, so the chii client never ran (target never
+                // registered -> devtools stuck on about:blank). Run it through
+                // the preamble's saved native eval instead; fall back to a
+                // <script> tag on internal (non-proxied) pages where eval isn't
+                // stashed but script tags work.
+                const nativeEval = (
+                    win as unknown as {
+                        __civilNativeEval?: (c: string) => unknown;
+                    }
+                ).__civilNativeEval;
+
+                if (typeof nativeEval === "function") {
+                    nativeEval(code);
+                } else {
+                    const existing = doc.getElementById("__civil_chii__");
+                    if (existing) existing.remove();
+                    const script = doc.createElement("script");
+                    script.id = "__civil_chii__";
+                    script.type = "text/javascript";
+                    script.textContent = code;
+                    (doc.body ?? doc.head ?? doc.documentElement)?.appendChild(
+                        script,
+                    );
+                }
             } catch {}
         }
     };
@@ -313,6 +379,15 @@ export function injectChiiIntoIframe(
 }
 
 export function cleanupChiiArtifacts(iframe: HTMLIFrameElement): void {
+    // Also sweep the host document: a stray chii/chobitsu helper node can be
+    // attached there (not just inside the target frame), and it only becomes
+    // visible for certain dock positions (top/left).
+    try {
+        if (typeof document !== "undefined") {
+            ensureChiiGhostCleanup(document);
+            hideChiiGhostNodes(document);
+        }
+    } catch {}
     try {
         const doc = iframe.contentDocument;
         if (!doc || doc.location.href === "about:blank") return;
@@ -327,26 +402,53 @@ export function createIframeManager(
 ) {
     const iframeMap = new Map<string, HTMLIFrameElement>();
 
+    void extensionsLaunchBackgrounds();
+
     const navigateIframe = (id: string, url: string) => {
         const iframe = iframeMap.get(id);
         if (!iframe) return;
 
-        push(id, url);
+        const chromeTab = extensionTab(id, url, "loading");
+        dispatchExtensionBrowserEvent("webNavigation.onBeforeNavigate", [
+            {
+                tabId: chromeTab.id,
+                url,
+                frameId: 0,
+                parentFrameId: -1,
+                timeStamp: Date.now(),
+            },
+        ]);
+        dispatchExtensionBrowserEvent("tabs.onUpdated", [
+            chromeTab.id,
+            { status: "loading", url },
+            chromeTab,
+        ]);
+
         tabManager.updateTab(id, { url, isLoading: true, title: "Loading…" });
 
         if (!isInternalUrl(url)) {
-            void trackVisit(normalizeNav(url)).then(
-                ({ userBanned, banReason }) => {
-                    if (!userBanned) return;
-                    tabManager.updateTab(id, {
-                        isLoading: false,
-                        title: "Banned",
-                    });
+            void fetch("/api/track-visit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: normalizeNav(url) }),
+            })
+                .then(res => res.json())
+                .then(
+                    (data: {
+                        userBanned?: boolean;
+                        banReason?: string | null;
+                    }) => {
+                        if (!data.userBanned) return;
+                        tabManager.updateTab(id, {
+                            isLoading: false,
+                            title: "Banned",
+                        });
 
-                    if (!banReason) return;
-                    iframe.src = `${window.location.origin}/ban?reason=${encodeURIComponent(banReason)}`;
-                },
-            );
+                        if (!data.banReason) return;
+                        iframe.src = `${window.location.origin}/ban?reason=${encodeURIComponent(data.banReason)}`;
+                    },
+                )
+                .catch(() => {});
         }
 
         if (id === tabManager.activeId) {
@@ -366,7 +468,7 @@ export function createIframeManager(
     const registerIframe = (id: string, el: HTMLIFrameElement) => {
         iframeMap.set(id, el);
 
-        el.addEventListener("load", () => {
+        el.addEventListener("load", async () => {
             let href: string | undefined;
             try {
                 href = el.contentWindow?.location.href;
@@ -375,19 +477,33 @@ export function createIframeManager(
 
             try {
                 const docTitle = el.contentDocument?.title;
-                const tabUrl =
-                    tabManager.tabs.find(t => t.id === id)?.url ?? href;
+                const tabUrl = decodeProxyUrl(href);
                 const favicon = isInternalUrl(tabUrl)
                     ? "/favicon.ico"
                     : gstaticFavicon(normalizeNav(tabUrl));
                 const resolvedTitle =
                     docTitle || displayUrl(tabUrl) || "Untitled";
                 tabManager.updateTab(id, {
+                    url: tabUrl,
                     isLoading: false,
                     title: resolvedTitle,
                     favicon,
                 });
 
+                push(id, tabUrl);
+
+                const chromeTab = extensionTab(id, tabUrl, "complete");
+                const navigationDetails = {
+                    tabId: chromeTab.id,
+                    url: tabUrl,
+                    frameId: 0,
+                    parentFrameId: -1,
+                    documentId: crypto.randomUUID(),
+                    documentLifecycle: "active",
+                    frameType: "outermost_frame",
+                    processId: -1,
+                    timeStamp: Date.now(),
+                };
                 if (!isInternalUrl(href)) {
                     void historyAdd({
                         url: tabUrl,
@@ -395,8 +511,56 @@ export function createIframeManager(
                         visitedAt: Date.now(),
                         favicon,
                     });
-                    void extensionsApplyToIframe(el);
+                    // Await shim injection BEFORE firing any webNavigation or
+                    // tabs.onUpdated events. TM background responds to these
+                    // events by calling scripting.executeScript; the BC message
+                    // must find the content-script listener already active in
+                    // the iframe, otherwise the executeScript is silently lost.
+                    await injectExtensionShimsIntoIframe(el, tabUrl, id);
+
+                    // Userscript install: if the page is a .user.js file, inject
+                    // a small helper that asks TM's content script to handle it.
+                    // TM's content script checks window.location.href (Scramjet
+                    // rewrites it to the original URL) and document.body.innerText.
+                    // We also fire browser:userscript-install on window.top so
+                    // Civil can forward it to TM's background directly.
+                    const cleanHref = href.split("?")[0].split("#")[0];
+                    if (/\.user\.(js|ts)$/i.test(cleanHref)) {
+                        try {
+                            const src =
+                                el.contentDocument?.body?.innerText ?? "";
+                            if (src.includes("// ==UserScript==")) {
+                                window.dispatchEvent(
+                                    new CustomEvent(
+                                        "browser:userscript-install",
+                                        {
+                                            detail: { url: href, source: src },
+                                        },
+                                    ),
+                                );
+                            }
+                        } catch {}
+                    }
                 }
+
+                // Fire webNavigation and tabs.onUpdated AFTER shim injection
+                // so that TM's scripting.executeScript responses from the BC
+                // bus find the content-script listener already active.
+                dispatchExtensionBrowserEvent("webNavigation.onCommitted", [
+                    {
+                        ...navigationDetails,
+                        transitionType: "link",
+                        transitionQualifiers: [],
+                    },
+                ]);
+                dispatchExtensionBrowserEvent("webNavigation.onCompleted", [
+                    navigationDetails,
+                ]);
+                dispatchExtensionBrowserEvent("tabs.onUpdated", [
+                    chromeTab.id,
+                    { status: "complete", url: tabUrl },
+                    chromeTab,
+                ]);
 
                 if (id === tabManager.activeId) {
                     iframeSetCurrentSrc(href);
@@ -408,7 +572,6 @@ export function createIframeManager(
 
         const tab = tabManager.tabs.find(t => t.id === id);
         if (tab?.url) {
-            push(id, tab.url);
             if (id === tabManager.activeId) {
                 iframeSetCurrentSrc(tab.url);
             }

@@ -78,6 +78,23 @@ export const noFiltersText = style({
     cursor: "default",
 });
 
+export const unsupportedNotice = style({
+    width: "100%",
+    maxWidth: "640px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "12px 16px",
+    borderRadius: "10px",
+    fontSize: "13px",
+    lineHeight: 1.5,
+    color: vars.color.yellow,
+    background: `color-mix(in srgb, ${vars.color.yellow} 10%, ${vars.color.mantle})`,
+    border: `1px solid color-mix(in srgb, ${vars.color.yellow} 35%, transparent)`,
+    animation: `${fadeUp} 0.45s ${T_SLOW} 0.08s`,
+    animationFillMode: "both",
+});
+
 export const detectedBadges = style({
     width: "100%",
     maxWidth: "640px",
@@ -361,4 +378,33 @@ export const resultStatus = styleVariants({
 export const spinner = style({
     display: "inline-block",
     animation: `${spin} 0.8s linear infinite`,
+    // Functional loader: opt back in past the global motion-kill.
+    animationDuration: "0.8s !important",
+});
+
+export const rescanBtn = style({
+    marginLeft: "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "5px 14px",
+    borderRadius: "8px",
+    border: `1px solid ${vars.color.surface1}`,
+    background: vars.color.surface0,
+    color: vars.color.text,
+    fontSize: "12px",
+    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: `background ${T}, border-color ${T}, opacity ${T}`,
+    selectors: {
+        "&:hover:not(:disabled)": {
+            background: vars.color.surface1,
+            borderColor: vars.color.surface2,
+        },
+        "&:disabled": {
+            opacity: 0.6,
+            cursor: "not-allowed",
+        },
+    },
 });

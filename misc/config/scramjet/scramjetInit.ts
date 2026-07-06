@@ -93,19 +93,28 @@ const codec = {
     },
 };
 
-async function createTransport() {
-    const transportKey = localStorage.getItem("transport") || "epoxy";
-    const wispUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/wisp/`;
+const WISP_URL = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/wisp/`;
 
-    switch (transportKey) {
-        case "epoxy": {
-            const { default: EpoxyTransport } = await import(
-                `${location.origin}/epoxy/index.mjs`
-            );
-            const t = new EpoxyTransport({ wisp: wispUrl });
-            await t.init();
-            return t;
-        }
+// Built transport instances, cached by key so each is created at most once and
+// reused across frames. Enables per-frame transport switching at runtime (the
+// scramjet controller stores transport per-frame on frame.controller.transport).
+const transportCache = new Map<string, Promise<any>>();
+
+function getTransport(key: string): Promise<any> {
+    if (!transportCache.has(key)) {
+        transportCache.set(
+            key,
+            buildTransport(key, WISP_URL).catch(error => {
+                transportCache.delete(key);
+                throw error;
+            }),
+        );
+    }
+    return transportCache.get(key)!;
+}
+
+async function buildTransport(key: string, wispUrl: string) {
+    switch (key) {
         case "bare": {
             const { default: BareTransport } = await import(
                 `${location.origin}/bare-transport/index.mjs`
@@ -114,8 +123,6 @@ async function createTransport() {
             await t.init();
             return t;
         }
-        // biome-ignore lint/suspicious/useDefaultSwitchClauseLast: enough
-        default:
         case "libcurl": {
             const { default: LibcurlTransport } = await import(
                 `${location.origin}/libcurl/index.mjs`
@@ -124,7 +131,38 @@ async function createTransport() {
             await t.init();
             return t;
         }
+        default: {
+            const { default: EpoxyTransport } = await import(
+                `${location.origin}/epoxy/index.mjs`
+            );
+            const t = new EpoxyTransport({ wisp: wispUrl });
+            await t.init();
+            return t;
+        }
     }
+}
+
+async function createTransport() {
+    const preferred = localStorage.getItem("transport") || "epoxy";
+
+    const order = ["epoxy", "libcurl", "bare"];
+    const tryOrder = [preferred, ...order.filter(k => k !== preferred)];
+
+    let lastError: unknown;
+    for (const key of tryOrder) {
+        try {
+            const t = await getTransport(key);
+            // Seed cache already done by getTransport; return the winning one.
+            return t;
+        } catch (error) {
+            lastError = error;
+            console.warn(
+                `[civil] transport "${key}" failed to init, trying next`,
+                error,
+            );
+        }
+    }
+    throw lastError ?? new Error("No usable proxy transport");
 }
 
 async function initScramjet() {
@@ -136,8 +174,31 @@ async function initScramjet() {
         createTransport(),
     ]);
 
+    if (!navigator.serviceWorker.controller) {
+        await new Promise<void>(resolve => {
+            const onChange = () => {
+                navigator.serviceWorker.removeEventListener(
+                    "controllerchange",
+                    onChange,
+                );
+                resolve();
+            };
+            navigator.serviceWorker.addEventListener(
+                "controllerchange",
+                onChange,
+                { once: true },
+            );
+            setTimeout(resolve, 5000);
+        });
+    }
+
+    const serviceworker =
+        navigator.serviceWorker.controller ?? registration.active!;
+
+    const { defaultConfig } = $scramjet;
+
     const controller = new Controller({
-        serviceworker: registration.active!,
+        serviceworker,
         transport,
         config: {
             prefix: "/~/scramjet/",
@@ -148,19 +209,30 @@ async function initScramjet() {
             codec,
         },
         scramjetConfig: {
+            ...defaultConfig,
             flags: {
+                ...defaultConfig.flags,
                 rewriterLogs: false,
                 scramitize: false,
                 cleanErrors: true,
                 sourcemaps: true,
+                syncxhr: true,
+                allowInvalidJs: true,
+                allowFailedIntercepts: true,
             } as any,
+            siteFlags: defaultConfig.siteFlags,
         },
     });
+
+    await controller.wait();
 
     window.scramjet = Object.assign(controller, {
         encodeUrl: (s: string) => controller.prefix + codec.encode(s),
         decodeUrl: codec.decode,
     });
+
+    // Expose lazy transport builder for per-frame runtime transport switching.
+    (window as any).__civilGetTransport = getTransport;
 }
 
 window.scramjetReady = initScramjet();

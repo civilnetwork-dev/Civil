@@ -1,15 +1,17 @@
+import { lsSetJSON, lsSetRaw } from "~/lib/reactiveStorage";
 import type { CivilHistoryEntry, HistoryStorageMethod } from "~/types";
 import { idbClear, idbDelete, idbGetAll, idbPut, openCivilDB } from "./storage";
 
-const LS_KEY = "civil-history";
+export const HISTORY_LS_KEY = "civil-history";
+export const HISTORY_METHOD_LS_KEY = "civil-history-method";
+const LS_KEY = HISTORY_LS_KEY;
 const DB_NAME = "civil-history-db";
 const STORE = "history";
 
 function getMethod(): HistoryStorageMethod {
     return (
-        (localStorage.getItem(
-            "civil-history-method",
-        ) as HistoryStorageMethod) ?? "localstorage"
+        (localStorage.getItem(HISTORY_METHOD_LS_KEY) as HistoryStorageMethod) ??
+        "localstorage"
     );
 }
 
@@ -22,7 +24,7 @@ function lsLoad(): CivilHistoryEntry[] {
 }
 
 function lsSave(entries: CivilHistoryEntry[]): void {
-    localStorage.setItem(LS_KEY, JSON.stringify(entries));
+    lsSetJSON(LS_KEY, entries);
 }
 
 async function getDB(): Promise<IDBDatabase> {
@@ -71,7 +73,7 @@ export async function historyClear(): Promise<void> {
 }
 
 export function historySetMethod(method: HistoryStorageMethod): void {
-    localStorage.setItem("civil-history-method", method);
+    lsSetRaw(HISTORY_METHOD_LS_KEY, method);
 }
 
 export function historyGetMethod(): HistoryStorageMethod {

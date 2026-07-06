@@ -1,0 +1,1 @@
+- Add the ability for users to customize the credentials the API requests with from the client side

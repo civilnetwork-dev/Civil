@@ -2,7 +2,9 @@ import { sql } from "drizzle-orm";
 import {
     boolean,
     index,
+    integer,
     pgTable,
+    real,
     serial,
     text,
     timestamp,
@@ -128,7 +130,33 @@ export const goguardianManifestKeys = pgTable(
     ],
 );
 
+export const siteProxyConfigs = pgTable(
+    "site_proxy_configs",
+    {
+        id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+        hostname: text("hostname").notNull(),
+        proxy: text("proxy").notNull(),
+        transport: text("transport").notNull().default("epoxy"),
+        wispVersion: integer("wisp_version").notNull().default(2),
+        score: real("score").notNull().default(0),
+        // Per-proxy measured compat scores (render + rewriter-error penalty),
+        // so the finder can pick the proxy with the fewest rewriter errors.
+        scoreScramjet: real("score_scramjet"),
+        scoreUv: real("score_uv"),
+        latencyMs: integer("latency_ms"),
+        reason: text("reason"),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    t => [uniqueIndex("site_proxy_configs_hostname_idx").on(t.hostname)],
+);
+
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Visit = typeof visits.$inferSelect;
 export type GoGuardianManifestKey = typeof goguardianManifestKeys.$inferSelect;
+export type SiteProxyConfig = typeof siteProxyConfigs.$inferSelect;

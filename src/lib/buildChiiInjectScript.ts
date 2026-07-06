@@ -1,7 +1,23 @@
 export function buildChiiInjectScript(targetScriptText: string) {
     return `(function(){
   var L = function (m, x) { try { console.log('[civil-chii] ' + m, x === undefined ? '' : x); } catch(_) {} };
+  // Re-entry guard: injectChiiIntoIframe may run more than once per document
+  // (multiple load events / native-eval re-runs); a second run would spawn a
+  // duplicate bridge socket. Cleared naturally on navigation (new document).
+  if (window.__civil_chii_ran) { L('already ran, skip'); return; }
+  window.__civil_chii_ran = true;
   L('wrapper start, location=', location.href);
+
+  // Bridge to the host over the REAL window's event APIs. Under Scramjet, the
+  // page's \`window\` (and its addEventListener/dispatchEvent/CustomEvent) is a
+  // proxy, so events dispatched through it never reach the host's listener on
+  // the real contentWindow. The preamble (injected before Scramjet) stashes the
+  // native, unproxied versions; fall back to bound globals off-proxy.
+  var __add = window.__civilNativeAddEventListener || window.addEventListener.bind(window);
+  var __rm = window.__civilNativeRemoveEventListener || window.removeEventListener.bind(window);
+  var __disp = window.__civilNativeDispatchEvent || window.dispatchEvent.bind(window);
+  var __CE = window.__civilNativeCustomEvent || window.CustomEvent;
+  L('bridge natives?', (window.__civilNativeDispatchEvent ? 'preamble' : 'fallback'));
 
   var __savedWS = window.WebSocket;
   var __savedFetch = window.fetch;
@@ -59,7 +75,7 @@ export function buildChiiInjectScript(targetScriptText: string) {
           onclose: null,
         };
         function cleanup() {
-          window.removeEventListener('__civilChiiBridgeToChild', onBridgeMessage);
+          __rm('__civilChiiBridgeToChild', onBridgeMessage);
         }
         function emit(type, event) {
           var handler = state['on' + type];
@@ -115,7 +131,7 @@ export function buildChiiInjectScript(targetScriptText: string) {
             }));
           }
         }
-        window.addEventListener('__civilChiiBridgeToChild', onBridgeMessage);
+        __add('__civilChiiBridgeToChild', onBridgeMessage);
         Object.defineProperties(facade, {
           url: { get: function () { return state.url; } },
           protocol: { get: function () { return state.protocol; } },
@@ -127,7 +143,7 @@ export function buildChiiInjectScript(targetScriptText: string) {
             set: function (value) {
               state.binaryType = value;
               try {
-                window.dispatchEvent(new CustomEvent('__civilChiiBridgeToHost', {
+                __disp(new __CE('__civilChiiBridgeToHost', {
                   detail: {
                     type: 'setBinaryType',
                     id: socketId,
@@ -155,7 +171,7 @@ export function buildChiiInjectScript(targetScriptText: string) {
           },
         });
         facade.send = function (data) {
-          window.dispatchEvent(new CustomEvent('__civilChiiBridgeToHost', {
+          __disp(new __CE('__civilChiiBridgeToHost', {
             detail: {
               type: 'send',
               id: socketId,
@@ -166,7 +182,7 @@ export function buildChiiInjectScript(targetScriptText: string) {
         facade.close = function (code, reason) {
           if (state.readyState >= 2) return;
           state.readyState = 2;
-          window.dispatchEvent(new CustomEvent('__civilChiiBridgeToHost', {
+          __disp(new __CE('__civilChiiBridgeToHost', {
             detail: {
               type: 'close',
               id: socketId,
@@ -175,7 +191,7 @@ export function buildChiiInjectScript(targetScriptText: string) {
             },
           }));
         };
-        window.dispatchEvent(new CustomEvent('__civilChiiBridgeToHost', {
+        __disp(new __CE('__civilChiiBridgeToHost', {
           detail: {
             type: 'create',
             id: socketId,

@@ -13,6 +13,7 @@ import {
     onSettled,
     Show,
 } from "solid-js";
+import { checkFiltersNow } from "~/lib/swUtils";
 import * as s from "~/styles/FilterCheckPage.css";
 import GoGuardianManifestToast from "./GoGuardianManifestToast";
 import PatreonLoginButton from "./ui/PatreonLoginButton";
@@ -112,7 +113,7 @@ const FILTER_CONFIGS: Record<string, FilterConfig> = {
             return {
                 status: blocked ? "blocked" : "allowed",
                 detail: blocked
-                    ? `Blocked${keywords.length ? ` — ${keywords.join(", ")}` : ""}`
+                    ? `Blocked${keywords.length ? ` - ${keywords.join(", ")}` : ""}`
                     : "Allowed",
             };
         },
@@ -180,6 +181,79 @@ const FILTER_CONFIGS: Record<string, FilterConfig> = {
             };
         },
     },
+    hapara: {
+        name: "Hapara",
+        aliases: ["hapara"],
+        needsEmail: true,
+        endpoint: "/filterCheck/hapara",
+        buildPayload: (url, email) => ({ url, email }),
+        parseResult: (data: any) => {
+            const verdict = data?.verdict as string | undefined;
+            const parts: string[] = [];
+            if (data?.sessionType) parts.push(`session: ${data.sessionType}`);
+            if (data?.teacherName) parts.push(`teacher: ${data.teacherName}`);
+            if (data?.matchedDomain)
+                parts.push(`matched: ${data.matchedDomain}`);
+            const suffix = parts.length ? ` (${parts.join(", ")})` : "";
+
+            switch (verdict) {
+                case "BLOCKED":
+                    return {
+                        status: "blocked" as FilterStatus,
+                        detail: `Blocked${suffix}`,
+                    };
+                case "LOCKED":
+                    return {
+                        status: "blocked" as FilterStatus,
+                        detail: `Locked to teacher-approved tabs${suffix}`,
+                    };
+                case "PAUSED":
+                    return {
+                        status: "warned" as FilterStatus,
+                        detail: `Screen paused by teacher${suffix}`,
+                    };
+                case "ALLOWED":
+                    return {
+                        status: "allowed" as FilterStatus,
+                        detail: `Allowed${suffix}`,
+                    };
+                case "UNMONITORED":
+                    return {
+                        status: "allowed" as FilterStatus,
+                        detail: "Not monitored right now (outside monitoring hours)",
+                    };
+                default:
+                    return {
+                        status: "unknown" as FilterStatus,
+                        detail: "No active session - status unknown",
+                    };
+            }
+        },
+    },
+    lightspeed: {
+        name: "Lightspeed Filter",
+        aliases: ["lightspeedfilter"],
+        endpoint: "/filterCheck/lightspeed",
+        buildPayload: url => ({ url }),
+        parseResult: (data: any) => {
+            const cats: string[] = Array.isArray(data?.categories)
+                ? (data.categories as string[])
+                : [];
+            if (!data?.statusIsKnown)
+                return {
+                    status: "unknown",
+                    detail: "Category unknown",
+                    categories: cats,
+                };
+            return {
+                status: data?.blocked ? "blocked" : "allowed",
+                detail: data?.blocked
+                    ? `Blocked${data?.matchedCategory ? ` — ${data.matchedCategory}` : ""}`
+                    : "Allowed",
+                categories: cats,
+            };
+        },
+    },
 };
 
 function findFilterConfig(name: string): [string, FilterConfig] | null {
@@ -190,6 +264,14 @@ function findFilterConfig(name: string): [string, FilterConfig] | null {
         }
     }
     return null;
+}
+
+function prettifyFilterName(key: string): string {
+    const spaced = key
+        .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+        .replace(/[_-]+/g, " ")
+        .trim();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 async function checkFilter(
@@ -284,6 +366,18 @@ export default function FilterCheckPage() {
     const [detectedFilters, setDetectedFilters] = createSignal<string[]>(
         readDetectedFilters(),
     );
+    const [rescanning, setRescanning] = createSignal(false);
+
+    const handleRescan = async () => {
+        if (rescanning()) return;
+        setRescanning(true);
+        try {
+            // Result flows back via the detectedFiltersUpdated listener.
+            await checkFiltersNow();
+        } finally {
+            setRescanning(false);
+        }
+    };
 
     // Only fetch manifest key (and show toast) when GoGuardian is actually detected
     createTrackedEffect(() => {
@@ -315,6 +409,12 @@ export default function FilterCheckPage() {
             );
         };
         window.addEventListener("detectedFiltersUpdated", handler);
+
+        // Re-detect installed filters on every visit (getFilters() in the SW
+        // probes live), so filters installed after boot show up without a
+        // manual localStorage.removeItem + reload. Result flows back through the
+        // detectedFiltersUpdated handler above.
+        void checkFiltersNow();
 
         void (async () => {
             try {
@@ -352,6 +452,11 @@ export default function FilterCheckPage() {
         }
         return found;
     });
+
+    // Detected filters with no FilterCheck API support yet.
+    const unsupportedFilters = createMemo(() =>
+        detectedFilters().filter(f => !findFilterConfig(f)),
+    );
 
     const needsEmail = createMemo(() =>
         activeConfigs().some(([, c]) => c.needsEmail),
@@ -479,9 +584,25 @@ export default function FilterCheckPage() {
                 <Show
                     when={detectedFilters().length > 0}
                     fallback={
-                        <p class={s.noFiltersText}>
-                            You don't have any filters installed.
-                        </p>
+                        <div class={s.detectedBadges}>
+                            <p class={s.noFiltersText}>
+                                You don't have any filters installed.
+                            </p>
+                            <button
+                                type="button"
+                                class={s.rescanBtn}
+                                onClick={handleRescan}
+                                disabled={rescanning()}
+                            >
+                                <Show
+                                    when={rescanning()}
+                                    fallback="Re-scan filters"
+                                >
+                                    <TbOutlineLoader2 class={s.spinner} />{" "}
+                                    Scanning…
+                                </Show>
+                            </button>
+                        </div>
                     }
                 >
                     <div class={s.detectedBadges}>
@@ -491,7 +612,34 @@ export default function FilterCheckPage() {
                                 <span class={s.badge}>{f()}</span>
                             )}
                         </For>
+                        <button
+                            type="button"
+                            class={s.rescanBtn}
+                            onClick={handleRescan}
+                            disabled={rescanning()}
+                        >
+                            <Show
+                                when={rescanning()}
+                                fallback="Re-scan filters"
+                            >
+                                <TbOutlineLoader2 class={s.spinner} /> Scanning…
+                            </Show>
+                        </button>
                     </div>
+
+                    <Show when={unsupportedFilters().length > 0}>
+                        <div class={s.unsupportedNotice}>
+                            <For each={unsupportedFilters()}>
+                                {(f: Accessor<string>) => (
+                                    <p>
+                                        We don't support the ID of the extension
+                                        "{prettifyFilterName(f())}" you have
+                                        yet.
+                                    </p>
+                                )}
+                            </For>
+                        </div>
+                    </Show>
 
                     <form
                         class={s.form}

@@ -9,6 +9,8 @@ import { vanillaExtractPlugin as vanillaExtract } from "@vanilla-extract/vite-pl
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
 import { nitro } from "nitro/vite";
+import { rolldown } from "rolldown";
+import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import biome from "vite-plugin-biome";
 import { BLOCK_AI_ALLOW_REST, robots } from "vite-plugin-robots-ts";
@@ -38,6 +40,45 @@ function toChangefreq(
     if (commits <= 8) return "weekly";
     if (commits <= 20) return "daily";
     return "always";
+}
+
+function civilExtShimPlugin(): Plugin {
+    const VIRTUAL_ID = "virtual:civil-ext-shim-source";
+    const RESOLVED_ID = "\0virtual:civil-ext-shim-source";
+    let _cached: string | undefined;
+    return {
+        name: "civil-ext-shim-source",
+        resolveId(id) {
+            if (id === VIRTUAL_ID) return RESOLVED_ID;
+        },
+        async load(id) {
+            if (id !== RESOLVED_ID) return;
+            if (_cached !== undefined)
+                return `export default ${JSON.stringify(_cached)};`;
+            try {
+                const bundle = await rolldown({
+                    input: resolve(
+                        process.cwd(),
+                        "misc/browserApiEmulators/extensions/chrome/shim/index.ts",
+                    ),
+                    platform: "browser",
+                });
+                const result = await bundle.generate({
+                    format: "iife",
+                    name: "__civilShim__",
+                    minify: false,
+                });
+                _cached = result.output[0]?.code ?? "";
+            } catch (err) {
+                console.warn(
+                    "[civil-ext-shim] bundle failed, using script-tag fallback:",
+                    err,
+                );
+                _cached = "";
+            }
+            return `export default ${JSON.stringify(_cached)};`;
+        },
+    };
 }
 
 const routeFiles = glob("src/routes/*.tsx").filter(
@@ -108,6 +149,7 @@ export default defineConfig(() => {
             },
         },
         plugins: [
+            civilExtShimPlugin(),
             tanstackRouter({ target: "solid", autoCodeSplitting: true }),
             solidOxc(),
             solidStart({

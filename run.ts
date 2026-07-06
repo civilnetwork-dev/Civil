@@ -13,11 +13,16 @@ import {
     banUser,
     cached,
     createDatabaseMiddleware,
+    getSiteProxyConfig,
     initBannedDomains,
     isUserBanned,
     matchBannedDomain,
+    normalizeHostname,
+    probeSite,
+    recordCompatFeedback,
     redis,
     sessionKey,
+    upsertSiteProxyConfig,
 } from "./misc/database/index";
 
 const mwModulePrefix = "node_modules/@mercuryworkshop";
@@ -57,9 +62,9 @@ import { XMLParser } from "fast-xml-parser";
 import sirv from "sirv";
 import { WebSocketServer } from "ws";
 import xior from "xior";
-import { createGoGuardianKeysRouter } from "./misc/goguardian-keys/api";
-import { createSchoolDistrictsRouter } from "./misc/school-districts/api";
-import { setupSchoolDistricts } from "./misc/school-districts/setup";
+import { createGoGuardianKeysRouter } from "./misc/goguardianKeys/api";
+import { createSchoolDistrictsRouter } from "./misc/schoolDistricts/api";
+import { setupSchoolDistricts } from "./misc/schoolDistricts/setup";
 
 class RammerheadRouting {
     static #scopes: string[] & { length: 15 } = [
@@ -84,7 +89,7 @@ class RammerheadRouting {
         const url = new URL(req.url!, "http://0.0.0.0");
         return (
             RammerheadRouting.#scopes.includes(url.pathname) ||
-            /^\/[a-z0-9]{32}/.test(url.pathname)
+            /^\/[a-z0-9]{32}(\/|$)/.test(url.pathname)
         );
     }
 
@@ -112,7 +117,9 @@ import { useBlocksiMiddleware } from "./misc/filters/blocksi/middleware";
 import { useFilterBlockerMiddleware } from "./misc/filters/filterBlockerMiddleware";
 import { useFortiGuardMiddleware } from "./misc/filters/fortiguard/middleware";
 import { useGoGuardianMiddleware } from "./misc/filters/goguardian/middleware";
+import { useHaparaMiddleware } from "./misc/filters/hapara/middleware";
 // import { useLanSchoolMiddleware } from "./misc/filters/lanschool/air/middleware";
+import { useLightspeedMiddleware } from "./misc/filters/lightspeed/middleware";
 import { useLinewizeMiddleware } from "./misc/filters/linewize/middleware";
 import { useSecurlyMiddleware } from "./misc/filters/securly/middleware";
 import { useSharedFilterMiddleware } from "./misc/filters/sharedMiddleware";
@@ -146,17 +153,69 @@ function buildWispClosePacket(streamId: number): Uint8Array {
     return buf;
 }
 
+const VIOLATION_LIMIT = 5;
+const VIOLATION_TTL = 86400;
+
+function extractClientIp(req: Request): string | null {
+    const xff = req.headers["x-forwarded-for"];
+    const first = Array.isArray(xff) ? xff[0] : xff?.split(",")[0];
+    const raw = (
+        first ??
+        (req.headers["x-real-ip"] as string | undefined) ??
+        req.socket?.remoteAddress ??
+        ""
+    ).trim();
+    return raw ? raw.replace(/^::ffff:/, "") : null;
+}
+
+/**
+ * Record a restricted-domain strike. Strikes are counted per-userId AND per-IP
+ * so a banned user cannot reset by clearing data and creating a fresh anonymous
+ * account: the IP counter survives the wipe (24h window), and the effective
+ * strike count is the max of the two. The ban itself stays per-userId (no
+ * whole-IP block) to avoid banning an entire school behind one shared NAT.
+ */
+async function recordViolation(
+    userId: string,
+    ip: string | null,
+): Promise<{ violations: number; banned: boolean }> {
+    const userKey = `wisp:violations:${userId}`;
+    const userCount = await redis.incr(userKey);
+    await redis.expire(userKey, VIOLATION_TTL);
+
+    let ipCount = 0;
+    if (ip) {
+        const ipKey = `wisp:violations:ip:${ip}`;
+        ipCount = await redis.incr(ipKey);
+        await redis.expire(ipKey, VIOLATION_TTL);
+    }
+
+    const violations = Math.max(userCount, ipCount);
+    let banned = false;
+    if (violations >= VIOLATION_LIMIT) {
+        await banUser(
+            userId,
+            "Repeatedly accessed restricted domains via proxy",
+        );
+        banned = true;
+    }
+    return { violations, banned };
+}
+
 class TrackedWispConnection extends wisp.ServerConnection {
     private _userId: string | null;
+    private _ip: string | null;
 
     constructor(
         ws: unknown,
         path: string,
         userId: string | null,
+        ip: string | null,
         opts?: unknown,
     ) {
         super(ws, path, opts);
         this._userId = userId;
+        this._ip = ip;
     }
 
     override create_stream(
@@ -177,15 +236,8 @@ class TrackedWispConnection extends wisp.ServerConnection {
 
         if (!this._userId) return;
 
-        const key = `wisp:violations:${this._userId}`;
-        const count = await redis.incr(key);
-        await redis.expire(key, 86400);
-
-        if (count >= 5) {
-            await banUser(
-                this._userId,
-                "Repeatedly accessed restricted domains via proxy",
-            );
+        const { banned } = await recordViolation(this._userId, this._ip);
+        if (banned) {
             this.ws.close(1008, "Banned for accessing restricted content");
         }
     }
@@ -223,6 +275,8 @@ useLinewizeMiddleware(app);
 // useLanSchoolMiddleware(app);
 useFortiGuardMiddleware(app);
 useBlocksiMiddleware(app);
+useHaparaMiddleware(app);
+useLightspeedMiddleware(app);
 
 app.get("/api/ip-location", async (req, res) => {
     const raw =
@@ -249,6 +303,64 @@ app.use("/api/school-districts", createSchoolDistrictsRouter());
 app.use("/api/goguardian", createGoGuardianKeysRouter());
 
 app.use("/health", (_req, res) => res.json({ ok: true }));
+
+function isPrivateHost(hostname: string): boolean {
+    const h = hostname.toLowerCase();
+    if (
+        h === "localhost" ||
+        h === "127.0.0.1" ||
+        h === "::1" ||
+        h.endsWith(".local") ||
+        h.endsWith(".internal")
+    ) {
+        return true;
+    }
+    return (
+        /^10\./.test(h) ||
+        /^192\.168\./.test(h) ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+        /^169\.254\./.test(h) ||
+        /^127\./.test(h) ||
+        /^0\./.test(h) ||
+        /^fc00:/i.test(h) ||
+        /^fe80:/i.test(h)
+    );
+}
+
+app.get("/api/ext-proxy", async (req, res) => {
+    const target = req.query.url as string | undefined;
+    if (!target) return void res.status(400).json({ error: "url required" });
+    let parsed: URL;
+    try {
+        parsed = new URL(target);
+    } catch {
+        return void res.status(400).json({ error: "invalid url" });
+    }
+    if (parsed.protocol !== "https:") {
+        return void res.status(400).json({ error: "https only" });
+    }
+    if (isPrivateHost(parsed.hostname)) {
+        return void res.status(403).json({ error: "host not allowed" });
+    }
+    try {
+        const { data, status, headers } = await xior.get<ArrayBuffer>(target, {
+            responseType: "arraybuffer",
+            headers: {
+                "User-Agent": "Mozilla/5.0 (compatible; CivilProxy/1.0)",
+            },
+            validateStatus: () => true,
+        });
+        res.status(status);
+        const contentType = (headers as unknown as Record<string, string>)?.[
+            "content-type"
+        ];
+        if (contentType) res.set("Content-Type", contentType);
+        res.set("Cache-Control", "no-store");
+        res.end(Buffer.from(data));
+    } catch {
+        res.status(502).json({ error: "fetch failed" });
+    }
+});
 
 app.get("/api/favicon", async (req, res) => {
     const url = req.query.url as string | undefined;
@@ -295,6 +407,126 @@ app.get("/api/favicon", async (req, res) => {
     }
 });
 
+const _proxyProbesInFlight = new Map<string, Promise<unknown>>();
+app.get("/api/best-proxy", async (req, res) => {
+    const urlParam = req.query.url as string | undefined;
+    const hostname = urlParam ? normalizeHostname(urlParam) : null;
+    if (!hostname) {
+        return void res.status(400).json({ error: "invalid url" });
+    }
+
+    if (isPrivateHost(hostname)) {
+        return void res.set("Cache-Control", "no-store").json({
+            proxy: "scramjet",
+            transport: "epoxy",
+            wispVersion: 2,
+            score: 0,
+            cached: false,
+            fallback: true,
+        });
+    }
+
+    const redisKey = `siteproxy:${hostname}`;
+    try {
+        const hit = await redis.get(redisKey).catch(() => null);
+        if (hit) {
+            return void res
+                .set("Cache-Control", "no-store")
+                .json({ ...JSON.parse(hit), cached: true });
+        }
+
+        const stored = await getSiteProxyConfig(hostname);
+        if (stored) {
+            const payload = {
+                proxy: stored.proxy,
+                transport: stored.transport,
+                wispVersion: stored.wispVersion,
+                score: stored.score,
+            };
+            await redis
+                .set(redisKey, JSON.stringify(payload), "EX", 86400)
+                .catch(() => {});
+            return void res
+                .set("Cache-Control", "no-store")
+                .json({ ...payload, cached: true });
+        }
+
+        let inflight = _proxyProbesInFlight.get(hostname);
+        if (!inflight) {
+            inflight = (async () => {
+                const decision = await probeSite(`https://${hostname}/`);
+                await upsertSiteProxyConfig(hostname, decision).catch(() => {});
+                const payload = {
+                    proxy: decision.proxy,
+                    transport: decision.transport,
+                    wispVersion: decision.wispVersion,
+                    score: decision.score,
+                };
+                await redis
+                    .set(redisKey, JSON.stringify(payload), "EX", 86400)
+                    .catch(() => {});
+                return payload;
+            })().finally(() => _proxyProbesInFlight.delete(hostname));
+            _proxyProbesInFlight.set(hostname, inflight);
+        }
+        const payload = await inflight;
+        return void res
+            .set("Cache-Control", "no-store")
+            .json({ ...(payload as object), cached: false });
+    } catch {
+        return void res.set("Cache-Control", "no-store").json({
+            proxy: "scramjet",
+            transport: "epoxy",
+            wispVersion: 2,
+            score: 0,
+            cached: false,
+            fallback: true,
+        });
+    }
+});
+
+app.post("/api/best-proxy", async (req, res) => {
+    const body = req.body as {
+        url?: string;
+        proxy?: string;
+        transport?: string;
+        compat?: number;
+        rewriterErrors?: number;
+    };
+    const hostname = body?.url ? normalizeHostname(body.url) : null;
+    const proxy = body?.proxy;
+    const compat = Number(body?.compat);
+    const rewriterErrors = Number.isFinite(Number(body?.rewriterErrors))
+        ? Math.max(0, Number(body.rewriterErrors))
+        : 0;
+    if (
+        !hostname ||
+        (proxy !== "scramjet" && proxy !== "uv") ||
+        !Number.isFinite(compat)
+    ) {
+        return void res.status(400).json({ error: "bad feedback" });
+    }
+    if (isPrivateHost(hostname)) return void res.status(204).end();
+
+    try {
+        const transport =
+            body.transport === "epoxy" ||
+            body.transport === "libcurl" ||
+            body.transport === "bare"
+                ? body.transport
+                : undefined;
+        await recordCompatFeedback(
+            hostname,
+            proxy,
+            transport,
+            Math.max(0, Math.min(100, compat)),
+            rewriterErrors,
+        );
+        await redis.del(`siteproxy:${hostname}`).catch(() => {});
+    } catch {}
+    return void res.status(204).end();
+});
+
 app.use("/api/check-banned", (req, res) => {
     const url = req.query.url as string | undefined;
     if (!url) return res.json({ banned: false });
@@ -302,15 +534,47 @@ app.use("/api/check-banned", (req, res) => {
     return res.json({ banned: matched !== null });
 });
 
-app.use("/api/violations", async (req, res) => {
+function extractSessionToken(req: Request): string | undefined {
     const bearer = req.headers.authorization?.replace("Bearer ", "");
-    const token =
+    return (
         bearer ??
         req.headers.cookie
             ?.split(";")
             .find(c => c.trim().startsWith("better-auth.session_token="))
             ?.split("=")[1]
-            ?.trim();
+            ?.trim()
+    );
+}
+
+app.post("/api/violations", async (req, res) => {
+    const token = extractSessionToken(req);
+    if (!token) return void res.status(401).json({ ok: false });
+
+    const session = await auth.api
+        .getSession({
+            headers: new Headers({
+                cookie: `better-auth.session_token=${token}`,
+                authorization: `Bearer ${token}`,
+            }),
+        })
+        .catch(() => null);
+    if (!session?.user) return void res.status(401).json({ ok: false });
+
+    const { violations, banned } = await recordViolation(
+        session.user.id,
+        extractClientIp(req),
+    );
+
+    res.json({
+        ok: true,
+        violations,
+        banned,
+        maxViolations: VIOLATION_LIMIT,
+    });
+});
+
+app.use("/api/violations", async (req, res) => {
+    const token = extractSessionToken(req);
 
     if (!token) {
         return res.json({
@@ -340,15 +604,25 @@ app.use("/api/violations", async (req, res) => {
     }
 
     const user = session.user;
-    const raw = await redis.get(`wisp:violations:${user.id}`).catch(() => null);
+    const rawUser = await redis
+        .get(`wisp:violations:${user.id}`)
+        .catch(() => null);
+    const ip = extractClientIp(req);
+    const rawIp = ip
+        ? await redis.get(`wisp:violations:ip:${ip}`).catch(() => null)
+        : null;
+    const violations = Math.max(
+        parseInt(rawUser ?? "0", 10),
+        parseInt(rawIp ?? "0", 10),
+    );
 
     return res.json({
         authenticated: true,
         banned: Boolean(user.isBanned),
         banReason: user.banReason ?? null,
         bannedAt: user.bannedAt ?? null,
-        violations: parseInt(raw ?? "0", 10),
-        maxViolations: 5,
+        violations,
+        maxViolations: VIOLATION_LIMIT,
     });
 });
 
@@ -478,11 +752,14 @@ server.on("upgrade", async (req: Request, socket: Socket, head: Buffer) => {
                         : 1,
             };
 
+            const clientIp = extractClientIp(req);
+
             wispWss.handleUpgrade(req, socket, head, ws => {
                 const conn = new TrackedWispConnection(
                     ws,
                     req.url!,
                     userId,
+                    clientIp,
                     connOpts,
                 );
                 conn.setup()
