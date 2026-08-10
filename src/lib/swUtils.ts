@@ -68,11 +68,9 @@ async function checkFiltersNow(): Promise<string[]> {
 
 async function registerSw(): Promise<void> {
     if (!("serviceWorker" in navigator)) {
-        console.log(
-            "Service workers are not supported, so interception proxies will not work.",
+        console.error(
+            "Service workers are not supported, so interception proxies will not work. There is no non-service-worker fallback engine.",
         );
-        console.log("Setting proxy to rammerhead.");
-        localStorage.setItem("proxy", "rammerhead");
         return;
     }
 

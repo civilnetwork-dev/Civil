@@ -7,12 +7,9 @@ import { start as startChii } from "chii";
 import compression from "compression";
 import express from "express";
 import { toNodeHandler } from "h3/node";
-import createRammerhead from "rammerhead";
 import {
-    auth,
-    banUser,
-    cached,
     createDatabaseMiddleware,
+    getBannedDomains,
     getSiteProxyConfig,
     initBannedDomains,
     isUserBanned,
@@ -21,9 +18,19 @@ import {
     probeSite,
     recordCompatFeedback,
     redis,
-    sessionKey,
+    resolveSessionFromRequest,
     upsertSiteProxyConfig,
 } from "./misc/database/index";
+import { requireEnv, validateEnv } from "./misc/env";
+import { isPrivateHost } from "./misc/net";
+import {
+    extractClientIp,
+    readViolationCount,
+    recordViolation,
+    VIOLATION_LIMIT,
+} from "./misc/violations";
+
+validateEnv();
 
 const mwModulePrefix = "node_modules/@mercuryworkshop";
 const { epoxyPath, libcurlPath, bareTransportPath, scramjetControllerPath } = {
@@ -49,80 +56,37 @@ const { epoxyPath, libcurlPath, bareTransportPath, scramjetControllerPath } = {
     ),
 };
 
-import type {
-    ServerResponse as ExpressResponse,
-    IncomingMessage as Request,
-    Server,
-} from "node:http";
+import type { IncomingMessage as Request } from "node:http";
 import type { Socket } from "node:net";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
-import { logging, server as wisp } from "@mercuryworkshop/wisp-js/server";
 import { createBareServer } from "@tomphttp/bare-server-node";
 import { XMLParser } from "fast-xml-parser";
+import { blue, yellow } from "picocolors";
 import sirv from "sirv";
+import { build } from "vite";
 import { WebSocketServer } from "ws";
 import xior from "xior";
-import { createGoGuardianKeysRouter } from "./misc/goguardianKeys/api";
-import { createSchoolDistrictsRouter } from "./misc/schoolDistricts/api";
-import { setupSchoolDistricts } from "./misc/schoolDistricts/setup";
-
-class RammerheadRouting {
-    static #scopes: string[] & { length: 15 } = [
-        "/rammerhead.js",
-        "/hammerhead.js",
-        "/transport-worker.js",
-        "/task.js",
-        "/iframe-task.js",
-        "/worker-hammerhead.js",
-        "/messaging",
-        "/sessionexists",
-        "/deletesession",
-        "/newsession",
-        "/editsession",
-        "/needpassword",
-        "/syncLocalStorage",
-        "/api/shuffleDict",
-        "/mainport",
-    ];
-
-    static shouldRoute(req: Request) {
-        const url = new URL(req.url!, "http://0.0.0.0");
-        return (
-            RammerheadRouting.#scopes.includes(url.pathname) ||
-            /^\/[a-z0-9]{32}(\/|$)/.test(url.pathname)
-        );
-    }
-
-    static routeRequest(
-        rammerhead: Server,
-        req: Request,
-        res: ExpressResponse,
-    ) {
-        rammerhead.emit("request", req, res);
-    }
-
-    static routeUpgrade(
-        rammerhead: Server,
-        req: Request,
-        socket: Socket,
-        head: Buffer,
-    ) {
-        rammerhead.emit("upgrade", req, socket, head);
-    }
-}
-
-import { blue, yellow } from "picocolors";
-import { build } from "vite";
 import { useBlocksiMiddleware } from "./misc/filters/blocksi/middleware";
 import { useFilterBlockerMiddleware } from "./misc/filters/filterBlockerMiddleware";
 import { useFortiGuardMiddleware } from "./misc/filters/fortiguard/middleware";
 import { useGoGuardianMiddleware } from "./misc/filters/goguardian/middleware";
 import { useHaparaMiddleware } from "./misc/filters/hapara/middleware";
+import { useIbossMiddleware } from "./misc/filters/iboss/middleware";
 // import { useLanSchoolMiddleware } from "./misc/filters/lanschool/air/middleware";
 import { useLightspeedMiddleware } from "./misc/filters/lightspeed/middleware";
 import { useLinewizeMiddleware } from "./misc/filters/linewize/middleware";
 import { useSecurlyMiddleware } from "./misc/filters/securly/middleware";
 import { useSharedFilterMiddleware } from "./misc/filters/sharedMiddleware";
+import { createGoGuardianKeysRouter } from "./misc/goguardianKeys/api";
+import { createIbossGatewaysRouter } from "./misc/ibossGateways/api";
+import { createSchoolDistrictsRouter } from "./misc/schoolDistricts/api";
+import { setupSchoolDistricts } from "./misc/schoolDistricts/setup";
+import {
+    closeWispSession,
+    feedWispData,
+    routeUpgradeCallbacks,
+    setGlobalOptions,
+} from "./misc/wisp/native/index.js";
 
 if (!existsSync(resolve(import.meta.dirname, "dist"))) {
     console.log(yellow("no build found, building..."));
@@ -144,111 +108,25 @@ await startChii({
 const wss = new WebSocketServer({ noServer: true });
 const wispWss = new WebSocketServer({ noServer: true });
 
-function buildWispClosePacket(streamId: number): Uint8Array {
-    const buf = new Uint8Array(6);
-    const view = new DataView(buf.buffer);
-    view.setUint8(0, 0x04);
-    view.setUint32(1, streamId, true);
-    view.setUint8(5, 0x48); // HostBlocked
-    return buf;
-}
-
-const VIOLATION_LIMIT = 5;
-const VIOLATION_TTL = 86400;
-
-function extractClientIp(req: Request): string | null {
-    const xff = req.headers["x-forwarded-for"];
-    const first = Array.isArray(xff) ? xff[0] : xff?.split(",")[0];
-    const raw = (
-        first ??
-        (req.headers["x-real-ip"] as string | undefined) ??
-        req.socket?.remoteAddress ??
-        ""
-    ).trim();
-    return raw ? raw.replace(/^::ffff:/, "") : null;
-}
-
-/**
- * Record a restricted-domain strike. Strikes are counted per-userId AND per-IP
- * so a banned user cannot reset by clearing data and creating a fresh anonymous
- * account: the IP counter survives the wipe (24h window), and the effective
- * strike count is the max of the two. The ban itself stays per-userId (no
- * whole-IP block) to avoid banning an entire school behind one shared NAT.
- */
-async function recordViolation(
-    userId: string,
-    ip: string | null,
-): Promise<{ violations: number; banned: boolean }> {
-    const userKey = `wisp:violations:${userId}`;
-    const userCount = await redis.incr(userKey);
-    await redis.expire(userKey, VIOLATION_TTL);
-
-    let ipCount = 0;
-    if (ip) {
-        const ipKey = `wisp:violations:ip:${ip}`;
-        ipCount = await redis.incr(ipKey);
-        await redis.expire(ipKey, VIOLATION_TTL);
-    }
-
-    const violations = Math.max(userCount, ipCount);
-    let banned = false;
-    if (violations >= VIOLATION_LIMIT) {
-        await banUser(
-            userId,
-            "Repeatedly accessed restricted domains via proxy",
-        );
-        banned = true;
-    }
-    return { violations, banned };
-}
-
-class TrackedWispConnection extends wisp.ServerConnection {
-    private _userId: string | null;
-    private _ip: string | null;
-
-    constructor(
-        ws: unknown,
-        path: string,
-        userId: string | null,
-        ip: string | null,
-        opts?: unknown,
-    ) {
-        super(ws, path, opts);
-        this._userId = userId;
-        this._ip = ip;
-    }
-
-    override create_stream(
-        streamId: number,
-        type: number,
-        hostname: string,
-        port: number,
-    ) {
-        if (matchBannedDomain(`https://${hostname}`)) {
-            this._handleBannedDomain(streamId).catch(console.error);
-            return;
-        }
-        super.create_stream(streamId, type, hostname, port);
-    }
-
-    private async _handleBannedDomain(streamId: number) {
-        this.ws.ws.send(buildWispClosePacket(streamId));
-
-        if (!this._userId) return;
-
-        const { banned } = await recordViolation(this._userId, this._ip);
-        if (banned) {
-            this.ws.close(1008, "Banned for accessing restricted content");
-        }
-    }
+function pushWispOptions(): void {
+    setGlobalOptions(
+        JSON.stringify({
+            hostname_blacklist: getBannedDomains(),
+            allow_tcp_streams: true,
+            allow_udp_streams: true,
+            allow_direct_ip: true,
+            allow_private_ips: false,
+            allow_loopback_ips: false,
+        }),
+    );
 }
 
 const GOOGLE_URL =
     "https://clients1.google.com/complete/search?hl=en&output=toolbar&q=";
 
-initBannedDomains().catch(err =>
-    console.error("Failed to load banned domains list:", err),
-);
+initBannedDomains()
+    .then(pushWispOptions)
+    .catch(err => console.error("Failed to load banned domains list:", err));
 
 setupSchoolDistricts().catch(err =>
     console.error("Failed to setup school districts:", err),
@@ -277,6 +155,7 @@ useFortiGuardMiddleware(app);
 useBlocksiMiddleware(app);
 useHaparaMiddleware(app);
 useLightspeedMiddleware(app);
+useIbossMiddleware(app, { securityKey: requireEnv("IBOSS_SECURITY_KEY") });
 
 app.get("/api/ip-location", async (req, res) => {
     const raw =
@@ -301,31 +180,9 @@ app.get("/api/ip-location", async (req, res) => {
 
 app.use("/api/school-districts", createSchoolDistrictsRouter());
 app.use("/api/goguardian", createGoGuardianKeysRouter());
+app.use("/api/iboss", createIbossGatewaysRouter());
 
 app.use("/health", (_req, res) => res.json({ ok: true }));
-
-function isPrivateHost(hostname: string): boolean {
-    const h = hostname.toLowerCase();
-    if (
-        h === "localhost" ||
-        h === "127.0.0.1" ||
-        h === "::1" ||
-        h.endsWith(".local") ||
-        h.endsWith(".internal")
-    ) {
-        return true;
-    }
-    return (
-        /^10\./.test(h) ||
-        /^192\.168\./.test(h) ||
-        /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
-        /^169\.254\./.test(h) ||
-        /^127\./.test(h) ||
-        /^0\./.test(h) ||
-        /^fc00:/i.test(h) ||
-        /^fe80:/i.test(h)
-    );
-}
 
 app.get("/api/ext-proxy", async (req, res) => {
     const target = req.query.url as string | undefined;
@@ -534,30 +391,8 @@ app.use("/api/check-banned", (req, res) => {
     return res.json({ banned: matched !== null });
 });
 
-function extractSessionToken(req: Request): string | undefined {
-    const bearer = req.headers.authorization?.replace("Bearer ", "");
-    return (
-        bearer ??
-        req.headers.cookie
-            ?.split(";")
-            .find(c => c.trim().startsWith("better-auth.session_token="))
-            ?.split("=")[1]
-            ?.trim()
-    );
-}
-
 app.post("/api/violations", async (req, res) => {
-    const token = extractSessionToken(req);
-    if (!token) return void res.status(401).json({ ok: false });
-
-    const session = await auth.api
-        .getSession({
-            headers: new Headers({
-                cookie: `better-auth.session_token=${token}`,
-                authorization: `Bearer ${token}`,
-            }),
-        })
-        .catch(() => null);
+    const session = await resolveSessionFromRequest(req);
     if (!session?.user) return void res.status(401).json({ ok: false });
 
     const { violations, banned } = await recordViolation(
@@ -574,47 +409,19 @@ app.post("/api/violations", async (req, res) => {
 });
 
 app.use("/api/violations", async (req, res) => {
-    const token = extractSessionToken(req);
-
-    if (!token) {
-        return res.json({
-            authenticated: false,
-            banned: false,
-            violations: 0,
-            maxViolations: 5,
-        });
-    }
-
-    const session = await auth.api
-        .getSession({
-            headers: new Headers({
-                cookie: `better-auth.session_token=${token}`,
-                authorization: `Bearer ${token}`,
-            }),
-        })
-        .catch(() => null);
+    const session = await resolveSessionFromRequest(req);
 
     if (!session?.user) {
         return res.json({
             authenticated: false,
             banned: false,
             violations: 0,
-            maxViolations: 5,
+            maxViolations: VIOLATION_LIMIT,
         });
     }
 
     const user = session.user;
-    const rawUser = await redis
-        .get(`wisp:violations:${user.id}`)
-        .catch(() => null);
-    const ip = extractClientIp(req);
-    const rawIp = ip
-        ? await redis.get(`wisp:violations:ip:${ip}`).catch(() => null)
-        : null;
-    const violations = Math.max(
-        parseInt(rawUser ?? "0", 10),
-        parseInt(rawIp ?? "0", 10),
-    );
+    const violations = await readViolationCount(user.id, extractClientIp(req));
 
     return res.json({
         authenticated: true,
@@ -644,20 +451,12 @@ Object.entries(servicePathMaps).forEach(([route, path]) => {
     app.use(route, sirv(path));
 });
 
-const rammerheadReverseProxy = Boolean(process.env.REVERSE_PROXY) || false;
-
 process.removeAllListeners("uncaughtException");
-
-const rammerhead = createRammerhead({
-    reverseProxy: rammerheadReverseProxy,
-});
 
 const bare = createBareServer("/bare/");
 
 app.use((req, res, next) => {
-    if (RammerheadRouting.shouldRoute(req)) {
-        RammerheadRouting.routeRequest(rammerhead, req, res);
-    } else if (bare.shouldRoute(req)) {
+    if (bare.shouldRoute(req)) {
         bare.routeRequest(req, res).catch(console.error);
     } else {
         next();
@@ -696,43 +495,20 @@ wss.on("connection", ws => {
     });
 });
 
-app.use(toNodeHandler(ssrHandler));
+app.use(
+    toNodeHandler(ssrHandler as unknown as Parameters<typeof toNodeHandler>[0]),
+);
 
 function shouldRouteWisp(req: Request) {
     return req.url?.endsWith("/wisp/");
 }
 
-logging.set_level(logging.ERROR);
-
 server.on("upgrade", async (req: Request, socket: Socket, head: Buffer) => {
     try {
-        if (RammerheadRouting.shouldRoute(req)) {
-            RammerheadRouting.routeUpgrade(rammerhead, req, socket, head);
-        } else if (bare.shouldRoute(req)) {
+        if (bare.shouldRoute(req)) {
             bare.routeUpgrade(req, socket, head).catch(console.error);
         } else if (shouldRouteWisp(req)) {
-            const token =
-                req.headers.authorization?.replace("Bearer ", "") ||
-                req.headers.cookie
-                    ?.split(";")
-                    .find(c =>
-                        c.trim().startsWith("better-auth.session_token="),
-                    )
-                    ?.split("=")[1]
-                    ?.trim();
-            const session = token
-                ? await cached(
-                      sessionKey(token),
-                      () =>
-                          auth.api.getSession({
-                              headers: new Headers({
-                                  cookie: `better-auth.session_token=${token}`,
-                                  authorization: `Bearer ${token}`,
-                              }),
-                          }),
-                      60,
-                  ).catch(() => null)
-                : null;
+            const session = await resolveSessionFromRequest(req);
             const userId =
                 (session?.user as { id?: string } | undefined)?.id ?? null;
 
@@ -744,27 +520,53 @@ server.on("upgrade", async (req: Request, socket: Socket, head: Buffer) => {
                 return;
             }
 
-            const connOpts = {
-                wisp_version:
-                    req.headers["sec-websocket-protocol"] &&
-                    wisp.options.wisp_version === 2
-                        ? 2
-                        : 1,
-            };
-
+            const wispVersion = req.headers["sec-websocket-protocol"] ? 2 : 1;
             const clientIp = extractClientIp(req);
 
             wispWss.handleUpgrade(req, socket, head, ws => {
-                const conn = new TrackedWispConnection(
-                    ws,
-                    req.url!,
-                    userId,
-                    clientIp,
-                    connOpts,
+                const sessionId = routeUpgradeCallbacks(
+                    Buffer.alloc(0),
+                    clientIp ?? "",
+                    req.socket?.remotePort ?? 0,
+                    req.url ?? "/wisp/",
+                    wispVersion,
+                    "{}",
+                    data => {
+                        try {
+                            ws.send(data);
+                        } catch {}
+                    },
+                    () => {
+                        try {
+                            ws.close();
+                        } catch {}
+                    },
+                    () => {
+                        if (!userId) return;
+                        void recordViolation(userId, clientIp)
+                            .then(({ banned }) => {
+                                if (banned) {
+                                    try {
+                                        ws.close(
+                                            1008,
+                                            "Banned for accessing restricted content",
+                                        );
+                                    } catch {}
+                                }
+                            })
+                            .catch(() => {});
+                    },
                 );
-                conn.setup()
-                    .then(() => conn.run())
-                    .catch(console.error);
+
+                ws.on("message", data => {
+                    const buf = Buffer.isBuffer(data)
+                        ? data
+                        : Array.isArray(data)
+                          ? Buffer.concat(data)
+                          : Buffer.from(data as ArrayBuffer);
+                    feedWispData(sessionId, buf);
+                });
+                ws.on("close", () => closeWispSession(sessionId));
             });
         } else if (req.url?.endsWith("/suggestions")) {
             wss.handleUpgrade(req, socket, head, ws => {

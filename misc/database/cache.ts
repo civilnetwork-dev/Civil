@@ -1,7 +1,8 @@
 import { decode, encode } from "@msgpack/msgpack";
 import Redis from "ioredis";
+import { requireEnv } from "../env";
 
-export const redis = new Redis(process.env.REDIS_URL!, {
+export const redis = new Redis(requireEnv("REDIS_URL"), {
     lazyConnect: true,
     enableOfflineQueue: false,
     maxRetriesPerRequest: 2,

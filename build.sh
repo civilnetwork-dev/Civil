@@ -6,7 +6,7 @@ bun bundle.js
 
 cd ../..
 
-# don't question it. the application fundamentally NEEDS this.
-# it's NOT a test runner
-bun run test:encoders
+# Required build step, not a test: generates tests/bench_results.json and
+# tests/results.db, which the /benchmarks route reads at runtime.
+bun run build:benchmarks
 bun run build

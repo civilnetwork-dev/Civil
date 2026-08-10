@@ -21,11 +21,10 @@ interface ISearchBar {
     lastUrlSearched: string | URL;
     url: string;
     debugInfo: Partial<{
-        currentRammerheadSession: string;
         currentTransport: `/${string}/index.mjs`;
         currentTechnology: "bare" | "wisp";
         currentTechnologyPath: `/${string}/`;
-        currentProxy: "uv" | "scramjet" | "rammerhead";
+        currentProxy: "uv" | "scramjet";
     }>;
     proxyObjMap: ProxyEntry[];
     searchEngineMap: {
@@ -136,15 +135,17 @@ class SearchBar
         return false;
     }
 
-    private getSelectedProxy() {
-        const storedProxy =
-            (localStorage.getItem("proxy") as "uv" | "scramjet") || "scramjet";
-        return this.proxyObjMap.find(p => p.name === storedProxy)!;
+    private getSelectedProxy(): ProxyEntry {
+        // localStorage can hold a stale value from an older build (e.g. the
+        // removed "rammerhead" engine), so match against proxyObjMap rather
+        // than trusting the stored string.
+        const storedProxy = localStorage.getItem("proxy");
+        return (
+            this.proxyObjMap.find(p => p.name === storedProxy) ??
+            this.proxyObjMap.find(p => p.name === "scramjet")!
+        );
     }
 
-    // Pick the proxy for THIS navigation only. The finder's per-host decision
-    // wins when present; otherwise fall back to the user's stored default.
-    // Nothing global is mutated, so concurrent navigations don't interfere.
     private pickProxy(cfg: BestProxy | null): ProxyEntry {
         const name = cfg?.proxy;
         const entry = name && this.proxyObjMap.find(p => p.name === name);
@@ -232,8 +233,6 @@ class SearchBar
             );
         }
         this.trackInternalVisit(term, proxy);
-        // Fire-and-forget: measure real proxy correctness in the loaded frame
-        // and feed it back to refine the stored decision ("a bit of WPT").
         if (proxy.name === "scramjet" || proxy.name === "uv") {
             void measureAndReportCompat(
                 frame,
@@ -249,11 +248,7 @@ class SearchBar
         const cfg = await fetchBestProxy(term);
         const proxy = this.pickProxy(cfg);
 
-        const url =
-            proxy.name === "scramjet"
-                ? this.normalizeTerm(term, proxy)
-                : this.createProxyUrl(term, proxy);
-        window.location.replace(url);
+        window.location.replace(this.createProxyUrl(term, proxy));
         this.trackInternalVisit(term, proxy);
     }
 }

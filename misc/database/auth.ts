@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { anonymous, genericOAuth, patreon } from "better-auth/plugins";
+import { optionalEnv, requireEnv } from "../env";
 import { db } from "./db";
 import { accounts, sessions, users, verifications } from "./schema";
 
@@ -14,8 +15,8 @@ export const auth = betterAuth({
             verification: verifications,
         },
     }),
-    secret: process.env.BETTER_AUTH_SECRET!,
-    baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:9876",
+    secret: requireEnv("BETTER_AUTH_SECRET"),
+    baseURL: optionalEnv("BETTER_AUTH_URL", "http://localhost:9876"),
     basePath: "/api/auth",
     advanced: {
         database: {
@@ -30,8 +31,8 @@ export const auth = betterAuth({
         genericOAuth({
             config: [
                 patreon({
-                    clientId: process.env.PATREON_CLIENT_ID!,
-                    clientSecret: process.env.PATREON_CLIENT_SECRET!,
+                    clientId: requireEnv("PATREON_CLIENT_ID"),
+                    clientSecret: requireEnv("PATREON_CLIENT_SECRET"),
                 }),
             ],
         }),

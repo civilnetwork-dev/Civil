@@ -51,6 +51,7 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL}
       PATREON_CLIENT_ID: ${PATREON_CLIENT_ID}
       PATREON_CLIENT_SECRET: ${PATREON_CLIENT_SECRET}
+      IBOSS_SECURITY_KEY: ${IBOSS_SECURITY_KEY}
       CHII_DOMAIN: ${CHII_DOMAIN:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9876/health 2>/dev/null || exit 1"]

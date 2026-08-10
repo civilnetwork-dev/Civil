@@ -1,36 +1,9 @@
 import { createSchema, createYoga } from "graphql-yoga";
-import { auth } from "./auth";
-import { cached, sessionKey } from "./cache";
 import { banUser, getUser, isUserBanned, unbanUser } from "./models/user";
 import { recordVisit } from "./models/visit";
+import { type ResolvedSession, resolveSessionFromHeaders } from "./session";
 
 type AdminUser = { isAdmin?: boolean };
-
-async function resolveSession(token: string | undefined) {
-    if (!token) return null;
-    return cached(
-        sessionKey(token),
-        () =>
-            auth.api.getSession({
-                headers: new Headers({
-                    cookie: `better-auth.session_token=${token}`,
-                    authorization: `Bearer ${token}`,
-                }),
-            }),
-        60,
-    ).catch(() => null);
-}
-
-function extractToken(request: Request): string | undefined {
-    const bearer = request.headers.get("authorization")?.replace("Bearer ", "");
-    if (bearer) return bearer;
-    return request.headers
-        .get("cookie")
-        ?.split(";")
-        .find(c => c.trim().startsWith("better-auth.session_token="))
-        ?.split("=")[1]
-        ?.trim();
-}
 
 const schema = createSchema({
     typeDefs: `
@@ -80,7 +53,7 @@ const schema = createSchema({
             banUser: async (
                 _: unknown,
                 { userId, reason }: { userId: string; reason: string },
-                ctx: { session: Awaited<ReturnType<typeof resolveSession>> },
+                ctx: { session: ResolvedSession },
             ) => {
                 if (!(ctx.session?.user as AdminUser | undefined)?.isAdmin) {
                     throw new Error("Forbidden: admin privileges required");
@@ -90,7 +63,7 @@ const schema = createSchema({
             unbanUser: async (
                 _: unknown,
                 { userId }: { userId: string },
-                ctx: { session: Awaited<ReturnType<typeof resolveSession>> },
+                ctx: { session: ResolvedSession },
             ) => {
                 if (!(ctx.session?.user as AdminUser | undefined)?.isAdmin) {
                     throw new Error("Forbidden: admin privileges required");
@@ -106,9 +79,7 @@ export const yoga = createYoga({
     graphqlEndpoint: "/graphql",
     landingPage: false,
     logging: false,
-    context: async ({ request }) => {
-        const token = extractToken(request);
-        const session = await resolveSession(token);
-        return { session };
-    },
+    context: async ({ request }) => ({
+        session: await resolveSessionFromHeaders(request.headers),
+    }),
 });

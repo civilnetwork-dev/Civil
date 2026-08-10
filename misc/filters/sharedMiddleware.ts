@@ -6,12 +6,12 @@ import {
     QueryBuilder,
 } from "patreon-api.ts";
 import { RateLimiterMemory, type RateLimiterRes } from "rate-limiter-flexible";
-import { posthog } from "./posthog";
-import "dotenv/config";
-import { auth } from "../database/auth";
-import { cached, sessionKey } from "../database/cache";
+import { cached } from "../database/cache";
 import { db } from "../database/db";
 import { accounts } from "../database/schema";
+import { resolveSessionFromRequest } from "../database/session";
+import { requireEnv } from "../env";
+import { posthog } from "./posthog";
 
 const BASE_RATE_LIMIT = 5;
 const BOOST_PER_DOLLAR = 0.05;
@@ -26,12 +26,6 @@ const limiters = new Map<number, RateLimiterMemory>();
 
 const PATREON_CLIENT_ID = requireEnv("PATREON_CLIENT_ID");
 const PATREON_CLIENT_SECRET = requireEnv("PATREON_CLIENT_SECRET");
-
-function requireEnv(name: string): string {
-    const value = process.env[name];
-    if (!value) throw new Error(`Missing required env var: ${name}`);
-    return value;
-}
 
 function getLimiter(points: number): RateLimiterMemory {
     const existing = limiters.get(points);
@@ -56,33 +50,6 @@ function calculateLimit(dollarsPaid: number): number {
 
 function routeMatches(path: string, route: `/${string}`): boolean {
     return path === route || path.startsWith(`${route}/`);
-}
-
-/** Extract BetterAuth session token from Authorization header or cookie. */
-function extractToken(req: Request): string | undefined {
-    const bearer = req.headers.authorization?.replace("Bearer ", "");
-    if (bearer) return bearer;
-    return req.headers.cookie
-        ?.split(";")
-        .find(c => c.trim().startsWith("better-auth.session_token="))
-        ?.split("=")[1]
-        ?.trim();
-}
-
-/** Resolve BetterAuth session; redis-cached for 60s. */
-async function resolveSession(token: string | undefined) {
-    if (!token) return null;
-    return cached(
-        sessionKey(token),
-        () =>
-            auth.api.getSession({
-                headers: new Headers({
-                    cookie: `better-auth.session_token=${token}`,
-                    authorization: `Bearer ${token}`,
-                }),
-            }),
-        60,
-    ).catch(() => null);
 }
 
 /** Fetch Patreon OAuth token stored by BetterAuth in accounts table; redis-cached for 10 min. */
@@ -184,8 +151,7 @@ function createSharedFilterMiddleware(route: `/${string}`): RequestHandler {
 
         let userId: string | null = null;
         try {
-            const token = extractToken(req);
-            const session = await resolveSession(token);
+            const session = await resolveSessionFromRequest(req);
             userId = session?.user ? (session.user as { id: string }).id : null;
 
             const dollarsPaid = userId ? await getPatreonDollars(userId) : 0;
