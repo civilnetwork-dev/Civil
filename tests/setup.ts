@@ -1,3 +1,5 @@
+import { hasFileScope, setFileScope } from "@vanilla-extract/css/fileScope";
+
 /**
  * Placeholder credentials for the test environment.
  *
@@ -20,4 +22,29 @@ const TEST_ENV_DEFAULTS: Record<string, string> = {
 
 for (const [key, value] of Object.entries(TEST_ENV_DEFAULTS)) {
     process.env[key] ??= value;
+}
+
+/**
+ * File scope for vanilla-extract's `.css.ts` modules.
+ *
+ * `style()`/`styleVariants()` call `getFileScope()` at module scope, which
+ * throws unless something has called `setFileScope()` first. Normally that's
+ * the `@vanilla-extract/vite-plugin` transform, which vitest.config.ts does
+ * not register — none of this repo's other `.css.ts` files are ever imported
+ * from a test, only from each other, so the gap was invisible until now.
+ *
+ * Registering the plugin in vitest.config.ts instead was tried and rejected:
+ * it makes the plugin re-serialize the whole module for every `.css.ts`
+ * import, which throws on any function export (e.g. `field()` in
+ * schematic.css.ts) because a function isn't a value the plugin can inline as
+ * static CSS outside a full bundler build. Calling `setFileScope` directly
+ * uses vanilla-extract's own public `fileScope` subpath export and only
+ * establishes a scope for `style()` to register into — it does not attempt
+ * to serialize anything, so function exports are unaffected.
+ *
+ * Guarded so this is a no-op if a real build pipeline ever does provide a
+ * scope first.
+ */
+if (!hasFileScope()) {
+    setFileScope("tests/setup.ts");
 }
