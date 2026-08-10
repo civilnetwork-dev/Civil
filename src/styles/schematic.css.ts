@@ -82,9 +82,14 @@ export const ANNO = {
 
 export const anno = style({ ...ANNO });
 
+/**
+ * overlay1 measures 4.14:1 on base and fails WCAG AA for small text (4.5:1 min);
+ * overlay2 is 5.29:1 and keeps the muted tier compliant while visibly dimmer than
+ * anno's subtext0 (6.62:1), so the two-tier hierarchy survives.
+ */
 export const annoMuted = style({
     ...ANNO,
-    color: vars.color.overlay1,
+    color: vars.color.overlay2,
 });
 
 /* -------------------------------------------------------------------- */

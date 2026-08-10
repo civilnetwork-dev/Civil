@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { ANNO, FONT_MONO, field, RULE } from "../src/styles/schematic.css";
+import {
+    ANNO,
+    anno,
+    annoMuted,
+    FONT_MONO,
+    field,
+    RULE,
+} from "../src/styles/schematic.css";
+import { vars } from "../src/styles/theme.css";
 
 describe("FONT_MONO", () => {
     it("starts with ui-monospace and ends with the generic family", () => {
@@ -47,5 +55,11 @@ describe("ANNO", () => {
 
     it("uses the mono stack", () => {
         expect(ANNO.fontFamily).toBe(FONT_MONO);
+    });
+
+    it("keeps both annotation tiers above the WCAG AA small-text minimum", () => {
+        // overlay1 measures 4.14:1 on base and fails AA; overlay2 is 5.29:1.
+        expect(anno).not.toBe(annoMuted);
+        expect(ANNO.color).toBe(vars.color.subtext0);
     });
 });
