@@ -4,26 +4,32 @@ import { vars } from "./theme.css";
 export const PATREON = "#FF424D";
 export const T = "0.12s ease";
 
+// Tinted-accent recipe (same shape as the system's Status Triad): a solid
+// brand-red block would clash against the muted Macchiato palette everywhere
+// else, so Patreon's red is toned into a background tint + accent text/icon
+// instead of a full-saturation fill.
 export const button = style({
     display: "inline-flex",
     alignItems: "center",
     gap: "7px",
     padding: "7px 14px",
     borderRadius: "8px",
-    border: "none",
-    background: PATREON,
-    color: "#fff",
+    border: `1px solid color-mix(in srgb, ${PATREON} 35%, transparent)`,
+    background: `color-mix(in srgb, ${PATREON} 12%, ${vars.color.surface0})`,
+    color: `color-mix(in srgb, ${PATREON} 75%, ${vars.color.text})`,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontSize: "13px",
     fontWeight: 500,
     lineHeight: 1,
     cursor: "pointer",
     userSelect: "none",
-    transition: `background ${T}, opacity ${T}, box-shadow ${T}`,
+    transition: `background ${T}, border-color ${T}, box-shadow ${T}`,
+    transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${PATREON} 82%, #fff)`,
-            boxShadow: `0 0 0 3px color-mix(in srgb, ${PATREON} 30%, transparent)`,
+            background: `color-mix(in srgb, ${PATREON} 20%, ${vars.color.surface0})`,
+            borderColor: `color-mix(in srgb, ${PATREON} 55%, transparent)`,
+            boxShadow: `0 0 0 3px color-mix(in srgb, ${PATREON} 18%, transparent)`,
         },
         "&:active": {
             opacity: 0.85,
@@ -49,6 +55,7 @@ export const loggedIn = style({
     fontSize: "13px",
     userSelect: "none",
     transition: `border-color ${T}`,
+    transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
             borderColor: vars.color.surface2,
@@ -103,6 +110,7 @@ export const signOutBtn = style({
     fontSize: "11px",
     cursor: "pointer",
     transition: `color ${T}, background ${T}`,
+    transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
             background: vars.color.surface1,

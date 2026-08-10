@@ -180,7 +180,9 @@ export const styles = {
     table: `width:100%;border-collapse:collapse;font-size:.78rem`,
     th: `padding:.6rem 1.25rem;text-align:left;color:${colors.subtext0};font-weight:500;white-space:nowrap;border-bottom:1px solid ${colors.surface0}`,
     implCell: `display:inline-flex;align-items:center;gap:8px`,
-    footer: `text-align:center;margin-top:2rem;color:${colors.overlay0};font-size:.68rem;letter-spacing:.08em`,
+    // subtext0, not overlay0: at .68rem this is small text and overlay0 sits
+    // at 3.15:1 on the page background.
+    footer: `text-align:center;margin-top:2rem;color:${colors.subtext0};font-size:.68rem;letter-spacing:.08em`,
 } as const;
 
 export const heroCardStyle = (win: boolean) =>
@@ -195,8 +197,13 @@ export const pillStyle = (color: string) =>
 export const dotStyle = (color: string) =>
     `width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0`;
 
+// The chip is tinted toward Crust rather than lightened with the accent's
+// own colour at 13% alpha. Lightening pushed the background toward the same
+// hue as the label sitting on it, leaving the tags at 3.9-4.1:1 - under the
+// 4.5:1 floor for text this size. Darkening the chip instead lifts them past
+// 5.5:1 without touching the accent itself.
 export const implTagStyle = (color: string) =>
-    `background:${color}22;color:${color};border-radius:4px;padding:1px 6px;font-size:.65rem;font-weight:700`;
+    `background:color-mix(in srgb, ${color} 16%, ${colors.crust});color:${color};border-radius:4px;padding:1px 6px;font-size:.65rem;font-weight:700`;
 
 export const tableCellStyle = (rowIndex: number) =>
     `padding:.65rem 1.25rem;border-bottom:1px solid ${colors.surface0};background:${rowIndex % 2 ? colors.surface0 + "44" : "transparent"}`;

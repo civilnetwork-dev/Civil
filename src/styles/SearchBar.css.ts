@@ -1,8 +1,6 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
+import { DUR, EASE, focusRing, lit, machined, SHADOW } from "./material.css";
 import { vars } from "./theme.css";
-
-const T = "0.1s ease";
-const T_MID = "0.18s cubic-bezier(0.4, 0, 0.2, 1)";
 
 const blurBackground = `color-mix(in srgb, ${vars.color.surface0} 65%, transparent)`;
 const blurBorder = `color-mix(in srgb, ${vars.color.surface1} 55%, transparent)`;
@@ -30,58 +28,111 @@ const dropdownIn = keyframes({
     to: { opacity: 1, transform: "translateY(0)" },
 });
 
+/**
+ * The suggestions menu hangs directly off the omnibox, so it has to be built
+ * from the same parts: same 14px corner radius, same machined fill, and the
+ * accent border the field takes on focus. It also sits over the field's
+ * bottom border rather than below it, so the two read as one surface with no
+ * hairline seam across the join - the same construction as the Select menu.
+ */
 export const sbDropdown = style({
     position: "absolute",
-    top: "100%",
+    top: "calc(100% - 1px)",
     left: 0,
     width: "100%",
     zIndex: 10000,
-    background: vars.color.surface0,
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(
+        vars.color.surface0,
+        `color-mix(in srgb, ${vars.color.surface0} 78%, ${vars.color.mantle})`,
+    ),
+    border: `1px solid color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
     borderTop: "none",
-    borderRadius: "0 0 12px 12px",
+    borderRadius: "0 0 14px 14px",
     overflow: "hidden",
     listStyle: "none",
     margin: 0,
     padding: 0,
     boxSizing: "border-box",
-    animation: `${dropdownIn} 0.18s ${T_MID} both`,
+    // Docked, not free-floating: `SHADOW.menu` blurs upward and paints a dark
+    // band across the join with the field above.
+    boxShadow: SHADOW.attached,
+    animation: `${dropdownIn} ${DUR.base} ${EASE.enter} both`,
 });
 
 export const sbDropdownBlur = style({
     background: blurBackground,
     backdropFilter: blurFilter,
     borderColor: blurBorder,
+    borderTop: "none",
 });
 
 export const sbRow = style({
+    position: "relative",
     cursor: "pointer",
     padding: "10px 16px",
     color: vars.color.subtext0,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "14px",
     fontWeight: 400,
-    transition: `background ${T}, color ${T}`,
+    transitionProperty: "background, color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
-        "& + &": { borderTop: `1px solid ${vars.color.surface1}` },
-        "&:hover": { background: vars.color.surface1, color: vars.color.text },
+        // Inset, fading divider rather than an edge-to-edge rule - the menu
+        // is a single surface, not a stack of separate cells.
+        "& + &::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: "16px",
+            right: "16px",
+            height: "1px",
+            background: `linear-gradient(90deg, transparent, ${vars.color.surface1} 15%, ${vars.color.surface1} 85%, transparent)`,
+        },
+        "&:hover": {
+            background: `color-mix(in srgb, ${vars.color.lavender} 12%, transparent)`,
+            color: vars.color.text,
+        },
     },
 });
 
 export const sbInputWrapper = style({
     display: "flex",
     alignItems: "stretch",
-    height: "48px",
-    background: vars.color.surface0,
+    height: "52px",
+    // A machined face rather than a flat fill, lit along its top edge. This
+    // is the only control on the New Tab page, so it carries the material
+    // language by itself.
+    background: machined(
+        vars.color.surface0,
+        `color-mix(in srgb, ${vars.color.surface0} 78%, ${vars.color.mantle})`,
+    ),
     border: `1px solid ${vars.color.surface1}`,
-    borderRadius: "12px",
+    borderRadius: "14px",
     overflow: "hidden",
-    transition: `border-color ${T_MID}, border-radius ${T_MID}, background ${T_MID}`,
+    boxShadow: lit(SHADOW.resting),
+    transitionProperty: "border-color, border-radius, background, box-shadow",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.base,
+    selectors: {
+        "&:focus-within": {
+            borderColor: `color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
+            boxShadow: lit(focusRing(vars.color.lavender), true),
+        },
+    },
 });
 
+/**
+ * Docked state. The focus ring is dropped here on purpose: it is a 3px halo
+ * around the *field* only, so once the suggestions are attached it wrapped
+ * half the control and was sliced off where the menu overlapped it. The
+ * shared lavender border carries the focus signal across both parts instead.
+ */
 globalStyle(`.${sbRoot}:has(.${sbDropdown}) .${sbInputWrapper}`, {
-    borderRadius: "12px 12px 0 0",
+    borderRadius: "14px 14px 0 0",
     borderBottomColor: "transparent",
+    borderColor: `color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
+    boxShadow: lit(SHADOW.resting),
 });
 export const sbInputWrapperBlur = style({
     background: blurBackground,
@@ -119,24 +170,41 @@ export const sbHostInline = style({
 export const sbButton = style({
     flexShrink: 0,
     border: "none",
-    borderLeft: `1px solid ${vars.color.surface1}`,
+    // A hairline separator that fades at both ends, so the button reads as
+    // part of the same machined face rather than a second component welded
+    // on. This is the page's primary action, so it also carries the Label
+    // tier's tracking instead of sitting at body weight.
+    borderLeft: "none",
+    position: "relative",
     background: "transparent",
-    color: vars.color.overlay1,
+    color: vars.color.subtext0,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
-    fontSize: "13px",
-    fontWeight: 500,
-    letterSpacing: "0.02em",
-    padding: "0 20px",
+    fontSize: "12px",
+    fontWeight: 600,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    padding: "0 22px",
     cursor: "pointer",
     whiteSpace: "nowrap",
-    transition: `background ${T}, color ${T}, border-color ${T}`,
+    transitionProperty: "background, color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
+        "&::before": {
+            content: '""',
+            position: "absolute",
+            left: 0,
+            top: "22%",
+            bottom: "22%",
+            width: "1px",
+            background: `linear-gradient(to bottom, transparent, ${vars.color.surface1} 30%, ${vars.color.surface1} 70%, transparent)`,
+        },
         "&:hover": {
-            background: vars.color.surface1,
+            background: `color-mix(in srgb, ${vars.color.lavender} 12%, transparent)`,
             color: vars.color.lavender,
         },
         "&:active": {
-            background: `color-mix(in srgb, ${vars.color.surface1} 70%, ${vars.color.lavender} 30%)`,
+            background: `color-mix(in srgb, ${vars.color.lavender} 20%, transparent)`,
             color: vars.color.lavender,
         },
     },

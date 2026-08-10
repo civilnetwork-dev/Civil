@@ -52,9 +52,9 @@ export interface LanSchoolWebLimitReply {
 const webLimitReplySchema = z.object({
     message: z.literal("WebLimit").optional(),
     tabId: z.string(),
-    url: z.string().url(),
+    url: z.url(),
     block: z.union([z.literal("true"), z.literal("false"), z.boolean()]),
-    redirectUrl: z.string().url().optional(),
+    redirectUrl: z.url().optional(),
     redirect: z.unknown().optional(),
 });
 

@@ -1,0 +1,7 @@
+- [x] Reverse the API-mode `performUrlFiltering` endpoint
+- [x] Port intrinsic direct-filter bypass lists
+- [x] Port the content-risk matcher (`Matcher.js`)
+- [x] Add URL-exception request support
+- [x] Make an example
+- [ ] Add captive-portal / on-off-prem location detection (`myiboss.net`)
+- [ ] Map numeric category/group numbers to human-readable names

@@ -50,6 +50,13 @@
             "when": 1783294877094,
             "tag": "0006_sparkling_johnny_blaze",
             "breakpoints": true
+        },
+        {
+            "idx": 7,
+            "version": "7",
+            "when": 1783555224742,
+            "tag": "0007_past_tarantula",
+            "breakpoints": true
         }
     ]
 }

@@ -41,6 +41,7 @@ export const dockBtn = style({
     background: vars.color.surface0,
     color: vars.color.subtext1,
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.surface1,
@@ -74,6 +75,7 @@ export const detachBtn = style({
     background: vars.color.surface0,
     color: vars.color.subtext1,
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.surface1,
@@ -96,6 +98,7 @@ export const closeBtn = style({
     background: vars.color.surface0,
     color: vars.color.overlay1,
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: `color-mix(in srgb, ${vars.color.red} 18%, transparent)`,
@@ -111,6 +114,7 @@ export const dividerHoriz = style({
     cursor: "row-resize",
     background: vars.color.surface1,
     transition: `background ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.overlay0,
@@ -125,6 +129,7 @@ export const dividerVert = style({
     cursor: "col-resize",
     background: vars.color.surface1,
     transition: `background ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.overlay0,

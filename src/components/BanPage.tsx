@@ -23,11 +23,16 @@ export default function BanPage({ banReason }: { banReason: string }) {
 
     return (
         <div class={s.banRoot}>
+            <div class={s.banBackground} />
             <div class={s.banText}>
                 <Show
                     when={isPermanentlyBanned()}
                     fallback={
                         <>
+                            <span class={s.banEyebrow}>
+                                <span class={s.banEyebrowMark} />
+                                Blocked by Civil
+                            </span>
                             <h1>Site Restricted</h1>
                             <p>
                                 {banReason ||
@@ -48,6 +53,10 @@ export default function BanPage({ banReason }: { banReason: string }) {
                         </>
                     }
                 >
+                    <span class={s.banEyebrow}>
+                        <span class={s.banEyebrowMark} />
+                        Account suspended
+                    </span>
                     <h1>Banned</h1>
                     <p>
                         {status()?.banReason ??

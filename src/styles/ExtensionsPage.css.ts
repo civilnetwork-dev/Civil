@@ -1,53 +1,63 @@
-import { style } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
+import { PAGE_PADDING } from "./layout.css";
+import {
+    atmosphere,
+    DUR,
+    EASE,
+    focusRing,
+    glow,
+    lit,
+    machined,
+    SHADOW,
+} from "./material.css";
 import { vars } from "./theme.css";
 
 const T_FAST = "0.1s ease";
 
+const emptyFadeIn = keyframes({
+    from: { opacity: 0, transform: "translateY(6px)" },
+    to: { opacity: 1, transform: "translateY(0)" },
+});
+
 export const root = style({
-    backgroundColor: vars.color.base,
+    ...atmosphere(vars.color.mauve),
     minHeight: "100vh",
-    padding: "40px 48px",
+    padding: PAGE_PADDING,
     color: vars.color.text,
     fontFamily: '"Rubik", sans-serif',
 });
 
-export const header = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    marginBottom: "32px",
-});
-
-export const headerIcon = style({
-    color: vars.color.mauve,
-    flexShrink: 0,
-});
-
-export const title = style({
-    fontSize: "24px",
-    fontWeight: 600,
-    color: vars.color.text,
-});
-
 export const installBar = style({
     display: "flex",
+    flexWrap: "wrap",
     gap: "10px",
     marginBottom: "32px",
 });
 
 export const installInput = style({
-    flex: 1,
-    backgroundColor: vars.color.surface0,
+    // Grow to fill the row, but allow shrinking below the intrinsic input
+    // width so the buttons wrap onto a second line instead of being pushed
+    // off-screen (the body clips overflow-x, so they became unreachable).
+    flex: "1 1 240px",
+    minWidth: 0,
+    background: machined(
+        vars.color.surface0,
+        `color-mix(in srgb, ${vars.color.surface0} 80%, ${vars.color.mantle})`,
+    ),
     border: `1px solid ${vars.color.surface1}`,
     borderRadius: "10px",
-    padding: "8px 14px",
+    padding: "9px 14px",
     fontSize: "14px",
     color: vars.color.text,
     outline: "none",
-    transition: `border-color ${T_FAST}`,
+    boxShadow: lit(SHADOW.resting),
+    transitionProperty: "border-color, box-shadow",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
         "&:focus": {
-            borderColor: vars.color.mauve,
+            borderColor: `color-mix(in srgb, ${vars.color.mauve} 70%, transparent)`,
+            boxShadow: lit(focusRing(vars.color.mauve)),
         },
         "&::placeholder": {
             color: vars.color.overlay1,
@@ -56,21 +66,29 @@ export const installInput = style({
 });
 
 export const installBtn = style({
-    backgroundColor: vars.color.mauve,
-    color: vars.color.base,
+    background: `linear-gradient(135deg, ${vars.color.mauve} 0%, ${vars.color.lavender} 100%)`,
+    color: vars.color.crust,
     border: "none",
     borderRadius: "10px",
-    padding: "8px 20px",
-    fontSize: "14px",
+    padding: "9px 22px",
+    fontSize: "13px",
     fontWeight: 600,
+    letterSpacing: "0.03em",
     cursor: "pointer",
-    transition: `opacity ${T_FAST}`,
+    boxShadow: glow(vars.color.mauve, 26),
+    transitionProperty: "transform, box-shadow, filter",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
-        "&:hover": {
-            opacity: 0.85,
+        "&:hover:not(:disabled)": {
+            transform: "translateY(-1px)",
+            boxShadow: glow(vars.color.mauve, 44),
         },
+        "&:active:not(:disabled)": { transform: "translateY(0)" },
         "&:disabled": {
-            opacity: 0.4,
+            filter: "saturate(0.25)",
+            opacity: 0.45,
+            boxShadow: "none",
             cursor: "not-allowed",
         },
     },
@@ -80,15 +98,18 @@ export const uploadBtnLabel = style({
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    backgroundColor: vars.color.surface0,
+    background: machined(vars.color.surface0, vars.color.mantle),
     color: vars.color.subtext1,
     border: `1px solid ${vars.color.surface1}`,
     borderRadius: "10px",
-    padding: "8px 16px",
-    fontSize: "14px",
+    padding: "9px 16px",
+    fontSize: "13px",
     fontWeight: 500,
     cursor: "pointer",
-    transition: `background ${T_FAST}, color ${T_FAST}, border-color ${T_FAST}`,
+    boxShadow: lit(SHADOW.resting),
+    transitionProperty: "background, color, border-color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
             background: vars.color.surface1,
@@ -108,11 +129,42 @@ export const card = style({
     display: "flex",
     alignItems: "center",
     gap: "16px",
-    padding: "14px 18px",
-    borderRadius: "12px",
-    backgroundColor: vars.color.surface0,
+    padding: "13px 16px",
+    borderRadius: "10px",
+    background: machined(vars.color.surface0, vars.color.mantle),
     border: `1px solid ${vars.color.surface1}`,
-    transition: `background ${T_FAST}`,
+    boxShadow: lit(SHADOW.resting),
+    transitionProperty: "background, border-color, transform, box-shadow",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
+    selectors: {
+        "&:hover": {
+            borderColor: `color-mix(in srgb, ${vars.color.mauve} 40%, ${vars.color.surface1})`,
+            transform: "translateX(2px)",
+            boxShadow: lit(SHADOW.lifted),
+        },
+    },
+});
+
+// Enabled/disabled at-a-glance indicator for a real settings-panel scan,
+// not a colored border strip (the system reserves those for structural cards).
+// A seated indicator lamp: recessed bezel at rest, lit from within when the
+// extension is enabled. Static - the system forbids anything that pulses.
+export const statusDot = style({
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    flexShrink: 0,
+    backgroundColor: vars.color.overlay0,
+    boxShadow: `inset 0 1px 1px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.35)`,
+    transitionProperty: "background-color, box-shadow",
+    transitionDuration: DUR.base,
+    transitionTimingFunction: EASE.standard,
+});
+
+export const statusDotOn = style({
+    backgroundColor: vars.color.green,
+    boxShadow: `inset 0 1px 1px rgba(255,255,255,0.35), 0 0 0 1px rgba(0,0,0,0.35), 0 0 10px color-mix(in srgb, ${vars.color.green} 70%, transparent)`,
 });
 
 export const cardIcon = style({
@@ -195,10 +247,14 @@ export const toggleTrack = style({
     inset: 0,
     borderRadius: "20px",
     backgroundColor: vars.color.surface2,
-    transition: `background ${T_FAST}`,
+    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.45)",
+    transitionProperty: "background-color, box-shadow",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.base,
     selectors: {
         [`.${toggleInput}:checked + &`]: {
             backgroundColor: vars.color.mauve,
+            boxShadow: `inset 0 1px 2px rgba(0,0,0,0.28), 0 0 12px color-mix(in srgb, ${vars.color.mauve} 45%, transparent)`,
         },
     },
 });
@@ -210,8 +266,11 @@ export const toggleThumb = style({
     width: "14px",
     height: "14px",
     borderRadius: "50%",
-    backgroundColor: vars.color.base,
-    transition: `transform ${T_FAST}`,
+    background: machined("#f2f4ff", vars.color.subtext1),
+    boxShadow: "0 1px 3px rgba(0,0,0,0.45)",
+    transitionProperty: "transform",
+    transitionTimingFunction: EASE.spring,
+    transitionDuration: DUR.base,
     selectors: {
         [`.${toggleInput}:checked ~ &`]: {
             transform: "translateX(16px)",
@@ -227,6 +286,7 @@ export const removeBtn = style({
     padding: "4px",
     borderRadius: "6px",
     transition: `color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             color: vars.color.red,
@@ -235,10 +295,25 @@ export const removeBtn = style({
 });
 
 export const empty = style({
-    color: vars.color.overlay1,
-    fontSize: "15px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "16px",
+    marginTop: "60px",
+    animationName: emptyFadeIn,
+    animationTimingFunction: "ease",
+    animationFillMode: "both",
+    animationDuration: "0.3s",
+});
+
+export const emptyIcon = style({
+    color: vars.color.surface2,
+});
+
+export const emptyText = style({
+    color: vars.color.subtext0,
+    fontSize: "14px",
     textAlign: "center",
-    marginTop: "80px",
 });
 
 export const sectionTitle = style({
@@ -249,4 +324,6 @@ export const sectionTitle = style({
     letterSpacing: "0.08em",
     marginBottom: "10px",
     marginTop: "28px",
+    paddingBottom: "8px",
+    borderBottom: `1px solid ${vars.color.surface0}`,
 });

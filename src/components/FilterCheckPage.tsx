@@ -13,9 +13,14 @@ import {
     onSettled,
     Show,
 } from "solid-js";
+import {
+    detectIbossGateway,
+    raceIbossGateways,
+} from "$config/service/ibossGatewayDetect";
 import { checkFiltersNow } from "~/lib/swUtils";
 import * as s from "~/styles/FilterCheckPage.css";
 import GoGuardianManifestToast from "./GoGuardianManifestToast";
+import IbossGatewayToast from "./IbossGatewayToast";
 import PatreonLoginButton from "./ui/PatreonLoginButton";
 
 type FilterStatus = "allowed" | "blocked" | "warned" | "unknown" | "error";
@@ -230,6 +235,34 @@ const FILTER_CONFIGS: Record<string, FilterConfig> = {
             }
         },
     },
+    iboss: {
+        name: "iboss",
+        aliases: ["iboss"],
+        needsEmail: true,
+        endpoint: "/filterCheck/iboss",
+        buildPayload: (url, email) => ({ url, userEmail: email }),
+        parseResult: (data: any) => {
+            if (!data?.statusIsKnown) {
+                return {
+                    status: "unknown" as FilterStatus,
+                    detail: data?.needsSecurityKey
+                        ? "Gateway known, but a security key is needed for a live check"
+                        : data?.error
+                          ? `Filter error: ${String(data.error).slice(0, 80)}`
+                          : "Status unknown",
+                };
+            }
+            return {
+                status: (data?.blocked ? "blocked" : "allowed") as FilterStatus,
+                detail:
+                    (data?.reason as string | undefined) ??
+                    (data?.blocked ? "Blocked" : "Allowed"),
+                categories: data?.categoryName
+                    ? [data.categoryName as string]
+                    : undefined,
+            };
+        },
+    },
     lightspeed: {
         name: "Lightspeed Filter",
         aliases: ["lightspeedfilter"],
@@ -248,7 +281,7 @@ const FILTER_CONFIGS: Record<string, FilterConfig> = {
             return {
                 status: data?.blocked ? "blocked" : "allowed",
                 detail: data?.blocked
-                    ? `Blocked${data?.matchedCategory ? ` — ${data.matchedCategory}` : ""}`
+                    ? `Blocked${data?.matchedCategory ? ` - ${data.matchedCategory}` : ""}`
                     : "Allowed",
                 categories: cats,
             };
@@ -354,6 +387,9 @@ export default function FilterCheckPage() {
     >(null);
     const [manifestKeyFetched, setManifestKeyFetched] = createSignal(false);
 
+    const [showIbossToast, setShowIbossToast] = createSignal(false);
+    const [ibossGatewayFetched, setIbossGatewayFetched] = createSignal(false);
+
     const readDetectedFilters = (): string[] => {
         try {
             const raw = localStorage.getItem("detectedFilters");
@@ -372,14 +408,12 @@ export default function FilterCheckPage() {
         if (rescanning()) return;
         setRescanning(true);
         try {
-            // Result flows back via the detectedFiltersUpdated listener.
             await checkFiltersNow();
         } finally {
             setRescanning(false);
         }
     };
 
-    // Only fetch manifest key (and show toast) when GoGuardian is actually detected
     createTrackedEffect(() => {
         const leaId = detectedLeaId();
         const hasGG = detectedFilters().includes("goguardian");
@@ -402,6 +436,39 @@ export default function FilterCheckPage() {
         })();
     });
 
+    createTrackedEffect(() => {
+        const leaId = detectedLeaId();
+        const hasIboss = detectedFilters().includes("iboss");
+        if (!leaId || !hasIboss || ibossGatewayFetched()) return;
+        setIbossGatewayFetched(true);
+        void (async () => {
+            try {
+                const gwRes = await fetch(
+                    `/api/iboss/gateway?leaId=${encodeURIComponent(leaId)}`,
+                );
+                if (gwRes.ok) return;
+                if (gwRes.status !== 404) return;
+
+                const detected = await detectIbossGateway();
+                if (detected) {
+                    await fetch("/api/iboss/submit-gateway", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            gatewayHost: detected.host,
+                            port: detected.port,
+                            leaId,
+                            districtName: detectedDistrictName() ?? undefined,
+                            source: "auto",
+                        }),
+                    });
+                } else {
+                    setShowIbossToast(true);
+                }
+            } catch {}
+        })();
+    });
+
     onSettled(() => {
         const handler = (e: Event) => {
             setDetectedFilters(
@@ -410,10 +477,6 @@ export default function FilterCheckPage() {
         };
         window.addEventListener("detectedFiltersUpdated", handler);
 
-        // Re-detect installed filters on every visit (getFilters() in the SW
-        // probes live), so filters installed after boot show up without a
-        // manual localStorage.removeItem + reload. Result flows back through the
-        // detectedFiltersUpdated handler above.
         void checkFiltersNow();
 
         void (async () => {
@@ -453,7 +516,6 @@ export default function FilterCheckPage() {
         return found;
     });
 
-    // Detected filters with no FilterCheck API support yet.
     const unsupportedFilters = createMemo(() =>
         detectedFilters().filter(f => !findFilterConfig(f)),
     );
@@ -502,7 +564,12 @@ export default function FilterCheckPage() {
                               ...config.buildPayload(rawUrl, emailVal),
                               orgRands: [ggExtId],
                           }
-                        : undefined;
+                        : key === "iboss"
+                          ? {
+                                ...config.buildPayload(rawUrl, emailVal),
+                                leaId: detectedLeaId(),
+                            }
+                          : undefined;
                 return checkFilter(
                     key,
                     config,
@@ -569,9 +636,47 @@ export default function FilterCheckPage() {
                     }}
                 />
             </Show>
+            <Show when={showIbossToast() && detectedDistrictName()}>
+                <IbossGatewayToast
+                    districtName={detectedDistrictName()!}
+                    leaId={detectedLeaId()!}
+                    onDismiss={() => {
+                        setShowIbossToast(false);
+                        // Last resort: no host from scanning or the user, so race
+                        // the known-good gateways and contribute the fastest.
+                        void (async () => {
+                            const leaId = detectedLeaId();
+                            if (!leaId) return;
+                            const best = await raceIbossGateways();
+                            if (!best) return;
+                            try {
+                                await fetch("/api/iboss/submit-gateway", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        gatewayHost: best.host,
+                                        port: best.port,
+                                        leaId,
+                                        districtName:
+                                            detectedDistrictName() ?? undefined,
+                                        source: "auto",
+                                    }),
+                                });
+                            } catch {}
+                        })();
+                    }}
+                    onSubmit={() => setShowIbossToast(false)}
+                />
+            </Show>
             <div class={s.page}>
                 <header class={s.header}>
                     <div class={s.headerTitle}>
+                        <span class={s.eyebrow}>
+                            <span class={s.eyebrowMark} />
+                            Diagnostic
+                        </span>
                         <h1 class={s.title}>Filter Check</h1>
                         <p class={s.subtitle}>
                             Test whether a URL is blocked by your school's web
@@ -607,7 +712,7 @@ export default function FilterCheckPage() {
                 >
                     <div class={s.detectedBadges}>
                         <span class={s.detectedLabel}>Detected filters:</span>
-                        <For each={detectedFilters()}>
+                        <For each={detectedFilters()} keyed={false}>
                             {(f: Accessor<string>) => (
                                 <span class={s.badge}>{f()}</span>
                             )}
@@ -629,7 +734,7 @@ export default function FilterCheckPage() {
 
                     <Show when={unsupportedFilters().length > 0}>
                         <div class={s.unsupportedNotice}>
-                            <For each={unsupportedFilters()}>
+                            <For each={unsupportedFilters()} keyed={false}>
                                 {(f: Accessor<string>) => (
                                     <p>
                                         We don't support the ID of the extension
@@ -692,12 +797,12 @@ export default function FilterCheckPage() {
 
                     <Show when={checked()}>
                         <div class={s.results}>
-                            <For each={results()}>
+                            <For each={results()} keyed={false}>
                                 {(result: Accessor<FilterResult>, i) => (
                                     <div
                                         class={s.resultCard[result().status]}
                                         style={{
-                                            "animation-delay": `${i() * 0.06}s`,
+                                            "animation-delay": `${i * 0.06}s`,
                                         }}
                                     >
                                         <div class={s.resultIcon}>
@@ -724,6 +829,7 @@ export default function FilterCheckPage() {
                                                         each={
                                                             result().categories
                                                         }
+                                                        keyed={false}
                                                     >
                                                         {(
                                                             cat: Accessor<string>,

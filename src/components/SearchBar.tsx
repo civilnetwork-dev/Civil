@@ -52,7 +52,7 @@ export default function SearchBar() {
                             { [s.sbDropdownBlur]: showIframe() },
                         ]}
                     >
-                        <For each={suggestions()}>
+                        <For each={suggestions()} keyed={false}>
                             {item => (
                                 <li
                                     class={s.sbRow}

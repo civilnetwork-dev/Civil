@@ -6,10 +6,11 @@
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "jsx": "preserve",
-        "jsxImportSource": "solid-js",
+        "jsxImportSource": "@solidjs/web",
         "allowJs": true,
         "strict": true,
         "noEmit": true,
+        "skipLibCheck": true,
         "types": ["bun", "serviceworker", "chrome"],
         "isolatedModules": true,
         "paths": {

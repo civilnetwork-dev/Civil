@@ -17,6 +17,7 @@ import {
     extensionsUninstall,
 } from "~/api/extensions";
 import * as s from "~/styles/ExtensionsPage.css";
+import * as l from "~/styles/layout.css";
 import type { CivilExtension } from "~/types";
 
 type ExtensionListItem = Omit<CivilExtension, "files"> & {
@@ -74,6 +75,19 @@ function ToggleSwitch(props: {
     );
 }
 
+// A failed cross-origin download surfaces as a bare TypeError whose message
+// is "Failed to fetch" - true, but it names the browser API rather than
+// anything the reader can act on. Anything else we raise ourselves is
+// already written for a person, so it passes through untouched.
+function describeInstallError(e: unknown): string {
+    if (e instanceof TypeError) {
+        return "Couldn't download that file. Check the link, or download it and use Upload file.";
+    }
+    return e instanceof Error && e.message
+        ? e.message
+        : "Couldn't install that extension.";
+}
+
 export default function ExtensionsPage() {
     // Reactive extension index: reading extensions() inside JSX or a memo
     // re-runs on any install / uninstall / enable-toggle / update, since each
@@ -98,9 +112,7 @@ export default function ExtensionsPage() {
             await launchExtensionBackground(ext);
             setUrlInput("");
         } catch (e) {
-            setError(
-                e instanceof Error ? e.message : "Failed to install extension",
-            );
+            setError(describeInstallError(e));
         } finally {
             setInstalling(false);
         }
@@ -137,11 +149,7 @@ export default function ExtensionsPage() {
                 return;
             }
         } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Failed to install extension",
-            );
+            setError(describeInstallError(err));
         } finally {
             setInstalling(false);
             input.value = "";
@@ -188,10 +196,24 @@ export default function ExtensionsPage() {
 
     return (
         <div class={s.root}>
-            <div class={s.header}>
-                <TbOutlinePuzzle size={28} class={s.headerIcon} />
-                <span class={s.title}>Extensions</span>
-            </div>
+            <header class={l.masthead}>
+                <div class={l.mastheadTop}>
+                    <div class={l.mastheadTitleGroup}>
+                        <span class={l.eyebrow}>
+                            <span class={l.eyebrowMark} />
+                            Preferences
+                        </span>
+                        <h1 class={l.pageTitle}>Extensions</h1>
+                    </div>
+                    <Show when={extensions().length > 0}>
+                        <span class={l.pageMeta}>
+                            {extensions().filter(e => e.enabled).length} of{" "}
+                            {extensions().length} enabled
+                        </span>
+                    </Show>
+                </div>
+                <div class={l.mastheadRule} />
+            </header>
 
             <div class={s.installBar}>
                 <input
@@ -274,20 +296,34 @@ export default function ExtensionsPage() {
             </Show>
 
             <Show when={extensions().length === 0}>
-                <p class={s.empty}>
-                    No extensions installed. Install a .crx or .xpi above.
-                </p>
+                <div class={s.empty}>
+                    <TbOutlinePuzzle size={40} class={s.emptyIcon} />
+                    <p class={s.emptyText}>
+                        No extensions installed. Install a .crx or .xpi above.
+                    </p>
+                </div>
             </Show>
 
             <Show when={crxExts().length > 0}>
                 <p class={s.sectionTitle}>Chrome Extensions</p>
                 <div class={s.list}>
-                    <For each={crxExts()}>
+                    <For each={crxExts()} keyed={false}>
                         {ext => (
                             <div class={s.card}>
                                 <ExtensionIcon ext={ext()} />
                                 <div class={s.cardInfo}>
-                                    <div class={s.cardName}>{ext().name}</div>
+                                    <div class={s.cardName}>
+                                        <span
+                                            class={[
+                                                s.statusDot,
+                                                {
+                                                    [s.statusDotOn]:
+                                                        ext().enabled,
+                                                },
+                                            ]}
+                                        />{" "}
+                                        {ext().name}
+                                    </div>
                                     <div class={s.cardMeta}>
                                         v{ext().version} ·{" "}
                                         {ext().manifest.description ?? ""}
@@ -319,12 +355,23 @@ export default function ExtensionsPage() {
             <Show when={xpiExts().length > 0}>
                 <p class={s.sectionTitle}>Firefox Extensions</p>
                 <div class={s.list}>
-                    <For each={xpiExts()}>
+                    <For each={xpiExts()} keyed={false}>
                         {ext => (
                             <div class={s.card}>
                                 <ExtensionIcon ext={ext()} />
                                 <div class={s.cardInfo}>
-                                    <div class={s.cardName}>{ext().name}</div>
+                                    <div class={s.cardName}>
+                                        <span
+                                            class={[
+                                                s.statusDot,
+                                                {
+                                                    [s.statusDotOn]:
+                                                        ext().enabled,
+                                                },
+                                            ]}
+                                        />{" "}
+                                        {ext().name}
+                                    </div>
                                     <div class={s.cardMeta}>
                                         v{ext().version} ·{" "}
                                         {ext().manifest.description ?? ""}

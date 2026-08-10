@@ -45,7 +45,7 @@ export default function SearchBar() {
                 />
                 <Show when={suggestions().length > 0}>
                     <ul class={s.sbDropdown}>
-                        <For each={suggestions()}>
+                        <For each={suggestions()} keyed={false}>
                             {item => (
                                 <li
                                     class={s.sbRow}

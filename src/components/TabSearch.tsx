@@ -1,9 +1,9 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: tab search */
 /** biome-ignore-all lint/a11y/useKeyWithClickEvents: tab search */
 import uFuzzy from "@leeoniya/ufuzzy";
+import type { JSX } from "@solidjs/web";
 import { Portal } from "@solidjs/web";
 import { TbOutlineSearch, TbOutlineWorld } from "solid-icons/tb";
-import type { JSX } from "solid-js";
 import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import type { Tab } from "~/lib/TabManager";
 import { isNewtabUrl } from "~/lib/TabManager";
@@ -174,11 +174,11 @@ export default function TabSearch(props: TabSearchProps) {
                     </div>
 
                     <div class={s.results} ref={listRef!}>
-                        <For each={results()}>
+                        <For each={results()} keyed={false}>
                             {(item, idx) => {
                                 const isActive = () =>
                                     item().tab.id === props.activeId;
-                                const isCursor = () => idx() === cursor();
+                                const isCursor = () => idx === cursor();
                                 const isNewtab = () =>
                                     isNewtabUrl(item().tab.url);
                                 return (
@@ -195,7 +195,7 @@ export default function TabSearch(props: TabSearchProps) {
                                             },
                                         ]}
                                         onMouseEnter={() => {
-                                            setCursor(idx());
+                                            setCursor(idx);
                                         }}
                                         onClick={() => {
                                             props.onActivate(item().tab.id);

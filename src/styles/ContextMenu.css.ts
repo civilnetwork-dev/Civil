@@ -30,6 +30,7 @@ export const menu = style({
     color: vars.color.text,
     userSelect: "none",
     animation: `${menuIn} 0.12s cubic-bezier(0.22, 1, 0.36, 1) both`,
+    animationDuration: "0.12s",
     transformOrigin: "top left",
     padding: 0,
 });
@@ -48,6 +49,7 @@ export const menuItem = style({
     color: vars.color.subtext1,
     cursor: "pointer",
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.surface0,

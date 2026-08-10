@@ -1,0 +1,510 @@
+{
+    "schemaVersion": 2,
+    "generatedAt": "2026-07-29T21:25:19Z",
+    "title": "Design System: Civil Proxy",
+    "extensions": {
+        "colorMeta": {
+            "crust": {
+                "role": "neutral",
+                "displayName": "Crust",
+                "canonical": "#181926",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "mantle": {
+                "role": "neutral",
+                "displayName": "Mantle",
+                "canonical": "#1e2030",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "base": {
+                "role": "neutral",
+                "displayName": "Base",
+                "canonical": "#24273a",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "surface0": {
+                "role": "neutral",
+                "displayName": "Surface 0",
+                "canonical": "#363a4f",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "surface1": {
+                "role": "neutral",
+                "displayName": "Surface 1",
+                "canonical": "#494d64",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "surface2": {
+                "role": "neutral",
+                "displayName": "Surface 2",
+                "canonical": "#5b6078",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "overlay0": {
+                "role": "neutral",
+                "displayName": "Overlay 0",
+                "canonical": "#6e738d",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "overlay1": {
+                "role": "neutral",
+                "displayName": "Overlay 1",
+                "canonical": "#8087a2",
+                "tonalRamp": [
+                    "#181926",
+                    "#1e2030",
+                    "#24273a",
+                    "#363a4f",
+                    "#494d64",
+                    "#5b6078",
+                    "#6e738d",
+                    "#8087a2"
+                ]
+            },
+            "subtext0": {
+                "role": "neutral",
+                "displayName": "Subtext 0",
+                "canonical": "#a5adcb",
+                "tonalRamp": [
+                    "#8087a2",
+                    "#939ab7",
+                    "#a5adcb",
+                    "#b8c0e0",
+                    "#cad3f5",
+                    "#dbe1f7",
+                    "#eceffa",
+                    "#f5f6fc"
+                ]
+            },
+            "subtext1": {
+                "role": "neutral",
+                "displayName": "Subtext 1",
+                "canonical": "#b8c0e0",
+                "tonalRamp": [
+                    "#8087a2",
+                    "#939ab7",
+                    "#a5adcb",
+                    "#b8c0e0",
+                    "#cad3f5",
+                    "#dbe1f7",
+                    "#eceffa",
+                    "#f5f6fc"
+                ]
+            },
+            "text": {
+                "role": "neutral",
+                "displayName": "Text",
+                "canonical": "#cad3f5",
+                "tonalRamp": [
+                    "#8087a2",
+                    "#939ab7",
+                    "#a5adcb",
+                    "#b8c0e0",
+                    "#cad3f5",
+                    "#dbe1f7",
+                    "#eceffa",
+                    "#f5f6fc"
+                ]
+            },
+            "lavender": {
+                "role": "primary",
+                "displayName": "Cockpit Lavender",
+                "canonical": "#b7bdf8",
+                "tonalRamp": [
+                    "#2a2b52",
+                    "#3f4177",
+                    "#565a9c",
+                    "#7075c0",
+                    "#8f93da",
+                    "#b7bdf8",
+                    "#d3d6fb",
+                    "#eceefd"
+                ]
+            },
+            "mauve": {
+                "role": "secondary",
+                "displayName": "Signal Mauve",
+                "canonical": "#c6a0f6",
+                "tonalRamp": [
+                    "#341f52",
+                    "#4d2c7a",
+                    "#6839a1",
+                    "#8749c3",
+                    "#a86fdd",
+                    "#c6a0f6",
+                    "#dcc4fa",
+                    "#efe2fd"
+                ]
+            },
+            "blue": {
+                "role": "tertiary",
+                "displayName": "Neutral Blue",
+                "canonical": "#8aadf4",
+                "tonalRamp": [
+                    "#132247",
+                    "#1c3169",
+                    "#26428d",
+                    "#3d5cb0",
+                    "#5f7fd3",
+                    "#8aadf4",
+                    "#b9cdf8",
+                    "#e0e9fc"
+                ]
+            },
+            "sky": {
+                "role": "tertiary",
+                "displayName": "Quiet Sky",
+                "canonical": "#91d7e3",
+                "tonalRamp": [
+                    "#0f3339",
+                    "#155059",
+                    "#1c6e79",
+                    "#3a949f",
+                    "#61bac4",
+                    "#91d7e3",
+                    "#bfe9ee",
+                    "#e7f7f9"
+                ]
+            },
+            "green": {
+                "role": "status-allowed",
+                "displayName": "Status Green",
+                "canonical": "#a6da95",
+                "tonalRamp": [
+                    "#1c331a",
+                    "#2b4f27",
+                    "#3c6c35",
+                    "#5e9354",
+                    "#82b975",
+                    "#a6da95",
+                    "#c9e9bd",
+                    "#e9f6e3"
+                ]
+            },
+            "yellow": {
+                "role": "status-warned",
+                "displayName": "Status Yellow",
+                "canonical": "#eed49f",
+                "tonalRamp": [
+                    "#4a3a13",
+                    "#6f571c",
+                    "#957527",
+                    "#b7943f",
+                    "#d3b56c",
+                    "#eed49f",
+                    "#f5e5c4",
+                    "#faf3e5"
+                ]
+            },
+            "red": {
+                "role": "status-blocked",
+                "displayName": "Status Red",
+                "canonical": "#ed8796",
+                "tonalRamp": [
+                    "#4a1219",
+                    "#6f1c26",
+                    "#952636",
+                    "#b73f4d",
+                    "#d36c76",
+                    "#ed8796",
+                    "#f5b8bf",
+                    "#fae0e3"
+                ]
+            },
+            "maroon": {
+                "role": "status-error",
+                "displayName": "Status Maroon",
+                "canonical": "#ee99a0",
+                "tonalRamp": [
+                    "#4a1a1e",
+                    "#6f272c",
+                    "#95343b",
+                    "#b74d54",
+                    "#d3777c",
+                    "#ee99a0",
+                    "#f5c0c4",
+                    "#fae5e7"
+                ]
+            }
+        },
+        "typographyMeta": {
+            "display": {
+                "displayName": "Display",
+                "purpose": "Shared status-page headline (New Tab / Ban / Ban Info h1). Plain color, never gradient."
+            },
+            "headline": {
+                "displayName": "Headline",
+                "purpose": "Filter Checker page title only. Lavender→Mauve 135° gradient text-fill."
+            },
+            "body": {
+                "displayName": "Body",
+                "purpose": "Standalone-page labels, form copy, dropdown options."
+            },
+            "chrome": {
+                "displayName": "Chrome",
+                "purpose": "In-browser-chrome UI text: tabs, omnibox, history, suggestions. Distinct tier from Body."
+            },
+            "label": {
+                "displayName": "Label",
+                "purpose": "Uppercase status/category labels and captions."
+            }
+        },
+        "shadows": [
+            {
+                "name": "floating-menu",
+                "value": "0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18)",
+                "purpose": "Context menu and submenus."
+            },
+            {
+                "name": "dropdown",
+                "value": "0 4px 12px rgba(0,0,0,0.15)",
+                "purpose": "Select component open list."
+            },
+            {
+                "name": "panel",
+                "value": "0 4px 24px rgba(0,0,0,0.18)",
+                "purpose": "Filter Checker form card."
+            },
+            {
+                "name": "card-hover-lift",
+                "value": "0 6px 20px rgba(0,0,0,0.2)",
+                "purpose": "Filter Checker result card hover, paired with translateY(-2px)."
+            },
+            {
+                "name": "drag-clone",
+                "value": "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
+                "purpose": "Dragged tab clone."
+            },
+            {
+                "name": "accent-glow",
+                "value": "0 4px 16px color-mix(in srgb, {accent} 40%, transparent)",
+                "purpose": "Accent-colored CTA hover glow, not a structural shadow."
+            }
+        ],
+        "motion": [
+            {
+                "name": "t-fast",
+                "value": "0.1s ease",
+                "purpose": "Micro hover transitions (icon buttons, tabs)."
+            },
+            {
+                "name": "t-standard",
+                "value": "0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+                "purpose": "Default state-change easing."
+            },
+            {
+                "name": "t-slow",
+                "value": "0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+                "purpose": "Page-section fade-up reveals, staggered by 0.05-0.1s."
+            },
+            {
+                "name": "menu-in",
+                "value": "0.12s cubic-bezier(0.22, 1, 0.36, 1)",
+                "purpose": "Context menu / submenu scale+translate pop-in."
+            },
+            {
+                "name": "tab-enter",
+                "value": "0.16s cubic-bezier(0.22, 1, 0.36, 1)",
+                "purpose": "New tab scale+fade entrance. Interactive-feedback opt-in past the motion-kill; transform+opacity only."
+            },
+            {
+                "name": "global-motion-kill",
+                "value": "transitionDuration/animationDuration: 0s !important on *, *::before, *::after",
+                "purpose": "Default-off ambient motion for a low visual footprint on a shared screen. Two categories re-opt-in with their own !important duration: functional (loaders) and interactive-feedback (entrance, hover, focus, active-state change), always scoped to paint/composite properties, never layout properties like width/height."
+            }
+        ],
+        "breakpoints": []
+    },
+    "components": [
+        {
+            "name": "Primary Button",
+            "kind": "button",
+            "refersTo": "button-primary",
+            "description": "Filter Checker's single CTA. Gradient fill, lifts and glows on hover.",
+            "html": "<button class=\"ds-btn-primary\">Check Filters</button>",
+            "css": ".ds-btn-primary { padding: 10px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #c6a0f6 0%, #b7bdf8 100%); color: #181926; font-family: \"Rubik\", ui-sans-serif, sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; transition: opacity 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.18s cubic-bezier(0.4,0,0.2,1), transform 0.18s cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { opacity: 0.9; box-shadow: 0 4px 16px color-mix(in srgb, #c6a0f6 40%, transparent); transform: translateY(-1px); }"
+        },
+        {
+            "name": "Ghost Icon Button",
+            "kind": "button",
+            "refersTo": "button-ghost",
+            "description": "Circular chrome control (nav, extensions, tab-new). Transparent at rest, fills on hover.",
+            "html": "<button class=\"ds-btn-ghost\" aria-label=\"Extensions\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 2a2 2 0 0 1 2 2v2h3a1 1 0 0 1 1 1v3h2a2 2 0 1 1 0 4h-2v3a1 1 0 0 1-1 1h-3v2a2 2 0 1 1-4 0v-2H7a1 1 0 0 1-1-1v-3H4a2 2 0 1 1 0-4h2V7a1 1 0 0 1 1-1h3V4a2 2 0 0 1 2-2z\"/></svg></button>",
+            "css": ".ds-btn-ghost { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; background: transparent; color: #8087a2; border-radius: 50%; cursor: pointer; padding: 0; transition: background 0.1s ease, color 0.1s ease; } .ds-btn-ghost:hover { background: #363a4f; color: #b7bdf8; } .ds-btn-ghost:focus-visible { outline: 2px solid #b7bdf8; outline-offset: 2px; }"
+        },
+        {
+            "name": "Omnibox Input",
+            "kind": "input",
+            "refersTo": "omnibox",
+            "description": "Pill-shaped URL/search bar. Lavender focus border, background steps darker on focus.",
+            "html": "<div class=\"ds-omnibox\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z M12 2v2 M12 20v2\"/></svg><input class=\"ds-omnibox-input\" placeholder=\"Search or enter address\" /></div>",
+            "css": ".ds-omnibox { display: flex; align-items: center; gap: 6px; height: 28px; background: #363a4f; border: 1.5px solid transparent; border-radius: 14px; padding: 0 8px 0 10px; box-sizing: border-box; transition: border-color 0.1s ease, background 0.1s ease, box-shadow 0.1s ease; color: #6e738d; } .ds-omnibox:focus-within { border-color: #b7bdf8; background: #1e2030; box-shadow: 0 0 0 3px color-mix(in srgb, #b7bdf8 18%, transparent); } .ds-omnibox-input { flex: 1; border: none; background: transparent; color: #cad3f5; font-size: 12.5px; font-family: inherit; outline: none; caret-color: #b7bdf8; } .ds-omnibox-input::placeholder { color: #6e738d; }"
+        },
+        {
+            "name": "Browser Tab",
+            "kind": "custom",
+            "refersTo": "tab",
+            "description": "Signature component. At rest a fully detached floating pill (999px radius) in Mantle, lifted off the Crust strip via transform, not margin. Active, it docks: flattens to 14px 14px 0 0, drops to translateY(0), steps to Base, and welds into the content plane. Bolder title, larger Lavender icon, and a keyboard focus ring on the active/focused tab. Entrance (opacity only) and dock/float transitions are explicit interactive-feedback opt-ins past the motion-kill; width is deliberately excluded so tab-resize stays an instant snap, not an animated reflow.",
+            "html": "<div class=\"ds-tab ds-tab--active\" tabindex=\"0\"><span class=\"ds-tab-favicon\"></span><span class=\"ds-tab-title\">Filter Checker</span><button class=\"ds-tab-close\" aria-label=\"Close tab\">&times;</button></div>",
+            "css": "@keyframes ds-tab-enter { from { opacity: 0; } to { opacity: 1; } } .ds-tab { position: relative; display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 32px; background: #1e2030; color: #6e738d; border-radius: 999px; transform: translateY(-5px); cursor: pointer; transition-property: background, color, border-radius, transform; transition-duration: 0.1s; transition-timing-function: ease; animation: ds-tab-enter 0.16s cubic-bezier(0.22, 1, 0.36, 1) both; } .ds-tab--active { background: #24273a; color: #cad3f5; border-radius: 14px 14px 0 0; transform: translateY(0); box-shadow: inset 0 1px 0 0 color-mix(in srgb, #494d64 35%, transparent), 0 -1px 0 0 #363a4f, -1px 0 0 0 #363a4f, 1px 0 0 0 #363a4f; } .ds-tab--active .ds-tab-title { font-weight: 600; } .ds-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px #24273a, 0 0 0 4px color-mix(in srgb, #b7bdf8 55%, transparent); } .ds-tab-favicon { width: 14px; height: 14px; border-radius: 3px; background: #494d64; flex-shrink: 0; } .ds-tab-title { font-size: 12.5px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-tab-close { width: 18px; height: 18px; border: none; background: transparent; color: #6e738d; border-radius: 50%; cursor: pointer; margin-left: auto; opacity: 0; transition-property: opacity, background, color; transition-duration: 0.1s; } .ds-tab--active .ds-tab-close { opacity: 0.35; } .ds-tab:hover .ds-tab-close { opacity: 1; } .ds-tab-close:hover { background: color-mix(in srgb, #ed8796 22%, transparent); color: #ed8796; }"
+        },
+        {
+            "name": "Game Cartridge Tile",
+            "kind": "custom",
+            "refersTo": null,
+            "description": "Apps grid signature tile. A big icon stage over a caption bar in one 18px-radius square object, not the small-icon-plus-label stack used elsewhere. Lavender glow lift on hover (not black - an interactive launcher, not a structural card); icon scales slightly independent of the tile lift for a subtle parallax depth cue.",
+            "html": "<div class=\"ds-cartridge\"><div class=\"ds-cartridge-stage\"><img class=\"ds-cartridge-icon\" src=\"\" alt=\"\" /></div><div class=\"ds-cartridge-name\">Poki Games</div></div>",
+            "css": ".ds-cartridge { position: relative; display: flex; flex-direction: column; aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: linear-gradient(160deg, #363a4f 0%, #1e2030 100%); border: 1px solid #494d64; cursor: pointer; transition-property: transform, box-shadow, border-color; transition-duration: 0.16s; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); } .ds-cartridge:hover { transform: translateY(-3px); border-color: #6e738d; box-shadow: 0 10px 28px color-mix(in srgb, #b7bdf8 22%, transparent); } .ds-cartridge:active { transform: translateY(-1px) scale(0.97); } .ds-cartridge-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14px; } .ds-cartridge-icon { width: 52px; height: 52px; border-radius: 12px; object-fit: contain; transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-cartridge:hover .ds-cartridge-icon { transform: scale(1.06); } .ds-cartridge-name { flex-shrink: 0; padding: 8px 10px; background: color-mix(in srgb, #181926 45%, transparent); border-top: 1px solid #494d64; font-size: 12px; font-weight: 600; color: #cad3f5; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"
+        },
+        {
+            "name": "Status Card (Blocked)",
+            "kind": "card",
+            "refersTo": "badge-status",
+            "description": "Filter Checker result card. One recipe (8% background tint, 30% border tint, solid accent icon/label) reused for all five verdicts.",
+            "html": "<div class=\"ds-status-card ds-status-card--blocked\"><span class=\"ds-status-icon\">&#9888;</span><div class=\"ds-status-body\"><div class=\"ds-status-name\">games.example.com</div><div class=\"ds-status-detail\">Blocked by Securly</div></div><span class=\"ds-status-label\">Blocked</span></div>",
+            "css": ".ds-status-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 12px; transition: transform 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.18s cubic-bezier(0.4,0,0.2,1); } .ds-status-card--blocked { background: color-mix(in srgb, #ed8796 8%, #1e2030); border: 1.5px solid color-mix(in srgb, #ed8796 30%, transparent); } .ds-status-card--blocked:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); } .ds-status-icon { color: #ed8796; flex-shrink: 0; } .ds-status-name { font-size: 14px; font-weight: 600; color: #cad3f5; } .ds-status-detail { font-size: 12px; color: #a5adcb; } .ds-status-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #ed8796; margin-left: auto; }"
+        },
+        {
+            "name": "Context Menu",
+            "kind": "nav",
+            "refersTo": null,
+            "description": "Floating menu shared by right-click context menu and its submenus. Black structural shadow, spring pop-in.",
+            "html": "<div class=\"ds-menu\"><button class=\"ds-menu-item\">Reload</button><button class=\"ds-menu-item\">Duplicate Tab</button><div class=\"ds-menu-separator\"></div><button class=\"ds-menu-item ds-menu-item--danger\">Close Tab</button></div>",
+            "css": ".ds-menu { width: 220px; background: #1e2030; border: 1px solid #363a4f; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18); font-family: \"Rubik\", ui-sans-serif, sans-serif; font-size: 13px; color: #cad3f5; } .ds-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 16px; border: none; background: transparent; color: #b8c0e0; cursor: pointer; transition: background 0.1s ease, color 0.1s ease; text-align: left; } .ds-menu-item:hover { background: #363a4f; color: #cad3f5; } .ds-menu-item--danger { color: #ed8796; } .ds-menu-item--danger:hover { background: color-mix(in srgb, #ed8796 14%, transparent); } .ds-menu-separator { width: 100%; height: 1px; background: #363a4f; }"
+        }
+    ],
+    "narrative": {
+        "northStar": "The Stealth Cockpit",
+        "overview": "Civil looks like an instrument panel built for someone who already knows where every control is, not a product introducing itself to a first-time visitor. The interface runs dense and precise — 30px circular icon buttons, 12.5px chrome text, exact hit targets — but it's rendered entirely in the low-saturation, cafe-warm Catppuccin Macchiato palette instead of harsh utilitarian grey, so precision reads as calm rather than clinical. Nothing about the surface performs for an onlooker: colors are muted, ambient motion is switched off by default, and the whole system is built to sit open on a shared screen without inviting a second look.\n\nThat restraint is deliberate, not an oversight: global.css.ts kills every CSS transition and animation duration to 0s !important for every element by default. Motion is earned per-component, never ambient. Two categories are allowed to opt back in, each with its own explicit !important duration: functional motion (spinners, loading states) and interactive-feedback motion (entrance, hover, focus, active-state transitions on a specific control). Anything that would animate at rest, on a timer, or without a user action behind it stays off.\n\nEvery page shares one token system but earns its own silhouette: floating tab pills in the browser chrome, game-cartridge tiles on Apps, settings-panel rows on Extensions, a timeline rail on History, ribbon-tagged rows on Bookmarks, a stripe-field atmosphere on Ban, HUD corner brackets on New Tab. Same brand, same materials, different shape for the job each page is actually doing.",
+        "keyCharacteristics": [
+            "Dense instrument-panel component sizing (18-30px controls, 12-13px UI text) rendered in a muted pastel-dark palette, not clinical grey.",
+            "Flat tonal layering at rest; real shadows appear only on things floating above the page.",
+            "A hard global motion-kill that only functional and interactive-feedback animations are allowed to override, each with an explicit opt-in.",
+            "A consistent five-color status recipe (green/red/yellow/neutral/maroon) reused everywhere a filter or ban state is shown.",
+            "Two accent lanes: lavender for browser-chrome navigation, mauve for the standalone Filter Checker tool - never mixed within one context except as a deliberate gradient pairing.",
+            "Each page carries one signature structural motif built from the same tokens, so the system reads as one product without every screen defaulting to the same generic list-of-cards template."
+        ],
+        "rules": [
+            {
+                "name": "The Recede-to-Advance Rule",
+                "body": "Depth is expressed by lightness, not shadow: chrome and inactive surfaces sit in the darkest tones (Crust), the active content plane and focused controls step up to Base, and anything meant to feel touchable steps up again through Surface 0 -> 1 -> 2.",
+                "section": "colors"
+            },
+            {
+                "name": "The Two-Lane Accent Rule",
+                "body": "Lavender is the browser-chrome accent; Mauve is the standalone-tool accent. They appear together only as the intentional 135 degree headline gradient on the Filter Checker page.",
+                "section": "colors"
+            },
+            {
+                "name": "The Status Triad Recipe",
+                "body": "Every filter/ban status card follows one recipe: background = color-mix(accent 8%, mantle), border = color-mix(accent 30%, transparent), icon/label = solid accent at full value.",
+                "section": "colors"
+            },
+            {
+                "name": "The One-Family Rule",
+                "body": "Rubik is the only typeface in the system. Hierarchy is built from size/weight/tracking, never a second font.",
+                "section": "typography"
+            },
+            {
+                "name": "The Colored-Glow-vs-Black-Shadow Rule",
+                "body": "Structural elevation (menus, dropdowns, cards) always uses neutral black shadows. Interactive accent feedback (button hover, focus rings) always uses a color-mix glow in the relevant accent color.",
+                "section": "elevation"
+            },
+            {
+                "name": "The Interactive-Feedback-Only Rule",
+                "body": "Motion opt-ins past the global motion-kill are limited to two categories: functional (loaders) and interactive feedback (entrance, hover, focus, active-state change on a control the user just touched). Ambient motion - anything that animates at rest, on a timer, or without a user action behind it - stays off. Opt-ins must also stay scoped to paint/composite properties (background, color, opacity, transform); layout properties like width/height are deliberately excluded so a state change on one control never becomes an animated reflow across its neighbors.",
+                "section": "overview"
+            },
+            {
+                "name": "The Pill-to-Dock Rule",
+                "body": "A tab is never one fixed shape. At rest it's a full stadium pill (999px radius) floating above the strip via transform. Active, it flattens its bottom corners to 14px 14px 0 0 and drops to meet the content plane. The shape itself communicates state.",
+                "section": "shapes"
+            },
+            {
+                "name": "The One-Signature-Per-Page Rule",
+                "body": "Every list/grid page gets one real structural motif built from the shared tokens (cartridge tiles, settings rows, timeline rail, ribbon tags, stripe atmosphere, HUD brackets) instead of the same icon+heading+text card repeated everywhere. Same brand, same materials, different shape for the job each page is doing.",
+                "section": "components"
+            }
+        ],
+        "dos": [
+            "Do keep decorative transitions off by default; only opt a component's motion back in with an explicit !important duration, and only for functional motion or direct interactive feedback (entrance, hover, focus, active-state change).",
+            "Do scope motion opt-ins to paint/composite properties (background, color, opacity, transform) and keep layout properties (width, height, top/left) out of the transition list.",
+            "Do use the Status Triad Recipe for any new filter/ban/verdict UI.",
+            "Do keep Lavender scoped to browser-chrome/navigation contexts and Mauve scoped to standalone-tool contexts.",
+            "Do size in-chrome UI text at 12.5px (Chrome tier), distinct from the 14px Body tier used on standalone pages.",
+            "Do give every interactive chrome control a visible keyboard focus state - mouse-only affordances are an accessibility gap, not a stylistic choice.",
+            "Do give each page one real structural signature built from the shared tokens rather than the same icon-plus-label card recipe on every list page."
+        ],
+        "donts": [
+            "Don't give the system a sketchy free-proxy-site look - no pop-up-style CTAs, no ad framing competing with the product chrome.",
+            "Don't default to generic unstyled browser chrome - a flat grey Chrome-clone look is a regression.",
+            "Don't introduce loud gamer-aesthetic treatments (neon, RGB gradients, aggressive angular shapes) anywhere in the system.",
+            "Don't add ambient motion - anything that animates at rest, on a timer, or without a user action behind it stays off; interactive feedback (entrance, hover, focus) is the one allowed category, idle/decorative motion is not.",
+            "Don't use a black structural shadow for accent-interactive feedback or a colored glow for structural elevation - the two shadow vocabularies are not interchangeable.",
+            "Don't reach for a same-size icon+heading+text card as the default page structure - every list page earned a different shape because the content is actually different."
+        ]
+    }
+}

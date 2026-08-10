@@ -1,7 +1,7 @@
 import { Meta, Title } from "@solidjs/meta";
-import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
 import { onCleanup, onSettled } from "solid-js";
+import { clientOnly } from "~/lib/clientOnly";
 
 const Browser = clientOnly(() => import("~/components/BrowserChrome.tsx"));
 
@@ -11,16 +11,20 @@ export const Route = createFileRoute("/")({
 
 function RouteComponent() {
     onSettled(() => {
-        const script = document.createElement("script");
+        const ippScript = document.createElement("script");
+        const nativeScript = document.createElement("script");
 
-        script.async = true;
-        script.src =
+        ippScript.async = true;
+        ippScript.src =
             "https://ss.mrmnd.com/static/5b2c8f79-d86d-4662-97a4-d489f053bf3e.js";
 
-        document.head.appendChild(script);
+        document.head.appendChild(ippScript);
+
+        nativeScript.async = true;
+        nativeScript.src = "https://ss.mrmnd.com/native.js";
 
         onCleanup(() => {
-            script.remove();
+            ippScript.remove();
         });
     });
 

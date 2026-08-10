@@ -146,7 +146,9 @@ export function useSecurlyMiddleware(app: Express) {
                 result.value.categoryId!,
             );
             const decision = {
-                allowed: result.value.decision === "ALLOW",
+                allowed: ["ALLOW", "SS", "YT", "GM"].includes(
+                    result.value.decision ?? "",
+                ),
                 paused: result.value.decision === "PAUSE",
                 errored: result.value.decision === "ERROR",
                 decisionIsKnown: result.value.decision !== "UNKNOWN",

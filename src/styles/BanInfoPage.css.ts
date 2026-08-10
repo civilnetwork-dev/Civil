@@ -1,9 +1,24 @@
 import { style } from "@vanilla-extract/css";
+import {
+    atmosphere,
+    DUR,
+    EASE,
+    hairline,
+    lit,
+    machined,
+    microLabel,
+    readout,
+    SHADOW,
+} from "./material.css";
 import { vars } from "./theme.css";
 import "./global.css";
 
+// Header, strike card and the domain grid all measure to the same column so
+// they stay flush with each other at every width.
+const CONTENT_MAX = "1100px";
+
 export const banInfoRoot = style({
-    backgroundColor: vars.color.base,
+    ...atmosphere(vars.color.red, 0.9),
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -20,15 +35,19 @@ export const header = style({
     alignItems: "center",
     gap: "16px",
     width: "100%",
-    maxWidth: "680px",
-    marginBottom: "24px",
+    maxWidth: CONTENT_MAX,
+    marginBottom: "26px",
+    paddingBottom: "22px",
+    borderBottom: "1px solid transparent",
+    borderImage: `${hairline(vars.color.surface1)} 1`,
 });
 
 export const title = style({
     color: vars.color.text,
     fontFamily: '"Rubik", sans-serif',
-    fontSize: "28px",
-    fontWeight: 500,
+    fontSize: "clamp(24px, 3.4vw, 31px)",
+    fontWeight: 600,
+    letterSpacing: "-0.015em",
     textAlign: "center",
     cursor: "default",
 });
@@ -64,6 +83,7 @@ export const input = style({
     outline: "none",
     caretColor: vars.color.lavender,
     transition: "border-color 0.15s ease",
+    transitionDuration: "0.15s",
     selectors: {
         "&:focus": {
             borderColor: vars.color.lavender,
@@ -82,34 +102,46 @@ export const input = style({
 });
 
 export const statsText = style({
-    color: vars.color.overlay1,
+    // overlay1 on base is 4.14:1, just under the AA floor at this size.
+    color: vars.color.subtext0,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "13px",
     fontWeight: 400,
     cursor: "default",
 });
 
+// Domains are short strings, so one per full-width row turned a 500-entry
+// page into a single column of near-identical bars with most of the width
+// unused. A dense auto-fill grid fits several per line and makes the list
+// scannable alphabetically down each column.
 export const scrollContainer = style({
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+    gap: "6px",
     width: "100%",
-    maxWidth: "680px",
+    maxWidth: CONTENT_MAX,
 });
 
 export const domainItem = style({
-    background: vars.color.surface0,
+    background: machined(vars.color.surface0, vars.color.mantle),
     border: `1px solid ${vars.color.surface1}`,
     borderRadius: "8px",
+    boxShadow: lit(SHADOW.resting),
     color: vars.color.subtext0,
     fontFamily: '"Rubik", sans-serif',
-    fontSize: "13px",
+    fontSize: "12.5px",
     fontWeight: 400,
-    padding: "10px 16px",
-    transition: "background 0.1s ease, color 0.1s ease",
+    padding: "8px 12px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    transitionProperty: "background, color, border-color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
             background: vars.color.surface1,
+            borderColor: `color-mix(in srgb, ${vars.color.red} 35%, ${vars.color.surface1})`,
             color: vars.color.text,
         },
     },
@@ -145,17 +177,18 @@ export const endText = style({
 
 export const statusSection = style({
     width: "100%",
-    maxWidth: "680px",
+    maxWidth: CONTENT_MAX,
 });
 
 export const strikeCard = style({
-    background: vars.color.surface0,
+    background: machined(vars.color.surface0, vars.color.mantle),
     border: `1px solid ${vars.color.surface1}`,
     borderRadius: "12px",
-    padding: "16px 20px",
+    padding: "18px 20px",
     display: "flex",
     flexDirection: "column",
-    gap: "10px",
+    gap: "12px",
+    boxShadow: lit(SHADOW.resting),
 });
 
 export const strikeHeader = style({
@@ -165,39 +198,56 @@ export const strikeHeader = style({
 });
 
 export const strikeLabel = style({
-    color: vars.color.subtext1,
+    ...microLabel,
+    color: vars.color.subtext0,
     fontFamily: '"Rubik", sans-serif',
-    fontSize: "14px",
-    fontWeight: 500,
     cursor: "default",
 });
 
 export const strikeCount = style({
+    ...readout,
     color: vars.color.text,
     fontFamily: '"Rubik", sans-serif',
-    fontSize: "14px",
+    fontSize: "15px",
     fontWeight: 600,
+    letterSpacing: "0.04em",
     cursor: "default",
 });
 
-export const strikeTrack = style({
-    height: "6px",
-    borderRadius: "999px",
-    background: vars.color.surface1,
-    overflow: "hidden",
+/**
+ * The strike gauge. Five discrete cells, because five is the actual limit —
+ * a continuous bar asked the reader to convert a percentage back into
+ * "how many do I have left", which is the only question this control answers.
+ * Unused cells are recessed; used cells are lit from within.
+ */
+export const strikeGauge = style({
+    display: "grid",
+    gridAutoFlow: "column",
+    gridAutoColumns: "1fr",
+    gap: "5px",
+    height: "10px",
 });
 
-export const strikeFill = style({
-    height: "100%",
-    borderRadius: "999px",
-    background: "var(--fill-color, #a6e3a1)",
-    transition: "width 0.3s ease",
+export const strikeSegment = style({
+    borderRadius: "3px",
+    background: vars.color.surface1,
+    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.45)",
+    transitionProperty: "background, box-shadow",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.base,
+});
+
+export const strikeSegmentUsed = style({
+    background: "var(--seg-color)",
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.3), 0 0 10px color-mix(in srgb, var(--seg-color) 55%, transparent)`,
 });
 
 export const policyText = style({
-    color: vars.color.overlay1,
+    // overlay1 on surface0 lands at 3.15:1 - below the 4.5:1 AA floor for
+    // text this size. subtext0 reads at 5.0:1 against the same card.
+    color: vars.color.subtext0,
     fontFamily: '"Rubik", sans-serif',
-    fontSize: "12px",
+    fontSize: "12.5px",
     fontWeight: 400,
     lineHeight: "1.5",
     margin: 0,
@@ -208,10 +258,13 @@ export const bannedBanner = style({
     display: "flex",
     alignItems: "flex-start",
     gap: "14px",
-    background: `color-mix(in srgb, ${vars.color.red} 12%, ${vars.color.surface0})`,
-    border: `1px solid ${vars.color.red}`,
+    background: `color-mix(in srgb, ${vars.color.red} 10%, ${vars.color.mantle})`,
+    border: `1px solid color-mix(in srgb, ${vars.color.red} 40%, transparent)`,
     borderRadius: "12px",
-    padding: "16px 20px",
+    padding: "18px 20px",
+    boxShadow: lit(
+        `0 0 26px -6px color-mix(in srgb, ${vars.color.red} 30%, transparent)`,
+    ),
 });
 
 export const bannedIcon = style({

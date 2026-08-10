@@ -58,14 +58,18 @@ export default function BrowserChrome() {
 
     const TAB_MIN = 60,
         TAB_MAX = 220,
-        NEW_BTN_W = 40;
+        NEW_BTN_W = 40,
+        // Must track the `gap` on .browserTabstrip.
+        TAB_GAP = 6;
     const tabWidth = createMemo(() => {
         const n = tabStore.tabs.length;
         if (!n) return TAB_MAX;
-        return Math.min(
-            TAB_MAX,
-            Math.max(TAB_MIN, (tabBarWidth() - NEW_BTN_W - 8) / n),
-        );
+        // n tabs plus the new-tab button is n+1 items, so n gaps sit between
+        // them. The old constant 8px stood in for all of them, which left the
+        // row ~50px too wide at eight tabs and pushed the new-tab button off
+        // the edge of the window, where it couldn't be clicked at all.
+        const available = tabBarWidth() - NEW_BTN_W - TAB_GAP * n;
+        return Math.min(TAB_MAX, Math.max(TAB_MIN, available / n));
     });
     const activeTab = createMemo(
         () => tabStore.tabs.find(t => t.id === activeId()) ?? null,
@@ -81,7 +85,7 @@ export default function BrowserChrome() {
         if (iframe) cleanupChiiArtifacts(iframe);
     };
 
-    const persist = () => saveSession(tabStore.tabs, activeId());
+    const persist = () => saveSession(tabManager.tabs, tabManager.activeId);
 
     const onTabAdded = (tab: Tab) => {
         setTabStore(s => {
@@ -574,7 +578,7 @@ export default function BrowserChrome() {
         >
             <div class={s.browserChrome}>
                 <div class={s.browserTabstrip} ref={tabStripRef}>
-                    <For each={tabStore.tabs}>
+                    <For each={tabStore.tabs} keyed={false}>
                         {tab => (
                             <TabPill
                                 tab={tab()}
@@ -661,7 +665,7 @@ export default function BrowserChrome() {
             </div>
 
             <div class={s.browserViewport}>
-                <For each={iframeIds()}>
+                <For each={iframeIds()} keyed={false}>
                     {id => (
                         <iframe
                             title="Proxied browser-in-browser webpage"

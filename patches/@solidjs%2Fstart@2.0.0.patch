@@ -1,0 +1,478 @@
+diff --git a/node_modules/@solidjs/start/.bun-tag-9c58bc110c3c7582 b/.bun-tag-9c58bc110c3c7582
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/server/assets/index.js b/dist/server/assets/index.js
+index a27238e323c684a36db9081862832a4f3252d2e7..fc675b3da8f0a617abf4244e786319967c84f542 100644
+--- a/dist/server/assets/index.js
++++ b/dist/server/assets/index.js
+@@ -1,4 +1,4 @@
+-import { onCleanup, sharedConfig } from "solid-js";
++import { getOwner, onCleanup, runWithOwner, sharedConfig } from "solid-js";
+ import { getRequestEvent, useAssets as useAssets_ } from "solid-js/web";
+ import { renderAsset } from "./render.jsx";
+ const REGISTRY = Symbol("assetRegistry");
+@@ -20,6 +20,7 @@ const getEntity = (registry, asset) => {
+ export const useAssets = (assets, nonce) => {
+     if (!assets.length)
+         return;
++    const owner = getOwner();
+     const registry = (getRequestEvent().locals[REGISTRY] ??= {});
+     const ssrRequestAssets = sharedConfig.context?.assets;
+     const cssKeys = [];
+@@ -34,7 +35,13 @@ export const useAssets = (assets, nonce) => {
+         if (entity.consumers > 1)
+             continue;
+         // Mounting logic
+-        useAssets_(() => renderAsset(asset, nonce));
++        // renderAsset()'s JSX compiles to ssrElement(), which needs an owner
++        // to hand out a hydration key (getNextContextId() throws without
++        // one) - but this callback fires later, from doShell()'s deferred
++        // asset flush, outside the owner active here. Re-enter the owner
++        // captured at registration time so the deferred render can still
++        // ask for one.
++        useAssets_(() => runWithOwner(owner, () => renderAsset(asset, nonce)));
+         entity.ssrIdx = ssrRequestAssets.length - 1;
+     }
+     onCleanup(() => {
+diff --git a/dist/shared/ErrorBoundary.jsx b/dist/shared/ErrorBoundary.jsx
+index 188a52f2fcdaa4f3b050c7098f9793e86b97bb43..0c893e13ba447008ab862b4f91b4e4daea6743eb 100644
+--- a/dist/shared/ErrorBoundary.jsx
++++ b/dist/shared/ErrorBoundary.jsx
+@@ -1,5 +1,5 @@
+ // @refresh skip
+-import { catchError, ErrorBoundary as DefaultErrorBoundary } from "solid-js";
++import { Errored as DefaultErrorBoundary, createErrorBoundary } from "solid-js";
+ import { isServer } from "solid-js/web";
+ import { DevToolbar } from "./dev-toolbar/index.jsx";
+ import { HttpStatusCode } from "./HttpStatusCode.js";
+@@ -10,7 +10,7 @@ export const ErrorBoundary = import.meta.env.DEV && import.meta.env.START_DEV_OV
+             ? "500 | Internal Server Error"
+             : "Error | Uncaught Client Exception";
+         return (<DefaultErrorBoundary fallback={error => {
+-                console.error(error);
++                console.error(error());
+                 return (<>
+                   <span style="font-size:1.5em;text-align:center;position:fixed;left:0px;bottom:55%;width:100%;">
+                     {message}
+@@ -22,15 +22,13 @@ export const ErrorBoundary = import.meta.env.DEV && import.meta.env.START_DEV_OV
+           </DefaultErrorBoundary>);
+     };
+ export const TopErrorBoundary = (props) => {
+-    let isError = false;
+-    const res = catchError(() => props.children, err => {
+-        console.error(err);
+-        isError = !!err;
+-    });
+-    return isError ? (<>
++    return createErrorBoundary(() => props.children, err => {
++        console.error(err());
++        return (<>
+       <span style="font-size:1.5em;text-align:center;position:fixed;left:0px;bottom:55%;width:100%;">
+         500 | Internal Server Error
+       </span>
+       <HttpStatusCode code={500}/>
+-    </>) : (res);
++    </>);
++    });
+ };
+diff --git a/dist/shared/clientOnly.js b/dist/shared/clientOnly.js
+index 7a052cab69af51ef253469cae2b20a038b8aa4d6..d4eebfedd4243c94cff14b6545d92aa5b5424005 100644
+--- a/dist/shared/clientOnly.js
++++ b/dist/shared/clientOnly.js
+@@ -1,4 +1,4 @@
+-import { createMemo, createSignal, onMount, sharedConfig, splitProps, untrack } from "solid-js";
++import { createMemo, createSignal, omit, onSettled, sharedConfig, untrack } from "solid-js";
+ import { isServer } from "solid-js/web";
+ /**
+  *
+@@ -13,12 +13,12 @@ export default function clientOnly(fn, options = {}) {
+     return (props) => {
+         let Comp;
+         let m;
+-        const [, rest] = splitProps(props, ["fallback"]);
++        const rest = omit(props, "fallback");
+         options.lazy && load(fn, setComp);
+         if ((Comp = comp()) && !sharedConfig.context)
+             return Comp(rest);
+         const [mounted, setMounted] = createSignal(!sharedConfig.context);
+-        onMount(() => setMounted(true));
++        onSettled(() => setMounted(true));
+         return createMemo(() => ((Comp = comp()),
+             (m = mounted()),
+             untrack(() => (Comp && m ? Comp(rest) : props.fallback))));
+diff --git a/dist/shared/dev-toolbar/functions/BlobViewer.jsx b/dist/shared/dev-toolbar/functions/BlobViewer.jsx
+index 4c5136a7b1cdddfc7e7bf990da7bfe8b85eff69d..65d25c1946f2ac62b2e65d709a7e79a9a44487ec 100644
+--- a/dist/shared/dev-toolbar/functions/BlobViewer.jsx
++++ b/dist/shared/dev-toolbar/functions/BlobViewer.jsx
+@@ -1,4 +1,4 @@
+-import { createMemo, createResource, onCleanup, Show, Suspense } from "solid-js";
++import { createMemo, onCleanup, Show } from "solid-js";
+ import { Badge } from "../../ui/Badge.jsx";
+ import Button from "../../ui/Button.jsx";
+ import "./BlobViewer.css";
+@@ -30,8 +30,6 @@ function BlobViewerInner(props) {
+     </Button>);
+ }
+ export function BlobViewer(props) {
+-    const [data] = createResource(() => props.source);
+-    return (<Suspense>
+-      <Show when={data()}>{current => <BlobViewerInner source={current()}/>}</Show>
+-    </Suspense>);
++    const data = createMemo(() => props.source);
++    return (<Show when={data()}>{current => <BlobViewerInner source={current()}/>}</Show>);
+ }
+diff --git a/dist/shared/dev-toolbar/functions/FormDataViewer.jsx b/dist/shared/dev-toolbar/functions/FormDataViewer.jsx
+index 2987737a4c3ea8fd0e476fb414b15120055b2471..8425b4e545a443b3566e175dd9362601a328d9d4 100644
+--- a/dist/shared/dev-toolbar/functions/FormDataViewer.jsx
++++ b/dist/shared/dev-toolbar/functions/FormDataViewer.jsx
+@@ -1,4 +1,4 @@
+-import { createResource, For, Show, Suspense } from "solid-js";
++import { createMemo, For, Show } from "solid-js";
+ import { Section } from "../../ui/Section.jsx";
+ import { BlobViewer } from "./BlobViewer.jsx";
+ import { PropertySeparator, SerovalValue } from "./SerovalValue.jsx";
+@@ -16,8 +16,6 @@ function FormDataViewerInner(props) {
+     </Section>);
+ }
+ export function FormDataViewer(props) {
+-    const [data] = createResource(() => props.source);
+-    return (<Suspense>
+-      <Show when={data()}>{current => <FormDataViewerInner source={current()}/>}</Show>
+-    </Suspense>);
++    const data = createMemo(() => props.source);
++    return (<Show when={data()}>{current => <FormDataViewerInner source={current()}/>}</Show>);
+ }
+diff --git a/dist/shared/dev-toolbar/functions/HexViewer.jsx b/dist/shared/dev-toolbar/functions/HexViewer.jsx
+index c125e8b89d38c4db833f54357f096c3a90e562a7..ac392d9614efb2f0ee96fc3c8ffa87a1257f60dc 100644
+--- a/dist/shared/dev-toolbar/functions/HexViewer.jsx
++++ b/dist/shared/dev-toolbar/functions/HexViewer.jsx
+@@ -1,4 +1,4 @@
+-import { createMemo, createResource, For, Show, Suspense } from "solid-js";
++import { createMemo, For, Show } from "solid-js";
+ import { Text } from "../../ui/Text.jsx";
+ import "./HexViewer.css";
+ function toHex(num, digits = 2) {
+@@ -63,8 +63,6 @@ export function HexViewerInner(props) {
+     </div>);
+ }
+ export function HexViewer(props) {
+-    const [data] = createResource(() => props.bytes);
+-    return (<Suspense>
+-      <Show when={data()}>{current => <HexViewerInner bytes={current()}/>}</Show>
+-    </Suspense>);
++    const data = createMemo(() => props.bytes);
++    return (<Show when={data()}>{current => <HexViewerInner bytes={current()}/>}</Show>);
+ }
+diff --git a/dist/shared/dev-toolbar/functions/SerovalViewer.jsx b/dist/shared/dev-toolbar/functions/SerovalViewer.jsx
+index 014cbcbd9a2981bcae3c6f0a6e0faf4b46a22de4..44e97b45dc970606b3d8286ea5d371c8d0ed9915 100644
+--- a/dist/shared/dev-toolbar/functions/SerovalViewer.jsx
++++ b/dist/shared/dev-toolbar/functions/SerovalViewer.jsx
+@@ -1,4 +1,4 @@
+-import { createEffect, createSignal, For, Show, splitProps } from "solid-js";
++import { createEffect, createSignal, For, omit, Show } from "solid-js";
+ import { Badge } from "../../ui/Badge.jsx";
+ import { Cascade, CascadeOption } from "../../ui/Cascade.jsx";
+ import { Section } from "../../ui/Section.jsx";
+@@ -665,7 +665,7 @@ function renderSerovalNode(ctx, node, onSelect, inner) {
+     }
+ }
+ function SerovalNodeRenderer(props) {
+-    const [, rest] = splitProps(props, ["node"]);
++    const rest = omit(props, "node");
+     const [next, setNext] = createSignal();
+     function onSelect(index) {
+         if (index == null) {
+@@ -689,7 +689,7 @@ function SerovalNodeRenderer(props) {
+     </>);
+ }
+ function SerovalRenderer(props) {
+-    const [, rest] = splitProps(props, ["node"]);
++    const rest = omit(props, "node");
+     return (<div data-start-seroval-renderer>
+       <Show when={props.node}>{current => <SerovalNodeRenderer node={current()} {...rest}/>}</Show>
+     </div>);
+@@ -722,12 +722,12 @@ export function SerovalViewer(props) {
+     const references = createSimpleStore({});
+     const streams = createSimpleStore({});
+     const promises = createSimpleStore({});
+-    createEffect(async () => {
++    createEffect(() => props.stream, async stream => {
+         setSelected(undefined);
+-        if (!props.stream.body) {
++        if (!stream.body) {
+             throw new Error("missing body");
+         }
+-        const reader = new SerovalChunkReader(props.stream.body);
++        const reader = new SerovalChunkReader(stream.body);
+         const result = await reader.next();
+         if (!result.done) {
+             function traverseNode(node) {
+diff --git a/dist/shared/dev-toolbar/functions/URLSearchParamsViewer.jsx b/dist/shared/dev-toolbar/functions/URLSearchParamsViewer.jsx
+index adba8957a65451398f89f6b8f52ab9a32603dedd..5fc6066984ff11d32adb4987605d702c7acf1194 100644
+--- a/dist/shared/dev-toolbar/functions/URLSearchParamsViewer.jsx
++++ b/dist/shared/dev-toolbar/functions/URLSearchParamsViewer.jsx
+@@ -1,4 +1,4 @@
+-import { createResource, For, Show, Suspense } from "solid-js";
++import { createMemo, For, Show } from "solid-js";
+ import { Section } from "../../ui/Section.jsx";
+ import { PropertySeparator, SerovalValue } from "./SerovalValue.jsx";
+ function URLSearchParamsViewerInner(props) {
+@@ -15,8 +15,6 @@ function URLSearchParamsViewerInner(props) {
+     </Section>);
+ }
+ export function URLSearchParamsViewer(props) {
+-    const [data] = createResource(() => props.source);
+-    return (<Suspense>
+-      <Show when={data()}>{current => <URLSearchParamsViewerInner source={current()}/>}</Show>
+-    </Suspense>);
++    const data = createMemo(() => props.source);
++    return (<Show when={data()}>{current => <URLSearchParamsViewerInner source={current()}/>}</Show>);
+ }
+diff --git a/dist/shared/dev-toolbar/index.jsx b/dist/shared/dev-toolbar/index.jsx
+index 0374634b309c82a43dfb7cae60602707523cb624..5e0bfbddc2dd77d3d16125abf75919f032255ba3 100644
+--- a/dist/shared/dev-toolbar/index.jsx
++++ b/dist/shared/dev-toolbar/index.jsx
+@@ -1,7 +1,7 @@
+-import { createEffect, createSignal, ErrorBoundary, onCleanup, resetErrorBoundaries, Show, } from "solid-js";
++import { createEffect, createSignal, Errored, onSettled, Show, } from "solid-js";
+ import { createStore } from "solid-js/store";
+ import { Portal } from "solid-js/web";
+-import { Toolbar } from "terracotta";
++import { Toolbar } from "terracotta/toolbar";
+ import info from "../../../package.json" with { type: "json" };
+ import clientOnly from "../clientOnly.js";
+ import { HttpStatusCode } from "../HttpStatusCode.js";
+@@ -16,8 +16,7 @@ const ErrorViewer = import.meta.env.PROD
+     : clientOnly(() => import("./error-viewer/index.jsx"), { lazy: true });
+ export function DevToolbar(props) {
+     const [ref, setRef] = createSignal();
+-    createEffect(() => {
+-        const current = ref();
++    createEffect(() => ref(), current => {
+         if (current) {
+             let isDown = false;
+             // Offsets of the mouse relatively to the element's position
+@@ -78,9 +77,9 @@ export function DevToolbar(props) {
+                 signal: ac.signal,
+                 passive: true,
+             });
+-            onCleanup(() => {
++            return () => {
+                 ac.abort();
+-            });
++            };
+         }
+     });
+     const [content, setContent] = createSignal(undefined);
+@@ -93,16 +92,17 @@ export function DevToolbar(props) {
+         }
+     }
+     const [errors, setErrors] = createSignal([]);
++    let resetBoundary;
+     function resetError() {
+         setErrors([]);
+-        resetErrorBoundaries();
++        resetBoundary?.();
+     }
+     function pushError(error) {
+         console.error(error);
+         setErrors(current => [error, ...current]);
+         setContent("err");
+     }
+-    createEffect(() => {
++    onSettled(() => {
+         const onErrorEvent = (error) => {
+             // Browsers dispatch benign ResizeObserver loop notifications as window
+             // "error" events carrying no error object. They aren't app errors.
+@@ -112,15 +112,15 @@ export function DevToolbar(props) {
+             pushError(error.error ?? error);
+         };
+         window.addEventListener("error", onErrorEvent);
+-        onCleanup(() => {
++        return () => {
+             window.removeEventListener("error", onErrorEvent);
+-        });
++        };
+     });
+     const [store, setStore] = createStore({
+         instances: {},
+     });
+-    createEffect(() => {
+-        onCleanup(captureServerFunctionCall(call => {
++    onSettled(() => {
++        return captureServerFunctionCall(call => {
+             if (call.type === "request") {
+                 setStore("instances", call.instance, value => {
+                     return {
+@@ -137,7 +137,7 @@ export function DevToolbar(props) {
+                     };
+                 });
+             }
+-        }));
++        });
+     });
+     return (<>
+       <Portal>
+@@ -166,12 +166,13 @@ export function DevToolbar(props) {
+         }}/>
+         </div>
+       </Portal>
+-      <ErrorBoundary fallback={error => {
+-            pushError(error);
++      <Errored fallback={(error, reset) => {
++            resetBoundary = reset;
++            pushError(error());
+             return <HttpStatusCode code={500}/>;
+         }}>
+         {props.children}
+-      </ErrorBoundary>
++      </Errored>
+       <Show when={errors().length > 0}>
+         <HttpStatusCode code={500}/>
+       </Show>
+diff --git a/dist/shared/ui/Button.d.ts b/dist/shared/ui/Button.d.ts
+index e70477527f9d3fba3f831c9c74d04007e9d44290..d393f9ee3b026e14acde06525ea6be7cb6423d0f 100644
+--- a/dist/shared/ui/Button.d.ts
++++ b/dist/shared/ui/Button.d.ts
+@@ -1,4 +1,4 @@
+-import { Button as BaseButton } from "terracotta";
++import { Button as BaseButton } from "terracotta/button";
+ import "./Button.css";
+ declare const Button: typeof BaseButton;
+ export default Button;
+diff --git a/dist/shared/ui/Button.jsx b/dist/shared/ui/Button.jsx
+index 5a1caa6246b06a5eb5551f6bfbd80d0b8e6871c1..b13480993ebf9f66e77afde5f1ff92f88e2d48b9 100644
+--- a/dist/shared/ui/Button.jsx
++++ b/dist/shared/ui/Button.jsx
+@@ -1,4 +1,4 @@
+-import { Button as BaseButton } from "terracotta";
++import { Button as BaseButton } from "terracotta/button";
+ import "./Button.css";
+ const Button = props => (<BaseButton type="button" data-start-button {...props}/>);
+ export default Button;
+diff --git a/dist/shared/ui/Cascade.d.ts b/dist/shared/ui/Cascade.d.ts
+index ee41d1bdfbedd5e0ec2715fb7368a48f2ba0507d..e1908e09a7f00aa1d3dd3b6f2c584511a3296202 100644
+--- a/dist/shared/ui/Cascade.d.ts
++++ b/dist/shared/ui/Cascade.d.ts
+@@ -1,4 +1,4 @@
+-import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta";
++import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta/select";
+ import "./Cascade.css";
+ export declare const Cascade: typeof BaseSelect;
+ export declare const CascadeOption: typeof BaseSelectOption;
+diff --git a/dist/shared/ui/Cascade.jsx b/dist/shared/ui/Cascade.jsx
+index d7d96e511a6d7f3bd0ffa583090ea4ddb045c1e8..c4cc4f37140be0fba7c92ea8dcb4a49a65ab2261 100644
+--- a/dist/shared/ui/Cascade.jsx
++++ b/dist/shared/ui/Cascade.jsx
+@@ -1,4 +1,4 @@
+-import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta";
++import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta/select";
+ import "./Cascade.css";
+ export const Cascade = props => <BaseSelect data-start-cascade {...props}/>;
+ export const CascadeOption = props => (<BaseSelectOption data-start-cascade-option {...props}/>);
+diff --git a/dist/shared/ui/Dialog.d.ts b/dist/shared/ui/Dialog.d.ts
+index caad0c3d3aaad2109af1de9053c759a85b661504..63776d0246fceccb900412c7bf08c74bda1e76bb 100644
+--- a/dist/shared/ui/Dialog.d.ts
++++ b/dist/shared/ui/Dialog.d.ts
+@@ -1,4 +1,4 @@
+-import { Dialog as BaseDialog, DialogOverlay as BaseDialogOverlay, DialogPanel as BaseDialogPanel } from "terracotta";
++import { Dialog as BaseDialog, DialogOverlay as BaseDialogOverlay, DialogPanel as BaseDialogPanel } from "terracotta/dialog";
+ import "./Dialog.css";
+ export declare const Dialog: typeof BaseDialog;
+ export declare const DialogOverlay: typeof BaseDialogOverlay;
+diff --git a/dist/shared/ui/Dialog.jsx b/dist/shared/ui/Dialog.jsx
+index b9d15adebc3bda5b418746e55c401c1844afddd4..ea313c0464c621febe275beb71a6b845aa6547d5 100644
+--- a/dist/shared/ui/Dialog.jsx
++++ b/dist/shared/ui/Dialog.jsx
+@@ -1,4 +1,4 @@
+-import { Dialog as BaseDialog, DialogOverlay as BaseDialogOverlay, DialogPanel as BaseDialogPanel, } from "terracotta";
++import { Dialog as BaseDialog, DialogOverlay as BaseDialogOverlay, DialogPanel as BaseDialogPanel, } from "terracotta/dialog";
+ import "./Dialog.css";
+ export const Dialog = props => <BaseDialog data-start-dialog {...props}/>;
+ export const DialogOverlay = props => (<BaseDialogOverlay data-start-dialog-overlay {...props}/>);
+diff --git a/dist/shared/ui/IconButton.d.ts b/dist/shared/ui/IconButton.d.ts
+index 0326707c43cee9a9cfde6a3608d721ea40108a64..f8db8ce7bef6a5742cf3eec12eeb774881fd9f25 100644
+--- a/dist/shared/ui/IconButton.d.ts
++++ b/dist/shared/ui/IconButton.d.ts
+@@ -1,4 +1,4 @@
+-import { Button as BaseButton } from "terracotta";
++import { Button as BaseButton } from "terracotta/button";
+ import "./IconButton.css";
+ declare const IconButton: typeof BaseButton;
+ export default IconButton;
+diff --git a/dist/shared/ui/IconButton.jsx b/dist/shared/ui/IconButton.jsx
+index 696d4022773c36d02602b2f67ae903e1f93ae3ba..16830e4f1ebb84dba316b91d6847c14f4f8aabe5 100644
+--- a/dist/shared/ui/IconButton.jsx
++++ b/dist/shared/ui/IconButton.jsx
+@@ -1,4 +1,4 @@
+-import { Button as BaseButton } from "terracotta";
++import { Button as BaseButton } from "terracotta/button";
+ import "./IconButton.css";
+ const IconButton = props => (<BaseButton type="button" data-start-icon-button {...props}/>);
+ export default IconButton;
+diff --git a/dist/shared/ui/Select.d.ts b/dist/shared/ui/Select.d.ts
+index bd18803f85386a44057807b85894264de017ea2d..8db3c6a61ec56692126c26c5b59b7afae1e28740 100644
+--- a/dist/shared/ui/Select.d.ts
++++ b/dist/shared/ui/Select.d.ts
+@@ -1,4 +1,4 @@
+-import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta";
++import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta/select";
+ import "./Select.css";
+ export declare const Select: typeof BaseSelect;
+ export declare const SelectOption: typeof BaseSelectOption;
+diff --git a/dist/shared/ui/Select.jsx b/dist/shared/ui/Select.jsx
+index 9e523cfbb35410c82d30a3631a1e2a034b18e7fc..faf86f1da0db7fa420a36623d5b7648254200101 100644
+--- a/dist/shared/ui/Select.jsx
++++ b/dist/shared/ui/Select.jsx
+@@ -1,4 +1,4 @@
+-import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta";
++import { Select as BaseSelect, SelectOption as BaseSelectOption } from "terracotta/select";
+ import "./Select.css";
+ export const Select = props => <BaseSelect data-start-select {...props}/>;
+ export const SelectOption = props => (<BaseSelectOption data-start-select-option {...props}/>);
+diff --git a/dist/shared/ui/Tabs.d.ts b/dist/shared/ui/Tabs.d.ts
+index 4d4e9d7b2eadc98807b983a652daa5fdb762f287..3b9fd21e91b81d03dd781d952439b055d3e0a58c 100644
+--- a/dist/shared/ui/Tabs.d.ts
++++ b/dist/shared/ui/Tabs.d.ts
+@@ -1,4 +1,4 @@
+-import { Tab as BaseTab, TabGroup as BaseTabGroup, TabList as BaseTabList, TabPanel as BaseTabPanel } from "terracotta";
++import { Tab as BaseTab, TabGroup as BaseTabGroup, TabList as BaseTabList, TabPanel as BaseTabPanel } from "terracotta/tabs";
+ import "./Tabs.css";
+ export declare const Tab: typeof BaseTab;
+ export declare const TabGroup: typeof BaseTabGroup;
+diff --git a/dist/shared/ui/Tabs.jsx b/dist/shared/ui/Tabs.jsx
+index 7068fcfb8216e10d7b3203cb885f477937b57e64..47f3b3596c04783a2c22998854117c50a38e9512 100644
+--- a/dist/shared/ui/Tabs.jsx
++++ b/dist/shared/ui/Tabs.jsx
+@@ -1,4 +1,4 @@
+-import { Tab as BaseTab, TabGroup as BaseTabGroup, TabList as BaseTabList, TabPanel as BaseTabPanel, } from "terracotta";
++import { Tab as BaseTab, TabGroup as BaseTabGroup, TabList as BaseTabList, TabPanel as BaseTabPanel, } from "terracotta/tabs";
+ import "./Tabs.css";
+ export const Tab = props => <BaseTab data-start-tab {...props}/>;
+ export const TabGroup = props => (<BaseTabGroup data-start-tab-group {...props}/>);
+diff --git a/dist/shared/ui/Text.jsx b/dist/shared/ui/Text.jsx
+index 5f230ef7f5dc62fc69b0b2d4f51495b6d906b2a9..2b47ed3926b6018fed491930120113e4f5af6af1 100644
+--- a/dist/shared/ui/Text.jsx
++++ b/dist/shared/ui/Text.jsx
+@@ -1,17 +1,17 @@
+-import { createMemo, splitProps } from "solid-js";
++import { createMemo, omit } from "solid-js";
+ import { Dynamic } from "solid-js/web";
+ import "./Text.css";
+ export function Text(props) {
+-    const [current, rest] = splitProps(props, ["options"]);
++    const rest = omit(props, "options");
+     const customization = createMemo(() => {
+         const options = Object.assign({}, {
+             size: "base",
+             font: "mono",
+             weight: "normal",
+             wrap: "wrap",
+-        }, current.options);
++        }, props.options);
+         const entries = Object.entries(options);
+         return Object.fromEntries(entries.map(([key, value]) => [`data-start-text-${key}`, value]));
+     });
+-    return (<Dynamic component={(current.options?.as || "span")} {...rest} {...customization()}/>);
++    return (<Dynamic component={(props.options?.as || "span")} {...rest} {...customization()}/>);
+ }

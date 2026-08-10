@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { globSync as glob, statSync as stat } from "node:fs";
 import { basename, resolve } from "node:path";
-import solidOxc from "@oxc-solid-js/vite";
 import devtoolsJson from "@silvenon/vite-plugin-devtools-json";
 import { solidStart } from "@solidjs/start/config";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -15,6 +14,7 @@ import { defineConfig } from "vite";
 import biome from "vite-plugin-biome";
 import { BLOCK_AI_ALLOW_REST, robots } from "vite-plugin-robots-ts";
 import { sitemap } from "vite-plugin-sitemap-ts";
+import solid from "vite-plugin-solid";
 import { obfuscateAssets } from "./misc/vite/obfuscateAssets";
 
 const cssTargets = browserslistToTargets(
@@ -100,9 +100,11 @@ export default defineConfig(() => {
             alias: {
                 "solid-js/web": "@solidjs/web",
                 "solid-js/web/storage": "@solidjs/web/storage",
+                "solid-js/store": "solid-js",
                 "@terbiumos/tfs/browser": resolve(
                     "node_modules/@terbiumos/tfs/src/index.ts",
                 ),
+                tslib: resolve("node_modules/tslib/tslib.es6.mjs"),
             },
             tsconfigPaths: true,
         },
@@ -151,7 +153,7 @@ export default defineConfig(() => {
         plugins: [
             civilExtShimPlugin(),
             tanstackRouter({ target: "solid", autoCodeSplitting: true }),
-            solidOxc(),
+            solid({ ssr: true }),
             solidStart({
                 middleware: "./src/middleware.ts",
             }),

@@ -17,4 +17,4 @@ if (window.location.host === "civil.quartinal.me") {
     });
 }
 
-mount(() => <StartClientTanstack />, document.getElementById("app")!);
+mount((() => <StartClientTanstack />) as any, document.getElementById("app")!);

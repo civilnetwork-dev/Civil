@@ -98,7 +98,7 @@ export default function ExtensionIconBar() {
     return (
         <>
             <div class={s.bar}>
-                <For each={icons()}>
+                <For each={icons()} keyed={false}>
                     {item => (
                         <button
                             type="button"

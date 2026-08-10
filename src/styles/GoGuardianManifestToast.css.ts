@@ -22,6 +22,7 @@ export const toast = style({
     flexDirection: "column",
     gap: "12px",
     animation: `${slideUp} 0.28s cubic-bezier(0.4, 0, 0.2, 1) both`,
+    animationDuration: "0.28s",
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
 });
 
@@ -63,6 +64,9 @@ export const dismissBtn = style({
     fontSize: "16px",
     lineHeight: 1,
     flexShrink: 0,
+    transitionProperty: "color",
+    transitionTimingFunction: "ease",
+    transitionDuration: "0.1s",
     ":hover": {
         color: vars.color.text,
     },
@@ -84,6 +88,7 @@ export const dropZone = style({
     color: vars.color.overlay0,
     cursor: "pointer",
     transition: "border-color 0.15s, background 0.15s",
+    transitionDuration: "0.15s",
     selectors: {
         "&[data-active='true']": {
             borderColor: vars.color.mauve,
@@ -149,6 +154,9 @@ export const cancelBtn = style({
     background: "none",
     border: `1px solid ${vars.color.surface1}`,
     color: vars.color.subtext0,
+    transitionProperty: "border-color, color",
+    transitionTimingFunction: "ease",
+    transitionDuration: "0.1s",
     ":hover": {
         borderColor: vars.color.overlay0,
         color: vars.color.text,
@@ -164,6 +172,9 @@ export const submitBtn = style({
     border: "none",
     backgroundColor: vars.color.mauve,
     color: vars.color.base,
+    transitionProperty: "filter",
+    transitionTimingFunction: "ease",
+    transitionDuration: "0.1s",
     ":disabled": {
         opacity: 0.5,
         cursor: "not-allowed",

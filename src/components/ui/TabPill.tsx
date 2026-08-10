@@ -33,9 +33,9 @@ export function TabPill(props: TabPillProps) {
     });
 
     return (
-        // biome-ignore lint/a11y/useKeyWithClickEvents: it's just a tab pill lil bro
         <div
             ref={el}
+            tabindex={0}
             class={[
                 s.tab,
                 {
@@ -45,12 +45,18 @@ export function TabPill(props: TabPillProps) {
             ]}
             style={{ width: `${props.width}px` }}
             onClick={() => tabManager.activateTab(props.tab.id)}
+            onKeyDown={e => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    tabManager.activateTab(props.tab.id);
+                }
+            }}
         >
             <Show when={props.tab.favicon}>
                 <img class={s.tabFavicon} src={props.tab.favicon} alt="" />
             </Show>
             <Show when={!props.tab.favicon}>
-                <span class={s.tabIcon}>
+                <span class={[s.tabIcon, { [s.tabIconActive]: props.active }]}>
                     <Show
                         when={props.tab.isLoading}
                         fallback={<TbOutlineWorld size={13} />}
@@ -59,18 +65,31 @@ export function TabPill(props: TabPillProps) {
                     </Show>
                 </span>
             </Show>
-            <span class={s.tabTitle}>{props.tab.title}</span>
-            <button
-                type="button"
-                class={s.tabClose}
-                title="Close tab"
-                onClick={e => {
-                    e.stopPropagation();
-                    props.onClose(e);
-                }}
-            >
-                <TbOutlineX size={12} />
-            </button>
+            {/* Below ~110px the title is down to a character or two of noise
+                and the close button crowds it. Drop both and let the tab be
+                its favicon, the way desktop browsers do at this density; the
+                active tab keeps its close button so the current page can
+                always be closed without widening the strip first. */}
+            <Show when={props.width >= 110}>
+                <span
+                    class={[s.tabTitle, { [s.tabTitleActive]: props.active }]}
+                >
+                    {props.tab.title}
+                </span>
+            </Show>
+            <Show when={props.width >= 110 || props.active}>
+                <button
+                    type="button"
+                    class={[s.tabClose, { [s.tabCloseActive]: props.active }]}
+                    title="Close tab"
+                    onClick={e => {
+                        e.stopPropagation();
+                        props.onClose(e);
+                    }}
+                >
+                    <TbOutlineX size={12} />
+                </button>
+            </Show>
         </div>
     );
 }

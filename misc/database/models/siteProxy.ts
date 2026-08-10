@@ -94,14 +94,9 @@ export async function recordCompatFeedback(
     let reason = existing.reason ?? "";
 
     if (scoreScramjet != null && scoreUv != null) {
-        // Both proxies measured → pick the one that scored higher (i.e. fewer
-        // rewriter errors + better render). Ties keep the current choice.
         proxy = scoreScramjet >= scoreUv ? "scramjet" : "uv";
         reason = `sj=${Math.round(scoreScramjet)},uv=${Math.round(scoreUv)}`;
     } else {
-        // Only the reported proxy measured. If it showed ANY rewriter errors (or
-        // rendered poorly) and we haven't measured the other yet, switch to it so
-        // the next visit measures it — then the branch above compares them.
         const weak = compat < 70 || rewriterErrors > 0;
         if (weak && otherScore == null) {
             proxy = other;

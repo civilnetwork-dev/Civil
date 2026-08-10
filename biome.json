@@ -18,7 +18,8 @@
             "run.ts",
             "tsconfig.json",
             "app.config.ts",
-            "!src/routeTree.gen.ts"
+            "!src/routeTree.gen.ts",
+            "!misc/wisp/native/index.*"
         ]
     },
     "linter": {

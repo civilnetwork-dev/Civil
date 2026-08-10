@@ -1,8 +1,16 @@
 import { keyframes, style, styleVariants } from "@vanilla-extract/css";
+import {
+    atmosphere,
+    hairline,
+    lit,
+    machined,
+    microLabel,
+    SHADOW,
+} from "./material.css";
 import { vars } from "./theme.css";
 
-const T = "0.18s cubic-bezier(0.4, 0, 0.2, 1)";
-const T_SLOW = "0.35s cubic-bezier(0.4, 0, 0.2, 1)";
+const EASE_STANDARD = "cubic-bezier(0.4, 0, 0.2, 1)";
+const T = `0.18s ${EASE_STANDARD}`;
 
 const fadeUp = keyframes({
     from: { opacity: 0, transform: "translateY(10px)" },
@@ -20,8 +28,8 @@ const spin = keyframes({
 });
 
 export const page = style({
+    ...atmosphere(vars.color.mauve),
     minHeight: "100vh",
-    backgroundColor: vars.color.base,
     color: vars.color.text,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     padding: "48px 24px",
@@ -30,6 +38,7 @@ export const page = style({
     alignItems: "center",
     gap: "32px",
     animation: `${fadeIn} 0.4s ease`,
+    animationDuration: "0.4s",
 });
 
 export const header = style({
@@ -40,21 +49,44 @@ export const header = style({
     justifyContent: "space-between",
     gap: "16px",
     flexWrap: "wrap",
-    animation: `${fadeUp} 0.45s ${T_SLOW}`,
+    paddingBottom: "20px",
+    borderBottom: "1px solid transparent",
+    borderImage: `${hairline(vars.color.surface1)} 1`,
+    animationName: fadeUp,
+    animationTimingFunction: EASE_STANDARD,
     animationFillMode: "both",
+    animationDuration: "0.45s",
 });
 
 export const headerTitle = style({
     display: "flex",
     flexDirection: "column",
-    gap: "6px",
+    gap: "7px",
+});
+
+// Matches the masthead eyebrow on the browser-chrome pages, in this page's
+// own accent lane so it still reads as "you are inside a dedicated tool".
+export const eyebrow = style({
+    ...microLabel,
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+});
+
+export const eyebrowMark = style({
+    width: "16px",
+    height: "2px",
+    borderRadius: "1px",
+    background: vars.color.mauve,
+    opacity: 0.8,
 });
 
 export const title = style({
     margin: 0,
-    fontSize: "28px",
+    fontSize: "clamp(24px, 3.4vw, 31px)",
     fontWeight: 600,
-    letterSpacing: "-0.01em",
+    lineHeight: 1.05,
+    letterSpacing: "-0.015em",
     color: vars.color.text,
     background: `linear-gradient(135deg, ${vars.color.lavender} 0%, ${vars.color.mauve} 100%)`,
     WebkitBackgroundClip: "text",
@@ -69,12 +101,14 @@ export const subtitle = style({
     fontWeight: 400,
 });
 
+// Sits in the same flex row as the re-scan button, so it takes no standalone
+// centring or top margin - those left the message sunk to the bottom-left of
+// the card while the button floated at the top-right.
 export const noFiltersText = style({
-    fontSize: "15px",
-    color: vars.color.overlay1,
+    fontSize: "14px",
+    color: vars.color.subtext0,
     fontWeight: 400,
-    textAlign: "center",
-    marginTop: "40px",
+    margin: 0,
     cursor: "default",
 });
 
@@ -91,8 +125,11 @@ export const unsupportedNotice = style({
     color: vars.color.yellow,
     background: `color-mix(in srgb, ${vars.color.yellow} 10%, ${vars.color.mantle})`,
     border: `1px solid color-mix(in srgb, ${vars.color.yellow} 35%, transparent)`,
-    animation: `${fadeUp} 0.45s ${T_SLOW} 0.08s`,
+    animationName: fadeUp,
+    animationTimingFunction: EASE_STANDARD,
+    animationDelay: "0.08s",
     animationFillMode: "both",
+    animationDuration: "0.45s",
 });
 
 export const detectedBadges = style({
@@ -102,12 +139,16 @@ export const detectedBadges = style({
     flexWrap: "wrap",
     alignItems: "center",
     gap: "8px",
-    padding: "12px 16px",
+    padding: "13px 16px",
     borderRadius: "10px",
-    background: vars.color.mantle,
-    border: `1px solid ${vars.color.surface0}`,
-    animation: `${fadeUp} 0.45s ${T_SLOW} 0.05s`,
+    background: machined(vars.color.surface0, vars.color.mantle),
+    border: `1px solid ${vars.color.surface1}`,
+    boxShadow: lit(SHADOW.resting),
+    animationName: fadeUp,
+    animationTimingFunction: EASE_STANDARD,
+    animationDelay: "0.05s",
     animationFillMode: "both",
+    animationDuration: "0.45s",
 });
 
 export const detectedLabel = style({
@@ -128,6 +169,7 @@ export const badge = style({
     color: vars.color.lavender,
     border: `1px solid ${vars.color.surface1}`,
     transition: `background ${T}`,
+    transitionDuration: "0.18s",
 });
 
 export const form = style({
@@ -141,8 +183,11 @@ export const form = style({
     background: vars.color.mantle,
     border: `1px solid ${vars.color.surface0}`,
     boxShadow: `0 4px 24px rgba(0,0,0,0.18)`,
-    animation: `${fadeUp} 0.45s ${T_SLOW} 0.1s`,
+    animationName: fadeUp,
+    animationTimingFunction: EASE_STANDARD,
+    animationDelay: "0.1s",
     animationFillMode: "both",
+    animationDuration: "0.45s",
 });
 
 export const label = style({
@@ -166,6 +211,7 @@ export const input = style({
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     outline: "none",
     transition: `border-color ${T}, box-shadow ${T}, background ${T}`,
+    transitionDuration: "0.18s",
     boxSizing: "border-box",
     selectors: {
         "&::placeholder": {
@@ -194,6 +240,7 @@ export const checkBtn = style({
     fontWeight: 600,
     cursor: "pointer",
     transition: `opacity ${T}, box-shadow ${T}, transform ${T}`,
+    transitionDuration: "0.18s",
     letterSpacing: "0.02em",
     selectors: {
         "&:hover:not(:disabled)": {
@@ -218,8 +265,10 @@ export const results = style({
     display: "flex",
     flexDirection: "column",
     gap: "10px",
-    animation: `${fadeUp} 0.4s ${T_SLOW}`,
+    animationName: fadeUp,
+    animationTimingFunction: EASE_STANDARD,
     animationFillMode: "both",
+    animationDuration: "0.4s",
 });
 
 const resultCardBase = style({
@@ -230,8 +279,11 @@ const resultCardBase = style({
     borderRadius: "12px",
     border: "1.5px solid",
     transition: `transform ${T}, box-shadow ${T}`,
-    animation: `${fadeUp} 0.35s ${T_SLOW}`,
+    transitionDuration: "0.18s",
+    animationName: fadeUp,
+    animationTimingFunction: EASE_STANDARD,
     animationFillMode: "both",
+    animationDuration: "0.35s",
     selectors: {
         "&:hover": {
             transform: "translateY(-2px)",
@@ -322,16 +374,6 @@ export const categories = style({
     marginTop: "4px",
 });
 
-export const catChip = style({
-    padding: "2px 8px",
-    borderRadius: "20px",
-    fontSize: "11px",
-    fontWeight: 500,
-    background: vars.color.surface0,
-    color: vars.color.subtext1,
-    border: `1px solid ${vars.color.surface1}`,
-});
-
 export const resultStatus = styleVariants({
     allowed: {
         fontSize: "11px",
@@ -378,8 +420,7 @@ export const resultStatus = styleVariants({
 export const spinner = style({
     display: "inline-block",
     animation: `${spin} 0.8s linear infinite`,
-    // Functional loader: opt back in past the global motion-kill.
-    animationDuration: "0.8s !important",
+    animationDuration: "0.8s",
 });
 
 export const rescanBtn = style({
@@ -397,6 +438,7 @@ export const rescanBtn = style({
     fontWeight: 500,
     cursor: "pointer",
     transition: `background ${T}, border-color ${T}, opacity ${T}`,
+    transitionDuration: "0.18s",
     selectors: {
         "&:hover:not(:disabled)": {
             background: vars.color.surface1,
@@ -407,4 +449,15 @@ export const rescanBtn = style({
             cursor: "not-allowed",
         },
     },
+});
+
+// Category chip on a result card (Badges/Chips tier in DESIGN.md).
+export const catChip = style({
+    padding: "2px 8px",
+    borderRadius: "20px",
+    fontSize: "11px",
+    fontWeight: 500,
+    background: vars.color.surface0,
+    color: vars.color.subtext1,
+    border: `1px solid ${vars.color.surface1}`,
 });

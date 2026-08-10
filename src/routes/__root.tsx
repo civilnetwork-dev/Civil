@@ -1,5 +1,4 @@
 import { MetaProvider } from "@solidjs/meta";
-import { clientOnly } from "@solidjs/start";
 import {
     createRootRoute,
     Outlet,
@@ -15,6 +14,7 @@ import {
 } from "solid-js";
 import { ContextMenuProvider } from "~/components/ContextMenu";
 import LoadingAnimation from "~/components/LoadingAnimation";
+import { clientOnly } from "~/lib/clientOnly";
 
 const Devtools = import.meta.env.DEV
     ? clientOnly(() => import("~/components/Devtools"))

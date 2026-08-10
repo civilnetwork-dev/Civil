@@ -1,6 +1,6 @@
 import { Meta, Title } from "@solidjs/meta";
-import { clientOnly } from "@solidjs/start";
 import { createFileRoute } from "@tanstack/solid-router";
+import { clientOnly } from "~/lib/clientOnly";
 
 const BanInfoPage = clientOnly(() => import("~/components/BanInfoPage"));
 

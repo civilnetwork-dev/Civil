@@ -1,8 +1,9 @@
-import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
+import { TbOutlinePlus, TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
 import { createSignal, For, Show } from "solid-js";
 import { apps, appsAdd, appsRemove } from "~/api/apps";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/AppsPage.css";
+import * as l from "~/styles/layout.css";
 import type { CivilApp } from "~/types";
 
 function AppIcon(props: { icon: string | null; name: string }) {
@@ -34,16 +35,33 @@ export default function AppsPage() {
     const handleAdd = async () => {
         const raw = input().trim();
         if (!raw) return;
+
+        // `new URL()` alone accepts almost anything once a scheme is bolted
+        // on: "not a valid url" becomes the host "not%20a%20valid%20url",
+        // which then lands in the grid as a tile labelled with the escaped
+        // text. Require something that actually looks like a host first.
+        let url: URL;
+        try {
+            url = new URL(
+                /^[a-z][\w+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`,
+            );
+        } catch {
+            setAddError(
+                "That doesn't look like a web address. Try youtube.com",
+            );
+            return;
+        }
+        if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(url.hostname)) {
+            setAddError(
+                "That doesn't look like a web address. Try youtube.com",
+            );
+            return;
+        }
+
         setAdding(true);
         setAddError(null);
         try {
-            let url = raw;
-            try {
-                new URL(url);
-            } catch {
-                url = `https://${url}`;
-            }
-            await appsAdd(url);
+            await appsAdd(url.toString());
             setInput("");
         } catch (e) {
             setAddError(e instanceof Error ? e.message : "Failed to add app");
@@ -69,9 +87,21 @@ export default function AppsPage() {
 
     return (
         <div class={s.root}>
-            <div class={s.header}>
-                <span class={s.title}>Apps</span>
-            </div>
+            <header class={l.masthead}>
+                <div class={l.mastheadTop}>
+                    <div class={l.mastheadTitleGroup}>
+                        <span class={l.eyebrow}>
+                            <span class={l.eyebrowMark} />
+                            Launcher
+                        </span>
+                        <h1 class={l.pageTitle}>Apps</h1>
+                    </div>
+                    <Show when={apps().length > 0}>
+                        <span class={l.pageMeta}>{apps().length} pinned</span>
+                    </Show>
+                </div>
+                <div class={l.mastheadRule} />
+            </header>
             <div class={s.addBar}>
                 <input
                     class={s.addInput}
@@ -89,17 +119,24 @@ export default function AppsPage() {
                     onClick={handleAdd}
                     disabled={adding() || !input().trim()}
                 >
-                    {adding() ? "Adding…" : "Add App"}
+                    {adding() ? "Adding…" : "Add app"}
                 </button>
             </div>
             <Show when={addError()}>
                 <p class={s.errorMsg}>{addError()}</p>
             </Show>
             <Show when={apps().length === 0}>
-                <p class={s.empty}>No apps added yet. Enter a URL above.</p>
+                <div class={s.empty}>
+                    <div class={s.emptyGhostTile}>
+                        <TbOutlinePlus size={28} />
+                    </div>
+                    <p class={s.emptyText}>
+                        No apps added yet. Enter a URL above.
+                    </p>
+                </div>
             </Show>
             <div class={s.grid}>
-                <For each={apps()}>
+                <For each={apps()} keyed={false}>
                     {app => (
                         // biome-ignore lint/a11y/noStaticElementInteractions: biome breaking my project lmao
                         // biome-ignore lint/a11y/useKeyWithClickEvents: biome breaking my project lmao
@@ -115,8 +152,10 @@ export default function AppsPage() {
                             >
                                 <TbOutlineX size={11} />
                             </button>
-                            <AppIcon icon={app().icon} name={app().name} />
-                            <span class={s.appName}>{app().name}</span>
+                            <div class={s.appIconStage}>
+                                <AppIcon icon={app().icon} name={app().name} />
+                            </div>
+                            <div class={s.appNameBar}>{app().name}</div>
                         </div>
                     )}
                 </For>

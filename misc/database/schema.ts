@@ -130,6 +130,36 @@ export const goguardianManifestKeys = pgTable(
     ],
 );
 
+export const ibossGateways = pgTable(
+    "iboss_gateways",
+    {
+        id: serial("id").primaryKey(),
+        gatewayHost: text("gateway_host").notNull(),
+        categorizationPort: integer("categorization_port")
+            .notNull()
+            .default(8026),
+        securityKey: text("security_key"),
+        schoolDistrictLeaId: text("school_district_lea_id"),
+        schoolDistrictName: text("school_district_name"),
+        source: text("source").notNull().default("manual"),
+        submittedByUserId: uuid("submitted_by_user_id").references(
+            () => users.id,
+            { onDelete: "set null" },
+        ),
+        submittedAt: timestamp("submitted_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    },
+    t => [
+        uniqueIndex("iboss_gateways_host_lea_idx").on(
+            t.gatewayHost,
+            t.schoolDistrictLeaId,
+        ),
+        index("iboss_gateways_lea_id_idx").on(t.schoolDistrictLeaId),
+    ],
+);
+
 export const siteProxyConfigs = pgTable(
     "site_proxy_configs",
     {
@@ -139,8 +169,6 @@ export const siteProxyConfigs = pgTable(
         transport: text("transport").notNull().default("epoxy"),
         wispVersion: integer("wisp_version").notNull().default(2),
         score: real("score").notNull().default(0),
-        // Per-proxy measured compat scores (render + rewriter-error penalty),
-        // so the finder can pick the proxy with the fewest rewriter errors.
         scoreScramjet: real("score_scramjet"),
         scoreUv: real("score_uv"),
         latencyMs: integer("latency_ms"),
@@ -159,4 +187,5 @@ export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Visit = typeof visits.$inferSelect;
 export type GoGuardianManifestKey = typeof goguardianManifestKeys.$inferSelect;
+export type IbossGateway = typeof ibossGateways.$inferSelect;
 export type SiteProxyConfig = typeof siteProxyConfigs.$inferSelect;

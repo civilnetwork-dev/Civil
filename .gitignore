@@ -18,6 +18,7 @@ app.config.timestamp_*.js
 
 # dependencies
 /node_modules
+/node_modules.*
 
 # IDEs and editors
 /.idea
@@ -43,3 +44,16 @@ pnpm-workspace.yaml
 *.tar.gz
 *.node
 *.sqlite
+
+# Cargo Necessary Excludes
+target/
+
+# Zig Necessary Excludes
+.zig-cache/
+zig-out/
+
+# Claude Playwright MCP
+.playwright-mcp/
+
+# Maintenance Files
+MAINTENANCE.md

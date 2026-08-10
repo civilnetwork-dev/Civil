@@ -240,6 +240,7 @@ export function buildRuntimeAPI(
                 groupId: -1,
                 selected: true,
                 frozen: false,
+                lastAccessed: Date.now(),
             } satisfies chrome.tabs.Tab,
             frameId: 0,
         };

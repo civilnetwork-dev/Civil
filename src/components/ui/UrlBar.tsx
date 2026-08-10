@@ -36,6 +36,27 @@ export function UrlBar(props: UrlBarProps) {
     let inputRef: HTMLInputElement | undefined;
     let suppressBlur = false;
 
+    /**
+     * Hold the input's blur while a suggestion row is being pressed, so the
+     * list isn't torn down before the click lands.
+     *
+     * The flag is cleared on the next pointer release wherever it happens,
+     * not in the row's click handler: if the press is cancelled by dragging
+     * off the row, `click` never fires, and a flag left set would suppress
+     * every future blur - wedging the bar in editing state so it keeps
+     * showing a stale draft instead of the page's real URL.
+     */
+    const armSuppressBlur = () => {
+        suppressBlur = true;
+        window.addEventListener(
+            "pointerup",
+            () => {
+                suppressBlur = false;
+            },
+            { once: true },
+        );
+    };
+
     const openWs = () => {
         if (ws && ws.readyState === WebSocket.OPEN) return;
         ws = new WebSocket(WS_URL);
@@ -211,13 +232,11 @@ export function UrlBar(props: UrlBarProps) {
                     }
                 >
                     <ul class={s.urlbarSuggestions}>
-                        <For each={historySuggestions()}>
+                        <For each={historySuggestions()} keyed={false}>
                             {entry => (
                                 <li
                                     class={s.urlbarHistoryRow}
-                                    onMouseDown={() => {
-                                        suppressBlur = true;
-                                    }}
+                                    onMouseDown={armSuppressBlur}
                                     onClick={() => {
                                         suppressBlur = false;
                                         commit(entry().url);
@@ -270,13 +289,11 @@ export function UrlBar(props: UrlBarProps) {
                         >
                             <div class={s.urlbarSuggestionDivider} />
                         </Show>
-                        <For each={suggestions()}>
+                        <For each={suggestions()} keyed={false}>
                             {suggestion => (
                                 <li
                                     class={s.urlbarSuggestionRow}
-                                    onMouseDown={() => {
-                                        suppressBlur = true;
-                                    }}
+                                    onMouseDown={armSuppressBlur}
                                     onClick={() => {
                                         suppressBlur = false;
                                         commit(suggestion());

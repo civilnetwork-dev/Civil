@@ -8,6 +8,54 @@ export function buildChiiInjectScript(targetScriptText: string) {
   window.__civil_chii_ran = true;
   L('wrapper start, location=', location.href);
 
+  // Hide chii/chobitsu overlay ghosts (fixed-position \`.__chobitsu-hide__\`
+  // inspect overlay + info tooltip) from INSIDE the page realm. Under Scramjet
+  // the page's \`document\` is a proxy pointing at a nested realm the host-side
+  // sweep can't reach, so this must run here where chii appends the nodes.
+  (function () {
+    function hideGhost(el) {
+      try {
+        var st = el.style;
+        st.setProperty('display', 'none', 'important');
+        st.setProperty('visibility', 'hidden', 'important');
+        st.setProperty('opacity', '0', 'important');
+        st.setProperty('pointer-events', 'none', 'important');
+      } catch (_) {}
+    }
+    function isGhost(el) {
+      try {
+        var c = el.className;
+        if (typeof c !== 'string') c = (el.getAttribute && el.getAttribute('class')) || '';
+        return c.indexOf('__chobitsu') !== -1;
+      } catch (_) { return false; }
+    }
+    function sweep(root) {
+      try {
+        (root || document).querySelectorAll('.__chobitsu-hide__, [class*="__chobitsu"]').forEach(hideGhost);
+      } catch (_) {}
+    }
+    sweep(document);
+    try {
+      var mo = new MutationObserver(function (recs) {
+        for (var i = 0; i < recs.length; i++) {
+          var r = recs[i];
+          if (r.type === 'attributes') { if (r.target && isGhost(r.target)) hideGhost(r.target); continue; }
+          for (var j = 0; j < r.addedNodes.length; j++) {
+            var n = r.addedNodes[j];
+            if (n && n.nodeType === 1) {
+              if (isGhost(n)) hideGhost(n);
+              if (n.querySelectorAll) sweep(n);
+            }
+          }
+        }
+        sweep(document);
+      });
+      if (document.documentElement)
+        mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      L('installed in-realm ghost hider');
+    } catch (eG) { L('ghost hider install failed', String(eG)); }
+  })();
+
   // Bridge to the host over the REAL window's event APIs. Under Scramjet, the
   // page's \`window\` (and its addEventListener/dispatchEvent/CustomEvent) is a
   // proxy, so events dispatched through it never reach the host's listener on

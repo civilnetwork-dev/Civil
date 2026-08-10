@@ -1,5 +1,6 @@
 import {
     TbOutlineBookmark,
+    TbOutlineClock,
     TbOutlineTrash,
     TbOutlineWorld,
     TbOutlineX,
@@ -35,12 +36,18 @@ export default function BookmarksPage() {
     const [search, setSearch] = createSignal("");
     const [filter, setFilter] = createSignal<"all" | "recent">("all");
 
+    // The set the current sidebar filter selects, before the search box
+    // narrows it. The header counts against this so a search that matches
+    // nothing doesn't render as "All Bookmarks (0)" while six are stored.
+    const inScope = createMemo(() => {
+        const list = bookmarks();
+        if (filter() !== "recent") return list;
+        const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        return list.filter(b => b.addedAt >= cutoff);
+    });
+
     const filtered = createMemo(() => {
-        let list = bookmarks();
-        if (filter() === "recent") {
-            const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-            list = list.filter(b => b.addedAt >= cutoff);
-        }
+        let list = inScope();
         const q = search().toLowerCase().trim();
         if (q)
             list = list.filter(
@@ -66,7 +73,19 @@ export default function BookmarksPage() {
         bookmarksRemove(id);
     };
 
+    // Deleting every bookmark in view can't be undone, so the button asks
+    // once first - same inline two-step used on History.
+    const [confirmingClear, setConfirmingClear] = createSignal(false);
+    let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+
     const handleClearAll = () => {
+        if (!confirmingClear()) {
+            setConfirmingClear(true);
+            confirmTimer = setTimeout(() => setConfirmingClear(false), 4000);
+            return;
+        }
+        clearTimeout(confirmTimer);
+        setConfirmingClear(false);
         for (const b of filtered()) bookmarksRemove(b.id);
     };
 
@@ -86,33 +105,29 @@ export default function BookmarksPage() {
                     class={`${s.sidebarItem}${filter() === "recent" ? ` ${s.sidebarItemActive}` : ""}`}
                     onClick={() => setFilter("recent")}
                 >
-                    Recently Added
+                    <TbOutlineClock size={15} /> Recently Added
                 </button>
             </div>
 
             <div class={s.main}>
                 <div class={s.mainHeader}>
-                    <span class={s.mainTitle}>
-                        {filter() === "recent"
-                            ? "Recently Added"
-                            : "All Bookmarks"}{" "}
-                        <span
-                            style={{
-                                color: `var(--civil-color-overlay1)`,
-                                "font-size": "16px",
-                                "font-weight": "400",
-                            }}
-                        >
-                            ({filtered().length})
+                    <div class={s.mainTitleGroup}>
+                        <span class={s.mainEyebrow}>
+                            <span class={s.mainEyebrowMark} />
+                            Collection
                         </span>
-                    </span>
-                    <div
-                        style={{
-                            display: "flex",
-                            gap: "10px",
-                            "align-items": "center",
-                        }}
-                    >
+                        <span class={s.mainTitle}>
+                            {filter() === "recent"
+                                ? "Recently Added"
+                                : "All Bookmarks"}{" "}
+                            <span class={s.mainCount}>
+                                {search().trim()
+                                    ? `(${filtered().length} of ${inScope().length})`
+                                    : `(${inScope().length})`}
+                            </span>
+                        </span>
+                    </div>
+                    <div class={s.mainActions}>
                         <input
                             class={s.searchInput}
                             type="text"
@@ -123,25 +138,44 @@ export default function BookmarksPage() {
                         <Show when={filtered().length > 0}>
                             <button
                                 type="button"
-                                class={s.clearBtn}
+                                class={`${s.clearBtn}${confirmingClear() ? ` ${s.clearBtnArmed}` : ""}`}
                                 onClick={handleClearAll}
                             >
-                                <TbOutlineTrash size={14} /> Clear
+                                <TbOutlineTrash size={14} />
+                                {confirmingClear()
+                                    ? "Click again to delete"
+                                    : "Clear"}
                             </button>
                         </Show>
                     </div>
                 </div>
 
                 <Show when={filtered().length === 0}>
-                    <p class={s.empty}>
-                        {search()
-                            ? "No bookmarks match your search."
-                            : "No bookmarks yet."}
-                    </p>
+                    <div class={s.empty}>
+                        <span class={s.emptyRibbon} />
+                        <p class={s.emptyText}>
+                            {search()
+                                ? `Nothing matches “${search()}”.`
+                                : filter() === "recent"
+                                  ? "Nothing bookmarked in the last week."
+                                  : "No bookmarks yet."}
+                        </p>
+                        {/* A dead end otherwise: the list is empty and the
+                            only way back is to find the search box again. */}
+                        <Show when={search()}>
+                            <button
+                                type="button"
+                                class={s.emptyAction}
+                                onClick={() => setSearch("")}
+                            >
+                                Clear search
+                            </button>
+                        </Show>
+                    </div>
                 </Show>
 
                 <div class={s.list}>
-                    <For each={filtered()}>
+                    <For each={filtered()} keyed={false}>
                         {bm => (
                             // biome-ignore lint/a11y/useKeyWithClickEvents: biome breaking my project lmao
                             // biome-ignore lint/a11y/noStaticElementInteractions: biome breaking my project lmao

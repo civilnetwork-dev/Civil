@@ -29,6 +29,7 @@ export const extBtn = style({
     flexShrink: 0,
     position: "relative",
     transition: `background ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.surface0,
@@ -68,6 +69,7 @@ export const popup = style({
     boxShadow: `0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.14)`,
     overflow: "hidden",
     animation: `${popupIn} 0.12s cubic-bezier(0.22,1,0.36,1) both`,
+    animationDuration: "0.12s",
 });
 
 export const popupFrame = style({

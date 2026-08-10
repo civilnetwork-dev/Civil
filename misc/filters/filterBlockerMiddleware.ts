@@ -13,6 +13,9 @@ const domainsToBlock: readonly Domain[] = [
     "lightspeedsystems.com",
     "fortinet.net",
     "fortiguard.net",
+    "ibosscloud.com",
+    "ibossgov.com",
+    "myiboss.net",
 ];
 
 function normalizeHostname(hostname: string): string {

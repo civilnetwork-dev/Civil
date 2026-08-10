@@ -39,19 +39,41 @@ function StatusSection() {
                                     {status()!.maxViolations}
                                 </span>
                             </div>
-                            <div class={s.strikeTrack}>
-                                <div
-                                    class={s.strikeFill}
-                                    style={{
-                                        width: `${Math.min((status()!.violations / status()!.maxViolations) * 100, 100)}%`,
-                                        "--fill-color":
-                                            status()!.violations === 0
-                                                ? "var(--color-green)"
-                                                : status()!.violations < 3
-                                                  ? "var(--color-yellow)"
-                                                  : "var(--color-red)",
-                                    }}
-                                />
+                            {/* A segmented gauge rather than a progress bar:
+                                strikes are discrete and capped, so the meter
+                                should read as "how many are left" at a glance
+                                instead of a percentage of a continuous fill. */}
+                            {/* Presentational: the "n / max" readout above is
+                                the accessible value, so the cells don't need
+                                to be announced a second time. */}
+                            <div class={s.strikeGauge} aria-hidden="true">
+                                <For
+                                    each={Array.from(
+                                        { length: status()!.maxViolations },
+                                        (_, i) => i,
+                                    )}
+                                    keyed={false}
+                                >
+                                    {i => (
+                                        <span
+                                            class={`${s.strikeSegment}${
+                                                i() < status()!.violations
+                                                    ? ` ${s.strikeSegmentUsed}`
+                                                    : ""
+                                            }`}
+                                            style={{
+                                                "--seg-color":
+                                                    status()!.violations <= 1
+                                                        ? "var(--civil-color-yellow)"
+                                                        : status()!.violations <
+                                                            status()!
+                                                                .maxViolations
+                                                          ? "var(--civil-color-maroon)"
+                                                          : "var(--civil-color-red)",
+                                            }}
+                                        />
+                                    )}
+                                </For>
                             </div>
                             <p class={s.policyText}>
                                 Accessing restricted domains through the proxy
@@ -189,7 +211,7 @@ export default function BanInfoPage() {
                 }
             >
                 <div class={s.scrollContainer}>
-                    <For each={visibleDomains()}>
+                    <For each={visibleDomains()} keyed={false}>
                         {domain => <div class={s.domainItem}>{domain()}</div>}
                     </For>
 

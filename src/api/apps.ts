@@ -64,16 +64,30 @@ async function compressIcon(iconUrl: string): Promise<string> {
     }
 }
 
+// URL percent-encodes anything unusual in the host, so a bare `hostname` can
+// reach the tile label as "not%20a%20valid". Decode it, and drop the "www."
+// that otherwise takes up a third of the tile's one line of text.
+function hostnameLabel(pageUrl: string): string {
+    try {
+        return decodeURIComponent(new URL(pageUrl).hostname).replace(
+            /^www\./,
+            "",
+        );
+    } catch {
+        return pageUrl;
+    }
+}
+
 async function fetchTitle(pageUrl: string): Promise<string> {
     console.log("[civil/apps] fetchTitle() for:", pageUrl);
     try {
         const res = await fetchWithCors(pageUrl);
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
-        return doc.title || new URL(pageUrl).hostname;
+        return doc.title.trim() || hostnameLabel(pageUrl);
     } catch (e) {
         console.warn("[civil/apps] fetchTitle() failed, using hostname:", e);
-        return new URL(pageUrl).hostname;
+        return hostnameLabel(pageUrl);
     }
 }
 

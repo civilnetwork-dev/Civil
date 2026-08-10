@@ -49,7 +49,7 @@ export function Select<T extends string>(props: SelectProps<T>) {
             </button>
             <Show when={open()}>
                 <ul class={s.dropdown} role="listbox">
-                    <For each={props.options}>
+                    <For each={props.options} keyed={false}>
                         {option => (
                             <li
                                 class={[

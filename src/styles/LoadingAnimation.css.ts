@@ -15,6 +15,7 @@ export const loadingContainer = style({
     zIndex: 100,
     opacity: 1,
     transition: "opacity 600ms cubic-bezier(0.86, 0, 0.07, 1)",
+    transitionDuration: "600ms",
 });
 
 export const loadingContainerHidden = style({
@@ -48,6 +49,7 @@ export const loadingStatusWrapper = style({
 
 export const loadingStatus = style({
     transition: "opacity 400ms cubic-bezier(0.86, 0, 0.07, 1)",
+    transitionDuration: "400ms",
 });
 
 export const loadingStatusShown = style({ opacity: 1 });

@@ -9,56 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NewtabRouteImport } from './routes/newtab'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as ExtensionsRouteImport } from './routes/extensions'
-import { Route as CheckfiltersRouteImport } from './routes/checkfilters'
-import { Route as BookmarksRouteImport } from './routes/bookmarks'
-import { Route as BenchmarksRouteImport } from './routes/benchmarks'
-import { Route as BaninfoRouteImport } from './routes/baninfo'
-import { Route as BanRouteImport } from './routes/ban'
-import { Route as AppsRouteImport } from './routes/apps'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppsRouteImport } from './routes/apps'
+import { Route as BanRouteImport } from './routes/ban'
+import { Route as BaninfoRouteImport } from './routes/baninfo'
+import { Route as BenchmarksRouteImport } from './routes/benchmarks'
+import { Route as BookmarksRouteImport } from './routes/bookmarks'
+import { Route as CheckfiltersRouteImport } from './routes/checkfilters'
+import { Route as ExtensionsRouteImport } from './routes/extensions'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as NewtabRouteImport } from './routes/newtab'
 
-const NewtabRoute = NewtabRouteImport.update({
-  id: '/newtab',
-  path: '/newtab',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExtensionsRoute = ExtensionsRouteImport.update({
-  id: '/extensions',
-  path: '/extensions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CheckfiltersRoute = CheckfiltersRouteImport.update({
-  id: '/checkfilters',
-  path: '/checkfilters',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BookmarksRoute = BookmarksRouteImport.update({
-  id: '/bookmarks',
-  path: '/bookmarks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BenchmarksRoute = BenchmarksRouteImport.update({
-  id: '/benchmarks',
-  path: '/benchmarks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BaninfoRoute = BaninfoRouteImport.update({
-  id: '/baninfo',
-  path: '/baninfo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BanRoute = BanRouteImport.update({
-  id: '/ban',
-  path: '/ban',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppsRoute = AppsRouteImport.update({
@@ -66,20 +30,49 @@ const AppsRoute = AppsRouteImport.update({
   path: '/apps',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+const BanRoute = BanRouteImport.update({
+  id: '/ban',
+  path: '/ban',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BaninfoRoute = BaninfoRouteImport.update({
+  id: '/baninfo',
+  path: '/baninfo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BenchmarksRoute = BenchmarksRouteImport.update({
+  id: '/benchmarks',
+  path: '/benchmarks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookmarksRoute = BookmarksRouteImport.update({
+  id: '/bookmarks',
+  path: '/bookmarks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckfiltersRoute = CheckfiltersRouteImport.update({
+  id: '/checkfilters',
+  path: '/checkfilters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExtensionsRoute = ExtensionsRouteImport.update({
+  id: '/extensions',
+  path: '/extensions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewtabRoute = NewtabRouteImport.update({
+  id: '/newtab',
+  path: '/newtab',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
   '/baninfo': typeof BaninfoRoute
@@ -92,7 +85,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
   '/baninfo': typeof BaninfoRoute
@@ -106,7 +98,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
   '/baninfo': typeof BaninfoRoute
@@ -121,7 +112,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/about'
     | '/apps'
     | '/ban'
     | '/baninfo'
@@ -134,7 +124,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/about'
     | '/apps'
     | '/ban'
     | '/baninfo'
@@ -147,7 +136,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/about'
     | '/apps'
     | '/ban'
     | '/baninfo'
@@ -161,7 +149,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
   AppsRoute: typeof AppsRoute
   BanRoute: typeof BanRoute
   BaninfoRoute: typeof BaninfoRoute
@@ -175,60 +162,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/newtab': {
-      id: '/newtab'
-      path: '/newtab'
-      fullPath: '/newtab'
-      preLoaderRoute: typeof NewtabRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/extensions': {
-      id: '/extensions'
-      path: '/extensions'
-      fullPath: '/extensions'
-      preLoaderRoute: typeof ExtensionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/checkfilters': {
-      id: '/checkfilters'
-      path: '/checkfilters'
-      fullPath: '/checkfilters'
-      preLoaderRoute: typeof CheckfiltersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bookmarks': {
-      id: '/bookmarks'
-      path: '/bookmarks'
-      fullPath: '/bookmarks'
-      preLoaderRoute: typeof BookmarksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/benchmarks': {
-      id: '/benchmarks'
-      path: '/benchmarks'
-      fullPath: '/benchmarks'
-      preLoaderRoute: typeof BenchmarksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/baninfo': {
-      id: '/baninfo'
-      path: '/baninfo'
-      fullPath: '/baninfo'
-      preLoaderRoute: typeof BaninfoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ban': {
-      id: '/ban'
-      path: '/ban'
-      fullPath: '/ban'
-      preLoaderRoute: typeof BanRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apps': {
@@ -238,18 +176,60 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AppsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
+    '/ban': {
+      id: '/ban'
+      path: '/ban'
+      fullPath: '/ban'
+      preLoaderRoute: typeof BanRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/baninfo': {
+      id: '/baninfo'
+      path: '/baninfo'
+      fullPath: '/baninfo'
+      preLoaderRoute: typeof BaninfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/benchmarks': {
+      id: '/benchmarks'
+      path: '/benchmarks'
+      fullPath: '/benchmarks'
+      preLoaderRoute: typeof BenchmarksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bookmarks': {
+      id: '/bookmarks'
+      path: '/bookmarks'
+      fullPath: '/bookmarks'
+      preLoaderRoute: typeof BookmarksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkfilters': {
+      id: '/checkfilters'
+      path: '/checkfilters'
+      fullPath: '/checkfilters'
+      preLoaderRoute: typeof CheckfiltersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/extensions': {
+      id: '/extensions'
+      path: '/extensions'
+      fullPath: '/extensions'
+      preLoaderRoute: typeof ExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/newtab': {
+      id: '/newtab'
+      path: '/newtab'
+      fullPath: '/newtab'
+      preLoaderRoute: typeof NewtabRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -257,7 +237,6 @@ declare module '@tanstack/solid-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
   AppsRoute: AppsRoute,
   BanRoute: BanRoute,
   BaninfoRoute: BaninfoRoute,

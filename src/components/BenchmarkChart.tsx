@@ -307,7 +307,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 </Show>
 
                 <div style={styles.pills}>
-                    <For each={runs()}>
+                    <For each={runs()} keyed={false}>
                         {run => {
                             const m = getImplMeta(run().impl);
                             return (
@@ -357,6 +357,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                             "Total ms",
                                         ] as const
                                     }
+                                    keyed={false}
                                 >
                                     {heading => (
                                         <th style={styles.th}>{heading()}</th>
@@ -365,12 +366,12 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            <For each={runs()}>
+                            <For each={runs()} keyed={false}>
                                 {(run, index) => {
                                     const m = getImplMeta(run().impl);
                                     return (
                                         <tr>
-                                            <td style={tableCellStyle(index())}>
+                                            <td style={tableCellStyle(index)}>
                                                 <span style={styles.implCell}>
                                                     <span
                                                         style={dotStyle(
@@ -385,19 +386,19 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                                 </span>
                                             </td>
                                             <td
-                                                style={`${tableCellStyle(index())};color:${m.color};font-weight:700`}
+                                                style={`${tableCellStyle(index)};color:${m.color};font-weight:700`}
                                             >
                                                 {(
                                                     run().ops_per_sec / 1e6
                                                 ).toFixed(4)}
                                             </td>
                                             <td
-                                                style={`${tableCellStyle(index())};color:${colors.subtext1}`}
+                                                style={`${tableCellStyle(index)};color:${colors.subtext1}`}
                                             >
                                                 {run().avg_ns_per_op.toFixed(1)}
                                             </td>
                                             <td
-                                                style={`${tableCellStyle(index())};color:${colors.subtext1}`}
+                                                style={`${tableCellStyle(index)};color:${colors.subtext1}`}
                                             >
                                                 {run().total_ms.toFixed(1)}
                                             </td>

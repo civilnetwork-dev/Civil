@@ -54,6 +54,11 @@ export type BrokerDecision =
     | "DENY"
     | "PAUSE"
     | "ERROR"
+    // Allow-like verdicts from the extension broker (see crextn/broker.js):
+    // SS = forced safe-search, YT = YouTube restricted, GM = Google mode.
+    | "SS"
+    | "YT"
+    | "GM"
     | "FAILED_OPEN"
     | "UNKNOWN";
 
@@ -155,6 +160,9 @@ function toBrokerDecision(value: string): BrokerResponse["decision"] {
         case "DENY":
         case "PAUSE":
         case "ERROR":
+        case "SS":
+        case "YT":
+        case "GM":
             return value;
 
         default:

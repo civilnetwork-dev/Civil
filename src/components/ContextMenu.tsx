@@ -1,11 +1,10 @@
 // biome-ignore-all lint/a11y/noStaticElementInteractions: biome breaking my project lmao
 // biome-ignore-all lint/a11y/useKeyWithClickEvents: biome breaking my project lmao
-import { Portal } from "@solidjs/web";
+import { type JSX, Portal } from "@solidjs/web";
 import {
     createContext,
     createSignal,
     For,
-    type JSX,
     onSettled,
     type ParentComponent,
     Show,
@@ -96,7 +95,7 @@ function RenderItem(props: { item: ContextMenuItem }) {
                     <span class={s.subMenuArrow}>›</span>
                 </div>
                 <div class={s.subMenu}>
-                    <For each={props.item.children}>
+                    <For each={props.item.children} keyed={false}>
                         {child => <RenderItem item={child()} />}
                     </For>
                 </div>
@@ -191,7 +190,7 @@ function ContextMenuPopup(props: { state: MenuState; onClose: () => void }) {
                 style={{ left: `${pos().x}px`, top: `${pos().y}px` }}
                 onContextMenu={e => e.preventDefault()}
             >
-                <For each={props.state.items}>
+                <For each={props.state.items} keyed={false}>
                     {item => <RenderItem item={item()} />}
                 </For>
             </div>

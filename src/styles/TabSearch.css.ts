@@ -37,10 +37,12 @@ export const backdrop = style({
     justifyContent: "center",
     paddingTop: "15vh",
     animation: `${backdropIn} 0.18s ease both`,
+    animationDuration: "0.18s",
 });
 
 export const backdropLeaving = style({
     animation: `${backdropOut} ${T_POOF} forwards`,
+    animationDuration: "0.22s",
 });
 
 export const panel = style({
@@ -57,10 +59,12 @@ export const panel = style({
     display: "flex",
     flexDirection: "column",
     animation: `${panelIn} ${T_SPRING} both`,
+    animationDuration: "0.28s",
 });
 
 export const panelLeaving = style({
     animation: `${panelOut} ${T_POOF} forwards`,
+    animationDuration: "0.22s",
 });
 
 export const inputRow = style({
@@ -111,6 +115,14 @@ export const results = style({
     display: "flex",
     flexDirection: "column",
     gap: "2px",
+    // The list rarely ends on a row boundary, so the overflow used to slice a
+    // row cleanly in half against the footer - and with the scrollbar hidden
+    // there was nothing to read as "this scrolls" either. Fading the last few
+    // pixels turns that cut into an intentional edge and hints at more below.
+    maskImage:
+        "linear-gradient(to bottom, #000 calc(100% - 24px), transparent 100%)",
+    WebkitMaskImage:
+        "linear-gradient(to bottom, #000 calc(100% - 24px), transparent 100%)",
     selectors: {
         "&:empty": { display: "none" },
         "&::-webkit-scrollbar": { display: "none" },
@@ -125,6 +137,7 @@ export const resultItem = style({
     borderRadius: "10px",
     cursor: "pointer",
     transition: `background ${T_EASE}`,
+    transitionDuration: "0.18s",
     selectors: {
         "&:hover": { background: vars.color.surface0 },
     },

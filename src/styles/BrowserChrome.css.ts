@@ -1,14 +1,24 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
+import { hitArea } from "./material.css";
 import { vars } from "./theme.css";
 
 const T_FAST = "0.1s ease";
-const T_MID = "0.18s cubic-bezier(0.4, 0, 0.2, 1)";
-const TAB_H = "34px";
-const TAB_R = "10px";
+const TAB_H = "32px";
+// Floating pill at rest; the active tab trades this for a flat-bottomed dock shape.
+const TAB_R_PILL = "999px";
+const TAB_R_DOCK = "14px 14px 0 0";
 
 const spinAnim = keyframes({ to: { transform: "rotate(360deg)" } });
 
 const suggInAnim = keyframes({
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+});
+
+// Opacity only: the resting/docked position lives on the plain `transform`
+// property below so it can also transition smoothly on every later
+// activate/deactivate, independent of this one-time mount animation.
+const tabEnterAnim = keyframes({
     from: { opacity: 0 },
     to: { opacity: 1 },
 });
@@ -35,7 +45,8 @@ export const browserChrome = style({
 export const browserTabstrip = style({
     display: "flex",
     alignItems: "flex-end",
-    padding: "6px 8px 0",
+    gap: "6px",
+    padding: "8px 8px 0",
     background: vars.color.crust,
     overflow: "visible",
     position: "relative",
@@ -59,43 +70,36 @@ export const tab = style({
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    padding: "0 8px 0 10px",
+    padding: "0 10px",
     height: TAB_H,
     minWidth: 0,
-    flexShrink: 0,
+    // Past the TAB_MIN floor (roughly twenty tabs) the computed widths stop
+    // shrinking, so let flex compress them the rest of the way rather than
+    // let the row run off the window and take the new-tab button with it.
+    flexShrink: 1,
     overflow: "visible",
     userSelect: "none",
-    background: vars.color.crust,
+    // Detached floating pill at rest: a distinct object sitting one tone
+    // above the Crust strip it floats on (see Recede-to-Advance).
+    background: vars.color.mantle,
     color: vars.color.overlay0,
-    borderRadius: `${TAB_R} ${TAB_R} 0 0`,
+    borderRadius: TAB_R_PILL,
+    // Floats above the strip's bottom seam; docking (below) resets this to 0.
+    // transform, not margin, so the lift/dock motion never triggers layout.
+    transform: "translateY(-5px)",
     cursor: "pointer",
-    transition: `background ${T_FAST}, color ${T_FAST}, width ${T_MID}`,
+    // width intentionally left out of transitionProperty: resizing many tabs
+    // at once must stay an instant layout snap, never an animated reflow.
+    transitionProperty: "background, color, border-radius, transform",
+    transitionTimingFunction: "ease",
+    animation: `${tabEnterAnim} 0.16s cubic-bezier(0.22, 1, 0.36, 1) both`,
+    animationDuration: "0.16s",
+    transitionDuration: "0.1s",
     selectors: {
-        "& + &::after": {
-            content: '""',
-            position: "absolute",
-            left: "-1px",
-            top: "20%",
-            height: "60%",
-            width: "1px",
-            background: vars.color.surface1,
-            pointerEvents: "none",
-        },
         "&:hover": {
-            background: vars.color.mantle,
+            background: vars.color.surface0,
             color: vars.color.subtext1,
             zIndex: 4,
-        },
-        "&:hover::before": {
-            content: '""',
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: "-2px",
-            height: "3px",
-            background: vars.color.mantle,
-            zIndex: 10,
-            pointerEvents: "none",
         },
     },
 });
@@ -104,7 +108,15 @@ export const tabActive = style({
     background: vars.color.base,
     color: vars.color.text,
     zIndex: 4,
-    boxShadow: `0 -1px 0 0 ${vars.color.surface0}, -1px 0 0 0 ${vars.color.surface0}, 1px 0 0 0 ${vars.color.surface0}`,
+    // Docks flush with the content plane below: flat bottom corners, no lift.
+    borderRadius: TAB_R_DOCK,
+    transform: "translateY(0)",
+    boxShadow: [
+        `inset 0 1px 0 0 color-mix(in srgb, ${vars.color.surface1} 35%, transparent)`,
+        `0 -1px 0 0 ${vars.color.surface0}`,
+        `-1px 0 0 0 ${vars.color.surface0}`,
+        `1px 0 0 0 ${vars.color.surface0}`,
+    ].join(", "),
     selectors: {
         "&::before": {
             content: '""',
@@ -120,8 +132,23 @@ export const tabActive = style({
     },
 });
 
-globalStyle(`.${tabActive} + .${tab}::after, .${tab} + .${tabActive}::after`, {
-    display: "none",
+globalStyle(`.${tab}:focus-visible`, {
+    outline: "none",
+    boxShadow: `0 0 0 2px ${vars.color.base}, 0 0 0 4px color-mix(in srgb, ${vars.color.lavender} 55%, transparent)`,
+});
+
+export const tabIconActive = style({
+    width: "14px",
+    height: "14px",
+    color: vars.color.lavender,
+});
+
+export const tabTitleActive = style({
+    fontWeight: 600,
+});
+
+export const tabCloseActive = style({
+    opacity: 0.35,
 });
 
 export const tabDragging = style({
@@ -145,7 +172,7 @@ export const tabFavicon = style({
     width: "14px",
     height: "14px",
     flexShrink: 0,
-    borderRadius: "2px",
+    borderRadius: "3px",
     objectFit: "contain",
 });
 
@@ -157,6 +184,9 @@ export const tabIcon = style({
     height: "14px",
     flexShrink: 0,
     color: vars.color.overlay0,
+    transitionProperty: "color",
+    transitionDuration: "0.1s",
+    transitionTimingFunction: "ease",
     selectors: {
         [`.${tabActive} &`]: { color: vars.color.lavender },
     },
@@ -174,6 +204,7 @@ export const tabTitle = style({
 });
 
 export const tabClose = style({
+    position: "relative",
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
@@ -187,10 +218,17 @@ export const tabClose = style({
     cursor: "pointer",
     padding: 0,
     opacity: 0,
+    // A hidden close button that still takes clicks would let a tap near the
+    // tab's trailing edge close it instead of selecting it.
+    pointerEvents: "none",
     transition: `opacity ${T_FAST}, background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
-        [`.${tab}:hover &`]: { opacity: 1 },
-        [`.${tabActive} &`]: { opacity: 1 },
+        "&::after": hitArea(),
+        [`.${tab}:hover &, &:focus-visible`]: {
+            opacity: 1,
+            pointerEvents: "auto",
+        },
         "&:hover": {
             background: `color-mix(in srgb, ${vars.color.red} 22%, transparent)`,
             color: vars.color.red,
@@ -213,6 +251,7 @@ export const tabNew = style({
     borderRadius: "50%",
     cursor: "pointer",
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.surface0,
@@ -225,12 +264,14 @@ export const tabDragClone = style({
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    padding: "0 8px 0 10px",
+    padding: "0 10px",
     overflow: "hidden",
     background: vars.color.mantle,
     color: vars.color.text,
-    borderRadius: `${TAB_R} ${TAB_R} 0 0`,
-    boxShadow: `0 -1px 0 0 ${vars.color.surface1}, -1px 0 0 0 ${vars.color.surface1}, 1px 0 0 0 ${vars.color.surface1}, 0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)`,
+    // A dragged tab is the pill fully detached from the strip: full stadium
+    // radius on every corner, not the docked flat-bottom shape.
+    borderRadius: TAB_R_PILL,
+    boxShadow: `0 0 0 1px ${vars.color.surface1}, 0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)`,
     pointerEvents: "none",
     cursor: "grabbing",
     willChange: "transform",
@@ -241,8 +282,7 @@ export const tabDragClone = style({
 
 export const spin = style({
     animation: `${spinAnim} 0.75s linear infinite`,
-    // Functional loader: opt back in past the global motion-kill.
-    animationDuration: "0.75s !important",
+    animationDuration: "0.75s",
     transformOrigin: "center",
 });
 
@@ -281,6 +321,7 @@ export const extensionsBtn = style({
     flexShrink: 0,
     padding: 0,
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.surface0,
@@ -303,6 +344,7 @@ export const urlbarNavBtn = style({
     flexShrink: 0,
     padding: 0,
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover:not(:disabled)": {
             background: vars.color.surface0,
@@ -336,6 +378,7 @@ export const urlbarOmnibox = style({
     borderRadius: "14px",
     padding: "0 8px 0 10px",
     transition: `border-color ${T_FAST}, background ${T_FAST}, box-shadow ${T_FAST}`,
+    transitionDuration: "0.1s",
 });
 
 export const urlbarOmniboxFocus = style({
@@ -362,6 +405,12 @@ export const urlbarInput = style({
     fontFamily: "inherit",
     outline: "none",
     caretColor: vars.color.lavender,
+    // With no padding the text box starts exactly at the content edge, so a
+    // glyph with any left side bearing - the "g" in github.com, for one - gets
+    // its first pixel column clipped by the field, and the 14px corner radius
+    // crowds it further. Two pixels is enough to clear both and is invisible
+    // as indentation.
+    padding: "0 2px",
     selectors: {
         "&::selection": {
             background: `color-mix(in srgb, ${vars.color.lavender} 28%, transparent)`,
@@ -372,6 +421,7 @@ export const urlbarInput = style({
 });
 
 export const urlbarGoBtn = style({
+    position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -385,7 +435,9 @@ export const urlbarGoBtn = style({
     padding: 0,
     flexShrink: 0,
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
+        "&::after": hitArea(),
         "&:hover": {
             background: `color-mix(in srgb, ${vars.color.lavender} 15%, transparent)`,
             color: vars.color.lavender,
@@ -410,9 +462,11 @@ export const urlbarSuggestions = style({
     zIndex: 100,
     boxShadow: `3px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent), -3px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent), 0 3px 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent)`,
     animation: `${suggInAnim} 0.12s cubic-bezier(0.4, 0, 0.2, 1) both`,
+    animationDuration: "0.12s",
 });
 
 export const urlbarSuggestionRow = style({
+    position: "relative",
     padding: "7px 12px",
     fontSize: "12.5px",
     fontFamily: "inherit",
@@ -422,8 +476,19 @@ export const urlbarSuggestionRow = style({
     overflow: "hidden",
     textOverflow: "ellipsis",
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
-        "& + &": { borderTop: `1px solid ${vars.color.surface0}` },
+        // Inset divider that fades at both ends, matching the New Tab
+        // search menu: the list is one surface, not stacked cells.
+        "& + &::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: "12px",
+            right: "12px",
+            height: "1px",
+            background: `linear-gradient(90deg, transparent, ${vars.color.surface0} 15%, ${vars.color.surface0} 85%, transparent)`,
+        },
         "&:hover": { background: vars.color.surface0, color: vars.color.text },
     },
 });
@@ -438,6 +503,7 @@ globalStyle(
 );
 
 export const urlbarHistoryRow = style({
+    position: "relative",
     display: "flex",
     alignItems: "center",
     gap: "8px",
@@ -446,8 +512,19 @@ export const urlbarHistoryRow = style({
     fontFamily: "inherit",
     cursor: "pointer",
     transition: `background ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
-        "& + &": { borderTop: `1px solid ${vars.color.surface0}` },
+        // Same inset, fading divider the search rows below use - the two
+        // halves of this one menu were drawing different rules.
+        "& + &::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: "12px",
+            right: "12px",
+            height: "1px",
+            background: `linear-gradient(90deg, transparent, ${vars.color.surface0} 15%, ${vars.color.surface0} 85%, transparent)`,
+        },
         "&:hover": { background: vars.color.surface0 },
     },
 });
@@ -485,10 +562,13 @@ export const urlbarHistoryUrl = style({
     fontSize: "11px",
 });
 
+// Separates the history block from the search-suggestion block. Inset and
+// fading like the row dividers, just one tone brighter so it reads as the
+// stronger break of the two.
 export const urlbarSuggestionDivider = style({
     height: "1px",
-    background: vars.color.surface1,
-    margin: "2px 0",
+    margin: "3px 12px",
+    background: `linear-gradient(90deg, transparent, ${vars.color.surface1} 12%, ${vars.color.surface1} 88%, transparent)`,
 });
 
 export const browserViewport = style({
@@ -543,6 +623,7 @@ globalStyle(`.${browserEmpty} button`, {
     fontSize: "13px",
     fontWeight: 600,
     transition: `opacity ${T_FAST}, box-shadow ${T_FAST}`,
+    transitionDuration: "0.1s",
 });
 
 globalStyle(`.${browserEmpty} button:hover`, {

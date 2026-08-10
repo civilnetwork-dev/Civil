@@ -1,4 +1,5 @@
 import { globalStyle, style } from "@vanilla-extract/css";
+import { hitArea } from "./material.css";
 import { vars } from "./theme.css";
 
 const T_FAST = "0.1s ease";
@@ -37,8 +38,12 @@ export const bookmark = style({
     flexShrink: 0,
     maxWidth: "160px",
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     position: "relative",
     selectors: {
+        // 22px tall by design - the whole bar is only 30px - so the pointer
+        // target is expanded to 24 without changing how the chip looks.
+        "&::after": hitArea(),
         "&:hover": {
             background: vars.color.surface0,
             color: vars.color.text,
@@ -73,6 +78,10 @@ export const bookmarkLabel = style({
 });
 
 export const bookmarkRemove = style({
+    // Sits above the chip's expanded hit-area overlay, which would otherwise
+    // paint over it and swallow the click.
+    position: "relative",
+    zIndex: 1,
     display: "none",
     alignItems: "center",
     justifyContent: "center",
@@ -86,6 +95,7 @@ export const bookmarkRemove = style({
     padding: 0,
     flexShrink: 0,
     transition: `color ${T_FAST}, background ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             color: vars.color.red,
@@ -120,6 +130,7 @@ export const addBookmarkBtn = style({
     padding: 0,
     flexShrink: 0,
     transition: `background ${T_FAST}, color ${T_FAST}`,
+    transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
             background: vars.color.surface0,
@@ -130,9 +141,8 @@ export const addBookmarkBtn = style({
 
 export const emptyHint = style({
     fontSize: "11.5px",
-    color: vars.color.overlay0,
+    color: vars.color.overlay1,
     fontFamily: '"Rubik", sans-serif',
     paddingLeft: "4px",
     userSelect: "none",
-    fontStyle: "italic",
 });

@@ -545,8 +545,6 @@ const CIVIL_ERROR_COUNTER = `<script>
         if (text && RX.test(String(text))) W.__civilRewriterErrors++;
       } catch(e) {}
     }
-    // console.warn: Scramjet/UV rewriters log failures here — count ONLY the
-    // rewriter-looking ones (generic site warnings are noise).
     function bumpWarn(text){
       try {
         if (text && RX.test(String(text))) {
@@ -680,8 +678,6 @@ ${CIVIL_EXT_DETECT_STUB}
 
         const text = await response.text();
 
-        // Chii preamble first — it stashes the real-window/native refs the
-        // error counter reads to write counts onto the real (unproxied) window.
         // biome-ignore lint/correctness/noInnerDeclarations: bruh do I even need to explain at this point lmao
         var injection =
             CIVIL_CHII_PREAMBLE + CIVIL_ERROR_COUNTER + CIVIL_EXT_DETECT_STUB;

@@ -1,4 +1,5 @@
 import { keyframes, style } from "@vanilla-extract/css";
+import { SHADOW } from "./material.css";
 import { vars } from "./theme.css";
 
 const T = "0.12s ease";
@@ -27,22 +28,34 @@ export const trigger = style({
     cursor: "pointer",
     outline: "none",
     transition: `border-color ${T}`,
+    transitionDuration: "0.12s",
     whiteSpace: "nowrap",
     selectors: {
         "&:hover": { borderColor: vars.color.overlay1 },
     },
 });
 
+// Lavender, not Blue: the system only ever uses Blue as a subtle focus tint,
+// never as a bold outline (see the note on AppsPage's addBtn).
 export const triggerOpen = style({
-    borderColor: vars.color.blue,
+    borderColor: vars.color.lavender,
     borderRadius: "8px 8px 0 0",
     borderBottomColor: "transparent",
+    selectors: {
+        // `trigger`'s own :hover rule sets borderColor and would otherwise
+        // repaint the bottom edge, drawing a line across the join.
+        "&:hover": {
+            borderColor: vars.color.lavender,
+            borderBottomColor: "transparent",
+        },
+    },
 });
 
 export const chevron = style({
     display: "flex",
     alignItems: "center",
     transition: `transform ${T}`,
+    transitionDuration: "0.12s",
     color: vars.color.subtext0,
 });
 
@@ -52,20 +65,25 @@ export const chevronOpen = style({
 
 export const dropdown = style({
     position: "absolute",
-    top: "100%",
+    // Sits over the trigger's (transparent) bottom border instead of below
+    // it, so the two read as one continuous surface with no hairline seam.
+    top: "calc(100% - 1px)",
     left: 0,
     right: 0,
     backgroundColor: vars.color.surface0,
-    border: `1px solid ${vars.color.blue}`,
+    border: `1px solid ${vars.color.lavender}`,
     borderTop: "none",
     borderRadius: "0 0 8px 8px",
     overflow: "hidden",
     zIndex: 200,
     animation: `${fadeDown} 0.12s ease both`,
+    animationDuration: "0.12s",
     listStyle: "none",
     margin: 0,
     padding: 0,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+    // A 0.15-alpha shadow is invisible against a dark surface; a menu needs
+    // to read as floating above the page, so this goes deeper and softer.
+    boxShadow: SHADOW.attached,
 });
 
 export const option = style({
@@ -75,10 +93,18 @@ export const option = style({
     color: vars.color.subtext0,
     cursor: "pointer",
     transition: `background ${T}, color ${T}`,
+    transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
             background: vars.color.surface1,
             color: vars.color.text,
+        },
+        // These options are keyboard-focusable and sit flush against the
+        // menu's edges, which are clipped by `overflow: hidden`. The global
+        // focus ring draws 2px outside an element, so on the first and last
+        // option it would be cut off. Draw it inside instead.
+        "&:focus-visible": {
+            outlineOffset: "-2px",
         },
     },
 });

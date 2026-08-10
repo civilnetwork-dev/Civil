@@ -73,9 +73,6 @@ function setNodeStylesToHidden(node: HTMLElement) {
     node.style.setProperty("pointer-events", "none", "important");
 }
 
-// chii/chobitsu injects hidden helper nodes it marks with `__chobitsu-hide__`.
-// Match that plus any chobitsu-namespaced class so late-renamed variants are
-// caught too.
 const CHII_GHOST_SELECTOR = '.__chobitsu-hide__, [class*="__chobitsu"]';
 
 function isChiiGhost(el: Element): boolean {
@@ -86,7 +83,41 @@ function isChiiGhost(el: Element): boolean {
     }
 }
 
+function collectAccessibleDocs(
+    doc: Document,
+    seen = new Set<Document>(),
+): Document[] {
+    if (!doc || seen.has(doc)) return [];
+    seen.add(doc);
+    try {
+        for (const frame of Array.from(doc.querySelectorAll("iframe"))) {
+            let child: Document | null = null;
+            try {
+                child = (frame as HTMLIFrameElement).contentDocument;
+            } catch {
+                child = null;
+            }
+            if (child) collectAccessibleDocs(child, seen);
+        }
+    } catch {}
+    return [...seen];
+}
+
 function hideChiiGhostNodes(doc: Document): void {
+    for (const d of collectAccessibleDocs(doc)) {
+        try {
+            d.querySelectorAll(CHII_GHOST_SELECTOR).forEach(node => {
+                if (node instanceof HTMLElement) setNodeStylesToHidden(node);
+            });
+        } catch {}
+    }
+}
+
+function ensureChiiGhostCleanup(doc: Document): void {
+    for (const d of collectAccessibleDocs(doc)) ensureChiiGhostCleanupDoc(d);
+}
+
+function hideGhostsInSingleDoc(doc: Document): void {
     try {
         doc.querySelectorAll(CHII_GHOST_SELECTOR).forEach(node => {
             if (node instanceof HTMLElement) setNodeStylesToHidden(node);
@@ -94,8 +125,8 @@ function hideChiiGhostNodes(doc: Document): void {
     } catch {}
 }
 
-function ensureChiiGhostCleanup(doc: Document): void {
-    hideChiiGhostNodes(doc);
+function ensureChiiGhostCleanupDoc(doc: Document): void {
+    hideGhostsInSingleDoc(doc);
     if (chiiGhostCleanupDocs.has(doc)) return;
     chiiGhostCleanupDocs.add(doc);
 
@@ -118,9 +149,18 @@ function ensureChiiGhostCleanup(doc: Document): void {
                         setNodeStylesToHidden(ghost);
                     }
                 });
+                if (node instanceof HTMLIFrameElement) {
+                    let child: Document | null = null;
+                    try {
+                        child = node.contentDocument;
+                    } catch {
+                        child = null;
+                    }
+                    if (child) ensureChiiGhostCleanupDoc(child);
+                }
             }
         }
-        hideChiiGhostNodes(doc);
+        hideGhostsInSingleDoc(doc);
     });
 
     const root = doc.documentElement;
@@ -334,12 +374,6 @@ export function injectChiiIntoIframe(
 
                 const code = buildChiiInjectScript(targetScriptText);
 
-                // Scramjet/UV block <script>-tag injection from executing on
-                // proxied pages, so the chii client never ran (target never
-                // registered -> devtools stuck on about:blank). Run it through
-                // the preamble's saved native eval instead; fall back to a
-                // <script> tag on internal (non-proxied) pages where eval isn't
-                // stashed but script tags work.
                 const nativeEval = (
                     win as unknown as {
                         __civilNativeEval?: (c: string) => unknown;
@@ -379,9 +413,6 @@ export function injectChiiIntoIframe(
 }
 
 export function cleanupChiiArtifacts(iframe: HTMLIFrameElement): void {
-    // Also sweep the host document: a stray chii/chobitsu helper node can be
-    // attached there (not just inside the target frame), and it only becomes
-    // visible for certain dock positions (top/left).
     try {
         if (typeof document !== "undefined") {
             ensureChiiGhostCleanup(document);
@@ -404,7 +435,18 @@ export function createIframeManager(
 
     void extensionsLaunchBackgrounds();
 
-    const navigateIframe = (id: string, url: string) => {
+    const navigateIframe = (
+        id: string,
+        url: string,
+        /**
+         * Set when the caller resolved this from a `browser:` URL. `resolveUrl`
+         * maps unknown `browser:x` names onto `${origin}/x`, and those don't
+         * appear in BROWSER_URLS, so `isInternalUrl` reports false for them and
+         * the page gets handed to the proxy instead of loaded directly - it
+         * never navigates. The caller knows the scheme, so it says so.
+         */
+        forceInternal = false,
+    ) => {
         const iframe = iframeMap.get(id);
         if (!iframe) return;
 
@@ -426,7 +468,9 @@ export function createIframeManager(
 
         tabManager.updateTab(id, { url, isLoading: true, title: "Loading…" });
 
-        if (!isInternalUrl(url)) {
+        const internal = forceInternal || isInternalUrl(url);
+
+        if (!internal) {
             void fetch("/api/track-visit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -455,7 +499,7 @@ export function createIframeManager(
             iframeSetCurrentSrc(url);
         }
 
-        if (isInternalUrl(url)) {
+        if (internal) {
             iframe.src = url;
         } else {
             bar.emit("submit", iframe, normalizeNav(url));
@@ -463,7 +507,7 @@ export function createIframeManager(
     };
 
     const navigate = (id: string, url: string) =>
-        navigateIframe(id, resolveUrl(url));
+        navigateIframe(id, resolveUrl(url), url.startsWith("browser:"));
 
     const registerIframe = (id: string, el: HTMLIFrameElement) => {
         iframeMap.set(id, el);

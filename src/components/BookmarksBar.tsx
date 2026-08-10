@@ -65,9 +65,9 @@ export default function BookmarksBar(props: BookmarksBarProps) {
     return (
         <div class={s.bar}>
             <Show when={bookmarks().length === 0}>
-                <span class={s.emptyHint}>Bookmarks bar</span>
+                <span class={s.emptyHint}>Bookmark a page to pin it here</span>
             </Show>
-            <For each={bookmarks()}>
+            <For each={bookmarks()} keyed={false}>
                 {bm => (
                     <button
                         type="button"

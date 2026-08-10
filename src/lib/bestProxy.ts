@@ -148,6 +148,28 @@ export async function measureAndReportCompat(
             accessible = false;
         }
         check(apis); // core platform APIs present under the proxy
+
+        // Every check above passes on a proxy error page or a bot challenge —
+        // both render a complete, titled document with real text — so an
+        // outright failure would otherwise score 100%. Both have to be caught
+        // by content.
+        const text = (d?.body?.innerText ?? "").trim();
+        const title = (d?.title ?? "").trim();
+        check(
+            !/^(error|not found|problem loading|can'?t reach|failed|access denied|forbidden|blocked|403|404|5\d{2} )/i.test(
+                title,
+            ) &&
+                !/error (code )?\d{3}/i.test(text.slice(0, 400)) &&
+                text.length > 60,
+        ); // not a proxy error page
+        check(
+            !/^(just a moment|attention required|verifying you are human|checking your browser)/i.test(
+                title,
+            ) &&
+                !/cf-browser-verification|cf_chl_|challenge-platform/.test(
+                    d?.documentElement?.innerHTML?.slice(0, 4000) ?? "",
+                ),
+        ); // origin served the site, not a bot challenge
     } catch {
         accessible = false;
     }

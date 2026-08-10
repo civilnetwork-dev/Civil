@@ -13,12 +13,21 @@ export const notFoundRoot = style({
     overflow: "hidden",
 });
 
+// Same construction as the Ban page's stripe field, in the neutral tier
+// rather than maroon: these are the system's two dead-end screens and they
+// should share one atmosphere instead of one being visibly flatter.
 export const notFoundBackground = style({
     position: "absolute",
     inset: 0,
     backgroundColor: vars.color.mantle,
-    backgroundImage: `repeating-linear-gradient(-45deg, transparent 0 16px, ${vars.color.surface1} 16px 32px)`,
-    opacity: 0.6,
+    backgroundImage: [
+        "radial-gradient(120% 90% at 50% 45%, transparent 35%, rgba(0,0,0,0.55) 100%)",
+        // Tinted a short step off Mantle rather than raw Surface 1: against
+        // Mantle that tier is a big contrast jump, which turned a texture
+        // into bold diagonal banding. Ban's field is built the same way.
+        `repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in srgb, ${vars.color.surface1} 30%, ${vars.color.mantle}) 14px 28px)`,
+    ].join(", "),
+    opacity: 0.62,
 });
 
 export const notFoundContent = style({

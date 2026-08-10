@@ -18,6 +18,10 @@ export async function initBannedDomains(): Promise<void> {
     }
 }
 
+export function getBannedDomains(): string[] {
+    return [...BANNED_DOMAINS];
+}
+
 export function matchBannedDomain(url: string): string | null {
     try {
         const hostname = new URL(url).hostname

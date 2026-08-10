@@ -87,7 +87,7 @@ export default function PatreonLoginButton() {
                         type="button"
                     >
                         <TbFillBrandPatreon size={15} />
-                        Subscribed to me on Patreon? Log in
+                        Log in with Patreon
                     </button>
                 }
             >
