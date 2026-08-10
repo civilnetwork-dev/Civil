@@ -18,7 +18,7 @@
 - **Do not delete anything from `src/styles/material.css.ts`.** Twelve style files still import it. Slice pages stop *using* `atmosphere`, `edgeLit`, `edgeLitStrong`, and `grainOverlay`; the exports stay until pass 2.
 - **Icon set and loading animation assets are the user's** and arrive later. `LoadingAnimation.tsx`'s public API must not change.
 - **Palette stays Catppuccin Macchiato.** Use `vars.color.*` from `src/styles/theme.css`. No literal hex values in new code.
-- **Annotation text uses `vars.color.subtext0`, never `vars.color.overlay1`.** `overlay1` on `base` is ~4.0:1 and fails WCAG AA for small text; `subtext0` is ~6.6:1. Annotations are 11px.
+- **Annotation text uses `vars.color.subtext0` (primary tier) or `vars.color.overlay2` (muted tier). Never `overlay1` or `overlay0`.** Measured on `base`: `overlay0` 3.15:1, `overlay1` 4.14:1 — both fail WCAG AA's 4.5:1 for small text. `overlay2` is 5.29:1 and `subtext0` is 6.62:1, both pass. Annotations are 11px, so AA-small applies. `overlay1` may still be used for decorative rules, ticks and borders, where contrast requirements do not apply — just not for text.
 - **No `backdrop-filter`, no `blur()`, no animated `box-shadow`.** Target hardware is low-end Chromebooks. Only `transform`, `opacity`, and `grid-template-rows` animate.
 - **Motion tokens come from `material.css.ts`:** `EASE.standard | spring | enter`, `DUR.fast (0.11s) | base (0.18s) | slow (0.28s)`. Do not introduce new durations or easings.
 - **Style formatting:** 4-space indent, LF endings. `bun run check` must pass with no fixes applied.
