@@ -22,7 +22,9 @@
 - **No `backdrop-filter`, no `blur()`, no animated `box-shadow`.** Target hardware is low-end Chromebooks. Only `transform`, `opacity`, and `grid-template-rows` animate.
 - **Motion tokens come from `material.css.ts`:** `EASE.standard | spring | enter`, `DUR.fast (0.11s) | base (0.18s) | slow (0.28s)`. Do not introduce new durations or easings.
 - **Style formatting:** 4-space indent, LF endings. `bun run check` must pass with no fixes applied.
-- **Every task ends green:** `bun run check` and `bun run test` both pass before the commit step.
+- **Every task ends green:** `bun run check`, `bun run test`, and `bunx tsc --noEmit` must all be clean before the commit step — `tsc` may report only the one pre-existing error inside `node_modules/@terbiumos/tfs`. If any of the three is red, the task is NOT done: do not commit, and report BLOCKED or DONE_WITH_CONCERNS rather than DONE.
+- **`JSX` is imported from `@solidjs/web`, never from `solid-js`.** Solid 2.0 moved the namespace. `import type { JSX } from "solid-js"` runs fine under Vitest but fails `tsc` with `TS2305: Module '"solid-js"' has no exported member 'JSX'`. Value imports (`createSignal`, `createUniqueId`, `Show`, `For`) still come from `solid-js`.
+- **Never write to a signal synchronously inside an owned scope.** Solid 2.0 throws `[REACTIVE_WRITE_IN_OWNED_SCOPE]`. In tests that use `createRoot`, create signals inside the root callback but perform every mutation *after* it returns. That also mirrors production, where writes arrive from DOM event handlers rather than during render.
 
 ## Spec deviation, deliberate
 
@@ -604,7 +606,7 @@ Create `tests/helpers/renderSolid.ts`:
 
 ```ts
 import { render } from "@solidjs/web";
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 
 /**
  * Mount a Solid component into a detached container for assertions.
@@ -776,7 +778,7 @@ Expected: FAIL — `Failed to resolve import "./Anno"` and `"./Rule"`.
 Create `src/components/schematic/Anno.tsx`:
 
 ```tsx
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import * as s from "~/styles/schematic.css";
 
 /**
@@ -1009,7 +1011,8 @@ Expected: FAIL — `Failed to resolve import "./Sheet"` and `"./TitleBlock"`.
 Create `src/components/schematic/Sheet.tsx`:
 
 ```tsx
-import { For, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { For } from "solid-js";
 import type { FieldDensity } from "~/styles/schematic.css";
 import * as s from "~/styles/schematic.css";
 
@@ -1057,7 +1060,8 @@ export default function Sheet(props: {
 Create `src/components/schematic/TitleBlock.tsx`:
 
 ```tsx
-import { type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Show } from "solid-js";
 import * as s from "~/styles/schematic.css";
 
 /**
@@ -1199,7 +1203,8 @@ Create `src/components/schematic/Plate.tsx`:
 
 ```tsx
 import { Dynamic } from "@solidjs/web";
-import { type JSX, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { Show } from "solid-js";
 import * as s from "~/styles/schematic.css";
 
 /**
@@ -1428,7 +1433,8 @@ Expected: FAIL — `Failed to resolve import "./Unfold"`.
 Create `src/components/schematic/Unfold.tsx`:
 
 ```tsx
-import { createSignal, createUniqueId, type JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
+import { createSignal, createUniqueId } from "solid-js";
 import * as s from "~/styles/schematic.css";
 
 /**
