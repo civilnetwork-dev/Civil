@@ -1993,7 +1993,15 @@ Expected: Biome clean; all tests pass; Vite build succeeds. The build is require
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/components/icons src/components
+git add src/components/icons \
+  src/components/AppsPage.tsx src/components/HistoryPage.tsx \
+  src/components/ExtensionsPage.tsx src/components/BookmarksBar.tsx \
+  src/components/BookmarksPage.tsx src/components/IbossGatewayToast.tsx \
+  src/components/FilterCheckPage.tsx src/components/TabSearch.tsx \
+  src/components/BanInfoPage.tsx src/components/BrowserChrome.tsx \
+  src/components/ChiiPanel.tsx src/components/GoGuardianManifestToast.tsx \
+  src/components/ui/TabPill.tsx src/components/ui/Select.tsx \
+  src/components/ui/PatreonLoginButton.tsx src/components/ui/UrlBar.tsx
 git commit -m "refactor(ui): route all icons through a semantic indirection layer
 
 Every component now imports from ~/components/icons instead of
