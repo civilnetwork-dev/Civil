@@ -1748,7 +1748,14 @@ export default function Field(props: {
                     aria-describedby={props.hint ? hintId : undefined}
                     onInput={e => props.onInput(e.currentTarget.value)}
                     onKeyDown={e => {
-                        if (e.key === "Enter") props.onEnter?.();
+                        if (e.key !== "Enter" || !props.onEnter) return;
+                        // A caller that wires onEnter is handling Enter itself.
+                        // Without preventDefault the browser would ALSO submit
+                        // the enclosing form, firing the same handler twice — a
+                        // duplicate add on Apps, a duplicate report request on
+                        // the Filter Checker.
+                        e.preventDefault();
+                        props.onEnter();
                     }}
                 />
             </div>
