@@ -4,7 +4,7 @@
 // browserHelpers) reads `window.location.origin` at MODULE SCOPE to build
 // BROWSER_URLS, so the import itself throws without a window. See the SSR note
 // in MAINTENANCE.md section 7.
-import { createRoot } from "solid-js";
+import { createRoot, flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 import {
     createTabHistory,
@@ -119,12 +119,56 @@ describe("displayUrl", () => {
 });
 
 describe("createTabHistory", () => {
-    /** createSignal needs an owner, so each case runs inside a root. */
+    /**
+     * createSignal needs an owner, so the history is built inside a root —
+     * but Solid 2.0 forbids synchronous writes inside an owned scope, and
+     * every history mutation is a write. So the root only creates the
+     * signal; `fn` runs after it returns, once we're no longer inside it.
+     * This mirrors production: BrowserChrome creates the history in its
+     * component body, but pushHistory is only ever called later, from an
+     * iframe load handler.
+     *
+     * Writing from outside a root no longer throws, but it also no longer
+     * lands synchronously: Solid 2.0 queues a write made with no active
+     * computation and only commits it on the next scheduler flush, so a
+     * bare read immediately after `pushHistory`/`back`/`forward` would see
+     * the pre-write value. Production doesn't notice because the reads
+     * that matter happen in components, which re-render on the following
+     * flush anyway. These tests assert synchronously in plain functions,
+     * so each mutator is wrapped to flush right after it runs, keeping
+     * every test body a plain, synchronous read-after-write.
+     */
     function withHistory(fn: (h: ReturnType<typeof createTabHistory>) => void) {
-        createRoot(dispose => {
-            fn(createTabHistory());
-            dispose();
+        let history!: ReturnType<typeof createTabHistory>;
+        let dispose!: () => void;
+        createRoot(d => {
+            dispose = d;
+            history = createTabHistory();
         });
+        // Only the three mutators need wrapping; getters like `version` and
+        // `getHistory` never write, so they stay untouched and synchronous.
+        const flushing: typeof history = {
+            ...history,
+            pushHistory: (id, url) => {
+                history.pushHistory(id, url);
+                flush();
+            },
+            back: id => {
+                const result = history.back(id);
+                flush();
+                return result;
+            },
+            forward: id => {
+                const result = history.forward(id);
+                flush();
+                return result;
+            },
+        };
+        try {
+            fn(flushing);
+        } finally {
+            dispose();
+        }
     }
 
     it("starts with no navigation available", () => {

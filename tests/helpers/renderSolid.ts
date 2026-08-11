@@ -1,5 +1,4 @@
-import { render } from "@solidjs/web";
-import type { JSX } from "solid-js";
+import { type JSX, render } from "@solidjs/web";
 
 /**
  * Mount a Solid component into a detached container for assertions.
