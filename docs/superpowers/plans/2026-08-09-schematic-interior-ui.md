@@ -25,6 +25,8 @@
 - **Every task ends green:** `bun run check`, `bun run test`, and `bunx tsc --noEmit` must all be clean before the commit step — `tsc` may report only the one pre-existing error inside `node_modules/@terbiumos/tfs`. If any of the three is red, the task is NOT done: do not commit, and report BLOCKED or DONE_WITH_CONCERNS rather than DONE.
 - **`JSX` is imported from `@solidjs/web`, never from `solid-js`.** Solid 2.0 moved the namespace. `import type { JSX } from "solid-js"` runs fine under Vitest but fails `tsc` with `TS2305: Module '"solid-js"' has no exported member 'JSX'`. Value imports (`createSignal`, `createUniqueId`, `Show`, `For`) still come from `solid-js`.
 - **Never write to a signal synchronously inside an owned scope.** Solid 2.0 throws `[REACTIVE_WRITE_IN_OWNED_SCOPE]`. In tests that use `createRoot`, create signals inside the root callback but perform every mutation *after* it returns. That also mirrors production, where writes arrive from DOM event handlers rather than during render.
+- **Boolean `aria-*` values must be explicit strings.** Solid 2.0 treats a boolean as attribute *presence*, so `aria-expanded={open()}` renders as absent when false and `""` when true — never `"false"`/`"true"`. Always write `aria-expanded={open() ? "true" : "false"}` and `aria-hidden={open() ? "false" : "true"}`. Measured, not assumed.
+- **After simulating an event in a test, call `flush()` from `solid-js` before asserting.** Solid 2.0 batches writes made outside a computation, so a signal set inside a click or input handler has not reached the DOM when `.click()` returns. Sequence: `el.click(); flush(); expect(...)`. Production is unaffected because components re-render on the following flush anyway.
 
 ## Spec deviation, deliberate
 
@@ -1297,10 +1299,17 @@ Create `src/components/schematic/Unfold.test.tsx`:
 
 ```tsx
 // @vitest-environment happy-dom
+import { flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 import { renderSolid } from "$tests/helpers/renderSolid";
 import * as s from "~/styles/schematic.css";
 import Unfold from "./Unfold";
+
+/**
+ * Every simulated event is followed by `flush()`. Solid 2.0 batches writes made
+ * outside a computation, so a signal set inside a click or focus handler has not
+ * reached the DOM when the dispatch call returns.
+ */
 
 function mount() {
     return renderSolid(() => (
@@ -1339,11 +1348,13 @@ describe("Unfold", () => {
     it("expands on click and collapses on a second click", () => {
         const { container, unmount } = mount();
         trigger(container).click();
+        flush();
         expect(trigger(container).getAttribute("aria-expanded")).toBe("true");
         expect(region(container).getAttribute("aria-hidden")).toBe("false");
         expect(region(container).hasAttribute("inert")).toBe(false);
 
         trigger(container).click();
+        flush();
         expect(trigger(container).getAttribute("aria-expanded")).toBe("false");
         unmount();
     });
@@ -1352,6 +1363,7 @@ describe("Unfold", () => {
         const { container, unmount } = mount();
         expect(region(container).className).not.toContain(s.unfoldRegionOpen);
         trigger(container).click();
+        flush();
         expect(region(container).className).toContain(s.unfoldRegionOpen);
         unmount();
     });
@@ -1374,8 +1386,10 @@ describe("Unfold", () => {
         const { container, unmount } = mount();
         const root = container.firstElementChild as HTMLElement;
         root.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false }));
+        flush();
         expect(region(container).getAttribute("aria-hidden")).toBe("false");
         root.dispatchEvent(new MouseEvent("mouseleave", { bubbles: false }));
+        flush();
         expect(region(container).getAttribute("aria-hidden")).toBe("true");
         unmount();
     });
@@ -1386,11 +1400,13 @@ describe("Unfold", () => {
         const link = container.querySelector("a") as HTMLAnchorElement;
 
         root.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+        flush();
         expect(region(container).getAttribute("aria-hidden")).toBe("false");
 
         const moveWithin = new FocusEvent("focusout", { bubbles: true });
         Object.defineProperty(moveWithin, "relatedTarget", { value: link });
         root.dispatchEvent(moveWithin);
+        flush();
         expect(region(container).getAttribute("aria-hidden")).toBe("false");
 
         unmount();
@@ -1403,9 +1419,11 @@ describe("Unfold", () => {
         document.body.appendChild(outside);
 
         root.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+        flush();
         const moveAway = new FocusEvent("focusout", { bubbles: true });
         Object.defineProperty(moveAway, "relatedTarget", { value: outside });
         root.dispatchEvent(moveAway);
+        flush();
 
         expect(region(container).getAttribute("aria-hidden")).toBe("true");
         outside.remove();
@@ -1416,7 +1434,9 @@ describe("Unfold", () => {
         const { container, unmount } = mount();
         const root = container.firstElementChild as HTMLElement;
         trigger(container).click();
+        flush();
         root.dispatchEvent(new MouseEvent("mouseleave", { bubbles: false }));
+        flush();
         expect(region(container).getAttribute("aria-hidden")).toBe("false");
         unmount();
     });
@@ -1489,7 +1509,7 @@ export default function Unfold(props: {
             <button
                 type="button"
                 class={s.unfoldTrigger}
-                aria-expanded={open()}
+                aria-expanded={open() ? "true" : "false"}
                 aria-controls={regionId}
                 aria-label={props.label}
                 onClick={() => setPinned(p => !p)}
@@ -1499,7 +1519,7 @@ export default function Unfold(props: {
             <div
                 id={regionId}
                 class={open() ? s.unfoldRegionOpen : s.unfoldRegion}
-                aria-hidden={!open()}
+                aria-hidden={open() ? "false" : "true"}
                 inert={!open() || undefined}
             >
                 <div class={s.unfoldInner}>{props.children}</div>
@@ -1514,7 +1534,7 @@ export default function Unfold(props: {
 Run: `bun run test src/components/schematic/Unfold.test.tsx`
 Expected: PASS, 11 tests.
 
-If `aria-expanded` renders as `"true"`/`"false"` strings but `aria-hidden` renders absent rather than `"false"`, Solid is treating the boolean as an attribute-presence flag. Coerce both explicitly: `aria-expanded={open() ? "true" : "false"}` and `aria-hidden={open() ? "false" : "true"}`, then re-run.
+Both `aria-*` values are already written as explicit strings and every state-changing test already calls `flush()`. Both were measured against Solid 2.0.0-beta.28: a boolean renders as attribute presence (absent when false, `""` when true), and a write from a click handler does not reach the DOM until the scheduler flushes. Do not "simplify" either back to the boolean or drop the `flush()` calls — the tests will fail.
 
 - [ ] **Step 5: Verify the suite**
 
@@ -2458,6 +2478,8 @@ Create `src/components/AppsPage.test.tsx`:
 import { describe, expect, it, vi } from "vitest";
 import { renderSolid } from "$tests/helpers/renderSolid";
 
+import { flush } from "solid-js";
+
 vi.mock("~/api/apps", () => ({
     apps: () => [],
     appsAdd: vi.fn(async () => undefined),
@@ -2509,6 +2531,7 @@ describe("AppsPage", () => {
             new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
         );
         await Promise.resolve();
+        flush();
         expect(container.textContent).toContain("doesn't look like a web address");
         unmount();
     });
@@ -3049,6 +3072,7 @@ Create `src/components/FilterCheckResults.test.tsx`:
 
 ```tsx
 // @vitest-environment happy-dom
+import { flush } from "solid-js";
 import { describe, expect, it } from "vitest";
 import { renderSolid } from "$tests/helpers/renderSolid";
 import type { FilterResult } from "~/lib/filterCheckVendors";
@@ -3116,6 +3140,7 @@ describe("FilterCheckResults", () => {
         const trigger = container.querySelector("button") as HTMLButtonElement;
         expect(trigger.getAttribute("aria-expanded")).toBe("false");
         trigger.click();
+        flush();
         expect(trigger.getAttribute("aria-expanded")).toBe("true");
         unmount();
     });
