@@ -118,4 +118,36 @@ describe("Field", () => {
         ).toBe("email");
         asEmail.unmount();
     });
+
+    it("suppresses the default form submit when it handles Enter itself", () => {
+        const onEnter = vi.fn();
+        const { container, unmount } = renderSolid(() => (
+            <Field label="l" value="" onInput={() => {}} onEnter={onEnter} />
+        ));
+        const input = container.querySelector("input") as HTMLInputElement;
+        const event = new KeyboardEvent("keydown", {
+            key: "Enter",
+            bubbles: true,
+            cancelable: true,
+        });
+        input.dispatchEvent(event);
+        expect(onEnter).toHaveBeenCalledOnce();
+        expect(event.defaultPrevented).toBe(true);
+        unmount();
+    });
+
+    it("leaves Enter to the enclosing form when no onEnter is given", () => {
+        const { container, unmount } = renderSolid(() => (
+            <Field label="l" value="" onInput={() => {}} />
+        ));
+        const input = container.querySelector("input") as HTMLInputElement;
+        const event = new KeyboardEvent("keydown", {
+            key: "Enter",
+            bubbles: true,
+            cancelable: true,
+        });
+        input.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(false);
+        unmount();
+    });
 });
