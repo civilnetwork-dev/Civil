@@ -1,13 +1,14 @@
-import { BiRegularLeftArrowAlt, BiRegularRightArrowAlt } from "solid-icons/bi";
-import {
-    TbOutlineArrowRight,
-    TbOutlineClock,
-    TbOutlineLock,
-    TbOutlineRefresh,
-    TbOutlineSearch,
-} from "solid-icons/tb";
 import { createSignal, For, Show } from "solid-js";
 import { historySearch } from "~/api/history";
+import {
+    IconArrowLeft,
+    IconArrowRight,
+    IconClock,
+    IconForward,
+    IconLock,
+    IconRefresh,
+    IconSearch,
+} from "~/components/icons";
 import { displayUrl, isProbablyUrl, WS_URL } from "~/lib/browserHelpers";
 import { resolveUrl } from "~/lib/TabManager";
 import * as s from "~/styles/BrowserChrome.css";
@@ -126,7 +127,7 @@ export function UrlBar(props: UrlBarProps) {
                 disabled={!props.canBack}
                 onClick={props.onBack}
             >
-                <BiRegularLeftArrowAlt size={17} />
+                <IconArrowLeft size={17} />
             </button>
             <button
                 type="button"
@@ -138,7 +139,7 @@ export function UrlBar(props: UrlBarProps) {
                 disabled={!props.canForward}
                 onClick={props.onForward}
             >
-                <BiRegularRightArrowAlt size={17} />
+                <IconForward size={17} />
             </button>
             <button
                 type="button"
@@ -146,7 +147,7 @@ export function UrlBar(props: UrlBarProps) {
                 title="Reload"
                 onClick={props.onRefresh}
             >
-                <TbOutlineRefresh size={17} />
+                <IconRefresh size={17} />
             </button>
 
             <button
@@ -155,7 +156,7 @@ export function UrlBar(props: UrlBarProps) {
                 title="Search tabs (Ctrl+K)"
                 onClick={props.onTabSearch}
             >
-                <TbOutlineSearch size={15} />
+                <IconSearch size={15} />
             </button>
 
             <div class={s.urlbarOmniboxWrap}>
@@ -172,7 +173,7 @@ export function UrlBar(props: UrlBarProps) {
                 >
                     <Show when={!props.isNewtab && !editing()}>
                         <span class={s.urlbarLock}>
-                            <TbOutlineLock size={12} />
+                            <IconLock size={12} />
                         </span>
                     </Show>
                     <input
@@ -221,7 +222,7 @@ export function UrlBar(props: UrlBarProps) {
                         onClick={() => commit()}
                         onMouseDown={e => e.preventDefault()}
                     >
-                        <TbOutlineArrowRight size={14} />
+                        <IconArrowRight size={14} />
                     </button>
                 </div>
 
@@ -253,7 +254,7 @@ export function UrlBar(props: UrlBarProps) {
                                     <Show
                                         when={entry().favicon}
                                         fallback={
-                                            <TbOutlineClock
+                                            <IconClock
                                                 size={14}
                                                 class={s.urlbarHistoryFavicon}
                                             />

@@ -1,7 +1,8 @@
 // biome-ignore-all lint/a11y/useFocusableInteractive: Bro biome you dont have to
 // biome-ignore-all lint/a11y/noNoninteractiveElementToInteractiveRole: Bro biome you dont have to
-import { TbOutlineChevronDown } from "solid-icons/tb";
+
 import { createSignal, For, onCleanup, Show } from "solid-js";
+import { IconChevronDown } from "~/components/icons";
 import * as s from "~/styles/Select.css";
 
 export interface SelectOption<T extends string = string> {
@@ -44,7 +45,7 @@ export function Select<T extends string>(props: SelectProps<T>) {
             >
                 {currentLabel()}
                 <span class={[s.chevron, { [s.chevronOpen]: open() }]}>
-                    <TbOutlineChevronDown size={14} />
+                    <IconChevronDown size={14} />
                 </span>
             </button>
             <Show when={open()}>

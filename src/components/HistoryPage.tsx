@@ -1,4 +1,3 @@
-import { TbOutlineSearch, TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
 import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import {
     HISTORY_LS_KEY,
@@ -8,6 +7,7 @@ import {
     historyGetMethod,
     historySetMethod,
 } from "~/api/history";
+import { IconClose, IconSearch, IconWorld } from "~/components/icons";
 import { onLsChange } from "~/lib/reactiveStorage";
 import * as s from "~/styles/HistoryPage.css";
 import * as l from "~/styles/layout.css";
@@ -198,7 +198,7 @@ export default function HistoryPage() {
             <Show when={entries().length > 0}>
                 <div class={s.scopeBar}>
                     <div class={s.filterField}>
-                        <TbOutlineSearch size={15} class={s.filterIcon} />
+                        <IconSearch size={15} class={s.filterIcon} />
                         <input
                             ref={filterInput}
                             class={s.filterInput}
@@ -224,7 +224,7 @@ export default function HistoryPage() {
                                     filterInput?.focus();
                                 }}
                             >
-                                <TbOutlineX size={13} />
+                                <IconClose size={13} />
                             </button>
                         </Show>
                         <Show when={!query()}>
@@ -326,7 +326,7 @@ export default function HistoryPage() {
                                         <Show
                                             when={entry().favicon}
                                             fallback={
-                                                <TbOutlineWorld
+                                                <IconWorld
                                                     size={16}
                                                     class={s.favicon}
                                                 />
@@ -362,7 +362,7 @@ export default function HistoryPage() {
                                                 handleDelete(entry().id)
                                             }
                                         >
-                                            <TbOutlineX size={14} />
+                                            <IconClose size={14} />
                                         </button>
                                     </div>
                                 )}

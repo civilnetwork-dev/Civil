@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: it's just a tab pill lil bro */
-import { CgSpinner } from "solid-icons/cg";
-import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
+
 import { onSettled, Show } from "solid-js";
+import { IconClose, IconSpinner, IconWorld } from "~/components/icons";
 import type { Tab } from "~/lib/TabManager";
 import { tabManager } from "~/lib/TabManager";
 import { registerTabDraggable, registerTabDropTarget } from "~/lib/useTabDrag";
@@ -59,9 +59,9 @@ export function TabPill(props: TabPillProps) {
                 <span class={[s.tabIcon, { [s.tabIconActive]: props.active }]}>
                     <Show
                         when={props.tab.isLoading}
-                        fallback={<TbOutlineWorld size={13} />}
+                        fallback={<IconWorld size={13} />}
                     >
-                        <CgSpinner size={13} class={s.spin} />
+                        <IconSpinner size={13} class={s.spin} />
                     </Show>
                 </span>
             </Show>
@@ -87,7 +87,7 @@ export function TabPill(props: TabPillProps) {
                         props.onClose(e);
                     }}
                 >
-                    <TbOutlineX size={12} />
+                    <IconClose size={12} />
                 </button>
             </Show>
         </div>

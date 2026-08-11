@@ -1,5 +1,3 @@
-import { FaRegularBookmark, FaSolidBookmark } from "solid-icons/fa";
-import { TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
 import { createSignal, For, Show } from "solid-js";
 import {
     bookmarks,
@@ -7,6 +5,12 @@ import {
     bookmarksIsBookmarked,
     bookmarksRemove,
 } from "~/api/bookmarks";
+import {
+    IconBookmarkFilled,
+    IconBookmarkOutline,
+    IconClose,
+    IconWorld,
+} from "~/components/icons";
 import { isNewtabUrl } from "~/lib/TabManager";
 import * as s from "~/styles/BookmarksBar.css";
 
@@ -17,7 +21,7 @@ function BookmarkFavicon(props: { favicon?: string }) {
             when={props.favicon && !failed()}
             fallback={
                 <span class={s.bookmarkFaviconFallback}>
-                    <TbOutlineWorld size={11} />
+                    <IconWorld size={11} />
                 </span>
             }
         >
@@ -85,7 +89,7 @@ export default function BookmarksBar(props: BookmarksBarProps) {
                                 handleRemove(e as MouseEvent, bm().id)
                             }
                         >
-                            <TbOutlineX size={10} />
+                            <IconClose size={10} />
                         </span>
                     </button>
                 )}
@@ -104,9 +108,9 @@ export default function BookmarksBar(props: BookmarksBarProps) {
                 >
                     <Show
                         when={isBookmarked()}
-                        fallback={<FaRegularBookmark size={13} />}
+                        fallback={<IconBookmarkOutline size={13} />}
                     >
-                        <FaSolidBookmark size={13} />
+                        <IconBookmarkFilled size={13} />
                     </Show>
                 </button>
             </Show>

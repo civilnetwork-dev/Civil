@@ -1,12 +1,12 @@
-import {
-    TbOutlineArrowUpRight,
-    TbOutlineLayoutBottombar,
-    TbOutlineLayoutNavbar,
-    TbOutlineLayoutSidebar,
-    TbOutlineLayoutSidebarRight,
-    TbOutlineX,
-} from "solid-icons/tb";
 import { createSignal, onCleanup, onSettled } from "solid-js";
+import {
+    IconArrowUpRight,
+    IconClose,
+    IconLayoutBottom,
+    IconLayoutNavbar,
+    IconLayoutSidebar,
+    IconLayoutSidebarRight,
+} from "~/components/icons";
 import {
     cleanupChiiArtifacts,
     injectChiiIntoIframe,
@@ -276,10 +276,10 @@ export function ChiiPanel(props: ChiiPanelProps) {
     };
 
     const sides: { s: ChiiDockSide; icon: () => any }[] = [
-        { s: "bottom", icon: () => <TbOutlineLayoutBottombar size={14} /> },
-        { s: "top", icon: () => <TbOutlineLayoutNavbar size={14} /> },
-        { s: "left", icon: () => <TbOutlineLayoutSidebar size={14} /> },
-        { s: "right", icon: () => <TbOutlineLayoutSidebarRight size={14} /> },
+        { s: "bottom", icon: () => <IconLayoutBottom size={14} /> },
+        { s: "top", icon: () => <IconLayoutNavbar size={14} /> },
+        { s: "left", icon: () => <IconLayoutSidebar size={14} /> },
+        { s: "right", icon: () => <IconLayoutSidebarRight size={14} /> },
     ];
 
     const dividerClass = () =>
@@ -339,7 +339,7 @@ export function ChiiPanel(props: ChiiPanelProps) {
                             void handleDetach();
                         }}
                     >
-                        <TbOutlineArrowUpRight size={14} />
+                        <IconArrowUpRight size={14} />
                     </button>
                     <button
                         type="button"
@@ -347,7 +347,7 @@ export function ChiiPanel(props: ChiiPanelProps) {
                         class={s.closeBtn}
                         onClick={handleClose}
                     >
-                        <TbOutlineX size={14} />
+                        <IconClose size={14} />
                     </button>
                 </div>
 

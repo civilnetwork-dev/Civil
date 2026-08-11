@@ -1,5 +1,5 @@
-import { TbOutlineX } from "solid-icons/tb";
 import { createSignal, Show } from "solid-js";
+import { IconClose } from "~/components/icons";
 import * as s from "~/styles/GoGuardianManifestToast.css";
 
 interface Props {
@@ -108,7 +108,7 @@ export default function GoGuardianManifestToast(props: Props) {
                     aria-label="Dismiss"
                     type="button"
                 >
-                    <TbOutlineX />
+                    <IconClose />
                 </button>
             </div>
 

@@ -1,7 +1,7 @@
 import { createAuthClient } from "better-auth/client";
 import { genericOAuthClient } from "better-auth/client/plugins";
-import { TbFillBrandPatreon } from "solid-icons/tb";
 import { createSignal, onSettled, Show } from "solid-js";
+import { IconPatreon } from "~/components/icons";
 import * as s from "~/styles/PatreonLoginButton.css";
 
 type SessionUser = {
@@ -73,7 +73,7 @@ export default function PatreonLoginButton() {
             when={!loading()}
             fallback={
                 <button class={s.button} disabled type="button">
-                    <TbFillBrandPatreon size={15} />
+                    <IconPatreon size={15} />
                     Login with Patreon
                 </button>
             }
@@ -86,7 +86,7 @@ export default function PatreonLoginButton() {
                         onClick={handleLogin}
                         type="button"
                     >
-                        <TbFillBrandPatreon size={15} />
+                        <IconPatreon size={15} />
                         Log in with Patreon
                     </button>
                 }

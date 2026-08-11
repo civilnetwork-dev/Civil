@@ -1,6 +1,6 @@
-import { TbOutlinePlus, TbOutlineWorld, TbOutlineX } from "solid-icons/tb";
 import { createSignal, For, Show } from "solid-js";
 import { apps, appsAdd, appsRemove } from "~/api/apps";
+import { IconClose, IconPlus, IconWorld } from "~/components/icons";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/AppsPage.css";
 import * as l from "~/styles/layout.css";
@@ -13,7 +13,7 @@ function AppIcon(props: { icon: string | null; name: string }) {
             when={props.icon && !failed()}
             fallback={
                 <div class={s.appIconFallback}>
-                    <TbOutlineWorld size={28} />
+                    <IconWorld size={28} />
                 </div>
             }
         >
@@ -128,7 +128,7 @@ export default function AppsPage() {
             <Show when={apps().length === 0}>
                 <div class={s.empty}>
                     <div class={s.emptyGhostTile}>
-                        <TbOutlinePlus size={28} />
+                        <IconPlus size={28} />
                     </div>
                     <p class={s.emptyText}>
                         No apps added yet. Enter a URL above.
@@ -150,7 +150,7 @@ export default function AppsPage() {
                                 title="Remove"
                                 onClick={e => handleRemove(e, app().id)}
                             >
-                                <TbOutlineX size={11} />
+                                <IconClose size={11} />
                             </button>
                             <div class={s.appIconStage}>
                                 <AppIcon icon={app().icon} name={app().name} />

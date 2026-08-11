@@ -3,8 +3,8 @@
 import uFuzzy from "@leeoniya/ufuzzy";
 import type { JSX } from "@solidjs/web";
 import { Portal } from "@solidjs/web";
-import { TbOutlineSearch, TbOutlineWorld } from "solid-icons/tb";
 import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
+import { IconSearch, IconWorld } from "~/components/icons";
 import type { Tab } from "~/lib/TabManager";
 import { isNewtabUrl } from "~/lib/TabManager";
 import * as s from "~/styles/TabSearch.css";
@@ -153,7 +153,7 @@ export default function TabSearch(props: TabSearchProps) {
                 <div class={[s.panel, { [s.panelLeaving]: leaving() }]}>
                     <div class={s.inputRow}>
                         <span class={s.searchIcon}>
-                            <TbOutlineSearch size={16} />
+                            <IconSearch size={16} />
                         </span>
                         <input
                             ref={inputRef}
@@ -206,7 +206,7 @@ export default function TabSearch(props: TabSearchProps) {
                                             when={item().tab.favicon}
                                             fallback={
                                                 <span class={s.faviconFallback}>
-                                                    <TbOutlineWorld size={13} />
+                                                    <IconWorld size={13} />
                                                 </span>
                                             }
                                         >

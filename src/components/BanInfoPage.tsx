@@ -1,5 +1,5 @@
-import { TbOutlineBan, TbOutlineLoader } from "solid-icons/tb";
 import { createSignal, For, onSettled, Show } from "solid-js";
+import { IconBan, IconLoader } from "~/components/icons";
 import * as s from "~/styles/BanInfoPage.css";
 
 const PAGE_SIZE = 50;
@@ -85,7 +85,7 @@ function StatusSection() {
                     }
                 >
                     <div class={s.bannedBanner}>
-                        <TbOutlineBan class={s.bannedIcon} />
+                        <IconBan class={s.bannedIcon} />
                         <div class={s.bannedInfo}>
                             <span class={s.bannedTitle}>
                                 Your account has been banned
@@ -205,8 +205,7 @@ export default function BanInfoPage() {
                 when={!loading()}
                 fallback={
                     <p class={s.loadingText}>
-                        <TbOutlineLoader class={s.loadingIcon} /> Loading
-                        blocklist
+                        <IconLoader class={s.loadingIcon} /> Loading blocklist
                     </p>
                 }
             >

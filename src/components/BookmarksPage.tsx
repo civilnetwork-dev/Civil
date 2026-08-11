@@ -1,12 +1,12 @@
-import {
-    TbOutlineBookmark,
-    TbOutlineClock,
-    TbOutlineTrash,
-    TbOutlineWorld,
-    TbOutlineX,
-} from "solid-icons/tb";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { bookmarks, bookmarksRemove } from "~/api/bookmarks";
+import {
+    IconBookmark,
+    IconClock,
+    IconClose,
+    IconTrash,
+    IconWorld,
+} from "~/components/icons";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/BookmarksPage.css";
 import type { CivilBookmark } from "~/types";
@@ -18,7 +18,7 @@ function BookmarkFavicon(props: { favicon?: string }) {
             when={props.favicon && !failed()}
             fallback={
                 <div class={s.cardFaviconFallback}>
-                    <TbOutlineWorld size={13} />
+                    <IconWorld size={13} />
                 </div>
             }
         >
@@ -98,14 +98,14 @@ export default function BookmarksPage() {
                     class={`${s.sidebarItem}${filter() === "all" ? ` ${s.sidebarItemActive}` : ""}`}
                     onClick={() => setFilter("all")}
                 >
-                    <TbOutlineBookmark size={15} /> All Bookmarks
+                    <IconBookmark size={15} /> All Bookmarks
                 </button>
                 <button
                     type="button"
                     class={`${s.sidebarItem}${filter() === "recent" ? ` ${s.sidebarItemActive}` : ""}`}
                     onClick={() => setFilter("recent")}
                 >
-                    <TbOutlineClock size={15} /> Recently Added
+                    <IconClock size={15} /> Recently Added
                 </button>
             </div>
 
@@ -141,7 +141,7 @@ export default function BookmarksPage() {
                                 class={`${s.clearBtn}${confirmingClear() ? ` ${s.clearBtnArmed}` : ""}`}
                                 onClick={handleClearAll}
                             >
-                                <TbOutlineTrash size={14} />
+                                <IconTrash size={14} />
                                 {confirmingClear()
                                     ? "Click again to delete"
                                     : "Clear"}
@@ -194,7 +194,7 @@ export default function BookmarksPage() {
                                     title="Remove bookmark"
                                     onClick={e => handleRemove(e, bm().id)}
                                 >
-                                    <TbOutlineX size={15} />
+                                    <IconClose size={15} />
                                 </button>
                             </div>
                         )}

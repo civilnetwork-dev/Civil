@@ -1,10 +1,4 @@
 import {
-    TbFillAlertSquareRounded,
-    TbFillFidgetSpinner,
-    TbFillSquareRoundedCheck,
-    TbOutlineLoader2,
-} from "solid-icons/tb";
-import {
     type Accessor,
     createMemo,
     createSignal,
@@ -17,6 +11,12 @@ import {
     detectIbossGateway,
     raceIbossGateways,
 } from "$config/service/ibossGatewayDetect";
+import {
+    IconAlert,
+    IconCheck,
+    IconLoaderDots,
+    IconSpinnerFilled,
+} from "~/components/icons";
 import { checkFiltersNow } from "~/lib/swUtils";
 import * as s from "~/styles/FilterCheckPage.css";
 import GoGuardianManifestToast from "./GoGuardianManifestToast";
@@ -358,13 +358,13 @@ function StatusIcon(props: { status: FilterStatus }) {
                             props.status === "error" ||
                             props.status === "unknown"
                         }
-                        fallback={<TbFillAlertSquareRounded size={22} />}
+                        fallback={<IconAlert size={22} />}
                     >
-                        <TbFillFidgetSpinner size={22} />
+                        <IconSpinnerFilled size={22} />
                     </Show>
                 }
             >
-                <TbFillSquareRoundedCheck size={22} />
+                <IconCheck size={22} />
             </Show>
         </span>
     );
@@ -703,7 +703,7 @@ export default function FilterCheckPage() {
                                     when={rescanning()}
                                     fallback="Re-scan filters"
                                 >
-                                    <TbOutlineLoader2 class={s.spinner} />{" "}
+                                    <IconLoaderDots class={s.spinner} />{" "}
                                     Scanning…
                                 </Show>
                             </button>
@@ -727,7 +727,7 @@ export default function FilterCheckPage() {
                                 when={rescanning()}
                                 fallback="Re-scan filters"
                             >
-                                <TbOutlineLoader2 class={s.spinner} /> Scanning…
+                                <IconLoaderDots class={s.spinner} /> Scanning…
                             </Show>
                         </button>
                     </div>
@@ -788,7 +788,7 @@ export default function FilterCheckPage() {
                         >
                             <Show when={loading()} fallback="Check URL">
                                 <span class={s.spinner}>
-                                    <TbOutlineLoader2 size={15} />
+                                    <IconLoaderDots size={15} />
                                 </span>
                                 Checking…
                             </Show>

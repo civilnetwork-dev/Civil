@@ -1,4 +1,3 @@
-import { TbOutlinePlus, TbOutlinePuzzle, TbOutlineWorld } from "solid-icons/tb";
 import {
     createMemo,
     createSignal,
@@ -13,6 +12,7 @@ import BookmarksBar from "~/components/BookmarksBar";
 import { ChiiPanel } from "~/components/ChiiPanel";
 import { useContextMenu } from "~/components/ContextMenu";
 import ExtensionIconBar from "~/components/ExtensionIconBar";
+import { IconPlus, IconPuzzle, IconWorld } from "~/components/icons";
 import TabSearch from "~/components/TabSearch";
 import { TabPill } from "~/components/ui/TabPill";
 import { UrlBar } from "~/components/ui/UrlBar";
@@ -440,7 +440,7 @@ export default function BrowserChrome() {
                 ctx.open(e, [
                     {
                         label: "New Tab",
-                        icon: <TbOutlinePlus size={14} />,
+                        icon: <IconPlus size={14} />,
                         action: () => {
                             const t = tabManager.createTab("browser:newtab");
                             tabManager.activateTab(t.id);
@@ -449,7 +449,7 @@ export default function BrowserChrome() {
                     { type: "separator" },
                     {
                         label: "Extensions",
-                        icon: <TbOutlinePuzzle size={14} />,
+                        icon: <IconPuzzle size={14} />,
                         action: openExtensions,
                     },
                     {
@@ -602,7 +602,7 @@ export default function BrowserChrome() {
                             tabManager.activateTab(t.id);
                         }}
                     >
-                        <TbOutlinePlus size={15} />
+                        <IconPlus size={15} />
                     </button>
                 </div>
 
@@ -649,7 +649,7 @@ export default function BrowserChrome() {
                         title="Extensions"
                         onClick={openExtensions}
                     >
-                        <TbOutlinePuzzle size={15} />
+                        <IconPuzzle size={15} />
                     </button>
                 </div>
 
@@ -679,7 +679,7 @@ export default function BrowserChrome() {
                 </For>
                 <Show when={tabStore.tabs.length === 0}>
                     <div class={s.browserEmpty}>
-                        <TbOutlineWorld size={40} class={s.browserEmptyIcon} />
+                        <IconWorld size={40} class={s.browserEmptyIcon} />
                         <p>No tabs open</p>
                         <button
                             type="button"

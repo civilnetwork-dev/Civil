@@ -1,11 +1,3 @@
-import {
-    TbOutlineLink,
-    TbOutlineLoader,
-    TbOutlinePuzzle,
-    TbOutlineRefresh,
-    TbOutlineUpload,
-    TbOutlineX,
-} from "solid-icons/tb";
 import { createSignal, For, Show } from "solid-js";
 import {
     type ExtensionUpdateResult,
@@ -16,6 +8,14 @@ import {
     extensionsSetEnabled,
     extensionsUninstall,
 } from "~/api/extensions";
+import {
+    IconClose,
+    IconLink,
+    IconLoader,
+    IconPuzzle,
+    IconRefresh,
+    IconUpload,
+} from "~/components/icons";
 import * as s from "~/styles/ExtensionsPage.css";
 import * as l from "~/styles/layout.css";
 import type { CivilExtension } from "~/types";
@@ -50,7 +50,7 @@ function ExtensionIcon(props: { ext: ExtensionListItem }) {
 
     return (
         <div class={s.cardIcon}>
-            <Show when={iconUrl()} fallback={<TbOutlinePuzzle size={20} />}>
+            <Show when={iconUrl()} fallback={<IconPuzzle size={20} />}>
                 {url => <img src={url()} class={s.cardIconImg} alt="" />}
             </Show>
         </div>
@@ -236,15 +236,15 @@ export default function ExtensionsPage() {
                         when={installing()}
                         fallback={
                             <>
-                                <TbOutlineLink size={14} /> Install
+                                <IconLink size={14} /> Install
                             </>
                         }
                     >
-                        <TbOutlineLoader size={14} /> Installing
+                        <IconLoader size={14} /> Installing
                     </Show>
                 </button>
                 <label class={s.uploadBtnLabel}>
-                    <TbOutlineUpload size={14} /> Upload file
+                    <IconUpload size={14} /> Upload file
                     <input
                         type="file"
                         accept=".crx,.xpi"
@@ -262,11 +262,11 @@ export default function ExtensionsPage() {
                         when={checking()}
                         fallback={
                             <>
-                                <TbOutlineRefresh size={14} /> Check for updates
+                                <IconRefresh size={14} /> Check for updates
                             </>
                         }
                     >
-                        <TbOutlineLoader size={14} /> Checking
+                        <IconLoader size={14} /> Checking
                     </Show>
                 </button>
             </div>
@@ -297,7 +297,7 @@ export default function ExtensionsPage() {
 
             <Show when={extensions().length === 0}>
                 <div class={s.empty}>
-                    <TbOutlinePuzzle size={40} class={s.emptyIcon} />
+                    <IconPuzzle size={40} class={s.emptyIcon} />
                     <p class={s.emptyText}>
                         No extensions installed. Install a .crx or .xpi above.
                     </p>
@@ -344,7 +344,7 @@ export default function ExtensionsPage() {
                                     title="Uninstall"
                                     onClick={() => handleUninstall(ext().id)}
                                 >
-                                    <TbOutlineX size={15} />
+                                    <IconClose size={15} />
                                 </button>
                             </div>
                         )}
@@ -392,7 +392,7 @@ export default function ExtensionsPage() {
                                     title="Uninstall"
                                     onClick={() => handleUninstall(ext().id)}
                                 >
-                                    <TbOutlineX size={15} />
+                                    <IconClose size={15} />
                                 </button>
                             </div>
                         )}
