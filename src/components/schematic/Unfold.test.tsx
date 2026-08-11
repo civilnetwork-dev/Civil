@@ -205,7 +205,14 @@ describe("Unfold", () => {
         const { container, unmount } = mount();
         const root = container.firstElementChild as HTMLElement;
 
+        // A real tap fires BOTH of these. The synthesised `mouseenter` is the
+        // one that broke the old implementation: it set `hovered` true, and no
+        // `mouseleave` arrives until the user touches somewhere else, so the
+        // second tap cleared `pinned` while `hovered` stayed stuck true and
+        // nothing closed. Dispatching only the pointer event makes this test
+        // pass against the buggy code too — verified — so both must be sent.
         root.dispatchEvent(firePointer("pointerenter", "touch"));
+        root.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false }));
         flush();
         expect(trigger(container).getAttribute("aria-expanded")).toBe("false");
 
