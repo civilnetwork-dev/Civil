@@ -7,8 +7,8 @@ import * as s from "~/styles/schematic.css";
  * measured state.
  *
  * Supersedes the `masthead` pattern in layout.css.ts for schematic pages. That
- * module keeps its exports because six unmigrated pages still use it; do not
- * delete it until pass 2.
+ * module keeps its exports because three unmigrated pages still use it
+ * (AppsPage, ExtensionsPage, and HistoryPage); do not delete it until pass 2.
  */
 export default function TitleBlock(props: {
     eyebrow: string;

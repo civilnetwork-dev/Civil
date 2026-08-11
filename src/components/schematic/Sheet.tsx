@@ -5,6 +5,9 @@ import * as s from "~/styles/schematic.css";
 
 export type Corner = "tl" | "tr" | "bl" | "br";
 
+/** Three corners, not four: bottom-left belongs to the title block. */
+const DEFAULT_MARKS: Corner[] = ["tl", "tr", "br"];
+
 /**
  * The page plane every interior surface sits on.
  *
@@ -19,7 +22,7 @@ export default function Sheet(props: {
     marks?: Corner[];
     class?: string;
 }) {
-    const marks = () => props.marks ?? (["tl", "tr", "br"] as Corner[]);
+    const marks = () => props.marks ?? DEFAULT_MARKS;
     const density = () => props.density ?? "base";
 
     return (
