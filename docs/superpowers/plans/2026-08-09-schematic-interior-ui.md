@@ -2476,13 +2476,20 @@ Create `src/components/AppsPage.test.tsx`:
 
 ```tsx
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
-
 import { flush } from "solid-js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderSolid } from "$tests/helpers/renderSolid";
+import type { CivilApp } from "~/types";
+
+/**
+ * `apps()` is mutable per test rather than a fixed empty array: the plate only
+ * renders its `<ul>` when at least one app exists, so an always-empty mock could
+ * never exercise the grid at all.
+ */
+let mockApps: CivilApp[] = [];
 
 vi.mock("~/api/apps", () => ({
-    apps: () => [],
+    apps: () => mockApps,
     appsAdd: vi.fn(async () => undefined),
     appsRemove: vi.fn(),
 }));
@@ -2494,6 +2501,14 @@ vi.mock("~/lib/TabManager", () => ({
 
 const { default: AppsPage } = await import("./AppsPage");
 const s = await import("~/styles/schematic.css");
+
+const ONE_APP: CivilApp[] = [
+    { id: "a1", url: "https://chess.org/", name: "chess.org", icon: null },
+];
+
+beforeEach(() => {
+    mockApps = [];
+});
 
 describe("AppsPage", () => {
     it("renders the page title", () => {
@@ -2537,9 +2552,34 @@ describe("AppsPage", () => {
         unmount();
     });
 
-    it("uses a real list for the grid", () => {
+    it("renders each position as a direct child li of the ul", () => {
+        // Not just "a ul exists somewhere": Plate's as="li" only produces valid
+        // markup if the li is a real child of the list. A div here would be
+        // invalid and announced badly by screen readers.
+        mockApps = ONE_APP;
         const { container, unmount } = renderSolid(() => <AppsPage />);
-        expect(container.querySelector("ul")).not.toBeNull();
+        const list = container.querySelector("ul") as HTMLUListElement;
+        expect(list).not.toBeNull();
+        expect(list.children).toHaveLength(1);
+        expect(list.children[0].tagName).toBe("LI");
+        unmount();
+    });
+
+    it("shows the app name and hides its detail until asked", () => {
+        mockApps = ONE_APP;
+        const { container, unmount } = renderSolid(() => <AppsPage />);
+        expect(container.textContent).toContain("chess.org");
+        const trigger = container.querySelector("li button") as HTMLButtonElement;
+        expect(trigger.getAttribute("aria-expanded")).toBe("false");
+        trigger.click();
+        flush();
+        expect(trigger.getAttribute("aria-expanded")).toBe("true");
+        unmount();
+    });
+
+    it("renders no list at all when there are no apps", () => {
+        const { container, unmount } = renderSolid(() => <AppsPage />);
+        expect(container.querySelector("ul")).toBeNull();
         unmount();
     });
 });
@@ -2879,7 +2919,7 @@ Expected: only `src/components/AppsPage.tsx`.
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `bun run test src/components/AppsPage.test.tsx`
-Expected: PASS, 6 tests.
+Expected: PASS, 8 tests.
 
 - [ ] **Step 6: Verify and look at it**
 
