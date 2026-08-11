@@ -3111,7 +3111,24 @@ between two vendors."
 - Test: `src/components/FilterCheckResults.test.tsx`
 
 **Interfaces:**
-- Consumes: `FilterResult`, `FilterStatus` from `~/lib/filterCheckVendors`; `Sheet`, `TitleBlock`, `Rule`, `Anno`, `Unfold`, `Field` primitives; `IconAlert`, `IconCheck`, `IconLoaderDots`, `IconSpinnerFilled` from `~/components/icons`.
+- Consumes: `FilterResult`, `FilterStatus` from `~/lib/filterCheckVendors`; `Sheet`, `TitleBlock`, `Rule`, `Anno`, `Unfold`, `Field` primitives; `IconAlert`, `IconCheck`, `IconLoaderDots` from `~/components/icons`.
+
+> **Decide one of these before writing `StatusMark`.** The current page uses three
+> glyphs — `IconCheck` for `allowed`, `IconSpinnerFilled` for `unknown`, and
+> `IconAlert` for everything else. The `StatusMark` below uses only two, which
+> collapses `unknown` into the same glyph as `blocked`.
+>
+> The verdict is still spelled out as text in its own ledger column and still
+> carries its own status colour, so a two-glyph split is defensible — but if you
+> take it, **remove `IconSpinnerFilled` from `src/components/icons/index.ts`**,
+> because nothing else imports it and its own test asserts every export has a
+> consumer. Leaving it would be dead code.
+>
+> Alternatively keep three glyphs, giving `unknown` a neutral mark, which
+> preserves the five-verdict visual system DESIGN.md describes.
+>
+> Either is acceptable. Silently dropping the glyph *and* leaving the export is
+> not.
 - Produces: `FilterCheckForm(props: { needsEmail: boolean; email: string; url: string; loading: boolean; onEmail: (v: string) => void; onUrl: (v: string) => void; onSubmit: () => void })`; `FilterCheckResults(props: { results: FilterResult[] })`.
 
 - [ ] **Step 1: Write the failing test**
