@@ -223,7 +223,7 @@ export const anno = style({ ...ANNO });
 
 export const annoMuted = style({
     ...ANNO,
-    color: vars.color.overlay1,
+    color: vars.color.overlay2,
 });
 
 /* -------------------------------------------------------------------- */
@@ -2239,7 +2239,7 @@ export const statusPair = style({
 
 export const statusKey = style({
     ...ANNO,
-    color: vars.color.overlay1,
+    color: vars.color.overlay2,
     textTransform: "uppercase",
 });
 
@@ -2846,6 +2846,9 @@ export const iconFallback = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    // overlay1 deliberately, not overlay2: this colours a glyph, not text, so
+    // WCAG 1.4.11's 3:1 non-text threshold applies rather than 4.5:1. overlay1
+    // measures 4.14:1 on base and clears it comfortably.
     color: vars.color.overlay1,
 });
 
@@ -3500,7 +3503,7 @@ const STATUS_COLOR = {
     allowed: vars.color.green,
     blocked: vars.color.red,
     warned: vars.color.yellow,
-    unknown: vars.color.overlay1,
+    unknown: vars.color.overlay2,
     error: vars.color.maroon,
 } as const;
 
@@ -3568,7 +3571,7 @@ export const ledgerHead = style({
     gridTemplateColumns: LEDGER_COLUMNS,
     gap: "10px",
     paddingBottom: "6px",
-    color: vars.color.overlay1,
+    color: vars.color.overlay2,
     textTransform: "uppercase",
 });
 
