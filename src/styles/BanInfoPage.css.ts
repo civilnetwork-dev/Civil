@@ -102,7 +102,8 @@ export const input = style({
 });
 
 export const statsText = style({
-    // overlay1 on base is 4.14:1, just under the AA floor at this size.
+    // cinder against dusk is 4.82:1, above the 4.5:1 AA floor at this size,
+    // but moonlight (9.88:1) is used here for extra headroom.
     color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "13px",
@@ -243,8 +244,8 @@ export const strikeSegmentUsed = style({
 });
 
 export const policyText = style({
-    // overlay1 on surface0 lands at 3.15:1 - below the 4.5:1 AA floor for
-    // text this size. subtext0 reads at 5.0:1 against the same card.
+    // cinder on horizon lands at 4.20:1 - below the 4.5:1 AA floor for
+    // text this size. moonlight reads at 8.60:1 against the same card.
     color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "12.5px",

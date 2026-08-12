@@ -174,8 +174,9 @@ export const styles = {
     table: `width:100%;border-collapse:collapse;font-size:.78rem`,
     th: `padding:.6rem 1.25rem;text-align:left;color:${colors.moonlight};font-weight:500;white-space:nowrap;border-bottom:1px solid ${colors.horizon}`,
     implCell: `display:inline-flex;align-items:center;gap:8px`,
-    // subtext0, not overlay0: at .68rem this is small text and overlay0 sits
-    // at 3.15:1 on the page background.
+    // moonlight, not ember: at .68rem this is small text and ember sits
+    // at 3.04:1 on the page background (non-text use only), below the
+    // 4.5:1 WCAG AA floor.
     footer: `text-align:center;margin-top:2rem;color:${colors.moonlight};font-size:.68rem;letter-spacing:.08em`,
 } as const;
 

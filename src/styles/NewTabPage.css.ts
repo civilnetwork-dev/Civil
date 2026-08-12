@@ -44,9 +44,10 @@ export const statusPair = style({
     gap: "6px",
 });
 
-// overlay1 measures 4.14:1 on base and fails WCAG AA for small text (see
-// schematic.css.ts); overlay2 (5.29:1) is the muted annotation tier used
-// elsewhere in the schematic language, so the label stays legible.
+// starlight (7.27:1 against dusk) is the muted annotation tier used
+// elsewhere in the schematic language (see schematic.css.ts); cinder
+// (4.82:1) would also clear the 4.5:1 WCAG AA small-text minimum, but
+// starlight keeps this label visually consistent with that tier.
 export const statusKey = style({
     ...ANNO,
     color: vars.color.starlight,

@@ -70,8 +70,9 @@ export const field = addFunctionSerializer(createField(), {
 
 /**
  * 11px is the floor of the system, not a target, so it is paired with
- * `subtext0` rather than `overlay1`: overlay1 on base is ~4.0:1 and fails
- * WCAG AA for small text, subtext0 is ~6.6:1.
+ * `moonlight` rather than `cinder`: cinder measures 4.82:1 against dusk,
+ * comfortably above the 4.5:1 WCAG AA small-text minimum, but moonlight's
+ * 9.88:1 gives more headroom at the size floor.
  */
 export const ANNO = {
     fontFamily: FONT_MONO,
@@ -85,9 +86,10 @@ export const ANNO = {
 export const anno = style({ ...ANNO });
 
 /**
- * overlay1 measures 4.14:1 on base and fails WCAG AA for small text (4.5:1 min);
- * overlay2 is 5.29:1 and keeps the muted tier compliant while visibly dimmer than
- * anno's subtext0 (6.62:1), so the two-tier hierarchy survives.
+ * starlight (7.27:1 against dusk) is used here rather than cinder (4.82:1)
+ * for visible dimness relative to anno's moonlight (9.88:1), not because
+ * cinder fails AA — it clears the 4.5:1 small-text minimum on its own. Both
+ * tiers pass comfortably; the gap between them preserves the hierarchy.
  */
 export const annoMuted = style({
     ...ANNO,

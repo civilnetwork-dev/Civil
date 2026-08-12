@@ -7,7 +7,7 @@
  * panel read as dark rectangles rather than machined objects.
  *
  * This module supplies the missing physicality, all of it static (the system
- * forbids ambient motion) and all of it inside the Macchiato palette (it
+ * forbids ambient motion) and all of it inside the twilight palette (it
  * forbids neon):
  *
  *   - `edgeLit` / `edgeLitStrong` — a hairline of light along a surface's top
@@ -118,7 +118,7 @@ export const lit = (outer: string, strong = false) =>
 /**
  * A brushed, very slightly warmer fill for surfaces that should read as a
  * machined face rather than a hole in the page. The gradient is only a few
- * percent — at Macchiato's contrast it reads as a sheen, not a stripe.
+ * percent — at twilight's contrast it reads as a sheen, not a stripe.
  */
 export const machined = (from: string, to: string) =>
     `linear-gradient(168deg, ${from} 0%, ${to} 100%)`;

@@ -411,7 +411,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 </div>
 
                 <div style={styles.footer}>
-                    catppuccin macchiato · apache echarts · solidjs
+                    twilight · apache echarts · solidjs
                 </div>
             </div>
         </div>

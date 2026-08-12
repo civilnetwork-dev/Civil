@@ -416,7 +416,7 @@ export const emptyAction = style({
     },
 });
 
-// Count beside the page title. subtext0 rather than overlay1: the previous
+// Count beside the page title. moonlight rather than cinder: the previous
 // inline style sat under the 4.5:1 contrast floor.
 export const mainCount = style({
     color: vars.color.moonlight,

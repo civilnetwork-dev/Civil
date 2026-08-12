@@ -5,7 +5,7 @@ export const PATREON = "#FF424D";
 export const T = "0.12s ease";
 
 // Tinted-accent recipe (same shape as the system's Status Triad): a solid
-// brand-red block would clash against the muted Macchiato palette everywhere
+// brand-red block would clash against the muted twilight palette everywhere
 // else, so Patreon's red is toned into a background tint + accent text/icon
 // instead of a full-saturation fill.
 export const button = style({

@@ -58,7 +58,8 @@ describe("ANNO", () => {
     });
 
     it("keeps both annotation tiers above the WCAG AA small-text minimum", () => {
-        // overlay1 measures 4.14:1 on base and fails AA; overlay2 is 5.29:1.
+        // moonlight (anno) measures 9.88:1 and starlight (annoMuted) measures
+        // 7.27:1 against dusk — both clear the 4.5:1 WCAG AA small-text minimum.
         expect(anno).not.toBe(annoMuted);
         expect(ANNO.color).toBe(vars.color.moonlight);
     });

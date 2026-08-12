@@ -1,0 +1,30 @@
+/* @name Twilight */
+:root {
+    --color-background: #18202f;
+    --color-background-elevation-1: #121926;
+    --color-background-elevation-2: #0c111a;
+    --color-background-inverted: #dee5f0;
+    --color-primary: #7fa8dc;
+    --color-primary-variant: #8fd4d0;
+    --color-secondary: #a8b4ee;
+    --color-error: #dc8b92;
+    --color-warning: #e6c782;
+    --color-success: #87c9a3;
+    --color-on-primary: #18202f;
+    --color-text-primary: #dee5f0;
+    --color-text-secondary: #bfcadd;
+    --color-text-disabled: #5a6b8c;
+    --color-details-hairline: #212b3d;
+    --color-accent-red: #dc8b92;
+    --color-accent-orange: #e8b478;
+    --color-accent-yellow: #e6c782;
+    --color-accent-green: #87c9a3;
+    --color-accent-blue: #7fa8dc;
+    --color-accent-purple: #a8b4ee;
+    --color-accent-teal: #79b8b4;
+    --toolbar-bg-color: #121926;
+    --toolbar-color: #dee5f0;
+    --selection-bg-color: #212b3d;
+    --selection-inactive-bg-color: #18202f;
+    --focus-ring-color: #7fa8dc;
+}
