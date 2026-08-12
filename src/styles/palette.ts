@@ -21,29 +21,49 @@
  * active content plane. See `.superpowers/sdd/task-T1-brief.md` for the
  * full rename table and measured ratios.
  */
+/**
+ * Derived from an alpine-lake photograph (Snowy Range: granite, conifer, glacial
+ * water under a deep sky) and re-voiced at night. The photograph supplies the
+ * hues; the dark tones are ours. Every hue below traces to a measured region of
+ * that image via HCT tonal ramps — the surface stack from the lake's shadowed
+ * water (H 239.5), `sirius`/`vega`/`rigel` from the sky (H 270.4),
+ * `airglow` from the meadow (H 115.1), `aurora`/`nebula` from the shallows
+ * (H 204), and the warm accents from sunlit granite (H 82).
+ *
+ * Contrast is measured against `dusk`, the active content plane. Text tiers are
+ * WCAG AA; `ember` at 3.56 is non-text only (icons, rules, borders).
+ *
+ * The four status colours are separated by LIGHTNESS, not hue alone —
+ * allowed 8.25, warned 10.56, error 6.25, blocked 4.90. Hue separation is
+ * useless to the ~1% of people with deuteranopia: the previous palette put
+ * allowed and blocked at ΔE 4.9 under that simulation, i.e. indistinguishable,
+ * which is the single worst pair in a verdict system to confuse. They now read
+ * as clearly different greys even under achromatopsia. Colour remains a third
+ * redundant channel behind the verdict text and its glyph — never the only one.
+ */
 export const PALETTE = {
-    void: "#0C111A",
-    night: "#121926",
-    dusk: "#18202F",
-    horizon: "#212B3D",
-    haze: "#2C3850",
-    dust: "#3C4A66",
-    ember: "#5A6B8C",
-    cinder: "#7B8CAE",
-    starlight: "#9DAECB",
-    moonlight: "#BFCADD",
-    halo: "#CFD8E7",
-    daylight: "#DEE5F0",
-    sirius: "#8FC3EA",
-    vega: "#A8B4EE",
-    rigel: "#7FA8DC",
-    aurora: "#8FD4D0",
-    nebula: "#79B8B4",
-    airglow: "#87C9A3",
-    sol: "#E6C782",
-    corona: "#E8B478",
-    arcturus: "#E3A56E",
-    antares: "#DC8B92",
+    void: "#071620",
+    night: "#0C1F2B",
+    dusk: "#122834",
+    horizon: "#1B3543",
+    haze: "#264556",
+    dust: "#35596D",
+    ember: "#5B7F94",
+    cinder: "#7FA0B3",
+    starlight: "#9FBACA",
+    moonlight: "#C0D2DD",
+    halo: "#D6E3EB",
+    daylight: "#E6EFF4",
+    sirius: "#71AFF7",
+    vega: "#95CAFF",
+    rigel: "#4895E0",
+    aurora: "#7FD4D8",
+    nebula: "#79BFB4",
+    airglow: "#BAC48F",
+    sol: "#E6D6A9",
+    corona: "#E9C79B",
+    arcturus: "#D69967",
+    antares: "#D77679",
 } as const;
 
 export type SlotName = keyof typeof PALETTE;

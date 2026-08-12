@@ -1,33 +1,33 @@
 /* @name Twilight */
 :root {
-    --color-background: #18202f;
-    --color-background-elevation-1: #121926;
-    --color-background-elevation-2: #0c111a;
-    --color-background-inverted: #dee5f0;
-    --color-primary: #7fa8dc;
-    --color-primary-variant: #8fd4d0;
-    --color-secondary: #a8b4ee;
-    --color-error: #dc8b92;
-    --color-warning: #e6c782;
-    --color-success: #87c9a3;
-    --color-on-primary: #18202f;
-    --color-text-primary: #dee5f0;
-    --color-text-secondary: #bfcadd;
-    --color-text-disabled: #5a6b8c;
-    --color-details-hairline: #212b3d;
-    --color-accent-red: #dc8b92;
-    --color-accent-orange: #e8b478;
-    --color-accent-yellow: #e6c782;
-    --color-accent-green: #87c9a3;
-    --color-accent-blue: #7fa8dc;
-    --color-accent-purple: #a8b4ee;
-    --color-accent-teal: #79b8b4;
-    --toolbar-bg-color: #121926;
-    --toolbar-color: #dee5f0;
-    --selection-bg-color: #212b3d;
+    --color-background: #122834;
+    --color-background-elevation-1: #0c1f2b;
+    --color-background-elevation-2: #071620;
+    --color-background-inverted: #e6eff4;
+    --color-primary: #4895e0;
+    --color-primary-variant: #7fd4d8;
+    --color-secondary: #95caff;
+    --color-error: #d77679;
+    --color-warning: #e6d6a9;
+    --color-success: #bac48f;
+    --color-on-primary: #122834;
+    --color-text-primary: #e6eff4;
+    --color-text-secondary: #c0d2dd;
+    --color-text-disabled: #5b7f94;
+    --color-details-hairline: #1b3543;
+    --color-accent-red: #d77679;
+    --color-accent-orange: #e9c79b;
+    --color-accent-yellow: #e6d6a9;
+    --color-accent-green: #bac48f;
+    --color-accent-blue: #4895e0;
+    --color-accent-purple: #95caff;
+    --color-accent-teal: #79bfb4;
+    --toolbar-bg-color: #0c1f2b;
+    --toolbar-color: #e6eff4;
+    --selection-bg-color: #1b3543;
     /* 28% of the way from dusk toward the active-selection tint, matching the
        proportion the Macchiato original used. Mapping this to dusk outright
        made inactive selection identical to the background, i.e. invisible. */
-    --selection-inactive-bg-color: #1b2333;
-    --focus-ring-color: #7fa8dc;
+    --selection-inactive-bg-color: #152c38;
+    --focus-ring-color: #4895e0;
 }
