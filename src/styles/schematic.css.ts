@@ -1,5 +1,7 @@
 import { style, styleVariants } from "@vanilla-extract/css";
+import { addFunctionSerializer } from "@vanilla-extract/css/functionSerializer";
 import { DUR, EASE, hairline } from "./material.css";
+import { createField } from "./schematicField";
 import { vars } from "./theme.css";
 
 /**
@@ -42,25 +44,25 @@ export const RULE = {
 /* Ruled field                                                           */
 /* -------------------------------------------------------------------- */
 
-const FIELD_DENSITY = { fine: 8, base: 16, coarse: 32 } as const;
-
-export type FieldDensity = keyof typeof FIELD_DENSITY;
+export type { FieldDensity } from "./schematicField";
 
 /**
  * The ruled grid, as one repeating gradient pair on a single element. Density
  * is a named token rather than a raw number so pages cannot invent off-scale
  * grids.
+ *
+ * A `.css.ts` module may only export values vanilla-extract can statically
+ * serialize for production, and a bare function isn't one of them (see
+ * schematicField.ts for why). `addFunctionSerializer` tags this export so the
+ * production compiler reconstructs it by re-importing and re-calling
+ * `createField` instead of trying to inline the closure — dev, test and prod
+ * all end up with the same working function.
  */
-export function field(
-    density: FieldDensity = "base",
-    color: string = vars.color.surface0,
-) {
-    const px = FIELD_DENSITY[density];
-    return {
-        backgroundImage: `linear-gradient(to right, ${color} 0.5px, transparent 0.5px), linear-gradient(to bottom, ${color} 0.5px, transparent 0.5px)`,
-        backgroundSize: `${px}px ${px}px`,
-    };
-}
+export const field = addFunctionSerializer(createField(), {
+    importPath: "./schematicField",
+    importName: "createField",
+    args: [],
+});
 
 /* -------------------------------------------------------------------- */
 /* Annotation tier                                                       */
