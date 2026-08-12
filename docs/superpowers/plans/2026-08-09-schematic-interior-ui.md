@@ -3722,3 +3722,135 @@ One spec item is **deliberately not implemented in pass 1**: §11's "service wor
 **Type consistency.** `FilterStatus`, `FilterResult`, and `FilterConfig` keep the exact shapes from the current `FilterCheckPage.tsx` through Tasks 11 and 12. `Corner` is defined in Task 4 and reused in Task 12's `marks={["tl", "tr", "br"]}`. `FieldDensity` is defined in Task 1 and consumed in Tasks 4 and 9. `renderSolid`'s `{ container, unmount }` return is used identically in every component test. `IconForward` is exported in Task 8 Step 3 and called out in the note there because it is missing from the test list — add it when writing that test.
 
 **Placeholder scan.** No `TBD`, no "add error handling", no "similar to Task N". Two places intentionally defer to the implementer with a stated fallback rather than a guess: Task 5's `Dynamic` import location, and Task 6's `aria-expanded` boolean coercion. Both name the exact symptom and the exact remedy, because both depend on Solid 2.0 beta behaviour that should be confirmed against the installed version rather than assumed.
+
+---
+
+# Inserted: theme replacement (runs BEFORE Tasks 9b, 10, 11, 12, 13)
+
+The user replaced the palette direction mid-execution: Catppuccin Macchiato out,
+a bespoke night-sky theme in, plus a more creative New Tab. Sequenced first so
+Tasks 10 and 12 are written in the new theme rather than re-themed afterwards.
+
+**This voids the old contrast constants.** Every figure in the Global Constraints
+(overlay0 3.15:1, overlay1 4.14:1, overlay2 5.29:1, subtext0 6.62:1) was
+Macchiato-specific. Replacements are measured below.
+
+### Task T1: Replace the palette and rename the contract
+
+**Files:**
+- Create: `src/styles/palette.ts`, `src/styles/themes/twilight.css.ts`
+- Modify: `src/styles/theme.css.ts`, `src/lib/benchmarkConfig.ts`, `package.json`, `tests/schematic.test.ts`, and every file referencing `vars.color.*` (25 files)
+- Delete: `src/styles/themes/macchiato.css.ts`
+
+**Interfaces:**
+- Produces: `PALETTE: Record<SlotName, string>` from `src/styles/palette.ts` — a plain module, NOT a `.css.ts`, so echarts can import raw hex and vanilla-extract never tries to serialize it.
+- `vars.color.<slot>` keeps working; only the slot names change.
+
+**The palette — "Astronomical twilight".** Surfaces descend into atmospheric
+depth; accents are stellar spectral classes plus airglow, the green emission
+visible at a dark site. No pure black (causes halation) and no pure white
+(primary text is 12.88:1 rather than white's 16.32:1).
+
+Exact 1:1 rename map, every value measured against `dusk` (#18202F):
+
+| old slot | new slot | hex | on dusk | role |
+|---|---|---|---|---|
+| `crust` | `void` | `#0C111A` | 1.16 | chrome frame |
+| `mantle` | `night` | `#121926` | 1.08 | panels, dropdowns |
+| `base` | `dusk` | `#18202F` | 1.00 | active content plane |
+| `surface0` | `horizon` | `#212B3D` | 1.15 | raised surface |
+| `surface1` | `haze` | `#2C3850` | 1.39 | hover, border |
+| `surface2` | `dust` | `#3C4A66` | 1.84 | strong border |
+| `overlay0` | `ember` | `#5A6B8C` | 3.04 | **non-text only** (icons, rules) |
+| `overlay1` | `cinder` | `#7B8CAE` | 4.82 | muted text — now passes AA |
+| `overlay2` | `starlight` | `#9DAECB` | 7.27 | annotation |
+| `subtext0` | `moonlight` | `#BFCADD` | 9.88 | body |
+| `subtext1` | `halo` | `#CFD8E7` | 11.37 | emphasis |
+| `text` | `daylight` | `#DEE5F0` | 12.88 | primary text |
+| `lavender` | `sirius` | `#8FC3EA` | 8.68 | chrome accent |
+| `mauve` | `vega` | `#A8B4EE` | 8.11 | tool accent |
+| `blue` | `rigel` | `#7FA8DC` | 6.64 | minor accent |
+| `sky` | `aurora` | `#8FD4D0` | 9.71 | minor accent |
+| `teal` | `nebula` | `#79B8B4` | 7.25 | minor accent |
+| `green` | `airglow` | `#87C9A3` | 8.48 | status: allowed |
+| `yellow` | `sol` | `#E6C782` | 9.99 | status: warned |
+| `peach` | `corona` | `#E8B478` | 8.73 | minor accent |
+| `maroon` | `arcturus` | `#E3A56E` | 7.67 | status: error |
+| `red` | `antares` | `#DC8B92` | 6.34 | status: blocked |
+
+**Note the improvement:** the `overlay1` slot failed AA under Macchiato (4.14:1),
+which is why four separate corrections were needed this session. `cinder`
+measures 4.82:1 and passes, so the muted tier is no longer a hazard.
+
+- [ ] **Step 1: Create the palette module**
+
+`src/styles/palette.ts` — a plain `.ts` module holding the 22 hex values from the
+table above as `export const PALETTE = { void: "#0C111A", ... } as const;` plus
+`export type SlotName = keyof typeof PALETTE;`. It must NOT be named `.css.ts`:
+vanilla-extract only transforms that suffix, and `benchmarkConfig.ts` needs raw
+hex because echarts cannot read CSS custom properties.
+
+Document at the top why the palette exists as plain data, and that no pure black
+or pure white appears deliberately.
+
+- [ ] **Step 2: Rewrite the contract and the theme**
+
+`src/styles/theme.css.ts` builds the contract from `PALETTE`'s keys instead of
+`flavors.macchiato.colors`. Create `src/styles/themes/twilight.css.ts` calling
+`createGlobalTheme(":root", vars, { color: PALETTE })`, mirroring the shape of
+the file it replaces. Delete `src/styles/themes/macchiato.css.ts` and update the
+`import "./themes/macchiato.css"` in `src/styles/global.css.ts`.
+
+- [ ] **Step 3: Rename every consumer**
+
+Apply the table's mapping across all files referencing `vars.color.*`. Find them
+with `grep -rln "vars.color" src/`. This is mechanical; change nothing but the
+slot name. Afterwards this must return nothing:
+
+```bash
+grep -rnoE "vars\.color\.(crust|mantle|base|surface[012]|overlay[012]|subtext[01]|text|lavender|mauve|blue|sky|teal|green|yellow|peach|maroon|red)\b" src/
+```
+
+- [ ] **Step 4: Migrate benchmarkConfig and drop the dependency**
+
+`src/lib/benchmarkConfig.ts` imports `flavors` and `ColorName` from
+`@catppuccin/palette` for echarts theming. Point it at `PALETTE` and `SlotName`
+instead, renaming each colour reference through the table. Then remove
+`@catppuccin/palette` from `package.json` and run `bun install`. Confirm nothing
+imports it:
+
+```bash
+grep -rn "@catppuccin/palette" src/ package.json
+```
+
+- [ ] **Step 5: Update the one colour assertion**
+
+`tests/schematic.test.ts` asserts `ANNO.color` is `vars.color.subtext0`. The
+annotation tier keeps the same role, so it becomes `vars.color.moonlight`.
+
+- [ ] **Step 6: Verify and commit**
+
+All four gates: `bun run test` (269 passing, count unchanged — this is a rename),
+`bun run check`, `bunx tsc --noEmit`, and `./build.sh` exit 0. The build matters
+most: it is the only check that exercises the vanilla-extract theme pipeline.
+
+### Task T2: New Tab as a star chart
+
+Rework `NewTabPage` so the sheet reads as a celestial chart rather than a generic
+ruled sheet — a star chart *is* a technical drawing, so the schematic language
+and the night-sky theme unify rather than compete. Static only: DESIGN.md forbids
+ambient motion, and a moving starfield would also defeat the stealth requirement.
+
+Details are settled during implementation, but the fixed points are: the existing
+`Sheet`/`Rule`/`Anno`/`Unfold` primitives are reused unchanged; the title block
+stays bottom-left; the ad note stays; and any star field is decorative, static,
+`aria-hidden`, and low enough in contrast to sit under the content.
+
+### Task T3: Fix the Unfold hairline leak
+
+Confirmed by live measurement during Task 9: the collapsed `Unfold` region is
+**13px tall with a visible border**, not 0. `unfoldInner`'s `paddingTop`,
+`borderTop` and `marginTop` count toward the grid item's minimum contribution
+under `grid-template-rows: 0fr`. Move them to a nested element so the collapsed
+row can reach zero. No test can catch this — `happy-dom` computes no layout — so
+verify in a browser.
