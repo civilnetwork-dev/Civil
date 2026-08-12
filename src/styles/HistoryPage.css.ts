@@ -20,10 +20,10 @@ const emptyFadeIn = keyframes({
 });
 
 export const root = style({
-    ...atmosphere(vars.color.lavender),
+    ...atmosphere(vars.color.sirius),
     minHeight: "100vh",
     padding: PAGE_PADDING,
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", sans-serif',
 });
 
@@ -31,9 +31,9 @@ export const root = style({
 // a solid red block would be the one full-saturation "alert" shout the
 // palette otherwise never makes.
 export const clearBtn = style({
-    backgroundColor: `color-mix(in srgb, ${vars.color.red} 12%, ${vars.color.surface0})`,
-    color: vars.color.red,
-    border: `1px solid color-mix(in srgb, ${vars.color.red} 35%, transparent)`,
+    backgroundColor: `color-mix(in srgb, ${vars.color.antares} 12%, ${vars.color.horizon})`,
+    color: vars.color.antares,
+    border: `1px solid color-mix(in srgb, ${vars.color.antares} 35%, transparent)`,
     borderRadius: "8px",
     padding: "6px 16px",
     fontSize: "14px",
@@ -43,8 +43,8 @@ export const clearBtn = style({
     transitionDuration: "0.15s",
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.red} 20%, ${vars.color.surface0})`,
-            borderColor: `color-mix(in srgb, ${vars.color.red} 55%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.antares} 20%, ${vars.color.horizon})`,
+            borderColor: `color-mix(in srgb, ${vars.color.antares} 55%, transparent)`,
         },
     },
 });
@@ -52,16 +52,16 @@ export const clearBtn = style({
 // Armed state for the second click - the same button, stated plainly, rather
 // than a colour change alone carrying the whole message.
 export const clearBtnArmed = style({
-    background: `color-mix(in srgb, ${vars.color.red} 26%, ${vars.color.surface0})`,
-    borderColor: vars.color.red,
-    color: vars.color.text,
+    background: `color-mix(in srgb, ${vars.color.antares} 26%, ${vars.color.horizon})`,
+    borderColor: vars.color.antares,
+    color: vars.color.daylight,
     selectors: {
         // You are necessarily hovering the button you just clicked, and
         // `clearBtn:hover` outranks a plain class - so without this the armed
         // colours never rendered at all and only the label changed.
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.red} 34%, ${vars.color.surface0})`,
-            borderColor: vars.color.red,
+            background: `color-mix(in srgb, ${vars.color.antares} 34%, ${vars.color.horizon})`,
+            borderColor: vars.color.antares,
         },
     },
 });
@@ -89,8 +89,8 @@ export const filterField = style({
     maxWidth: "420px",
     height: "36px",
     padding: "0 8px 0 12px",
-    background: machined(vars.color.surface0, vars.color.mantle),
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "9px",
     boxShadow: lit(SHADOW.resting),
     transitionProperty: "border-color, box-shadow",
@@ -98,18 +98,18 @@ export const filterField = style({
     transitionDuration: DUR.base,
     selectors: {
         "&:focus-within": {
-            borderColor: `color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.lavender), true),
+            borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
+            boxShadow: lit(focusRing(vars.color.sirius), true),
         },
     },
 });
 
 export const filterIcon = style({
     flexShrink: 0,
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     transition: `color ${DUR.base} ${EASE.standard}`,
     selectors: {
-        [`${filterField}:focus-within &`]: { color: vars.color.lavender },
+        [`${filterField}:focus-within &`]: { color: vars.color.sirius },
     },
 });
 
@@ -119,14 +119,14 @@ export const filterInput = style({
     border: "none",
     background: "transparent",
     outline: "none",
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: "inherit",
     fontSize: "13.5px",
-    caretColor: vars.color.lavender,
+    caretColor: vars.color.sirius,
     selectors: {
-        "&::placeholder": { color: vars.color.overlay0 },
+        "&::placeholder": { color: vars.color.ember },
         "&::selection": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 28%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
         },
     },
 });
@@ -141,9 +141,9 @@ export const filterHint = style({
     height: "18px",
     marginRight: "4px",
     borderRadius: "5px",
-    border: `1px solid ${vars.color.surface1}`,
-    background: `color-mix(in srgb, ${vars.color.surface1} 40%, transparent)`,
-    color: vars.color.overlay1,
+    border: `1px solid ${vars.color.haze}`,
+    background: `color-mix(in srgb, ${vars.color.haze} 40%, transparent)`,
+    color: vars.color.cinder,
     fontFamily: "inherit",
     fontSize: "11px",
     lineHeight: 1,
@@ -165,7 +165,7 @@ export const filterClear = style({
     border: "none",
     borderRadius: "6px",
     background: "transparent",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     cursor: "pointer",
     transitionProperty: "color, background",
     transitionTimingFunction: EASE.standard,
@@ -173,8 +173,8 @@ export const filterClear = style({
     selectors: {
         "&::after": hitArea(),
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.surface1} 70%, transparent)`,
-            color: vars.color.text,
+            background: `color-mix(in srgb, ${vars.color.haze} 70%, transparent)`,
+            color: vars.color.daylight,
         },
     },
 });
@@ -193,7 +193,7 @@ export const scopeStat = style({
     alignItems: "baseline",
     gap: "5px",
     fontSize: "13px",
-    color: vars.color.text,
+    color: vars.color.daylight,
 });
 
 export const scopeStatNum = style({
@@ -204,7 +204,7 @@ export const scopeStatNum = style({
 export const scopeStatWord = style({
     ...microLabel,
     fontSize: "10px",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
 });
 
 export const scopeStatSep = style({
@@ -213,7 +213,7 @@ export const scopeStatSep = style({
     height: "3px",
     margin: "0 3px",
     borderRadius: "50%",
-    background: vars.color.surface2,
+    background: vars.color.dust,
 });
 
 export const list = style({
@@ -241,7 +241,7 @@ export const dayGroup = style({
             top: "30px",
             bottom: "16px",
             width: "1px",
-            background: `linear-gradient(to bottom, transparent 0, ${vars.color.surface1} 16px, ${vars.color.surface1} calc(100% - 16px), transparent 100%)`,
+            background: `linear-gradient(to bottom, transparent 0, ${vars.color.haze} 16px, ${vars.color.haze} calc(100% - 16px), transparent 100%)`,
         },
     },
 });
@@ -328,7 +328,7 @@ export const dayMeter = style({
             right: 0,
             bottom: "4px",
             height: "1px",
-            background: vars.color.surface1,
+            background: vars.color.haze,
         },
     },
 });
@@ -339,7 +339,7 @@ export const dayRule = style({
     height: "1px",
     marginBottom: "4px",
     // Fades in from the date and runs solid into the chart's baseline.
-    background: `linear-gradient(90deg, transparent, ${vars.color.surface1} 22%)`,
+    background: `linear-gradient(90deg, transparent, ${vars.color.haze} 22%)`,
     "@media": {
         // Below this the rule is all that's left to give up before the chart
         // starts losing columns.
@@ -357,7 +357,7 @@ export const dayMeterBar = style({
         // acknowledge the pointer - an empty hour that stayed inert read as
         // dead space you'd hovered by mistake.
         "&:hover::after": {
-            background: vars.color.overlay0,
+            background: vars.color.ember,
         },
         // The column itself is a full-height track; the bar is drawn inside
         // it, anchored to the baseline. That keeps the hour grid addressable
@@ -373,7 +373,7 @@ export const dayMeterBar = style({
             // Dimmer than the baseline it stands on. At full `surface1` the
             // empty hours merged with the rule and thickened it into a
             // dashed band instead of reading as an empty grid.
-            background: `color-mix(in srgb, ${vars.color.surface1} 55%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.haze} 55%, transparent)`,
             transitionProperty: "background, box-shadow",
             transitionTimingFunction: EASE.standard,
             transitionDuration: DUR.fast,
@@ -384,13 +384,13 @@ export const dayMeterBar = style({
 export const dayMeterBarOn = style({
     selectors: {
         "&::after": {
-            background: `linear-gradient(to top, color-mix(in srgb, ${vars.color.lavender} 45%, ${vars.color.surface1}), ${vars.color.lavender})`,
+            background: `linear-gradient(to top, color-mix(in srgb, ${vars.color.sirius} 45%, ${vars.color.haze}), ${vars.color.sirius})`,
         },
         // Scrubbing the chart lights the hour under the pointer, the same
         // gesture the rail markers use on the rows below.
         "&:hover::after": {
-            background: vars.color.lavender,
-            boxShadow: `0 0 8px color-mix(in srgb, ${vars.color.lavender} 65%, transparent)`,
+            background: vars.color.sirius,
+            boxShadow: `0 0 8px color-mix(in srgb, ${vars.color.sirius} 65%, transparent)`,
         },
     },
 });
@@ -408,7 +408,7 @@ export const dayMeterBarTick = style({
             bottom: "-4px",
             height: "3px",
             width: "1px",
-            background: vars.color.surface1,
+            background: vars.color.haze,
         },
     },
 });
@@ -432,13 +432,13 @@ export const dayCount = style({
     },
     paddingBottom: "4px",
     fontSize: "12px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
 });
 
 export const dayCountUnit = style({
     ...microLabel,
     fontSize: "10px",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
 });
 
 export const entry = style({
@@ -448,8 +448,8 @@ export const entry = style({
     gap: "12px",
     padding: "11px 16px",
     borderRadius: "10px",
-    background: machined(vars.color.surface0, vars.color.mantle),
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    border: `1px solid ${vars.color.haze}`,
     boxShadow: lit(SHADOW.resting),
     transitionProperty: "background, transform, box-shadow, border-color",
     transitionTimingFunction: EASE.standard,
@@ -457,7 +457,7 @@ export const entry = style({
     selectors: {
         "&:hover": {
             transform: "translateX(3px)",
-            borderColor: `color-mix(in srgb, ${vars.color.lavender} 38%, ${vars.color.surface1})`,
+            borderColor: `color-mix(in srgb, ${vars.color.sirius} 38%, ${vars.color.haze})`,
             boxShadow: lit(SHADOW.lifted),
         },
         // The marker for this entry's moment, sitting out on the group's
@@ -471,10 +471,10 @@ export const entry = style({
             width: "8px",
             height: "8px",
             borderRadius: "50%",
-            background: vars.color.overlay0,
+            background: vars.color.ember,
             // A moat in the page colour keeps the rail from running visibly
             // through the marker.
-            boxShadow: `0 0 0 4px ${vars.color.base}, inset 0 1px 1px rgba(255,255,255,0.28)`,
+            boxShadow: `0 0 0 4px ${vars.color.dusk}, inset 0 1px 1px rgba(255,255,255,0.28)`,
             zIndex: 1,
             transitionProperty: "background, box-shadow",
             transitionTimingFunction: EASE.standard,
@@ -483,8 +483,8 @@ export const entry = style({
         // The marker lights up for the row under the pointer - the rail
         // reads as a live readout being scrubbed rather than static chrome.
         "&:hover::after": {
-            background: vars.color.lavender,
-            boxShadow: `0 0 0 4px ${vars.color.base}, 0 0 10px color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
+            background: vars.color.sirius,
+            boxShadow: `0 0 0 4px ${vars.color.dusk}, 0 0 10px color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
         },
     },
 });
@@ -505,7 +505,7 @@ export const entryInfo = style({
 export const entryTitle = style({
     fontSize: "14px",
     fontWeight: 500,
-    color: vars.color.text,
+    color: vars.color.daylight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -513,7 +513,7 @@ export const entryTitle = style({
 
 export const entryUrl = style({
     fontSize: "12px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -522,7 +522,7 @@ export const entryUrl = style({
 
 export const entryTime = style({
     fontSize: "12px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     flexShrink: 0,
     // Equal-width digits so the column of times doesn't jitter row to row.
     fontVariantNumeric: "tabular-nums",
@@ -532,7 +532,7 @@ export const deleteBtn = style({
     position: "relative",
     background: "none",
     border: "none",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     cursor: "pointer",
     padding: "2px 6px",
     borderRadius: "6px",
@@ -552,7 +552,7 @@ export const deleteBtn = style({
             pointerEvents: "auto",
         },
         "&:hover": {
-            color: vars.color.red,
+            color: vars.color.antares,
         },
     },
 });
@@ -581,8 +581,8 @@ export const emptyDot = style({
     width: "9px",
     height: "9px",
     borderRadius: "50%",
-    background: vars.color.surface2,
-    boxShadow: `0 0 0 6px ${vars.color.surface0}`,
+    background: vars.color.dust,
+    boxShadow: `0 0 0 6px ${vars.color.horizon}`,
     selectors: {
         "&::before, &::after": {
             content: '""',
@@ -594,17 +594,17 @@ export const emptyDot = style({
         },
         "&::before": {
             bottom: "calc(100% + 7px)",
-            background: `linear-gradient(to bottom, transparent, ${vars.color.surface1})`,
+            background: `linear-gradient(to bottom, transparent, ${vars.color.haze})`,
         },
         "&::after": {
             top: "calc(100% + 7px)",
-            background: `linear-gradient(to bottom, ${vars.color.surface1}, transparent)`,
+            background: `linear-gradient(to bottom, ${vars.color.haze}, transparent)`,
         },
     },
 });
 
 export const emptyText = style({
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontSize: "14px",
     textAlign: "center",
 });
@@ -613,10 +613,10 @@ export const emptyText = style({
 // is already looking rather than back up in the scope bar.
 export const emptyAction = style({
     background: "transparent",
-    border: `1px solid ${vars.color.surface1}`,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "8px",
     padding: "6px 14px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: "inherit",
     fontSize: "13px",
     cursor: "pointer",
@@ -625,9 +625,9 @@ export const emptyAction = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
-            borderColor: `color-mix(in srgb, ${vars.color.lavender} 50%, ${vars.color.surface1})`,
-            color: vars.color.text,
-            background: `color-mix(in srgb, ${vars.color.lavender} 10%, transparent)`,
+            borderColor: `color-mix(in srgb, ${vars.color.sirius} 50%, ${vars.color.haze})`,
+            color: vars.color.daylight,
+            background: `color-mix(in srgb, ${vars.color.sirius} 10%, transparent)`,
         },
     },
 });

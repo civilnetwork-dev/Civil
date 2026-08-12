@@ -18,7 +18,7 @@ import "./global.css";
 const CONTENT_MAX = "1100px";
 
 export const banInfoRoot = style({
-    ...atmosphere(vars.color.red, 0.9),
+    ...atmosphere(vars.color.antares, 0.9),
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -39,11 +39,11 @@ export const header = style({
     marginBottom: "26px",
     paddingBottom: "22px",
     borderBottom: "1px solid transparent",
-    borderImage: `${hairline(vars.color.surface1)} 1`,
+    borderImage: `${hairline(vars.color.haze)} 1`,
 });
 
 export const title = style({
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "clamp(24px, 3.4vw, 31px)",
     fontWeight: 600,
@@ -61,7 +61,7 @@ export const inputRow = style({
 });
 
 export const label = style({
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "14px",
     fontWeight: 400,
@@ -72,24 +72,24 @@ export const label = style({
 export const input = style({
     width: "120px",
     height: "40px",
-    background: vars.color.surface0,
-    border: `1px solid ${vars.color.surface1}`,
+    background: vars.color.horizon,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "10px",
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "14px",
     fontWeight: 400,
     padding: "0 14px",
     outline: "none",
-    caretColor: vars.color.lavender,
+    caretColor: vars.color.sirius,
     transition: "border-color 0.15s ease",
     transitionDuration: "0.15s",
     selectors: {
         "&:focus": {
-            borderColor: vars.color.lavender,
+            borderColor: vars.color.sirius,
         },
         "&::placeholder": {
-            color: vars.color.overlay0,
+            color: vars.color.ember,
         },
         "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
             WebkitAppearance: "none",
@@ -103,7 +103,7 @@ export const input = style({
 
 export const statsText = style({
     // overlay1 on base is 4.14:1, just under the AA floor at this size.
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "13px",
     fontWeight: 400,
@@ -123,11 +123,11 @@ export const scrollContainer = style({
 });
 
 export const domainItem = style({
-    background: machined(vars.color.surface0, vars.color.mantle),
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "8px",
     boxShadow: lit(SHADOW.resting),
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "12.5px",
     fontWeight: 400,
@@ -140,9 +140,9 @@ export const domainItem = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
-            background: vars.color.surface1,
-            borderColor: `color-mix(in srgb, ${vars.color.red} 35%, ${vars.color.surface1})`,
-            color: vars.color.text,
+            background: vars.color.haze,
+            borderColor: `color-mix(in srgb, ${vars.color.antares} 35%, ${vars.color.haze})`,
+            color: vars.color.daylight,
         },
     },
 });
@@ -151,7 +151,7 @@ export const loadingText = style({
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "16px",
     fontWeight: 400,
@@ -166,7 +166,7 @@ export const sentinel = style({
 });
 
 export const endText = style({
-    color: vars.color.overlay0,
+    color: vars.color.ember,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "13px",
     fontWeight: 400,
@@ -181,8 +181,8 @@ export const statusSection = style({
 });
 
 export const strikeCard = style({
-    background: machined(vars.color.surface0, vars.color.mantle),
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "12px",
     padding: "18px 20px",
     display: "flex",
@@ -199,14 +199,14 @@ export const strikeHeader = style({
 
 export const strikeLabel = style({
     ...microLabel,
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     cursor: "default",
 });
 
 export const strikeCount = style({
     ...readout,
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "15px",
     fontWeight: 600,
@@ -230,7 +230,7 @@ export const strikeGauge = style({
 
 export const strikeSegment = style({
     borderRadius: "3px",
-    background: vars.color.surface1,
+    background: vars.color.haze,
     boxShadow: "inset 0 1px 2px rgba(0,0,0,0.45)",
     transitionProperty: "background, box-shadow",
     transitionTimingFunction: EASE.standard,
@@ -245,7 +245,7 @@ export const strikeSegmentUsed = style({
 export const policyText = style({
     // overlay1 on surface0 lands at 3.15:1 - below the 4.5:1 AA floor for
     // text this size. subtext0 reads at 5.0:1 against the same card.
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "12.5px",
     fontWeight: 400,
@@ -258,12 +258,12 @@ export const bannedBanner = style({
     display: "flex",
     alignItems: "flex-start",
     gap: "14px",
-    background: `color-mix(in srgb, ${vars.color.red} 10%, ${vars.color.mantle})`,
-    border: `1px solid color-mix(in srgb, ${vars.color.red} 40%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.antares} 10%, ${vars.color.night})`,
+    border: `1px solid color-mix(in srgb, ${vars.color.antares} 40%, transparent)`,
     borderRadius: "12px",
     padding: "18px 20px",
     boxShadow: lit(
-        `0 0 26px -6px color-mix(in srgb, ${vars.color.red} 30%, transparent)`,
+        `0 0 26px -6px color-mix(in srgb, ${vars.color.antares} 30%, transparent)`,
     ),
 });
 
@@ -271,7 +271,7 @@ export const bannedIcon = style({
     width: "28px",
     height: "28px",
     flexShrink: 0,
-    color: vars.color.red,
+    color: vars.color.antares,
 });
 
 export const loadingIcon = style({
@@ -287,7 +287,7 @@ export const bannedInfo = style({
 });
 
 export const bannedTitle = style({
-    color: vars.color.red,
+    color: vars.color.antares,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "15px",
     fontWeight: 600,
@@ -295,7 +295,7 @@ export const bannedTitle = style({
 });
 
 export const bannedReason = style({
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "13px",
     fontWeight: 400,
@@ -303,7 +303,7 @@ export const bannedReason = style({
 });
 
 export const bannedDate = style({
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "12px",
     fontWeight: 400,

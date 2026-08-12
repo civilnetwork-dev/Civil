@@ -30,7 +30,6 @@
     },
     "dependencies": {
         "@atlaskit/pragmatic-drag-and-drop": "^2.0.1",
-        "@catppuccin/palette": "^1.8.0",
         "@fontsource/rubik": "^5.3.0",
         "@leeoniya/ufuzzy": "^1.0.19",
         "@lottiefiles/dotlottie-web": "^0.78.2",

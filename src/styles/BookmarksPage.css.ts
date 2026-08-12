@@ -21,11 +21,11 @@ const emptyFadeIn = keyframes({
 });
 
 export const root = style({
-    ...atmosphere(vars.color.lavender),
+    ...atmosphere(vars.color.sirius),
     minHeight: "100vh",
     display: "flex",
     fontFamily: '"Rubik", sans-serif',
-    color: vars.color.text,
+    color: vars.color.daylight,
     boxSizing: "border-box",
     // Below this width a fixed 224px rail leaves ~150px for the list, which
     // renders rows as unusable slivers. The rail becomes a filter bar above
@@ -40,8 +40,8 @@ export const root = style({
 export const sidebar = style({
     width: "224px",
     flexShrink: 0,
-    background: `linear-gradient(180deg, ${vars.color.mantle} 0%, ${vars.color.crust} 100%)`,
-    borderRight: `1px solid ${vars.color.surface0}`,
+    background: `linear-gradient(180deg, ${vars.color.night} 0%, ${vars.color.void} 100%)`,
+    borderRight: `1px solid ${vars.color.horizon}`,
     boxShadow: "inset -1px 0 0 rgba(0,0,0,0.3)",
     padding: "36px 16px",
     display: "flex",
@@ -55,9 +55,9 @@ export const sidebar = style({
             gap: "8px",
             padding: "12px clamp(16px, 4vw, 24px)",
             borderRight: "none",
-            borderBottom: `1px solid ${vars.color.surface0}`,
+            borderBottom: `1px solid ${vars.color.horizon}`,
             boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.3)",
-            background: `linear-gradient(180deg, ${vars.color.mantle} 0%, ${vars.color.crust} 100%)`,
+            background: `linear-gradient(180deg, ${vars.color.night} 0%, ${vars.color.void} 100%)`,
             overflowX: "auto",
             scrollbarWidth: "none",
         },
@@ -80,7 +80,7 @@ export const sidebarTitle = style({
             content: '""',
             flex: 1,
             height: "1px",
-            background: `linear-gradient(90deg, ${vars.color.surface0}, transparent)`,
+            background: `linear-gradient(90deg, ${vars.color.horizon}, transparent)`,
         },
     },
 });
@@ -94,7 +94,7 @@ export const sidebarItem = style({
     padding: "7px 10px",
     borderRadius: "8px",
     cursor: "pointer",
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     background: "transparent",
     border: "none",
     fontSize: "13px",
@@ -105,16 +105,16 @@ export const sidebarItem = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface0,
-            color: vars.color.text,
+            background: vars.color.horizon,
+            color: vars.color.daylight,
         },
     },
 });
 
 export const sidebarItemActive = style({
     position: "relative",
-    background: `color-mix(in srgb, ${vars.color.lavender} 15%, transparent)`,
-    color: vars.color.lavender,
+    background: `color-mix(in srgb, ${vars.color.sirius} 15%, transparent)`,
+    color: vars.color.sirius,
     fontWeight: 500,
     selectors: {
         // A lit bar on the leading edge marks the selected filter the way a
@@ -127,8 +127,8 @@ export const sidebarItemActive = style({
             bottom: "22%",
             width: "2px",
             borderRadius: "0 2px 2px 0",
-            background: vars.color.lavender,
-            boxShadow: `0 0 8px color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
+            background: vars.color.sirius,
+            boxShadow: `0 0 8px color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
             "@media": {
                 // Horizontally the same marker belongs on the bottom edge.
                 "(max-width: 720px)": {
@@ -143,8 +143,8 @@ export const sidebarItemActive = style({
             },
         },
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 21%, transparent)`,
-            color: vars.color.lavender,
+            background: `color-mix(in srgb, ${vars.color.sirius} 21%, transparent)`,
+            color: vars.color.sirius,
         },
     },
 });
@@ -168,7 +168,7 @@ export const mainHeader = style({
     paddingBottom: "20px",
     gap: "16px",
     borderBottom: "1px solid transparent",
-    borderImage: `${hairline(vars.color.surface1)} 1`,
+    borderImage: `${hairline(vars.color.haze)} 1`,
 });
 
 export const mainTitle = style({
@@ -176,21 +176,21 @@ export const mainTitle = style({
     fontWeight: 600,
     lineHeight: 1.05,
     letterSpacing: "-0.015em",
-    color: vars.color.text,
+    color: vars.color.daylight,
 });
 
 export const searchInput = style({
     width: "240px",
     maxWidth: "100%",
     background: machined(
-        vars.color.surface0,
-        `color-mix(in srgb, ${vars.color.surface0} 80%, ${vars.color.mantle})`,
+        vars.color.horizon,
+        `color-mix(in srgb, ${vars.color.horizon} 80%, ${vars.color.night})`,
     ),
-    border: `1px solid ${vars.color.surface1}`,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "10px",
     padding: "8px 14px",
     fontSize: "13px",
-    color: vars.color.text,
+    color: vars.color.daylight,
     outline: "none",
     fontFamily: "inherit",
     boxShadow: lit(SHADOW.resting),
@@ -199,10 +199,10 @@ export const searchInput = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:focus": {
-            borderColor: `color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.lavender)),
+            borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
+            boxShadow: lit(focusRing(vars.color.sirius)),
         },
-        "&::placeholder": { color: vars.color.overlay1 },
+        "&::placeholder": { color: vars.color.cinder },
     },
 });
 
@@ -219,8 +219,8 @@ export const card = style({
     gap: "12px",
     padding: "12px 16px 12px 22px",
     borderRadius: "12px",
-    background: machined(vars.color.surface0, vars.color.mantle),
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    border: `1px solid ${vars.color.haze}`,
     cursor: "pointer",
     boxShadow: lit(SHADOW.resting),
     transitionProperty: "background, border-color, transform, box-shadow",
@@ -228,7 +228,7 @@ export const card = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
-            borderColor: `color-mix(in srgb, ${vars.color.lavender} 40%, ${vars.color.surface1})`,
+            borderColor: `color-mix(in srgb, ${vars.color.sirius} 40%, ${vars.color.haze})`,
             transform: "translateX(3px)",
             boxShadow: lit(SHADOW.lifted),
         },
@@ -245,7 +245,7 @@ export const card = style({
             width: "6px",
             height: "18px",
             marginTop: "-9px",
-            background: vars.color.overlay1,
+            background: vars.color.cinder,
             clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%)",
             transitionProperty: "background-color, height, margin-top",
             transitionTimingFunction: "ease",
@@ -253,7 +253,7 @@ export const card = style({
         },
         // Grows from the centre, so the hover state doesn't shunt it upward.
         "&:hover::before": {
-            background: vars.color.lavender,
+            background: vars.color.sirius,
             height: "24px",
             marginTop: "-12px",
         },
@@ -276,8 +276,8 @@ export const cardFaviconFallback = style({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    color: vars.color.overlay1,
-    background: vars.color.surface1,
+    color: vars.color.cinder,
+    background: vars.color.haze,
 });
 
 export const cardInfo = style({
@@ -288,7 +288,7 @@ export const cardInfo = style({
 export const cardTitle = style({
     fontSize: "13px",
     fontWeight: 500,
-    color: vars.color.text,
+    color: vars.color.daylight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -296,7 +296,7 @@ export const cardTitle = style({
 
 export const cardUrl = style({
     fontSize: "11.5px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -307,7 +307,7 @@ export const removeBtn = style({
     position: "relative",
     background: "none",
     border: "none",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     cursor: "pointer",
     padding: "4px",
     borderRadius: "6px",
@@ -331,8 +331,8 @@ export const removeBtn = style({
             pointerEvents: "auto",
         },
         "&:hover": {
-            color: vars.color.red,
-            background: `color-mix(in srgb, ${vars.color.red} 14%, transparent)`,
+            color: vars.color.antares,
+            background: `color-mix(in srgb, ${vars.color.antares} 14%, transparent)`,
         },
     },
 });
@@ -354,12 +354,12 @@ export const empty = style({
 export const emptyRibbon = style({
     width: "28px",
     height: "40px",
-    background: vars.color.surface1,
+    background: vars.color.haze,
     clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%)",
 });
 
 export const emptyText = style({
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontSize: "14px",
     textAlign: "center",
 });
@@ -369,9 +369,9 @@ export const clearBtn = style({
     alignItems: "center",
     gap: "6px",
     background: "none",
-    border: `1px solid ${vars.color.surface1}`,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "8px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     cursor: "pointer",
     padding: "6px 14px",
     fontSize: "13px",
@@ -380,26 +380,26 @@ export const clearBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            color: vars.color.red,
-            borderColor: vars.color.red,
-            background: `color-mix(in srgb, ${vars.color.red} 8%, transparent)`,
+            color: vars.color.antares,
+            borderColor: vars.color.antares,
+            background: `color-mix(in srgb, ${vars.color.antares} 8%, transparent)`,
         },
     },
 });
 
 // Armed state for the second click on Clear.
 export const clearBtnArmed = style({
-    color: vars.color.red,
-    borderColor: vars.color.red,
-    background: `color-mix(in srgb, ${vars.color.red} 14%, transparent)`,
+    color: vars.color.antares,
+    borderColor: vars.color.antares,
+    background: `color-mix(in srgb, ${vars.color.antares} 14%, transparent)`,
 });
 
 // Recovery action inside an empty state - quiet, but a real target.
 export const emptyAction = style({
     background: "none",
-    border: `1px solid ${vars.color.surface1}`,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "8px",
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     cursor: "pointer",
     padding: "6px 14px",
     fontSize: "13px",
@@ -409,9 +409,9 @@ export const emptyAction = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            color: vars.color.text,
-            borderColor: vars.color.overlay0,
-            background: vars.color.surface0,
+            color: vars.color.daylight,
+            borderColor: vars.color.ember,
+            background: vars.color.horizon,
         },
     },
 });
@@ -419,7 +419,7 @@ export const emptyAction = style({
 // Count beside the page title. subtext0 rather than overlay1: the previous
 // inline style sat under the 4.5:1 contrast floor.
 export const mainCount = style({
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontSize: "16px",
     fontWeight: 400,
 });
@@ -442,7 +442,7 @@ export const mainEyebrowMark = style({
     width: "16px",
     height: "2px",
     borderRadius: "1px",
-    background: vars.color.lavender,
+    background: vars.color.sirius,
     opacity: 0.75,
 });
 

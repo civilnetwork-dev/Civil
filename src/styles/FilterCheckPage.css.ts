@@ -28,9 +28,9 @@ const spin = keyframes({
 });
 
 export const page = style({
-    ...atmosphere(vars.color.mauve),
+    ...atmosphere(vars.color.vega),
     minHeight: "100vh",
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     padding: "48px 24px",
     display: "flex",
@@ -51,7 +51,7 @@ export const header = style({
     flexWrap: "wrap",
     paddingBottom: "20px",
     borderBottom: "1px solid transparent",
-    borderImage: `${hairline(vars.color.surface1)} 1`,
+    borderImage: `${hairline(vars.color.haze)} 1`,
     animationName: fadeUp,
     animationTimingFunction: EASE_STANDARD,
     animationFillMode: "both",
@@ -77,7 +77,7 @@ export const eyebrowMark = style({
     width: "16px",
     height: "2px",
     borderRadius: "1px",
-    background: vars.color.mauve,
+    background: vars.color.vega,
     opacity: 0.8,
 });
 
@@ -87,8 +87,8 @@ export const title = style({
     fontWeight: 600,
     lineHeight: 1.05,
     letterSpacing: "-0.015em",
-    color: vars.color.text,
-    background: `linear-gradient(135deg, ${vars.color.lavender} 0%, ${vars.color.mauve} 100%)`,
+    color: vars.color.daylight,
+    background: `linear-gradient(135deg, ${vars.color.sirius} 0%, ${vars.color.vega} 100%)`,
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
     backgroundClip: "text",
@@ -97,7 +97,7 @@ export const title = style({
 export const subtitle = style({
     margin: 0,
     fontSize: "14px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontWeight: 400,
 });
 
@@ -106,7 +106,7 @@ export const subtitle = style({
 // the card while the button floated at the top-right.
 export const noFiltersText = style({
     fontSize: "14px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontWeight: 400,
     margin: 0,
     cursor: "default",
@@ -122,9 +122,9 @@ export const unsupportedNotice = style({
     borderRadius: "10px",
     fontSize: "13px",
     lineHeight: 1.5,
-    color: vars.color.yellow,
-    background: `color-mix(in srgb, ${vars.color.yellow} 10%, ${vars.color.mantle})`,
-    border: `1px solid color-mix(in srgb, ${vars.color.yellow} 35%, transparent)`,
+    color: vars.color.sol,
+    background: `color-mix(in srgb, ${vars.color.sol} 10%, ${vars.color.night})`,
+    border: `1px solid color-mix(in srgb, ${vars.color.sol} 35%, transparent)`,
     animationName: fadeUp,
     animationTimingFunction: EASE_STANDARD,
     animationDelay: "0.08s",
@@ -141,8 +141,8 @@ export const detectedBadges = style({
     gap: "8px",
     padding: "13px 16px",
     borderRadius: "10px",
-    background: machined(vars.color.surface0, vars.color.mantle),
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    border: `1px solid ${vars.color.haze}`,
     boxShadow: lit(SHADOW.resting),
     animationName: fadeUp,
     animationTimingFunction: EASE_STANDARD,
@@ -154,7 +154,7 @@ export const detectedBadges = style({
 export const detectedLabel = style({
     fontSize: "12px",
     fontWeight: 500,
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     textTransform: "uppercase",
     letterSpacing: "0.06em",
     flexShrink: 0,
@@ -165,9 +165,9 @@ export const badge = style({
     borderRadius: "20px",
     fontSize: "12px",
     fontWeight: 500,
-    background: vars.color.surface0,
-    color: vars.color.lavender,
-    border: `1px solid ${vars.color.surface1}`,
+    background: vars.color.horizon,
+    color: vars.color.sirius,
+    border: `1px solid ${vars.color.haze}`,
     transition: `background ${T}`,
     transitionDuration: "0.18s",
 });
@@ -180,8 +180,8 @@ export const form = style({
     gap: "16px",
     padding: "24px",
     borderRadius: "14px",
-    background: vars.color.mantle,
-    border: `1px solid ${vars.color.surface0}`,
+    background: vars.color.night,
+    border: `1px solid ${vars.color.horizon}`,
     boxShadow: `0 4px 24px rgba(0,0,0,0.18)`,
     animationName: fadeUp,
     animationTimingFunction: EASE_STANDARD,
@@ -196,7 +196,7 @@ export const label = style({
     gap: "8px",
     fontSize: "13px",
     fontWeight: 500,
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     letterSpacing: "0.01em",
 });
 
@@ -204,9 +204,9 @@ export const input = style({
     width: "100%",
     padding: "10px 14px",
     borderRadius: "8px",
-    border: `1.5px solid ${vars.color.surface1}`,
-    background: vars.color.base,
-    color: vars.color.text,
+    border: `1.5px solid ${vars.color.haze}`,
+    background: vars.color.dusk,
+    color: vars.color.daylight,
     fontSize: "14px",
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     outline: "none",
@@ -215,15 +215,15 @@ export const input = style({
     boxSizing: "border-box",
     selectors: {
         "&::placeholder": {
-            color: vars.color.overlay0,
+            color: vars.color.ember,
         },
         "&:focus": {
-            borderColor: vars.color.mauve,
-            boxShadow: `0 0 0 3px color-mix(in srgb, ${vars.color.mauve} 20%, transparent)`,
-            background: vars.color.crust,
+            borderColor: vars.color.vega,
+            boxShadow: `0 0 0 3px color-mix(in srgb, ${vars.color.vega} 20%, transparent)`,
+            background: vars.color.void,
         },
         "&:hover:not(:focus)": {
-            borderColor: vars.color.surface2,
+            borderColor: vars.color.dust,
         },
     },
 });
@@ -233,8 +233,8 @@ export const checkBtn = style({
     padding: "10px 28px",
     borderRadius: "8px",
     border: "none",
-    background: `linear-gradient(135deg, ${vars.color.mauve} 0%, ${vars.color.lavender} 100%)`,
-    color: vars.color.crust,
+    background: `linear-gradient(135deg, ${vars.color.vega} 0%, ${vars.color.sirius} 100%)`,
+    color: vars.color.void,
     fontSize: "14px",
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontWeight: 600,
@@ -245,7 +245,7 @@ export const checkBtn = style({
     selectors: {
         "&:hover:not(:disabled)": {
             opacity: 0.9,
-            boxShadow: `0 4px 16px color-mix(in srgb, ${vars.color.mauve} 40%, transparent)`,
+            boxShadow: `0 4px 16px color-mix(in srgb, ${vars.color.vega} 40%, transparent)`,
             transform: "translateY(-1px)",
         },
         "&:active:not(:disabled)": {
@@ -296,36 +296,36 @@ export const resultCard = styleVariants({
     allowed: [
         resultCardBase,
         {
-            background: `color-mix(in srgb, ${vars.color.green} 8%, ${vars.color.mantle})`,
-            borderColor: `color-mix(in srgb, ${vars.color.green} 30%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.airglow} 8%, ${vars.color.night})`,
+            borderColor: `color-mix(in srgb, ${vars.color.airglow} 30%, transparent)`,
         },
     ],
     blocked: [
         resultCardBase,
         {
-            background: `color-mix(in srgb, ${vars.color.red} 8%, ${vars.color.mantle})`,
-            borderColor: `color-mix(in srgb, ${vars.color.red} 30%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.antares} 8%, ${vars.color.night})`,
+            borderColor: `color-mix(in srgb, ${vars.color.antares} 30%, transparent)`,
         },
     ],
     warned: [
         resultCardBase,
         {
-            background: `color-mix(in srgb, ${vars.color.yellow} 8%, ${vars.color.mantle})`,
-            borderColor: `color-mix(in srgb, ${vars.color.yellow} 30%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.sol} 8%, ${vars.color.night})`,
+            borderColor: `color-mix(in srgb, ${vars.color.sol} 30%, transparent)`,
         },
     ],
     unknown: [
         resultCardBase,
         {
-            background: `color-mix(in srgb, ${vars.color.overlay0} 8%, ${vars.color.mantle})`,
-            borderColor: `color-mix(in srgb, ${vars.color.overlay0} 25%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.ember} 8%, ${vars.color.night})`,
+            borderColor: `color-mix(in srgb, ${vars.color.ember} 25%, transparent)`,
         },
     ],
     error: [
         resultCardBase,
         {
-            background: `color-mix(in srgb, ${vars.color.maroon} 8%, ${vars.color.mantle})`,
-            borderColor: `color-mix(in srgb, ${vars.color.maroon} 30%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.arcturus} 8%, ${vars.color.night})`,
+            borderColor: `color-mix(in srgb, ${vars.color.arcturus} 30%, transparent)`,
         },
     ],
 });
@@ -338,11 +338,11 @@ export const resultIcon = style({
 });
 
 export const resultIconColor = styleVariants({
-    allowed: { color: vars.color.green },
-    blocked: { color: vars.color.red },
-    warned: { color: vars.color.yellow },
-    unknown: { color: vars.color.overlay1 },
-    error: { color: vars.color.maroon },
+    allowed: { color: vars.color.airglow },
+    blocked: { color: vars.color.antares },
+    warned: { color: vars.color.sol },
+    unknown: { color: vars.color.cinder },
+    error: { color: vars.color.arcturus },
 });
 
 export const resultBody = style({
@@ -356,12 +356,12 @@ export const resultBody = style({
 export const resultName = style({
     fontSize: "14px",
     fontWeight: 600,
-    color: vars.color.text,
+    color: vars.color.daylight,
 });
 
 export const resultDetail = style({
     fontSize: "12px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -380,7 +380,7 @@ export const resultStatus = styleVariants({
         fontWeight: 600,
         textTransform: "uppercase" as const,
         letterSpacing: "0.08em",
-        color: vars.color.green,
+        color: vars.color.airglow,
         flexShrink: 0,
     },
     blocked: {
@@ -388,7 +388,7 @@ export const resultStatus = styleVariants({
         fontWeight: 600,
         textTransform: "uppercase" as const,
         letterSpacing: "0.08em",
-        color: vars.color.red,
+        color: vars.color.antares,
         flexShrink: 0,
     },
     warned: {
@@ -396,7 +396,7 @@ export const resultStatus = styleVariants({
         fontWeight: 600,
         textTransform: "uppercase" as const,
         letterSpacing: "0.08em",
-        color: vars.color.yellow,
+        color: vars.color.sol,
         flexShrink: 0,
     },
     unknown: {
@@ -404,7 +404,7 @@ export const resultStatus = styleVariants({
         fontWeight: 600,
         textTransform: "uppercase" as const,
         letterSpacing: "0.08em",
-        color: vars.color.overlay1,
+        color: vars.color.cinder,
         flexShrink: 0,
     },
     error: {
@@ -412,7 +412,7 @@ export const resultStatus = styleVariants({
         fontWeight: 600,
         textTransform: "uppercase" as const,
         letterSpacing: "0.08em",
-        color: vars.color.maroon,
+        color: vars.color.arcturus,
         flexShrink: 0,
     },
 });
@@ -430,9 +430,9 @@ export const rescanBtn = style({
     gap: "6px",
     padding: "5px 14px",
     borderRadius: "8px",
-    border: `1px solid ${vars.color.surface1}`,
-    background: vars.color.surface0,
-    color: vars.color.text,
+    border: `1px solid ${vars.color.haze}`,
+    background: vars.color.horizon,
+    color: vars.color.daylight,
     fontSize: "12px",
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontWeight: 500,
@@ -441,8 +441,8 @@ export const rescanBtn = style({
     transitionDuration: "0.18s",
     selectors: {
         "&:hover:not(:disabled)": {
-            background: vars.color.surface1,
-            borderColor: vars.color.surface2,
+            background: vars.color.haze,
+            borderColor: vars.color.dust,
         },
         "&:disabled": {
             opacity: 0.6,
@@ -457,7 +457,7 @@ export const catChip = style({
     borderRadius: "20px",
     fontSize: "11px",
     fontWeight: 500,
-    background: vars.color.surface0,
-    color: vars.color.subtext1,
-    border: `1px solid ${vars.color.surface1}`,
+    background: vars.color.horizon,
+    color: vars.color.halo,
+    border: `1px solid ${vars.color.haze}`,
 });

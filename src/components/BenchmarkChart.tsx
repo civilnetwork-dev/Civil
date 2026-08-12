@@ -75,7 +75,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     return (
                         `<span style="color:${c};font-weight:700">${names[p.dataIndex]}</span><br/>` +
                         `<span style="font-size:16px;font-weight:700;color:${c}">${p.value}</span>` +
-                        `<span style="color:${colors.subtext0}"> Mops/s</span>`
+                        `<span style="color:${colors.moonlight}"> Mops/s</span>`
                     );
                 },
             },
@@ -85,7 +85,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 type: "value",
                 name: "Mops/s",
                 nameTextStyle: {
-                    color: colors.subtext0,
+                    color: colors.moonlight,
                     fontFamily: '"Rubik", sans-serif',
                     fontSize: 10,
                 },
@@ -115,7 +115,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     return (
                         `<span style="color:${c};font-weight:700">${names[p.dataIndex]}</span><br/>` +
                         `<span style="font-size:16px;font-weight:700;color:${c}">${p.value}</span>` +
-                        `<span style="color:${colors.subtext0}"> ns/op</span>`
+                        `<span style="color:${colors.moonlight}"> ns/op</span>`
                     );
                 },
             },
@@ -125,7 +125,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 type: "value",
                 name: "ns/op",
                 nameTextStyle: {
-                    color: colors.subtext0,
+                    color: colors.moonlight,
                     fontFamily: '"Rubik", sans-serif',
                     fontSize: 10,
                 },
@@ -146,10 +146,10 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
         );
         const winFlags = values.map(v => v >= 1.0);
         const implColors = winFlags.map(win =>
-            win ? colors.green : colors.red,
+            win ? colors.airglow : colors.antares,
         );
         const botColors = winFlags.map(
-            win => (win ? colors.teal : colors.maroon) + "44",
+            win => (win ? colors.nebula : colors.arcturus) + "44",
         );
         return {
             backgroundColor: "transparent",
@@ -159,11 +159,11 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 formatter: (params: { dataIndex: number; value: number }[]) => {
                     const p = params[0];
                     const win = p.value >= 1.0;
-                    const c = win ? colors.green : colors.red;
+                    const c = win ? colors.airglow : colors.antares;
                     return (
-                        `<span style="color:${colors.subtext1}">${names[p.dataIndex]}</span><br/>` +
+                        `<span style="color:${colors.halo}">${names[p.dataIndex]}</span><br/>` +
                         `<span style="font-size:20px;font-weight:900;color:${c}">${p.value}×</span>` +
-                        `<span style="color:${colors.subtext0}"> ${win ? "faster" : "slower"}</span>`
+                        `<span style="color:${colors.moonlight}"> ${win ? "faster" : "slower"}</span>`
                     );
                 },
             },
@@ -174,7 +174,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 name: "× ratio",
                 min: 0,
                 nameTextStyle: {
-                    color: colors.subtext0,
+                    color: colors.moonlight,
                     fontFamily: '"Rubik", sans-serif',
                     fontSize: 10,
                 },
@@ -204,7 +204,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                         silent: true,
                         symbol: "none",
                         lineStyle: {
-                            color: colors.overlay1,
+                            color: colors.cinder,
                             type: "dashed" as const,
                             width: 1,
                         },
@@ -213,7 +213,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                 yAxis: 1,
                                 label: {
                                     formatter: "parity",
-                                    color: colors.overlay0,
+                                    color: colors.ember,
                                     fontFamily: '"Rubik", sans-serif',
                                     fontSize: 10,
                                 },
@@ -280,7 +280,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
             <div style={styles.inner}>
                 <div>
                     <div style={styles.chip}>
-                        <span style={{ color: colors.green }}>●</span>
+                        <span style={{ color: colors.airglow }}>●</span>
                         {iterations().toLocaleString()} iterations |{" "}
                         {runs().length} implementations
                     </div>
@@ -379,7 +379,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                                         )}
                                                     />
                                                     <span
-                                                        style={`color:${colors.text}`}
+                                                        style={`color:${colors.daylight}`}
                                                     >
                                                         {run().impl}
                                                     </span>
@@ -393,12 +393,12 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                                 ).toFixed(4)}
                                             </td>
                                             <td
-                                                style={`${tableCellStyle(index)};color:${colors.subtext1}`}
+                                                style={`${tableCellStyle(index)};color:${colors.halo}`}
                                             >
                                                 {run().avg_ns_per_op.toFixed(1)}
                                             </td>
                                             <td
-                                                style={`${tableCellStyle(index)};color:${colors.subtext1}`}
+                                                style={`${tableCellStyle(index)};color:${colors.halo}`}
                                             >
                                                 {run().total_ms.toFixed(1)}
                                             </td>

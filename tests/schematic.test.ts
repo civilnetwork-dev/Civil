@@ -60,6 +60,6 @@ describe("ANNO", () => {
     it("keeps both annotation tiers above the WCAG AA small-text minimum", () => {
         // overlay1 measures 4.14:1 on base and fails AA; overlay2 is 5.29:1.
         expect(anno).not.toBe(annoMuted);
-        expect(ANNO.color).toBe(vars.color.subtext0);
+        expect(ANNO.color).toBe(vars.color.moonlight);
     });
 });

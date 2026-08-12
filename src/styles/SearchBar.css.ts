@@ -2,8 +2,8 @@ import { globalStyle, keyframes, style } from "@vanilla-extract/css";
 import { DUR, EASE, focusRing, lit, machined, SHADOW } from "./material.css";
 import { vars } from "./theme.css";
 
-const blurBackground = `color-mix(in srgb, ${vars.color.surface0} 65%, transparent)`;
-const blurBorder = `color-mix(in srgb, ${vars.color.surface1} 55%, transparent)`;
+const blurBackground = `color-mix(in srgb, ${vars.color.horizon} 65%, transparent)`;
+const blurBorder = `color-mix(in srgb, ${vars.color.haze} 55%, transparent)`;
 const blurFilter = "blur(20px) saturate(1.5)";
 
 export const sbHost = style({
@@ -42,10 +42,10 @@ export const sbDropdown = style({
     width: "100%",
     zIndex: 10000,
     background: machined(
-        vars.color.surface0,
-        `color-mix(in srgb, ${vars.color.surface0} 78%, ${vars.color.mantle})`,
+        vars.color.horizon,
+        `color-mix(in srgb, ${vars.color.horizon} 78%, ${vars.color.night})`,
     ),
-    border: `1px solid color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
+    border: `1px solid color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
     borderTop: "none",
     borderRadius: "0 0 14px 14px",
     overflow: "hidden",
@@ -70,7 +70,7 @@ export const sbRow = style({
     position: "relative",
     cursor: "pointer",
     padding: "10px 16px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: '"Rubik", sans-serif',
     fontSize: "14px",
     fontWeight: 400,
@@ -87,11 +87,11 @@ export const sbRow = style({
             left: "16px",
             right: "16px",
             height: "1px",
-            background: `linear-gradient(90deg, transparent, ${vars.color.surface1} 15%, ${vars.color.surface1} 85%, transparent)`,
+            background: `linear-gradient(90deg, transparent, ${vars.color.haze} 15%, ${vars.color.haze} 85%, transparent)`,
         },
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 12%, transparent)`,
-            color: vars.color.text,
+            background: `color-mix(in srgb, ${vars.color.sirius} 12%, transparent)`,
+            color: vars.color.daylight,
         },
     },
 });
@@ -104,10 +104,10 @@ export const sbInputWrapper = style({
     // is the only control on the New Tab page, so it carries the material
     // language by itself.
     background: machined(
-        vars.color.surface0,
-        `color-mix(in srgb, ${vars.color.surface0} 78%, ${vars.color.mantle})`,
+        vars.color.horizon,
+        `color-mix(in srgb, ${vars.color.horizon} 78%, ${vars.color.night})`,
     ),
-    border: `1px solid ${vars.color.surface1}`,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "14px",
     overflow: "hidden",
     boxShadow: lit(SHADOW.resting),
@@ -116,8 +116,8 @@ export const sbInputWrapper = style({
     transitionDuration: DUR.base,
     selectors: {
         "&:focus-within": {
-            borderColor: `color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.lavender), true),
+            borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
+            boxShadow: lit(focusRing(vars.color.sirius), true),
         },
     },
 });
@@ -131,7 +131,7 @@ export const sbInputWrapper = style({
 globalStyle(`.${sbRoot}:has(.${sbDropdown}) .${sbInputWrapper}`, {
     borderRadius: "14px 14px 0 0",
     borderBottomColor: "transparent",
-    borderColor: `color-mix(in srgb, ${vars.color.lavender} 70%, transparent)`,
+    borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
     boxShadow: lit(SHADOW.resting),
 });
 export const sbInputWrapperBlur = style({
@@ -145,17 +145,17 @@ export const sbInput = style({
     minWidth: 0,
     border: "none",
     background: "transparent",
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontSize: "15px",
     fontWeight: 400,
     padding: "0 16px",
     outline: "none",
-    caretColor: vars.color.lavender,
+    caretColor: vars.color.sirius,
     selectors: {
-        "&::placeholder": { color: vars.color.overlay0 },
+        "&::placeholder": { color: vars.color.ember },
         "&::selection": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 28%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
         },
     },
 });
@@ -177,7 +177,7 @@ export const sbButton = style({
     borderLeft: "none",
     position: "relative",
     background: "transparent",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontSize: "12px",
     fontWeight: 600,
@@ -197,15 +197,15 @@ export const sbButton = style({
             top: "22%",
             bottom: "22%",
             width: "1px",
-            background: `linear-gradient(to bottom, transparent, ${vars.color.surface1} 30%, ${vars.color.surface1} 70%, transparent)`,
+            background: `linear-gradient(to bottom, transparent, ${vars.color.haze} 30%, ${vars.color.haze} 70%, transparent)`,
         },
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 12%, transparent)`,
-            color: vars.color.lavender,
+            background: `color-mix(in srgb, ${vars.color.sirius} 12%, transparent)`,
+            color: vars.color.sirius,
         },
         "&:active": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 20%, transparent)`,
-            color: vars.color.lavender,
+            background: `color-mix(in srgb, ${vars.color.sirius} 20%, transparent)`,
+            color: vars.color.sirius,
         },
     },
 });

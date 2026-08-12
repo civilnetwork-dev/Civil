@@ -10,8 +10,8 @@ export const bar = style({
     gap: "2px",
     height: "30px",
     padding: "0 10px",
-    background: vars.color.crust,
-    borderBottom: `1px solid ${vars.color.surface0}`,
+    background: vars.color.void,
+    borderBottom: `1px solid ${vars.color.horizon}`,
     overflowX: "auto",
     overflowY: "hidden",
     flexShrink: 0,
@@ -28,7 +28,7 @@ export const bookmark = style({
     height: "22px",
     borderRadius: "6px",
     cursor: "pointer",
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     background: "transparent",
     border: "none",
     fontSize: "12px",
@@ -45,8 +45,8 @@ export const bookmark = style({
         // target is expanded to 24 without changing how the chip looks.
         "&::after": hitArea(),
         "&:hover": {
-            background: vars.color.surface0,
-            color: vars.color.text,
+            background: vars.color.horizon,
+            color: vars.color.daylight,
         },
     },
 });
@@ -66,7 +66,7 @@ export const bookmarkFaviconFallback = style({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
 });
 
 export const bookmarkLabel = style({
@@ -90,7 +90,7 @@ export const bookmarkRemove = style({
     borderRadius: "3px",
     background: "transparent",
     border: "none",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
@@ -98,8 +98,8 @@ export const bookmarkRemove = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            color: vars.color.red,
-            background: `color-mix(in srgb, ${vars.color.red} 15%, transparent)`,
+            color: vars.color.antares,
+            background: `color-mix(in srgb, ${vars.color.antares} 15%, transparent)`,
         },
     },
 });
@@ -111,7 +111,7 @@ globalStyle(`.${bookmark}:hover .${bookmarkRemove}`, {
 export const separator = style({
     width: "1px",
     height: "16px",
-    background: vars.color.surface1,
+    background: vars.color.haze,
     flexShrink: 0,
     margin: "0 2px",
 });
@@ -125,7 +125,7 @@ export const addBookmarkBtn = style({
     borderRadius: "6px",
     border: "none",
     background: "transparent",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
@@ -133,15 +133,15 @@ export const addBookmarkBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface0,
-            color: vars.color.lavender,
+            background: vars.color.horizon,
+            color: vars.color.sirius,
         },
     },
 });
 
 export const emptyHint = style({
     fontSize: "11.5px",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     fontFamily: '"Rubik", sans-serif',
     paddingLeft: "4px",
     userSelect: "none",

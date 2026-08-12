@@ -7,7 +7,7 @@ export const loadingContainer = style({
     alignItems: "center",
     justifyContent: "center",
     gap: "0.75rem",
-    backgroundColor: vars.color.base,
+    backgroundColor: vars.color.dusk,
     padding: "1.5rem 2rem",
     position: "fixed",
     inset: 0,
@@ -42,7 +42,7 @@ export const loadingStatusWrapper = style({
     fontWeight: 500,
     fontSize: "0.9rem",
     letterSpacing: "0.01em",
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     textAlign: "center",
     minWidth: "260px",
 });

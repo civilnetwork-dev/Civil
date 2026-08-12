@@ -49,14 +49,14 @@ export const statusPair = style({
 // elsewhere in the schematic language, so the label stays legible.
 export const statusKey = style({
     ...ANNO,
-    color: vars.color.overlay2,
+    color: vars.color.starlight,
     textTransform: "uppercase",
 });
 
 export const statusValue = style({
     ...ANNO,
     margin: 0,
-    color: vars.color.text,
+    color: vars.color.daylight,
 });
 
 export const titleZone = style({
@@ -84,7 +84,7 @@ export const wordmark = style({
     fontWeight: 500,
     lineHeight: 1.1,
     letterSpacing: "-0.015em",
-    color: vars.color.text,
+    color: vars.color.daylight,
 });
 
 export const adNote = style({

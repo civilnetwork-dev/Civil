@@ -65,7 +65,7 @@ export const eyebrowMark = style({
     width: "16px",
     height: "2px",
     borderRadius: "1px",
-    background: vars.color.lavender,
+    background: vars.color.sirius,
     opacity: 0.75,
 });
 
@@ -75,7 +75,7 @@ export const pageTitle = style({
     fontWeight: 600,
     lineHeight: 1.05,
     letterSpacing: "-0.015em",
-    color: vars.color.text,
+    color: vars.color.daylight,
 });
 
 /** Count / status text sitting beside the title. */
@@ -94,5 +94,5 @@ export const mastheadActions = style({
 /** Etched rule closing the masthead. */
 export const mastheadRule = style({
     height: "1px",
-    background: hairline(vars.color.surface1),
+    background: hairline(vars.color.haze),
 });

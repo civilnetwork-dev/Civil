@@ -32,7 +32,7 @@ export const extBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface0,
+            background: vars.color.horizon,
         },
     },
 });
@@ -52,8 +52,8 @@ export const extIconFallback = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: vars.color.overlay1,
-    background: vars.color.surface0,
+    color: vars.color.cinder,
+    background: vars.color.horizon,
     fontSize: "10px",
     fontWeight: 600,
     fontFamily: "monospace",
@@ -64,7 +64,7 @@ export const popup = style({
     position: "fixed",
     zIndex: 99999,
     background: "#fff",
-    border: `1px solid ${vars.color.surface1}`,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "10px",
     boxShadow: `0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.14)`,
     overflow: "hidden",

@@ -3,7 +3,7 @@ import { vars } from "./theme.css";
 
 export const notFoundRoot = style({
     position: "relative",
-    backgroundColor: vars.color.base,
+    backgroundColor: vars.color.dusk,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -19,13 +19,13 @@ export const notFoundRoot = style({
 export const notFoundBackground = style({
     position: "absolute",
     inset: 0,
-    backgroundColor: vars.color.mantle,
+    backgroundColor: vars.color.night,
     backgroundImage: [
         "radial-gradient(120% 90% at 50% 45%, transparent 35%, rgba(0,0,0,0.55) 100%)",
         // Tinted a short step off Mantle rather than raw Surface 1: against
         // Mantle that tier is a big contrast jump, which turned a texture
         // into bold diagonal banding. Ban's field is built the same way.
-        `repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in srgb, ${vars.color.surface1} 30%, ${vars.color.mantle}) 14px 28px)`,
+        `repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in srgb, ${vars.color.haze} 30%, ${vars.color.night}) 14px 28px)`,
     ].join(", "),
     opacity: 0.62,
 });
@@ -39,7 +39,7 @@ export const notFoundContent = style({
     gap: "0.75rem",
     textAlign: "center",
     fontFamily: '"Rubik", sans-serif',
-    color: vars.color.text,
+    color: vars.color.daylight,
     padding: "1rem",
 });
 
@@ -51,13 +51,13 @@ export const notFoundTitle = style({
 
 export const notFoundSubtitle = style({
     margin: 0,
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     fontSize: "1rem",
 });
 
 export const notFoundHomeLink = style({
     marginTop: "0.75rem",
-    color: vars.color.blue,
+    color: vars.color.rigel,
     textDecoration: "none",
     fontWeight: 500,
     selectors: {

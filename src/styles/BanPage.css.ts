@@ -10,7 +10,7 @@ const fadeUp = keyframes({
 
 export const banRoot = style({
     position: "relative",
-    backgroundColor: vars.color.base,
+    backgroundColor: vars.color.dusk,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -31,7 +31,7 @@ export const banBackground = style({
     // to the centre of the page, which is the whole job of this screen.
     backgroundImage: [
         `radial-gradient(120% 90% at 50% 45%, transparent 35%, rgba(0,0,0,0.55) 100%)`,
-        `repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in srgb, ${vars.color.maroon} 11%, ${vars.color.mantle}) 14px 28px)`,
+        `repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in srgb, ${vars.color.arcturus} 11%, ${vars.color.night}) 14px 28px)`,
     ].join(", "),
     opacity: 0.62,
 });
@@ -45,7 +45,7 @@ export const banText = style({
     justifyContent: "center",
     gap: "12px",
     padding: "0 24px",
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", sans-serif',
     cursor: "default",
     animationName: fadeUp,
@@ -66,7 +66,7 @@ globalStyle(`.${banText} h1`, {
 globalStyle(`.${banText} p`, {
     fontSize: "17px",
     fontWeight: 400,
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     maxWidth: "44ch",
     textAlign: "center",
     lineHeight: 1.5,
@@ -80,11 +80,11 @@ globalStyle(`.${banText} a`, {
     alignItems: "center",
     padding: "8px 20px",
     borderRadius: "8px",
-    border: `1px solid ${vars.color.surface1}`,
-    background: vars.color.surface0,
+    border: `1px solid ${vars.color.haze}`,
+    background: vars.color.horizon,
     fontSize: "14px",
     fontWeight: 500,
-    color: vars.color.sky,
+    color: vars.color.aurora,
     textDecoration: "none",
     transitionProperty: "background, border-color, color, transform",
     transitionTimingFunction: "ease",
@@ -92,9 +92,9 @@ globalStyle(`.${banText} a`, {
 });
 
 globalStyle(`.${banText} a:hover`, {
-    background: vars.color.surface1,
-    borderColor: vars.color.overlay0,
-    color: vars.color.teal,
+    background: vars.color.haze,
+    borderColor: vars.color.ember,
+    color: vars.color.nebula,
     transform: "translateY(-1px)",
 });
 
@@ -105,13 +105,13 @@ export const banEyebrow = style({
     display: "flex",
     alignItems: "center",
     gap: "9px",
-    color: vars.color.maroon,
+    color: vars.color.arcturus,
 });
 
 export const banEyebrowMark = style({
     width: "16px",
     height: "2px",
     borderRadius: "1px",
-    background: vars.color.maroon,
+    background: vars.color.arcturus,
     opacity: 0.8,
 });

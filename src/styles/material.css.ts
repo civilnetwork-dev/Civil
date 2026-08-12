@@ -142,12 +142,12 @@ const GRAIN =
  * Static by design — DESIGN.md forbids anything that animates at rest.
  */
 export const atmosphere = (accent: string, intensity = 1) => ({
-    backgroundColor: vars.color.base,
+    backgroundColor: vars.color.dusk,
     backgroundImage: [
         `radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, ${accent} ${Math.round(
             7 * intensity,
         )}%, transparent) 0%, transparent 60%)`,
-        `radial-gradient(80% 60% at 85% 110%, color-mix(in srgb, ${vars.color.mauve} ${Math.round(
+        `radial-gradient(80% 60% at 85% 110%, color-mix(in srgb, ${vars.color.vega} ${Math.round(
             4 * intensity,
         )}%, transparent) 0%, transparent 70%)`,
         GRAIN,
@@ -184,7 +184,7 @@ export const microLabel = {
     fontWeight: 600,
     letterSpacing: "0.09em",
     textTransform: "uppercase",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
 } as const;
 
 /** Numeric readouts: equal-width digits so columns never jitter. */
@@ -197,7 +197,7 @@ export const readout = {
  * A hairline rule that fades at both ends, so a divider reads as etched
  * into the panel rather than drawn edge to edge with a ruler.
  */
-export const hairline = (color: string = vars.color.surface1) =>
+export const hairline = (color: string = vars.color.haze) =>
     `linear-gradient(90deg, transparent 0%, ${color} 12%, ${color} 88%, transparent 100%)`;
 
 /* -------------------------------------------------------------------- */

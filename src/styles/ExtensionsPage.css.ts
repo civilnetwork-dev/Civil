@@ -20,10 +20,10 @@ const emptyFadeIn = keyframes({
 });
 
 export const root = style({
-    ...atmosphere(vars.color.mauve),
+    ...atmosphere(vars.color.vega),
     minHeight: "100vh",
     padding: PAGE_PADDING,
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontFamily: '"Rubik", sans-serif',
 });
 
@@ -41,14 +41,14 @@ export const installInput = style({
     flex: "1 1 240px",
     minWidth: 0,
     background: machined(
-        vars.color.surface0,
-        `color-mix(in srgb, ${vars.color.surface0} 80%, ${vars.color.mantle})`,
+        vars.color.horizon,
+        `color-mix(in srgb, ${vars.color.horizon} 80%, ${vars.color.night})`,
     ),
-    border: `1px solid ${vars.color.surface1}`,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "10px",
     padding: "9px 14px",
     fontSize: "14px",
-    color: vars.color.text,
+    color: vars.color.daylight,
     outline: "none",
     boxShadow: lit(SHADOW.resting),
     transitionProperty: "border-color, box-shadow",
@@ -56,18 +56,18 @@ export const installInput = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:focus": {
-            borderColor: `color-mix(in srgb, ${vars.color.mauve} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.mauve)),
+            borderColor: `color-mix(in srgb, ${vars.color.vega} 70%, transparent)`,
+            boxShadow: lit(focusRing(vars.color.vega)),
         },
         "&::placeholder": {
-            color: vars.color.overlay1,
+            color: vars.color.cinder,
         },
     },
 });
 
 export const installBtn = style({
-    background: `linear-gradient(135deg, ${vars.color.mauve} 0%, ${vars.color.lavender} 100%)`,
-    color: vars.color.crust,
+    background: `linear-gradient(135deg, ${vars.color.vega} 0%, ${vars.color.sirius} 100%)`,
+    color: vars.color.void,
     border: "none",
     borderRadius: "10px",
     padding: "9px 22px",
@@ -75,14 +75,14 @@ export const installBtn = style({
     fontWeight: 600,
     letterSpacing: "0.03em",
     cursor: "pointer",
-    boxShadow: glow(vars.color.mauve, 26),
+    boxShadow: glow(vars.color.vega, 26),
     transitionProperty: "transform, box-shadow, filter",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover:not(:disabled)": {
             transform: "translateY(-1px)",
-            boxShadow: glow(vars.color.mauve, 44),
+            boxShadow: glow(vars.color.vega, 44),
         },
         "&:active:not(:disabled)": { transform: "translateY(0)" },
         "&:disabled": {
@@ -98,9 +98,9 @@ export const uploadBtnLabel = style({
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    background: machined(vars.color.surface0, vars.color.mantle),
-    color: vars.color.subtext1,
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    color: vars.color.halo,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "10px",
     padding: "9px 16px",
     fontSize: "13px",
@@ -112,9 +112,9 @@ export const uploadBtnLabel = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
-            background: vars.color.surface1,
-            color: vars.color.text,
-            borderColor: vars.color.overlay0,
+            background: vars.color.haze,
+            color: vars.color.daylight,
+            borderColor: vars.color.ember,
         },
     },
 });
@@ -131,15 +131,15 @@ export const card = style({
     gap: "16px",
     padding: "13px 16px",
     borderRadius: "10px",
-    background: machined(vars.color.surface0, vars.color.mantle),
-    border: `1px solid ${vars.color.surface1}`,
+    background: machined(vars.color.horizon, vars.color.night),
+    border: `1px solid ${vars.color.haze}`,
     boxShadow: lit(SHADOW.resting),
     transitionProperty: "background, border-color, transform, box-shadow",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
-            borderColor: `color-mix(in srgb, ${vars.color.mauve} 40%, ${vars.color.surface1})`,
+            borderColor: `color-mix(in srgb, ${vars.color.vega} 40%, ${vars.color.haze})`,
             transform: "translateX(2px)",
             boxShadow: lit(SHADOW.lifted),
         },
@@ -155,7 +155,7 @@ export const statusDot = style({
     height: "8px",
     borderRadius: "50%",
     flexShrink: 0,
-    backgroundColor: vars.color.overlay0,
+    backgroundColor: vars.color.ember,
     boxShadow: `inset 0 1px 1px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.35)`,
     transitionProperty: "background-color, box-shadow",
     transitionDuration: DUR.base,
@@ -163,20 +163,20 @@ export const statusDot = style({
 });
 
 export const statusDotOn = style({
-    backgroundColor: vars.color.green,
-    boxShadow: `inset 0 1px 1px rgba(255,255,255,0.35), 0 0 0 1px rgba(0,0,0,0.35), 0 0 10px color-mix(in srgb, ${vars.color.green} 70%, transparent)`,
+    backgroundColor: vars.color.airglow,
+    boxShadow: `inset 0 1px 1px rgba(255,255,255,0.35), 0 0 0 1px rgba(0,0,0,0.35), 0 0 10px color-mix(in srgb, ${vars.color.airglow} 70%, transparent)`,
 });
 
 export const cardIcon = style({
     width: "36px",
     height: "36px",
     borderRadius: "8px",
-    backgroundColor: vars.color.surface1,
+    backgroundColor: vars.color.haze,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    color: vars.color.mauve,
+    color: vars.color.vega,
     overflow: "hidden",
 });
 
@@ -195,7 +195,7 @@ export const cardInfo = style({
 export const cardName = style({
     fontSize: "14px",
     fontWeight: 600,
-    color: vars.color.text,
+    color: vars.color.daylight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -203,7 +203,7 @@ export const cardName = style({
 
 export const cardMeta = style({
     fontSize: "12px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     marginTop: "2px",
 });
 
@@ -212,19 +212,19 @@ export const cardBadge = style({
     fontWeight: 500,
     padding: "2px 8px",
     borderRadius: "20px",
-    backgroundColor: vars.color.surface1,
-    color: vars.color.overlay1,
+    backgroundColor: vars.color.haze,
+    color: vars.color.cinder,
     flexShrink: 0,
 });
 
 export const cardBadgeCrx = style({
-    backgroundColor: `color-mix(in srgb, ${vars.color.blue} 18%, transparent)`,
-    color: vars.color.blue,
+    backgroundColor: `color-mix(in srgb, ${vars.color.rigel} 18%, transparent)`,
+    color: vars.color.rigel,
 });
 
 export const cardBadgeXpi = style({
-    backgroundColor: `color-mix(in srgb, ${vars.color.peach} 18%, transparent)`,
-    color: vars.color.peach,
+    backgroundColor: `color-mix(in srgb, ${vars.color.corona} 18%, transparent)`,
+    color: vars.color.corona,
 });
 
 export const toggle = style({
@@ -246,15 +246,15 @@ export const toggleTrack = style({
     position: "absolute",
     inset: 0,
     borderRadius: "20px",
-    backgroundColor: vars.color.surface2,
+    backgroundColor: vars.color.dust,
     boxShadow: "inset 0 1px 2px rgba(0,0,0,0.45)",
     transitionProperty: "background-color, box-shadow",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
         [`.${toggleInput}:checked + &`]: {
-            backgroundColor: vars.color.mauve,
-            boxShadow: `inset 0 1px 2px rgba(0,0,0,0.28), 0 0 12px color-mix(in srgb, ${vars.color.mauve} 45%, transparent)`,
+            backgroundColor: vars.color.vega,
+            boxShadow: `inset 0 1px 2px rgba(0,0,0,0.28), 0 0 12px color-mix(in srgb, ${vars.color.vega} 45%, transparent)`,
         },
     },
 });
@@ -266,7 +266,7 @@ export const toggleThumb = style({
     width: "14px",
     height: "14px",
     borderRadius: "50%",
-    background: machined("#f2f4ff", vars.color.subtext1),
+    background: machined("#f2f4ff", vars.color.halo),
     boxShadow: "0 1px 3px rgba(0,0,0,0.45)",
     transitionProperty: "transform",
     transitionTimingFunction: EASE.spring,
@@ -281,7 +281,7 @@ export const toggleThumb = style({
 export const removeBtn = style({
     background: "none",
     border: "none",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     cursor: "pointer",
     padding: "4px",
     borderRadius: "6px",
@@ -289,7 +289,7 @@ export const removeBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            color: vars.color.red,
+            color: vars.color.antares,
         },
     },
 });
@@ -307,11 +307,11 @@ export const empty = style({
 });
 
 export const emptyIcon = style({
-    color: vars.color.surface2,
+    color: vars.color.dust,
 });
 
 export const emptyText = style({
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     fontSize: "14px",
     textAlign: "center",
 });
@@ -319,11 +319,11 @@ export const emptyText = style({
 export const sectionTitle = style({
     fontSize: "12px",
     fontWeight: 600,
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     textTransform: "uppercase",
     letterSpacing: "0.08em",
     marginBottom: "10px",
     marginTop: "28px",
     paddingBottom: "8px",
-    borderBottom: `1px solid ${vars.color.surface0}`,
+    borderBottom: `1px solid ${vars.color.horizon}`,
 });

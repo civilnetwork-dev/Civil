@@ -1,13 +1,11 @@
-import { flavors } from "@catppuccin/palette";
 import { createGlobalThemeContract } from "@vanilla-extract/css";
-
-const { colors } = flavors.macchiato;
+import { PALETTE } from "./palette";
 
 export const vars = createGlobalThemeContract(
     {
         color: Object.fromEntries(
-            Object.keys(colors).map(k => [k, null]),
-        ) as Record<keyof typeof colors, null>,
+            Object.keys(PALETTE).map(k => [k, null]),
+        ) as Record<keyof typeof PALETTE, null>,
     },
     (_, path) => `civil-${path.join("-")}`,
 );

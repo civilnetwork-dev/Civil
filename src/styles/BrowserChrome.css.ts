@@ -29,16 +29,16 @@ export const browser = style({
     width: "100%",
     height: "100vh",
     minHeight: 0,
-    background: vars.color.base,
+    background: vars.color.dusk,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontSize: "13px",
-    color: vars.color.text,
+    color: vars.color.daylight,
     overflow: "hidden",
 });
 
 export const browserChrome = style({
     flexShrink: 0,
-    background: vars.color.crust,
+    background: vars.color.void,
     position: "relative",
 });
 
@@ -47,7 +47,7 @@ export const browserTabstrip = style({
     alignItems: "flex-end",
     gap: "6px",
     padding: "8px 8px 0",
-    background: vars.color.crust,
+    background: vars.color.void,
     overflow: "visible",
     position: "relative",
     selectors: {
@@ -58,7 +58,7 @@ export const browserTabstrip = style({
             left: 0,
             right: 0,
             height: "1px",
-            background: vars.color.crust,
+            background: vars.color.void,
             zIndex: 3,
             pointerEvents: "none",
         },
@@ -81,8 +81,8 @@ export const tab = style({
     userSelect: "none",
     // Detached floating pill at rest: a distinct object sitting one tone
     // above the Crust strip it floats on (see Recede-to-Advance).
-    background: vars.color.mantle,
-    color: vars.color.overlay0,
+    background: vars.color.night,
+    color: vars.color.ember,
     borderRadius: TAB_R_PILL,
     // Floats above the strip's bottom seam; docking (below) resets this to 0.
     // transform, not margin, so the lift/dock motion never triggers layout.
@@ -97,25 +97,25 @@ export const tab = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface0,
-            color: vars.color.subtext1,
+            background: vars.color.horizon,
+            color: vars.color.halo,
             zIndex: 4,
         },
     },
 });
 
 export const tabActive = style({
-    background: vars.color.base,
-    color: vars.color.text,
+    background: vars.color.dusk,
+    color: vars.color.daylight,
     zIndex: 4,
     // Docks flush with the content plane below: flat bottom corners, no lift.
     borderRadius: TAB_R_DOCK,
     transform: "translateY(0)",
     boxShadow: [
-        `inset 0 1px 0 0 color-mix(in srgb, ${vars.color.surface1} 35%, transparent)`,
-        `0 -1px 0 0 ${vars.color.surface0}`,
-        `-1px 0 0 0 ${vars.color.surface0}`,
-        `1px 0 0 0 ${vars.color.surface0}`,
+        `inset 0 1px 0 0 color-mix(in srgb, ${vars.color.haze} 35%, transparent)`,
+        `0 -1px 0 0 ${vars.color.horizon}`,
+        `-1px 0 0 0 ${vars.color.horizon}`,
+        `1px 0 0 0 ${vars.color.horizon}`,
     ].join(", "),
     selectors: {
         "&::before": {
@@ -125,7 +125,7 @@ export const tabActive = style({
             right: 0,
             bottom: "-2px",
             height: "3px",
-            background: vars.color.base,
+            background: vars.color.dusk,
             zIndex: 10,
             pointerEvents: "none",
         },
@@ -134,13 +134,13 @@ export const tabActive = style({
 
 globalStyle(`.${tab}:focus-visible`, {
     outline: "none",
-    boxShadow: `0 0 0 2px ${vars.color.base}, 0 0 0 4px color-mix(in srgb, ${vars.color.lavender} 55%, transparent)`,
+    boxShadow: `0 0 0 2px ${vars.color.dusk}, 0 0 0 4px color-mix(in srgb, ${vars.color.sirius} 55%, transparent)`,
 });
 
 export const tabIconActive = style({
     width: "14px",
     height: "14px",
-    color: vars.color.lavender,
+    color: vars.color.sirius,
 });
 
 export const tabTitleActive = style({
@@ -156,15 +156,15 @@ export const tabDragging = style({
 });
 
 globalStyle(`.${tab}[data-tab-drop-over="true"]`, {
-    background: `color-mix(in srgb, ${vars.color.lavender} 14%, ${vars.color.mantle})`,
-    color: vars.color.text,
+    background: `color-mix(in srgb, ${vars.color.sirius} 14%, ${vars.color.night})`,
+    color: vars.color.daylight,
     boxShadow: [
         // top edge
-        `inset 0 1.5px 0 0 color-mix(in srgb, ${vars.color.lavender} 65%, transparent)`,
+        `inset 0 1.5px 0 0 color-mix(in srgb, ${vars.color.sirius} 65%, transparent)`,
         // left edge
-        `inset 1.5px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 65%, transparent)`,
+        `inset 1.5px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 65%, transparent)`,
         // right edge
-        `inset -1.5px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 65%, transparent)`,
+        `inset -1.5px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 65%, transparent)`,
     ].join(", "),
 });
 
@@ -183,12 +183,12 @@ export const tabIcon = style({
     width: "14px",
     height: "14px",
     flexShrink: 0,
-    color: vars.color.overlay0,
+    color: vars.color.ember,
     transitionProperty: "color",
     transitionDuration: "0.1s",
     transitionTimingFunction: "ease",
     selectors: {
-        [`.${tabActive} &`]: { color: vars.color.lavender },
+        [`.${tabActive} &`]: { color: vars.color.sirius },
     },
 });
 
@@ -213,7 +213,7 @@ export const tabClose = style({
     height: "18px",
     border: "none",
     background: "transparent",
-    color: vars.color.overlay0,
+    color: vars.color.ember,
     borderRadius: "50%",
     cursor: "pointer",
     padding: 0,
@@ -230,8 +230,8 @@ export const tabClose = style({
             pointerEvents: "auto",
         },
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.red} 22%, transparent)`,
-            color: vars.color.red,
+            background: `color-mix(in srgb, ${vars.color.antares} 22%, transparent)`,
+            color: vars.color.antares,
         },
     },
 });
@@ -247,15 +247,15 @@ export const tabNew = style({
     marginLeft: "4px",
     border: "none",
     background: "transparent",
-    color: vars.color.overlay0,
+    color: vars.color.ember,
     borderRadius: "50%",
     cursor: "pointer",
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface0,
-            color: vars.color.lavender,
+            background: vars.color.horizon,
+            color: vars.color.sirius,
         },
     },
 });
@@ -266,12 +266,12 @@ export const tabDragClone = style({
     gap: "6px",
     padding: "0 10px",
     overflow: "hidden",
-    background: vars.color.mantle,
-    color: vars.color.text,
+    background: vars.color.night,
+    color: vars.color.daylight,
     // A dragged tab is the pill fully detached from the strip: full stadium
     // radius on every corner, not the docked flat-bottom shape.
     borderRadius: TAB_R_PILL,
-    boxShadow: `0 0 0 1px ${vars.color.surface1}, 0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)`,
+    boxShadow: `0 0 0 1px ${vars.color.haze}, 0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)`,
     pointerEvents: "none",
     cursor: "grabbing",
     willChange: "transform",
@@ -291,9 +291,9 @@ export const urlbarRow = style({
     alignItems: "center",
     gap: "4px",
     padding: "0 8px",
-    background: vars.color.crust,
-    borderTop: `1px solid ${vars.color.surface0}`,
-    borderBottom: `1px solid ${vars.color.surface0}`,
+    background: vars.color.void,
+    borderTop: `1px solid ${vars.color.horizon}`,
+    borderBottom: `1px solid ${vars.color.horizon}`,
     position: "relative",
     zIndex: 2,
 });
@@ -315,7 +315,7 @@ export const extensionsBtn = style({
     height: "30px",
     border: "none",
     background: "transparent",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     borderRadius: "50%",
     cursor: "pointer",
     flexShrink: 0,
@@ -324,8 +324,8 @@ export const extensionsBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface0,
-            color: vars.color.lavender,
+            background: vars.color.horizon,
+            color: vars.color.sirius,
         },
     },
 });
@@ -338,7 +338,7 @@ export const urlbarNavBtn = style({
     height: "30px",
     border: "none",
     background: "transparent",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     borderRadius: "50%",
     cursor: "pointer",
     flexShrink: 0,
@@ -347,8 +347,8 @@ export const urlbarNavBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&:hover:not(:disabled)": {
-            background: vars.color.surface0,
-            color: vars.color.text,
+            background: vars.color.horizon,
+            color: vars.color.daylight,
         },
     },
 });
@@ -373,7 +373,7 @@ export const urlbarOmnibox = style({
     alignItems: "center",
     gap: "6px",
     height: "28px",
-    background: vars.color.surface0,
+    background: vars.color.horizon,
     border: "1.5px solid transparent",
     borderRadius: "14px",
     padding: "0 8px 0 10px",
@@ -382,15 +382,15 @@ export const urlbarOmnibox = style({
 });
 
 export const urlbarOmniboxFocus = style({
-    borderColor: vars.color.lavender,
-    background: vars.color.mantle,
-    boxShadow: `0 0 0 3px color-mix(in srgb, ${vars.color.lavender} 18%, transparent)`,
+    borderColor: vars.color.sirius,
+    background: vars.color.night,
+    boxShadow: `0 0 0 3px color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
 });
 
 export const urlbarLock = style({
     display: "flex",
     alignItems: "center",
-    color: vars.color.green,
+    color: vars.color.airglow,
     flexShrink: 0,
     opacity: 0.85,
 });
@@ -400,11 +400,11 @@ export const urlbarInput = style({
     minWidth: 0,
     border: "none",
     background: "transparent",
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontSize: "12.5px",
     fontFamily: "inherit",
     outline: "none",
-    caretColor: vars.color.lavender,
+    caretColor: vars.color.sirius,
     // With no padding the text box starts exactly at the content edge, so a
     // glyph with any left side bearing - the "g" in github.com, for one - gets
     // its first pixel column clipped by the field, and the 14px corner radius
@@ -413,9 +413,9 @@ export const urlbarInput = style({
     padding: "0 2px",
     selectors: {
         "&::selection": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 28%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
         },
-        "&::placeholder": { color: vars.color.overlay0 },
+        "&::placeholder": { color: vars.color.ember },
         "&[placeholder]:not(:focus)::placeholder": { opacity: 1 },
     },
 });
@@ -429,7 +429,7 @@ export const urlbarGoBtn = style({
     height: "20px",
     border: "none",
     background: "transparent",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     borderRadius: "50%",
     cursor: "pointer",
     padding: 0,
@@ -439,8 +439,8 @@ export const urlbarGoBtn = style({
     selectors: {
         "&::after": hitArea(),
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 15%, transparent)`,
-            color: vars.color.lavender,
+            background: `color-mix(in srgb, ${vars.color.sirius} 15%, transparent)`,
+            color: vars.color.sirius,
         },
     },
 });
@@ -451,8 +451,8 @@ export const urlbarSuggestions = style({
     top: "calc(100% - 1.5px)",
     left: 0,
     right: 0,
-    background: vars.color.mantle,
-    border: `1.5px solid ${vars.color.lavender}`,
+    background: vars.color.night,
+    border: `1.5px solid ${vars.color.sirius}`,
     borderTop: "none",
     borderRadius: "0 0 14px 14px",
     overflow: "hidden",
@@ -460,7 +460,7 @@ export const urlbarSuggestions = style({
     margin: 0,
     padding: 0,
     zIndex: 100,
-    boxShadow: `3px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent), -3px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent), 0 3px 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent)`,
+    boxShadow: `3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), -3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), 0 3px 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
     animation: `${suggInAnim} 0.12s cubic-bezier(0.4, 0, 0.2, 1) both`,
     animationDuration: "0.12s",
 });
@@ -470,7 +470,7 @@ export const urlbarSuggestionRow = style({
     padding: "7px 12px",
     fontSize: "12.5px",
     fontFamily: "inherit",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     cursor: "pointer",
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -487,9 +487,12 @@ export const urlbarSuggestionRow = style({
             left: "12px",
             right: "12px",
             height: "1px",
-            background: `linear-gradient(90deg, transparent, ${vars.color.surface0} 15%, ${vars.color.surface0} 85%, transparent)`,
+            background: `linear-gradient(90deg, transparent, ${vars.color.horizon} 15%, ${vars.color.horizon} 85%, transparent)`,
         },
-        "&:hover": { background: vars.color.surface0, color: vars.color.text },
+        "&:hover": {
+            background: vars.color.horizon,
+            color: vars.color.daylight,
+        },
     },
 });
 
@@ -498,7 +501,7 @@ globalStyle(
     {
         borderRadius: "14px 14px 0 0",
         borderBottomColor: "transparent",
-        boxShadow: `3px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent), -3px 0 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent), 0 -3px 0 0 color-mix(in srgb, ${vars.color.lavender} 18%, transparent)`,
+        boxShadow: `3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), -3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), 0 -3px 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
     },
 );
 
@@ -523,9 +526,9 @@ export const urlbarHistoryRow = style({
             left: "12px",
             right: "12px",
             height: "1px",
-            background: `linear-gradient(90deg, transparent, ${vars.color.surface0} 15%, ${vars.color.surface0} 85%, transparent)`,
+            background: `linear-gradient(90deg, transparent, ${vars.color.horizon} 15%, ${vars.color.horizon} 85%, transparent)`,
         },
-        "&:hover": { background: vars.color.surface0 },
+        "&:hover": { background: vars.color.horizon },
     },
 });
 
@@ -535,7 +538,7 @@ export const urlbarHistoryFavicon = style({
     borderRadius: "3px",
     objectFit: "contain",
     flexShrink: 0,
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
 });
 
 export const urlbarHistoryInfo = style({
@@ -547,7 +550,7 @@ export const urlbarHistoryInfo = style({
 });
 
 export const urlbarHistoryTitle = style({
-    color: vars.color.text,
+    color: vars.color.daylight,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -555,7 +558,7 @@ export const urlbarHistoryTitle = style({
 });
 
 export const urlbarHistoryUrl = style({
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -568,14 +571,14 @@ export const urlbarHistoryUrl = style({
 export const urlbarSuggestionDivider = style({
     height: "1px",
     margin: "3px 12px",
-    background: `linear-gradient(90deg, transparent, ${vars.color.surface1} 12%, ${vars.color.surface1} 88%, transparent)`,
+    background: `linear-gradient(90deg, transparent, ${vars.color.haze} 12%, ${vars.color.haze} 88%, transparent)`,
 });
 
 export const browserViewport = style({
     flex: 1,
     minHeight: 0,
     position: "relative",
-    background: vars.color.base,
+    background: vars.color.dusk,
 });
 
 export const browserFrame = style({
@@ -601,21 +604,21 @@ export const browserEmpty = style({
     justifyContent: "center",
     height: "100%",
     gap: "14px",
-    color: vars.color.overlay0,
+    color: vars.color.ember,
     fontSize: "14px",
 });
 
 export const browserEmptyIcon = style({
-    color: vars.color.surface2,
+    color: vars.color.dust,
     opacity: 0.5,
 });
 
-globalStyle(`.${browserEmpty} p`, { margin: 0, color: vars.color.subtext0 });
+globalStyle(`.${browserEmpty} p`, { margin: 0, color: vars.color.moonlight });
 
 globalStyle(`.${browserEmpty} button`, {
     padding: "8px 20px",
-    background: vars.color.lavender,
-    color: vars.color.crust,
+    background: vars.color.sirius,
+    color: vars.color.void,
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
@@ -628,5 +631,5 @@ globalStyle(`.${browserEmpty} button`, {
 
 globalStyle(`.${browserEmpty} button:hover`, {
     opacity: 0.88,
-    boxShadow: `0 2px 12px color-mix(in srgb, ${vars.color.lavender} 35%, transparent)`,
+    boxShadow: `0 2px 12px color-mix(in srgb, ${vars.color.sirius} 35%, transparent)`,
 });

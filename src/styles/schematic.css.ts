@@ -35,9 +35,9 @@ export const FONT_MONO =
  * one line that matters on the page.
  */
 export const RULE = {
-    hair: `0.5px solid ${vars.color.surface0}`,
-    major: `1px solid ${vars.color.surface1}`,
-    accent: `1px solid ${vars.color.lavender}`,
+    hair: `0.5px solid ${vars.color.horizon}`,
+    major: `1px solid ${vars.color.haze}`,
+    accent: `1px solid ${vars.color.sirius}`,
 } as const;
 
 /* -------------------------------------------------------------------- */
@@ -79,7 +79,7 @@ export const ANNO = {
     fontWeight: 500,
     letterSpacing: "0.02em",
     fontVariantNumeric: "tabular-nums",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
 } as const;
 
 export const anno = style({ ...ANNO });
@@ -91,7 +91,7 @@ export const anno = style({ ...ANNO });
  */
 export const annoMuted = style({
     ...ANNO,
-    color: vars.color.overlay2,
+    color: vars.color.starlight,
 });
 
 /* -------------------------------------------------------------------- */
@@ -189,7 +189,7 @@ export const titleBlockEyebrow = style({
 export const titleBlockMark = style({
     width: "16px",
     height: "2px",
-    background: vars.color.lavender,
+    background: vars.color.sirius,
     opacity: 0.75,
 });
 
@@ -199,7 +199,7 @@ export const titleBlockTitle = style({
     fontWeight: 600,
     lineHeight: 1.05,
     letterSpacing: "-0.015em",
-    color: vars.color.text,
+    color: vars.color.daylight,
 });
 
 export const titleBlockMeta = style({ ...ANNO });
@@ -253,7 +253,7 @@ export const plateTick = style({
     width: "6px",
     height: "6px",
     pointerEvents: "none",
-    borderColor: vars.color.surface2,
+    borderColor: vars.color.dust,
 });
 
 export const plateTickCorner = styleVariants({
@@ -346,7 +346,7 @@ export const inputRow = style({
     paddingBottom: "6px",
     borderBottom: RULE.hair,
     selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.lavender },
+        "&:focus-within": { borderBottomColor: vars.color.sirius },
     },
 });
 
@@ -365,13 +365,13 @@ export const inputControl = style({
     outline: "none",
     fontFamily: FONT_MONO,
     fontSize: "13px",
-    color: vars.color.text,
-    "::placeholder": { color: vars.color.overlay0 },
+    color: vars.color.daylight,
+    "::placeholder": { color: vars.color.ember },
 });
 
 export const inputHint = style({
     ...ANNO,
-    color: vars.color.red,
+    color: vars.color.antares,
     display: "block",
     marginTop: "5px",
 });
@@ -388,5 +388,5 @@ export const inputHint = style({
 export const divider = style({
     height: 0,
     borderTop: "1px solid transparent",
-    borderImage: `${hairline(vars.color.surface0)} 1`,
+    borderImage: `${hairline(vars.color.horizon)} 1`,
 });

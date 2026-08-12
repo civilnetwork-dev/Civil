@@ -29,7 +29,7 @@ export const backdrop = style({
     position: "fixed",
     inset: 0,
     zIndex: 10000,
-    background: `color-mix(in srgb, ${vars.color.base} 55%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.dusk} 55%, transparent)`,
     backdropFilter: "blur(12px) saturate(1.4)",
     WebkitBackdropFilter: "blur(12px) saturate(1.4)",
     display: "flex",
@@ -47,12 +47,12 @@ export const backdropLeaving = style({
 
 export const panel = style({
     width: "min(580px, 92vw)",
-    background: vars.color.mantle,
-    border: `1px solid ${vars.color.surface1}`,
+    background: vars.color.night,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "16px",
     overflow: "hidden",
     boxShadow: `
-        0 0 0 1px ${vars.color.surface0},
+        0 0 0 1px ${vars.color.horizon},
         0 24px 64px rgba(0,0,0,0.55),
         0 8px 24px rgba(0,0,0,0.35)
     `,
@@ -72,11 +72,11 @@ export const inputRow = style({
     alignItems: "center",
     gap: "10px",
     padding: "14px 16px",
-    borderBottom: `1px solid ${vars.color.surface0}`,
+    borderBottom: `1px solid ${vars.color.horizon}`,
 });
 
 export const searchIcon = style({
-    color: vars.color.lavender,
+    color: vars.color.sirius,
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
@@ -87,22 +87,22 @@ export const input = style({
     background: "transparent",
     border: "none",
     outline: "none",
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontSize: "15px",
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontWeight: 400,
-    caretColor: vars.color.lavender,
+    caretColor: vars.color.sirius,
     selectors: {
-        "&::placeholder": { color: vars.color.overlay0 },
+        "&::placeholder": { color: vars.color.ember },
         "&::selection": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 28%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
         },
     },
 });
 
 export const hint = style({
     fontSize: "11px",
-    color: vars.color.overlay0,
+    color: vars.color.ember,
     flexShrink: 0,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     letterSpacing: "0.02em",
@@ -139,21 +139,21 @@ export const resultItem = style({
     transition: `background ${T_EASE}`,
     transitionDuration: "0.18s",
     selectors: {
-        "&:hover": { background: vars.color.surface0 },
+        "&:hover": { background: vars.color.horizon },
     },
 });
 
 export const resultItemActive = style({
-    background: `color-mix(in srgb, ${vars.color.lavender} 14%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.sirius} 14%, transparent)`,
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.lavender} 18%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
         },
     },
 });
 
 export const resultItemCurrent = style({
-    background: `color-mix(in srgb, ${vars.color.surface0} 60%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.horizon} 60%, transparent)`,
 });
 
 export const favicon = style({
@@ -172,7 +172,7 @@ export const faviconFallback = style({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
 });
 
 export const resultText = style({
@@ -186,7 +186,7 @@ export const resultText = style({
 export const resultTitle = style({
     fontSize: "13px",
     fontWeight: 500,
-    color: vars.color.text,
+    color: vars.color.daylight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -195,7 +195,7 @@ export const resultTitle = style({
 
 export const resultUrl = style({
     fontSize: "11.5px",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -203,9 +203,9 @@ export const resultUrl = style({
 });
 
 export const matchMark = style({
-    color: vars.color.lavender,
+    color: vars.color.sirius,
     fontWeight: 700,
-    background: `color-mix(in srgb, ${vars.color.lavender} 14%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.sirius} 14%, transparent)`,
     borderRadius: "2px",
     padding: "0 1px",
 });
@@ -216,8 +216,8 @@ export const tabBadge = style({
     padding: "1px 6px",
     borderRadius: "20px",
     flexShrink: 0,
-    background: `color-mix(in srgb, ${vars.color.lavender} 15%, transparent)`,
-    color: vars.color.lavender,
+    background: `color-mix(in srgb, ${vars.color.sirius} 15%, transparent)`,
+    color: vars.color.sirius,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     letterSpacing: "0.04em",
 });
@@ -225,7 +225,7 @@ export const tabBadge = style({
 export const emptyState = style({
     padding: "28px 16px",
     textAlign: "center",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     fontSize: "13px",
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
 });
@@ -236,7 +236,7 @@ export const footer = style({
     justifyContent: "flex-end",
     gap: "16px",
     padding: "8px 16px",
-    borderTop: `1px solid ${vars.color.surface0}`,
+    borderTop: `1px solid ${vars.color.horizon}`,
 });
 
 export const footerKey = style({
@@ -244,7 +244,7 @@ export const footerKey = style({
     alignItems: "center",
     gap: "4px",
     fontSize: "11px",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
 });
 
@@ -252,12 +252,12 @@ export const kbd = style({
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: vars.color.surface0,
-    border: `1px solid ${vars.color.surface1}`,
+    background: vars.color.horizon,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "4px",
     padding: "1px 5px",
     fontSize: "10px",
     fontFamily: '"Rubik", monospace, ui-monospace',
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     lineHeight: 1.6,
 });

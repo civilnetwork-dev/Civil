@@ -20,14 +20,14 @@ export const menu = style({
     position: "fixed",
     zIndex: 9999,
     width: "220px",
-    background: vars.color.mantle,
-    border: `1px solid ${vars.color.surface0}`,
+    background: vars.color.night,
+    border: `1px solid ${vars.color.horizon}`,
     borderRadius: "10px",
     overflow: "hidden",
     boxShadow: `0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18)`,
     fontFamily: '"Rubik", ui-sans-serif, sans-serif',
     fontSize: "13px",
-    color: vars.color.text,
+    color: vars.color.daylight,
     userSelect: "none",
     animation: `${menuIn} 0.12s cubic-bezier(0.22, 1, 0.36, 1) both`,
     animationDuration: "0.12s",
@@ -46,30 +46,30 @@ export const menuItem = style({
     borderRadius: 0,
     border: "none",
     background: "transparent",
-    color: vars.color.subtext1,
+    color: vars.color.halo,
     cursor: "pointer",
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface0,
-            color: vars.color.text,
+            background: vars.color.horizon,
+            color: vars.color.daylight,
         },
         "&:active": {
-            background: vars.color.surface1,
+            background: vars.color.haze,
         },
     },
 });
 
 export const menuItemDanger = style({
-    color: vars.color.red,
+    color: vars.color.antares,
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.red} 14%, transparent)`,
-            color: vars.color.red,
+            background: `color-mix(in srgb, ${vars.color.antares} 14%, transparent)`,
+            color: vars.color.antares,
         },
         "&:active": {
-            background: `color-mix(in srgb, ${vars.color.red} 22%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.antares} 22%, transparent)`,
         },
     },
 });
@@ -94,7 +94,7 @@ export const menuItemLabel = style({
 
 export const menuItemShortcut = style({
     fontSize: "11px",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     marginLeft: "auto",
     paddingLeft: "16px",
     flexShrink: 0,
@@ -103,14 +103,14 @@ export const menuItemShortcut = style({
 export const separator = style({
     width: "100%",
     height: "1px",
-    background: vars.color.surface0,
+    background: vars.color.horizon,
     pointerEvents: "none",
     flexShrink: 0,
 });
 
 export const subMenuArrow = style({
     fontSize: "12px",
-    color: vars.color.overlay1,
+    color: vars.color.cinder,
     marginLeft: "auto",
     paddingLeft: "16px",
     flexShrink: 0,
@@ -124,8 +124,8 @@ export const subMenu = style({
     left: "100%",
     marginLeft: "4px",
     width: "200px",
-    background: vars.color.mantle,
-    border: `1px solid ${vars.color.surface0}`,
+    background: vars.color.night,
+    border: `1px solid ${vars.color.horizon}`,
     borderRadius: "10px",
     overflow: "hidden",
     padding: 0,

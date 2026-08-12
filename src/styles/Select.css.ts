@@ -19,9 +19,9 @@ export const trigger = style({
     alignItems: "center",
     gap: "6px",
     padding: "6px 10px 6px 12px",
-    backgroundColor: vars.color.surface0,
-    color: vars.color.text,
-    border: `1px solid ${vars.color.surface1}`,
+    backgroundColor: vars.color.horizon,
+    color: vars.color.daylight,
+    border: `1px solid ${vars.color.haze}`,
     borderRadius: "8px",
     fontSize: "14px",
     fontFamily: "inherit",
@@ -31,21 +31,21 @@ export const trigger = style({
     transitionDuration: "0.12s",
     whiteSpace: "nowrap",
     selectors: {
-        "&:hover": { borderColor: vars.color.overlay1 },
+        "&:hover": { borderColor: vars.color.cinder },
     },
 });
 
 // Lavender, not Blue: the system only ever uses Blue as a subtle focus tint,
 // never as a bold outline (see the note on AppsPage's addBtn).
 export const triggerOpen = style({
-    borderColor: vars.color.lavender,
+    borderColor: vars.color.sirius,
     borderRadius: "8px 8px 0 0",
     borderBottomColor: "transparent",
     selectors: {
         // `trigger`'s own :hover rule sets borderColor and would otherwise
         // repaint the bottom edge, drawing a line across the join.
         "&:hover": {
-            borderColor: vars.color.lavender,
+            borderColor: vars.color.sirius,
             borderBottomColor: "transparent",
         },
     },
@@ -56,7 +56,7 @@ export const chevron = style({
     alignItems: "center",
     transition: `transform ${T}`,
     transitionDuration: "0.12s",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
 });
 
 export const chevronOpen = style({
@@ -70,8 +70,8 @@ export const dropdown = style({
     top: "calc(100% - 1px)",
     left: 0,
     right: 0,
-    backgroundColor: vars.color.surface0,
-    border: `1px solid ${vars.color.lavender}`,
+    backgroundColor: vars.color.horizon,
+    border: `1px solid ${vars.color.sirius}`,
     borderTop: "none",
     borderRadius: "0 0 8px 8px",
     overflow: "hidden",
@@ -90,14 +90,14 @@ export const option = style({
     padding: "7px 12px",
     fontSize: "14px",
     fontFamily: "inherit",
-    color: vars.color.subtext0,
+    color: vars.color.moonlight,
     cursor: "pointer",
     transition: `background ${T}, color ${T}`,
     transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
-            background: vars.color.surface1,
-            color: vars.color.text,
+            background: vars.color.haze,
+            color: vars.color.daylight,
         },
         // These options are keyboard-focusable and sit flush against the
         // menu's edges, which are clipped by `overflow: hidden`. The global
@@ -110,6 +110,6 @@ export const option = style({
 });
 
 export const optionActive = style({
-    color: vars.color.text,
+    color: vars.color.daylight,
     fontWeight: 500,
 });
