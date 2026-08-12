@@ -1,272 +1,134 @@
-import { keyframes, style } from "@vanilla-extract/css";
-import { PAGE_PADDING } from "./layout.css";
-import {
-    atmosphere,
-    DUR,
-    EASE,
-    focusRing,
-    glow,
-    hitArea,
-    lit,
-    machined,
-    SHADOW,
-} from "./material.css";
+import { style } from "@vanilla-extract/css";
+import { DUR, EASE } from "./material.css";
+import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
-const emptyFadeIn = keyframes({
-    from: { opacity: 0, transform: "translateY(6px)" },
-    to: { opacity: 1, transform: "translateY(0)" },
-});
+export const addingNote = style({ display: "block", marginTop: "6px" });
 
-export const root = style({
-    ...atmosphere(vars.color.sirius),
-    minHeight: "100vh",
-    padding: PAGE_PADDING,
-    color: vars.color.daylight,
-    fontFamily: '"Rubik", sans-serif',
-    boxSizing: "border-box",
-});
-
-export const addBar = style({
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "10px",
-    marginBottom: "32px",
-});
-
-export const addInput = style({
-    // Shrinkable so the button wraps below instead of overflowing the
-    // viewport, which the body's overflow-x clip would hide entirely.
-    flex: "1 1 240px",
-    minWidth: 0,
-    background: machined(
-        vars.color.horizon,
-        `color-mix(in srgb, ${vars.color.horizon} 80%, ${vars.color.night})`,
-    ),
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "10px",
-    padding: "9px 14px",
-    fontSize: "14px",
-    color: vars.color.daylight,
-    outline: "none",
-    fontFamily: "inherit",
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "border-color, box-shadow",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:focus": {
-            borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.sirius)),
-        },
-        "&::placeholder": { color: vars.color.cinder },
-    },
-});
-
-// Lavender, not Blue: Blue only ever appears as a subtle focus/tint accent
-// elsewhere in the system, never a bold solid fill.
-export const addBtn = style({
-    background: `linear-gradient(135deg, ${vars.color.sirius} 0%, ${vars.color.vega} 100%)`,
-    color: vars.color.void,
-    border: "none",
-    borderRadius: "10px",
-    padding: "9px 22px",
-    fontSize: "13px",
-    fontWeight: 600,
-    letterSpacing: "0.03em",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    boxShadow: glow(vars.color.sirius, 26),
-    transitionProperty: "transform, box-shadow, filter",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:hover:not(:disabled)": {
-            transform: "translateY(-1px)",
-            boxShadow: glow(vars.color.sirius, 44),
-        },
-        "&:active:not(:disabled)": { transform: "translateY(0)" },
-        "&:disabled": {
-            filter: "saturate(0.25)",
-            opacity: 0.45,
-            boxShadow: "none",
-            cursor: "not-allowed",
-        },
-    },
-});
+export const gridRule = style({ margin: "26px 0 14px" });
 
 export const grid = style({
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(128px, 1fr))",
-    gap: "16px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
+    gap: "10px",
 });
 
-// Game-cartridge tile: a big icon "plate" over a caption bar, instead of the
-// generic stacked icon+label card shared by every other list page.
-export const appCard = style({
-    position: "relative",
+export const position = style({
+    transition: `background ${DUR.fast} ${EASE.standard}`,
+    selectors: {
+        // horizon (1.19:1 on dusk) is the system's "raised surface" tier — the
+        // same step BookmarksPage uses for a hovered row.
+        "&:hover, &:focus-within": {
+            background: vars.color.horizon,
+        },
+    },
+});
+
+export const summary = style({
     display: "flex",
     flexDirection: "column",
-    aspectRatio: "1",
-    borderRadius: "18px",
-    overflow: "hidden",
-    background: machined(vars.color.horizon, vars.color.night),
-    border: `1px solid ${vars.color.haze}`,
-    cursor: "pointer",
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "transform, box-shadow, border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
-    selectors: {
-        // A gloss band across the upper face, the way light falls on a
-        // moulded plastic shell. Sits under the icon via a low z-index so it
-        // never washes out the artwork.
-        "&::after": {
-            content: '""',
-            position: "absolute",
-            inset: "0 0 auto 0",
-            height: "58%",
-            background:
-                "linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.012) 55%, transparent 100%)",
-            pointerEvents: "none",
-        },
-        "&:hover": {
-            transform: "translateY(-4px)",
-            borderColor: `color-mix(in srgb, ${vars.color.sirius} 45%, ${vars.color.haze})`,
-            boxShadow: lit(glow(vars.color.sirius, 30), true),
-        },
-        "&:active": { transform: "translateY(-1px) scale(0.975)" },
-    },
+    alignItems: "center",
+    gap: "6px",
 });
 
-export const appIconStage = style({
-    flex: 1,
+export const iconStage = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "14px",
+    width: "34px",
+    height: "34px",
 });
 
-export const appIcon = style({
-    width: "54px",
-    height: "54px",
-    borderRadius: "13px",
+export const icon = style({
+    width: "26px",
+    height: "26px",
     objectFit: "contain",
-    flexShrink: 0,
-    // The icon reads as a seated plate rather than a floating png.
-    boxShadow: `0 4px 12px rgba(0,0,0,0.32), 0 0 0 1px rgba(0,0,0,0.25)`,
-    transitionProperty: "transform",
-    transitionTimingFunction: EASE.spring,
-    transitionDuration: DUR.base,
-    selectors: {
-        [`${appCard}:hover &`]: { transform: "scale(1.07)" },
-    },
 });
 
-export const appIconFallback = style({
-    width: "54px",
-    height: "54px",
-    borderRadius: "13px",
+export const iconFallback = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: machined(vars.color.haze, vars.color.horizon),
-    color: vars.color.cinder,
-    flexShrink: 0,
-    boxShadow: lit("0 4px 12px rgba(0,0,0,0.3)"),
+    // ember deliberately, not a text tier: this colours a glyph, not text, so
+    // WCAG 1.4.11's 3:1 non-text threshold applies rather than 4.5:1. ember
+    // measures 3.56:1 on dusk, which clears it.
+    color: vars.color.ember,
 });
 
-export const appNameBar = style({
-    position: "relative",
-    zIndex: 1,
-    flexShrink: 0,
-    padding: "9px 10px",
-    background: `color-mix(in srgb, ${vars.color.void} 62%, transparent)`,
-    borderTop: `1px solid color-mix(in srgb, ${vars.color.dust} 60%, transparent)`,
-    fontSize: "11.5px",
-    fontWeight: 600,
-    letterSpacing: "0.02em",
-    color: vars.color.halo,
+export const name = style({
+    fontSize: "12.5px",
+    fontWeight: 500,
+    // daylight, matching the tier BookmarksPage uses for its own item title
+    // (cardTitle) — a filled position's name is the primary label, not a
+    // muted annotation.
+    color: vars.color.daylight,
     textAlign: "center",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+    maxWidth: "100%",
 });
 
-export const removeBtn = style({
-    position: "absolute",
-    top: "6px",
-    right: "6px",
-    zIndex: 1,
-    background: `color-mix(in srgb, ${vars.color.void} 80%, transparent)`,
-    border: "none",
-    color: vars.color.cinder,
-    cursor: "pointer",
-    padding: "3px",
-    width: "20px",
-    height: "20px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: "50%",
-    // Destructive affordance stays out of the way until the tile is the one
-    // being pointed at, matching the bookmark bar. Keyboard focus reveals it
-    // too, so it never becomes mouse-only.
-    opacity: 0,
-    // Invisible but still clickable is a trap: with no hover on touch, a tap
-    // in the tile's corner would delete instead of open. The control only
-    // becomes interactive once it's actually shown.
-    pointerEvents: "none",
-    transitionProperty: "color, background, opacity",
-    transitionTimingFunction: "ease",
-    transitionDuration: "0.1s",
-    selectors: {
-        "&::after": hitArea(28),
-        [`${appCard}:hover &, &:focus-visible`]: {
-            opacity: 1,
-            pointerEvents: "auto",
-        },
-        "&:hover": {
-            color: vars.color.antares,
-            background: `color-mix(in srgb, ${vars.color.antares} 18%, transparent)`,
-        },
-    },
-});
-
-export const empty = style({
+export const detail = style({
     display: "flex",
     flexDirection: "column",
+    gap: "6px",
     alignItems: "center",
-    gap: "16px",
-    marginTop: "60px",
-    animationName: emptyFadeIn,
-    animationTimingFunction: "ease",
-    animationFillMode: "both",
-    animationDuration: "0.3s",
 });
 
-// A dashed cartridge-shaped placeholder - the empty state should still read
-// as "this is the Apps grid," not a generic centered sentence.
-export const emptyGhostTile = style({
-    width: "84px",
-    height: "84px",
-    borderRadius: "18px",
-    border: `2px dashed ${vars.color.haze}`,
+export const detailActions = style({
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: vars.color.ember,
+    gap: "8px",
 });
 
-export const emptyText = style({
-    color: vars.color.moonlight,
-    fontSize: "14px",
-    textAlign: "center",
+const detailBtnBase = {
+    background: "none",
+    border: "none",
+    padding: "2px 4px",
+    cursor: "pointer",
+    fontFamily: FONT_MONO,
+    fontSize: "11px",
+    letterSpacing: "0.02em",
+    borderBottom: RULE.hair,
+} as const;
+
+export const detailBtn = style({
+    ...detailBtnBase,
+    // sirius is the system's chrome/action accent — the same tier used for
+    // the title block mark and every other affirmative control.
+    color: vars.color.sirius,
 });
 
-export const errorMsg = style({
+export const detailBtnDanger = style({
+    ...detailBtnBase,
+    // antares is the "blocked" status tier, reused here as the destructive
+    // accent — the same colour BanInfoPage and BookmarksPage use for remove.
     color: vars.color.antares,
-    fontSize: "13px",
-    marginBottom: "16px",
-    fontFamily: "inherit",
+});
+
+export const ghostGrid = style({
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
+    gap: "10px",
+});
+
+export const ghost = style({
+    height: "74px",
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    paddingTop: "6px",
+    // dust is the system's "strongest border" tier and is what Plate's own
+    // corner ticks use — an empty position borrows that same boundary
+    // vocabulary so filled and unfilled positions read as one language.
+    border: `0.5px dashed ${vars.color.dust}`,
+});
+
+export const ghostNote = style({
+    ...ANNO,
+    gridColumn: "1 / -1",
+    margin: "10px 0 0",
 });
