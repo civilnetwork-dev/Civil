@@ -25,6 +25,9 @@
     --toolbar-bg-color: #121926;
     --toolbar-color: #dee5f0;
     --selection-bg-color: #212b3d;
-    --selection-inactive-bg-color: #18202f;
+    /* 28% of the way from dusk toward the active-selection tint, matching the
+       proportion the Macchiato original used. Mapping this to dusk outright
+       made inactive selection identical to the background, i.e. invisible. */
+    --selection-inactive-bg-color: #1b2333;
     --focus-ring-color: #7fa8dc;
 }
