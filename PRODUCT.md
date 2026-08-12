@@ -40,6 +40,7 @@ Two things a competing unblocker (UV, Rammerhead, Interstellar, etc.) could not 
 - Name "Civil Proxy" is fixed — no rebrand.
 - Ad monetization is load-bearing: HilltopAds/Monetag ad slots present in the codebase are a real revenue constraint, not optional or removable in redesign work.
 - PostHog product analytics is wired into the service worker config (`misc/config/service/sw.ts`) — treat as existing infra to preserve, not replace.
+- **Visual distinctiveness is chosen over visual camouflage.** The product previously aimed for a browser chrome that could sit open on a shared screen without drawing a glance. The owner has since directed that the chrome be redesigned into Civil's own visual language. This is a deliberate trade with a real cost: Civil is now more noticeable on a shared school screen than a plain browser would be. Record it as a decision, not an oversight — do not silently reintroduce camouflage as a design goal, and do not re-litigate it without the owner.
 
 ## Evidence on Hand
 
