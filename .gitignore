@@ -60,3 +60,6 @@ MAINTENANCE.md
 # Agent scratch: worktrees and per-session state
 .claude/
 .superpowers/
+
+# local .env backups taken before dev-only edits
+.env.bak*
