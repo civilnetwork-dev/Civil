@@ -340,8 +340,33 @@ export const unfoldRegionOpen = style([
     { gridTemplateRows: "1fr" },
 ]);
 
+/**
+ * The grid item inside `unfoldRegion`. It must carry NOTHING that contributes
+ * height — no padding, no border, no margin.
+ *
+ * Under `grid-template-rows: 0fr` a track can only collapse to zero if its item
+ * contributes zero; padding and borders are part of that contribution regardless
+ * of the track size. With them here the collapsed region floored at 13px and
+ * leaked a visible hairline at rest on every page using Unfold — measured in a
+ * browser, because happy-dom computes no layout and no test can see it.
+ *
+ * `minHeight: 0` is necessary but was never sufficient: it zeroes the content
+ * box, while the 13px floor came from the item's own padding, border and margin,
+ * which sit outside it. Moving those to a child leaves the item itself with no
+ * box at all.
+ *
+ * Do NOT add `overflow: hidden` here. Clipping belongs on the track, which
+ * already has it; on the item it zeroes the item's contribution, so the open
+ * state's `1fr` resolves against nothing and the region stays collapsed at 0px
+ * while still reporting `aria-expanded="true"` — a reveal that is dead but looks
+ * correct to every test we have.
+ */
 export const unfoldInner = style({
     minHeight: 0,
+});
+
+/** Carries the spacing and separator that `unfoldInner` cannot. */
+export const unfoldContent = style({
     paddingTop: "6px",
     borderTop: RULE.hair,
     marginTop: "6px",

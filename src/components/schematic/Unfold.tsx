@@ -144,7 +144,9 @@ export default function Unfold(props: {
                 aria-hidden={open() ? "false" : "true"}
                 inert={!open() || undefined}
             >
-                <div class={s.unfoldInner}>{props.children}</div>
+                <div class={s.unfoldInner}>
+                    <div class={s.unfoldContent}>{props.children}</div>
+                </div>
             </div>
         </div>
     );
