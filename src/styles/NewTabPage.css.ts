@@ -1,5 +1,5 @@
 import { style, styleVariants } from "@vanilla-extract/css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO, FONT_MONO, RULE, SHEET_VPAD_VAR } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -20,24 +20,28 @@ export const newtabSheet = style({
  * placed inside `sheetBody` where the actual page content lives, is what
  * makes "1fr auto" do real work.
  *
- * `min-height: 100vh` rather than `height: 100%`: `sheetBody` visually fills
- * the sheet (it is the sole item in the outer grid's `1fr` track), but that
- * stretch is a layout-time resolution, not a definite computed height a
- * percentage-height descendant can resolve against — confirmed against a
- * rendered page, where `height: 100%` here collapsed to the content's own
- * ~180px instead of the sheet's ~680px. `100vh` reproduces the sheet's own
- * sizing approach one level in, so `titleZone` gets a real bottom row to pin
- * to instead of stacking directly under `omniboxZone` with the remaining
- * space left dangling, unused, beneath it. It overshoots the sheet's own
- * content-box height by the sheet's own top+bottom padding, which just
- * means this page can run a little past one viewport rather than under —
- * the safer direction for a min-height.
+ * A viewport-relative min-height rather than `height: 100%`: `sheetBody`
+ * visually fills the sheet (it is the sole item in the outer grid's `1fr`
+ * track), but that stretch is a layout-time resolution, not a definite
+ * computed height a percentage-height descendant can resolve against —
+ * confirmed against a rendered page, where `height: 100%` here collapsed to
+ * the content's own ~180px instead of the sheet's ~680px. Viewport units
+ * reproduce the sheet's own sizing approach one level in, so `titleZone` gets
+ * a real bottom row to pin to instead of stacking directly under
+ * `omniboxZone` with the remaining space dangling unused beneath it.
+ *
+ * The sheet's own vertical padding is subtracted because this element sits
+ * *inside* it: a bare `100vh` here stacks on top of that padding and runs the
+ * page exactly 108px past the fold, which is what made New Tab scroll.
  */
 export const pageGrid = style({
     position: "relative",
     display: "grid",
     gridTemplateRows: "1fr auto",
-    minHeight: "100vh",
+    // One viewport MINUS the sheet's own vertical padding. A bare `100vh` here
+    // stacks on top of that padding and pushes the page 108px past the fold,
+    // which is why New Tab briefly scrolled.
+    minHeight: `calc(100vh - var(${SHEET_VPAD_VAR}))`,
 });
 
 /**

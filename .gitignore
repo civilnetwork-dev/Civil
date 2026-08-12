@@ -57,3 +57,6 @@ zig-out/
 
 # Maintenance Files
 MAINTENANCE.md
+# Agent scratch: worktrees and per-session state
+.claude/
+.superpowers/

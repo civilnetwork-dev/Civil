@@ -100,10 +100,20 @@ export const annoMuted = style({
 /* Sheet + registration marks                                            */
 /* -------------------------------------------------------------------- */
 
+/**
+ * Total vertical padding a sheet reserves (44px top + 64px bottom), published
+ * as a custom property so a page that wants its content to fill exactly one
+ * viewport can subtract it instead of hardcoding the number. Duplicating `108px`
+ * at a call site is how the two silently drift apart the first time this padding
+ * changes.
+ */
+export const SHEET_VPAD_VAR = "--civil-sheet-vpad";
+
 export const sheet = style({
     position: "relative",
     minHeight: "100%",
     padding: "44px max(clamp(20px, 5vw, 48px), calc((100% - 1180px) / 2)) 64px",
+    vars: { [SHEET_VPAD_VAR]: "108px" },
 });
 
 export const sheetField = style({
