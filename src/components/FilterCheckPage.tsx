@@ -1,5 +1,4 @@
 import {
-    type Accessor,
     createMemo,
     createSignal,
     createTrackedEffect,
@@ -11,12 +10,11 @@ import {
     detectIbossGateway,
     raceIbossGateways,
 } from "$config/service/ibossGatewayDetect";
-import {
-    IconAlert,
-    IconCheck,
-    IconLoaderDots,
-    IconSpinnerFilled,
-} from "~/components/icons";
+import { IconLoaderDots } from "~/components/icons";
+import Anno from "~/components/schematic/Anno";
+import Rule from "~/components/schematic/Rule";
+import Sheet from "~/components/schematic/Sheet";
+import TitleBlock from "~/components/schematic/TitleBlock";
 import {
     type FilterConfig,
     type FilterResult,
@@ -26,6 +24,8 @@ import {
 } from "~/lib/filterCheckVendors";
 import { checkFiltersNow } from "~/lib/swUtils";
 import * as s from "~/styles/FilterCheckPage.css";
+import FilterCheckForm from "./FilterCheckForm";
+import FilterCheckResults from "./FilterCheckResults";
 import GoGuardianManifestToast from "./GoGuardianManifestToast";
 import IbossGatewayToast from "./IbossGatewayToast";
 import PatreonLoginButton from "./ui/PatreonLoginButton";
@@ -68,29 +68,6 @@ async function checkFilter(
             detail: msg,
         };
     }
-}
-
-function StatusIcon(props: { status: FilterStatus }) {
-    return (
-        <span class={s.resultIconColor[props.status]}>
-            <Show
-                when={props.status === "allowed"}
-                fallback={
-                    <Show
-                        when={
-                            props.status === "error" ||
-                            props.status === "unknown"
-                        }
-                        fallback={<IconAlert size={22} />}
-                    >
-                        <IconSpinnerFilled size={22} />
-                    </Show>
-                }
-            >
-                <IconCheck size={22} />
-            </Show>
-        </span>
-    );
 }
 
 export default function FilterCheckPage() {
@@ -393,196 +370,87 @@ export default function FilterCheckPage() {
                     onSubmit={() => setShowIbossToast(false)}
                 />
             </Show>
-            <div class={s.page}>
-                <header class={s.header}>
-                    <div class={s.headerTitle}>
-                        <span class={s.eyebrow}>
-                            <span class={s.eyebrowMark} />
-                            Diagnostic
-                        </span>
-                        <h1 class={s.title}>Filter Check</h1>
-                        <p class={s.subtitle}>
-                            Test whether a URL is blocked by your school's web
-                            filter
-                        </p>
-                    </div>
-                    <PatreonLoginButton />
-                </header>
 
-                <Show
-                    when={detectedFilters().length > 0}
-                    fallback={
-                        <div class={s.detectedBadges}>
-                            <p class={s.noFiltersText}>
-                                You don't have any filters installed.
-                            </p>
+            <Sheet marks={["tl", "tr", "br"]}>
+                <TitleBlock
+                    eyebrow="diagnostic"
+                    title="Filter report"
+                    meta={`${detectedFilters().length} detected`}
+                    actions={
+                        // PatreonLoginButton lives here because this page is
+                        // its only host in the app. Patreon entitlement is what
+                        // raises the filter-check rate limit (see
+                        // misc/filters/sharedMiddleware.ts), so dropping it
+                        // leaves supporters silently capped at the free tier
+                        // with nowhere to sign in.
+                        <div class={s.titleActions}>
+                            <PatreonLoginButton />
                             <button
                                 type="button"
-                                class={s.rescanBtn}
+                                class={s.rescan}
                                 onClick={handleRescan}
                                 disabled={rescanning()}
                             >
-                                <Show
-                                    when={rescanning()}
-                                    fallback="Re-scan filters"
-                                >
-                                    <IconLoaderDots class={s.spinner} />{" "}
-                                    Scanning…
+                                <Show when={rescanning()} fallback="re-scan">
+                                    <IconLoaderDots
+                                        size={13}
+                                        class={s.spinner}
+                                    />{" "}
+                                    scanning…
                                 </Show>
                             </button>
                         </div>
                     }
-                >
-                    <div class={s.detectedBadges}>
-                        <span class={s.detectedLabel}>Detected filters:</span>
+                />
+
+                <Rule label="specimen" />
+                <div class={s.specimenRow}>
+                    <Show
+                        when={detectedFilters().length > 0}
+                        fallback={
+                            <Anno muted>
+                                no filters detected on this network
+                            </Anno>
+                        }
+                    >
                         <For each={detectedFilters()} keyed={false}>
-                            {(f: Accessor<string>) => (
-                                <span class={s.badge}>{f()}</span>
+                            {f => <span class={s.specimenChip}>{f()}</span>}
+                        </For>
+                    </Show>
+                </div>
+
+                <Show when={unsupportedFilters().length > 0}>
+                    <div class={s.unsupported}>
+                        <For each={unsupportedFilters()} keyed={false}>
+                            {f => (
+                                <Anno muted>
+                                    unsupported extension id —{" "}
+                                    {prettifyFilterName(f())}
+                                </Anno>
                             )}
                         </For>
-                        <button
-                            type="button"
-                            class={s.rescanBtn}
-                            onClick={handleRescan}
-                            disabled={rescanning()}
-                        >
-                            <Show
-                                when={rescanning()}
-                                fallback="Re-scan filters"
-                            >
-                                <IconLoaderDots class={s.spinner} /> Scanning…
-                            </Show>
-                        </button>
                     </div>
-
-                    <Show when={unsupportedFilters().length > 0}>
-                        <div class={s.unsupportedNotice}>
-                            <For each={unsupportedFilters()} keyed={false}>
-                                {(f: Accessor<string>) => (
-                                    <p>
-                                        We don't support the ID of the extension
-                                        "{prettifyFilterName(f())}" you have
-                                        yet.
-                                    </p>
-                                )}
-                            </For>
-                        </div>
-                    </Show>
-
-                    <form
-                        class={s.form}
-                        onSubmit={e => {
-                            e.preventDefault();
-                            void handleCheck();
-                        }}
-                    >
-                        <Show when={needsEmail()}>
-                            <label class={s.label}>
-                                School email
-                                <input
-                                    class={s.input}
-                                    type="email"
-                                    placeholder="student@school.edu"
-                                    value={email()}
-                                    onInput={e =>
-                                        setEmail(e.currentTarget.value)
-                                    }
-                                    required
-                                />
-                            </label>
-                        </Show>
-
-                        <label class={s.label}>
-                            URL to check
-                            <input
-                                class={s.input}
-                                type="url"
-                                placeholder="https://example.com"
-                                value={url()}
-                                onInput={e => setUrl(e.currentTarget.value)}
-                                required
-                            />
-                        </label>
-
-                        <button
-                            class={s.checkBtn}
-                            type="submit"
-                            disabled={loading()}
-                        >
-                            <Show when={loading()} fallback="Check URL">
-                                <span class={s.spinner}>
-                                    <IconLoaderDots size={15} />
-                                </span>
-                                Checking…
-                            </Show>
-                        </button>
-                    </form>
-
-                    <Show when={checked()}>
-                        <div class={s.results}>
-                            <For each={results()} keyed={false}>
-                                {(result: Accessor<FilterResult>, i) => (
-                                    <div
-                                        class={s.resultCard[result().status]}
-                                        style={{
-                                            "animation-delay": `${i * 0.06}s`,
-                                        }}
-                                    >
-                                        <div class={s.resultIcon}>
-                                            <StatusIcon
-                                                status={result().status}
-                                            />
-                                        </div>
-                                        <div class={s.resultBody}>
-                                            <span class={s.resultName}>
-                                                {result().filterName}
-                                            </span>
-                                            <span class={s.resultDetail}>
-                                                {result().detail}
-                                            </span>
-                                            <Show
-                                                when={
-                                                    result().categories &&
-                                                    result().categories!
-                                                        .length > 0
-                                                }
-                                            >
-                                                <div class={s.categories}>
-                                                    <For
-                                                        each={
-                                                            result().categories
-                                                        }
-                                                        keyed={false}
-                                                    >
-                                                        {(
-                                                            cat: Accessor<string>,
-                                                        ) => (
-                                                            <span
-                                                                class={
-                                                                    s.catChip
-                                                                }
-                                                            >
-                                                                {cat()}
-                                                            </span>
-                                                        )}
-                                                    </For>
-                                                </div>
-                                            </Show>
-                                        </div>
-                                        <span
-                                            class={
-                                                s.resultStatus[result().status]
-                                            }
-                                        >
-                                            {result().status}
-                                        </span>
-                                    </div>
-                                )}
-                            </For>
-                        </div>
-                    </Show>
                 </Show>
-            </div>
+
+                <FilterCheckForm
+                    needsEmail={needsEmail()}
+                    email={email()}
+                    url={url()}
+                    loading={loading()}
+                    onEmail={setEmail}
+                    onUrl={setUrl}
+                    onSubmit={() => void handleCheck()}
+                />
+
+                <Show when={checked()}>
+                    <Rule
+                        label="results"
+                        weight="major"
+                        class={s.resultsRule}
+                    />
+                    <FilterCheckResults results={results()} />
+                </Show>
+            </Sheet>
         </>
     );
 }
