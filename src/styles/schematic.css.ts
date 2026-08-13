@@ -403,7 +403,7 @@ export const inputControl = style({
     fontFamily: FONT_MONO,
     fontSize: "13px",
     color: vars.color.daylight,
-    "::placeholder": { color: vars.color.ember },
+    "::placeholder": { color: vars.color.cinder },
 });
 
 export const inputHint = style({

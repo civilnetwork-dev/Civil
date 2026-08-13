@@ -132,7 +132,7 @@ export const textarea = style({
     boxSizing: "border-box",
     outline: "none",
     "::placeholder": {
-        color: vars.color.ember,
+        color: vars.color.cinder,
     },
     ":focus": {
         borderColor: vars.color.vega,

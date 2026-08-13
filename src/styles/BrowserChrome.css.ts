@@ -415,7 +415,7 @@ export const urlbarInput = style({
         "&::selection": {
             background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
         },
-        "&::placeholder": { color: vars.color.ember },
+        "&::placeholder": { color: vars.color.cinder },
         "&[placeholder]:not(:focus)::placeholder": { opacity: 1 },
     },
 });

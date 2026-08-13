@@ -153,7 +153,7 @@ export const sbInput = style({
     outline: "none",
     caretColor: vars.color.sirius,
     selectors: {
-        "&::placeholder": { color: vars.color.ember },
+        "&::placeholder": { color: vars.color.cinder },
         "&::selection": {
             background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
         },

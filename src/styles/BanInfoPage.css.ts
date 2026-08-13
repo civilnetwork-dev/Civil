@@ -89,7 +89,7 @@ export const input = style({
             borderColor: vars.color.sirius,
         },
         "&::placeholder": {
-            color: vars.color.ember,
+            color: vars.color.cinder,
         },
         "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
             WebkitAppearance: "none",

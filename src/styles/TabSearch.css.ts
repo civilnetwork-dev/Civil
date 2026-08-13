@@ -93,7 +93,7 @@ export const input = style({
     fontWeight: 400,
     caretColor: vars.color.sirius,
     selectors: {
-        "&::placeholder": { color: vars.color.ember },
+        "&::placeholder": { color: vars.color.cinder },
         "&::selection": {
             background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
         },
