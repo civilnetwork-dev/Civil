@@ -1,117 +1,118 @@
-import { globalStyle, keyframes, style } from "@vanilla-extract/css";
-import { microLabel } from "./material.css";
+import { style, styleVariants } from "@vanilla-extract/css";
+import { DUR, EASE } from "./material.css";
+import { ANNO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
-import "./global.css";
 
-const fadeUp = keyframes({
-    from: { opacity: 0, transform: "translateY(10px)" },
-    to: { opacity: 1, transform: "translateY(0)" },
+/**
+ * The stop plate.
+ *
+ * This is the one page a reader does not choose to visit, so it does the
+ * opposite of every other page in the app: it holds a single centred block and
+ * refuses to fill the viewport with structure. No ruled field, no ledger, no
+ * controls beyond the one link out. The registration marks and the rule
+ * weights are what tie it to the rest of the system.
+ *
+ * The severity band across the top is the only place in the app where colour
+ * spans the full width, which is the point — it is the page saying "stop"
+ * before any word is read.
+ */
+
+export const root = style({
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    padding: "40px 24px",
+    background: vars.color.dusk,
 });
 
-export const banRoot = style({
+export const plate = style({
     position: "relative",
-    backgroundColor: vars.color.dusk,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "20px",
     width: "100%",
-    height: "100vh",
-    overflow: "hidden",
+    maxWidth: "580px",
+    padding: "34px 32px 30px",
+    border: `0.5px solid ${vars.color.horizon}`,
+    background: vars.color.night,
 });
 
-// A muted red-tinted stripe field gives the blocked moment real atmosphere
-// instead of bare text on a flat background - never full-saturation alert
-// red, just enough tint to read as "restricted" without alarm.
-export const banBackground = style({
-    position: "absolute",
-    inset: 0,
-    // Stripes plus a vignette: the corners fall away so attention is pulled
-    // to the centre of the page, which is the whole job of this screen.
-    backgroundImage: [
-        `radial-gradient(120% 90% at 50% 45%, transparent 35%, rgba(0,0,0,0.55) 100%)`,
-        `repeating-linear-gradient(-45deg, transparent 0 14px, color-mix(in srgb, ${vars.color.arcturus} 11%, ${vars.color.night}) 14px 28px)`,
-    ].join(", "),
-    opacity: 0.62,
+// Severity as a full-width band rather than a tinted card: at 3px it is a
+// non-text mark, so the 3:1 threshold applies and both tones clear it.
+export const band = styleVariants({
+    restricted: {
+        height: "3px",
+        margin: "-34px -32px 26px",
+        background: vars.color.arcturus,
+    },
+    banned: {
+        height: "3px",
+        margin: "-34px -32px 26px",
+        background: vars.color.antares,
+    },
 });
 
-export const banText = style({
-    position: "relative",
-    zIndex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "12px",
-    padding: "0 24px",
-    color: vars.color.daylight,
-    fontFamily: '"Rubik", sans-serif',
-    cursor: "default",
-    animationName: fadeUp,
-    animationTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-    animationFillMode: "both",
-    animationDuration: "0.45s",
-});
-
-globalStyle(`.${banText} h1`, {
-    textTransform: "none",
-    fontSize: "clamp(30px, 5vw, 42px)",
-    fontWeight: 600,
-    letterSpacing: "-0.02em",
-    lineHeight: 1.05,
-    marginBottom: "2px",
-});
-
-globalStyle(`.${banText} p`, {
-    fontSize: "17px",
-    fontWeight: 400,
-    color: vars.color.moonlight,
-    maxWidth: "44ch",
-    textAlign: "center",
-    lineHeight: 1.5,
-});
-
-// The proxy-status link reads as a real ghost button, not a bare underline
-// floating below plain text.
-globalStyle(`.${banText} a`, {
-    marginTop: "10px",
-    display: "inline-flex",
-    alignItems: "center",
-    padding: "8px 20px",
-    borderRadius: "8px",
-    border: `1px solid ${vars.color.haze}`,
-    background: vars.color.horizon,
-    fontSize: "14px",
-    fontWeight: 500,
-    color: vars.color.aurora,
-    textDecoration: "none",
-    transitionProperty: "background, border-color, color, transform",
-    transitionTimingFunction: "ease",
-    transitionDuration: "0.1s",
-});
-
-globalStyle(`.${banText} a:hover`, {
-    background: vars.color.haze,
-    borderColor: vars.color.ember,
-    color: vars.color.nebula,
-    transform: "translateY(-1px)",
-});
-
-// Eyebrow above the headline: names the system doing the blocking, so the
-// message reads as a verdict from a known source rather than a bare error.
-export const banEyebrow = style({
-    ...microLabel,
+export const eyebrow = style({
+    ...ANNO,
     display: "flex",
     alignItems: "center",
     gap: "9px",
-    color: vars.color.arcturus,
+    textTransform: "uppercase",
 });
 
-export const banEyebrowMark = style({
-    width: "16px",
-    height: "2px",
-    borderRadius: "1px",
-    background: vars.color.arcturus,
-    opacity: 0.8,
+export const eyebrowMark = styleVariants({
+    restricted: {
+        width: "16px",
+        height: "2px",
+        background: vars.color.arcturus,
+    },
+    banned: { width: "16px", height: "2px", background: vars.color.antares },
+});
+
+export const title = style({
+    margin: "10px 0 0",
+    fontSize: "clamp(25px, 4vw, 33px)",
+    fontWeight: 600,
+    lineHeight: 1.05,
+    letterSpacing: "-0.015em",
+    color: vars.color.daylight,
+});
+
+export const reason = style({
+    margin: "14px 0 0",
+    paddingTop: "14px",
+    borderTop: RULE.hair,
+    fontSize: "14px",
+    lineHeight: 1.6,
+    color: vars.color.halo,
+});
+
+export const gaugeSlot = style({
+    margin: "22px 0 0",
+    paddingTop: "18px",
+    borderTop: RULE.hair,
+});
+
+export const actions = style({
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    margin: "26px 0 0",
+    paddingTop: "16px",
+    borderTop: RULE.major,
+});
+
+export const link = style({
+    ...ANNO,
+    color: vars.color.vega,
+    textDecoration: "none",
+    borderBottom: `0.5px solid ${vars.color.sirius}`,
+    paddingBottom: "2px",
+    textTransform: "uppercase",
+    transitionProperty: "color, border-color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
+    selectors: {
+        "&:hover": {
+            color: vars.color.daylight,
+            borderBottomColor: vars.color.daylight,
+        },
+    },
 });

@@ -1,25 +1,22 @@
 import { init } from "echarts/core";
 import { createEffect, createMemo, For, onSettled, Show } from "solid-js";
 
+import Anno from "~/components/schematic/Anno";
+import Rule from "~/components/schematic/Rule";
+import Sheet from "~/components/schematic/Sheet";
+import TitleBlock from "~/components/schematic/TitleBlock";
 import {
     axisBase,
+    axisNameStyle,
     type BenchmarkData,
     barSeries,
     colors,
-    dotStyle,
     type EChartsOption,
     getImplMeta,
-    gradient,
     gridBase,
-    heroCardStyle,
-    heroNumberStyle,
-    implTagStyle,
-    pillStyle,
-    styles,
-    tableCellStyle,
-    titleBase,
     tooltipBase,
 } from "~/lib/benchmarkConfig";
+import * as s from "~/styles/BenchmarksPage.css";
 
 interface BenchmarkChartProps {
     data: BenchmarkData;
@@ -63,18 +60,14 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
         );
         return {
             backgroundColor: "transparent",
-            title: titleBase(
-                "THROUGHPUT",
-                "Millions of operations / second (higher is better)",
-            ),
             tooltip: {
                 ...tooltipBase,
                 formatter: (params: { dataIndex: number; value: number }[]) => {
                     const p = params[0];
                     const c = implColors[p.dataIndex];
                     return (
-                        `<span style="color:${c};font-weight:700">${names[p.dataIndex]}</span><br/>` +
-                        `<span style="font-size:16px;font-weight:700;color:${c}">${p.value}</span>` +
+                        `<span style="color:${c};font-weight:600">${names[p.dataIndex]}</span><br/>` +
+                        `<span style="font-size:16px;font-weight:600;color:${c}">${p.value}</span>` +
                         `<span style="color:${colors.moonlight}"> Mops/s</span>`
                     );
                 },
@@ -84,11 +77,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
             yAxis: {
                 type: "value",
                 name: "Mops/s",
-                nameTextStyle: {
-                    color: colors.moonlight,
-                    fontFamily: '"Rubik", sans-serif',
-                    fontSize: 10,
-                },
+                nameTextStyle: axisNameStyle,
                 ...axisBase,
             },
             series: [barSeries(implColors, values)],
@@ -103,18 +92,14 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
         const values = r.map(({ avg_ns_per_op }) => +avg_ns_per_op.toFixed(1));
         return {
             backgroundColor: "transparent",
-            title: titleBase(
-                "LATENCY",
-                "Nanoseconds / operation (lower is better)",
-            ),
             tooltip: {
                 ...tooltipBase,
                 formatter: (params: { dataIndex: number; value: number }[]) => {
                     const p = params[0];
                     const c = implColors[p.dataIndex];
                     return (
-                        `<span style="color:${c};font-weight:700">${names[p.dataIndex]}</span><br/>` +
-                        `<span style="font-size:16px;font-weight:700;color:${c}">${p.value}</span>` +
+                        `<span style="color:${c};font-weight:600">${names[p.dataIndex]}</span><br/>` +
+                        `<span style="font-size:16px;font-weight:600;color:${c}">${p.value}</span>` +
                         `<span style="color:${colors.moonlight}"> ns/op</span>`
                     );
                 },
@@ -124,14 +109,10 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
             yAxis: {
                 type: "value",
                 name: "ns/op",
-                nameTextStyle: {
-                    color: colors.moonlight,
-                    fontFamily: '"Rubik", sans-serif',
-                    fontSize: 10,
-                },
+                nameTextStyle: axisNameStyle,
                 ...axisBase,
             },
-            series: [barSeries(implColors, values, "", undefined, "cc")],
+            series: [barSeries(implColors, values)],
         };
     });
 
@@ -144,16 +125,11 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
         const values = comps.map(
             ({ speedup_factor }) => +(speedup_factor as number).toFixed(3),
         );
-        const winFlags = values.map(v => v >= 1.0);
-        const implColors = winFlags.map(win =>
-            win ? colors.airglow : colors.antares,
-        );
-        const botColors = winFlags.map(
-            win => (win ? colors.nebula : colors.arcturus) + "44",
+        const implColors = values.map(v =>
+            v >= 1.0 ? colors.airglow : colors.antares,
         );
         return {
             backgroundColor: "transparent",
-            title: titleBase("SPEEDUP FACTOR", "Wasm / JS  (1.0 is parity)"),
             tooltip: {
                 ...tooltipBase,
                 formatter: (params: { dataIndex: number; value: number }[]) => {
@@ -162,7 +138,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     const c = win ? colors.airglow : colors.antares;
                     return (
                         `<span style="color:${colors.halo}">${names[p.dataIndex]}</span><br/>` +
-                        `<span style="font-size:20px;font-weight:900;color:${c}">${p.value}×</span>` +
+                        `<span style="font-size:20px;font-weight:600;color:${c}">${p.value}×</span>` +
                         `<span style="color:${colors.moonlight}"> ${win ? "faster" : "slower"}</span>`
                     );
                 },
@@ -173,39 +149,21 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 type: "value",
                 name: "× ratio",
                 min: 0,
-                nameTextStyle: {
-                    color: colors.moonlight,
-                    fontFamily: '"Rubik", sans-serif',
-                    fontSize: 10,
-                },
+                nameTextStyle: axisNameStyle,
                 ...axisBase,
                 axisLabel: { ...axisBase.axisLabel, formatter: "{value}×" },
             },
             series: [
                 {
                     ...barSeries(implColors, values, "×", implColors),
-                    data: values.map((value, i) => ({
-                        value,
-                        itemStyle: {
-                            borderRadius: [5, 5, 0, 0],
-                            color: gradient(implColors[i], botColors[i]),
-                        },
-                        label: {
-                            show: true,
-                            position: "top" as const,
-                            color: implColors[i],
-                            fontFamily: '"Rubik", sans-serif',
-                            fontSize: 13,
-                            fontWeight: 900,
-                            formatter: `${value}×`,
-                        },
-                    })),
+                    // The datum the whole page is oriented around, drawn as the
+                    // one accent line on the chart.
                     markLine: {
                         silent: true,
                         symbol: "none",
                         lineStyle: {
-                            color: colors.cinder,
-                            type: "dashed" as const,
+                            color: colors.sirius,
+                            type: "solid" as const,
                             width: 1,
                         },
                         data: [
@@ -213,8 +171,8 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                 yAxis: 1,
                                 label: {
                                     formatter: "parity",
-                                    color: colors.ember,
-                                    fontFamily: '"Rubik", sans-serif',
+                                    color: colors.starlight,
+                                    fontFamily: "monospace",
                                     fontSize: 10,
                                 },
                             },
@@ -276,144 +234,137 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
     });
 
     return (
-        <div style={styles.root}>
-            <div style={styles.inner}>
-                <div>
-                    <div style={styles.chip}>
-                        <span style={{ color: colors.airglow }}>●</span>
-                        {iterations().toLocaleString()} iterations |{" "}
-                        {runs().length} implementations
-                    </div>
-                    <h1 style={styles.h1}>XOR encoder benchmark</h1>
-                    <p style={styles.subheading}>
-                        2 UltraViolet JavaScript implementations compared to
-                        Civil's C++/WebAssembly implementation via Emscripten
-                    </p>
+        <Sheet density="fine">
+            <TitleBlock
+                eyebrow="measurement"
+                title="XOR encoder benchmark"
+                meta={`${iterations().toLocaleString()} iterations · ${String(runs().length)} implementations`}
+            />
+
+            <p class={s.lede}>
+                Two UltraViolet JavaScript implementations compared against
+                Civil's C++/WebAssembly encoder, built with Emscripten.
+            </p>
+
+            <Show when={headline()}>
+                <div class={s.headline}>
+                    <span class={wasmWins() ? s.figure.win : s.figure.loss}>
+                        {headline()}×
+                    </span>
+                    <span class={s.headlineText}>
+                        <span class={s.headlineClaim}>
+                            WebAssembly is {wasmWins() ? "faster" : "slower"}{" "}
+                            than the fastest JavaScript implementation measured.
+                        </span>
+                        <span class={s.headlineDatum}>
+                            parity = 1.00× · higher is faster
+                        </span>
+                    </span>
                 </div>
+            </Show>
 
-                <Show when={headline()}>
-                    <div>
-                        <div style={heroCardStyle(wasmWins())}>
-                            <div style={heroNumberStyle(wasmWins())}>
-                                {headline()}×
-                            </div>
-                            <div style={styles.heroLabel}>
-                                WebAssembly is{" "}
-                                {wasmWins() ? "faster" : "slower"} than the best
-                                JavaScript implementation
-                            </div>
-                        </div>
-                    </div>
-                </Show>
+            <div class={s.legend}>
+                <For each={runs()} keyed={false}>
+                    {run => {
+                        const m = () => getImplMeta(run().impl);
+                        return (
+                            <span class={s.legendItem}>
+                                <span
+                                    class={s.legendSwatch}
+                                    style={{ background: m().color }}
+                                    aria-hidden="true"
+                                />
+                                <span class={s.legendName}>{m().short}</span>
+                                <span class={s.legendTag}>{m().tag}</span>
+                            </span>
+                        );
+                    }}
+                </For>
+            </div>
 
-                <div style={styles.pills}>
-                    <For each={runs()} keyed={false}>
-                        {run => {
-                            const m = getImplMeta(run().impl);
-                            return (
-                                <span style={pillStyle(m.color)}>
-                                    <span style={dotStyle(m.color)} />
-                                    {m.short}
-                                    <span style={implTagStyle(m.color)}>
-                                        {m.tag}
-                                    </span>
-                                </span>
-                            );
-                        }}
-                    </For>
+            <div class={s.chartPair}>
+                <div class={s.chartBlock}>
+                    <Rule label="throughput" weight="major" />
+                    <Anno muted class={s.chartCaption}>
+                        millions of operations per second — higher is better
+                    </Anno>
+                    <div ref={refThroughput} class={s.chartBox} />
                 </div>
-
-                <div style={styles.grid2}>
-                    <div style={styles.card}>
-                        <div ref={refThroughput} style={styles.chartBox} />
-                    </div>
-                    <div style={styles.card}>
-                        <div ref={refLatency} style={styles.chartBox} />
-                    </div>
-                </div>
-
-                <Show
-                    when={
-                        comparisons().length > 0 &&
-                        comparisons()[0].speedup_factor != null
-                    }
-                >
-                    <div style={styles.fullCard}>
-                        <div ref={refSpeedup} style={styles.fullChart} />
-                    </div>
-                </Show>
-
-                <div style={styles.tableWrap}>
-                    <div style={styles.tableHead}>raw results</div>
-                    <table style={styles.table}>
-                        <thead>
-                            <tr>
-                                <For
-                                    each={
-                                        [
-                                            "Implementation",
-                                            "Mops/s",
-                                            "ns/op",
-                                            "Total ms",
-                                        ] as const
-                                    }
-                                    keyed={false}
-                                >
-                                    {heading => (
-                                        <th style={styles.th}>{heading()}</th>
-                                    )}
-                                </For>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <For each={runs()} keyed={false}>
-                                {(run, index) => {
-                                    const m = getImplMeta(run().impl);
-                                    return (
-                                        <tr>
-                                            <td style={tableCellStyle(index)}>
-                                                <span style={styles.implCell}>
-                                                    <span
-                                                        style={dotStyle(
-                                                            m.color,
-                                                        )}
-                                                    />
-                                                    <span
-                                                        style={`color:${colors.daylight}`}
-                                                    >
-                                                        {run().impl}
-                                                    </span>
-                                                </span>
-                                            </td>
-                                            <td
-                                                style={`${tableCellStyle(index)};color:${m.color};font-weight:700`}
-                                            >
-                                                {(
-                                                    run().ops_per_sec / 1e6
-                                                ).toFixed(4)}
-                                            </td>
-                                            <td
-                                                style={`${tableCellStyle(index)};color:${colors.halo}`}
-                                            >
-                                                {run().avg_ns_per_op.toFixed(1)}
-                                            </td>
-                                            <td
-                                                style={`${tableCellStyle(index)};color:${colors.halo}`}
-                                            >
-                                                {run().total_ms.toFixed(1)}
-                                            </td>
-                                        </tr>
-                                    );
-                                }}
-                            </For>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div style={styles.footer}>
-                    twilight · apache echarts · solidjs
+                <div class={s.chartBlock}>
+                    <Rule label="latency" weight="major" />
+                    <Anno muted class={s.chartCaption}>
+                        nanoseconds per operation — lower is better
+                    </Anno>
+                    <div ref={refLatency} class={s.chartBox} />
                 </div>
             </div>
-        </div>
+
+            <Show
+                when={
+                    comparisons().length > 0 &&
+                    comparisons()[0].speedup_factor != null
+                }
+            >
+                <div class={s.chartBlock}>
+                    <Rule label="speedup factor" weight="major" />
+                    <Anno muted class={s.chartCaption}>
+                        wasm ÷ js — the marked line is parity
+                    </Anno>
+                    <div ref={refSpeedup} class={s.chartBoxWide} />
+                </div>
+            </Show>
+
+            <Rule label="raw results" weight="major" />
+            <div class={s.tableScroll}>
+                <table class={s.table}>
+                    <thead>
+                        <tr>
+                            <th class={s.th}>implementation</th>
+                            <th class={s.thNum}>Mops/s</th>
+                            <th class={s.thNum}>ns/op</th>
+                            <th class={s.thNum}>total ms</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <For each={runs()} keyed={false}>
+                            {run => {
+                                const m = () => getImplMeta(run().impl);
+                                return (
+                                    <tr>
+                                        <td class={s.tdImpl}>
+                                            <span class={s.implCell}>
+                                                <span
+                                                    class={s.legendSwatch}
+                                                    style={{
+                                                        background: m().color,
+                                                    }}
+                                                    aria-hidden="true"
+                                                />
+                                                {run().impl}
+                                            </span>
+                                        </td>
+                                        <td class={s.tdLead}>
+                                            {(run().ops_per_sec / 1e6).toFixed(
+                                                4,
+                                            )}
+                                        </td>
+                                        <td class={s.tdNum}>
+                                            {run().avg_ns_per_op.toFixed(1)}
+                                        </td>
+                                        <td class={s.tdNum}>
+                                            {run().total_ms.toFixed(1)}
+                                        </td>
+                                    </tr>
+                                );
+                            }}
+                        </For>
+                    </tbody>
+                </table>
+            </div>
+
+            <Anno muted class={s.footer}>
+                apache echarts · solidjs
+            </Anno>
+        </Sheet>
     );
 }

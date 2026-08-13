@@ -16,8 +16,11 @@ import {
     IconRefresh,
     IconUpload,
 } from "~/components/icons";
+import Anno from "~/components/schematic/Anno";
+import Rule from "~/components/schematic/Rule";
+import Sheet from "~/components/schematic/Sheet";
+import TitleBlock from "~/components/schematic/TitleBlock";
 import * as s from "~/styles/ExtensionsPage.css";
-import * as l from "~/styles/layout.css";
 import type { CivilExtension } from "~/types";
 
 type ExtensionListItem = Omit<CivilExtension, "files"> & {
@@ -49,29 +52,83 @@ function ExtensionIcon(props: { ext: ExtensionListItem }) {
         extensionsResolveIcon(props.ext.id, props.ext.manifest as any, 48);
 
     return (
-        <div class={s.cardIcon}>
-            <Show when={iconUrl()} fallback={<IconPuzzle size={20} />}>
-                {url => <img src={url()} class={s.cardIconImg} alt="" />}
+        <span class={s.iconPlate}>
+            <Show when={iconUrl()} fallback={<IconPuzzle size={15} />}>
+                {url => <img src={url()} class={s.iconImg} alt="" />}
             </Show>
-        </div>
+        </span>
     );
 }
 
-function ToggleSwitch(props: {
-    checked: boolean;
-    onChange: (v: boolean) => void;
+/**
+ * One extension. This was previously written out twice — once under "Chrome
+ * Extensions" and once under "Firefox Extensions" — with the two copies
+ * differing only in the badge. Forty-odd lines of markup kept in sync by hand
+ * is a defect waiting to happen, and the second copy had already drifted
+ * nowhere useful.
+ */
+function ExtensionRow(props: {
+    ext: ExtensionListItem;
+    armed: boolean;
+    onToggle: (enabled: boolean) => void;
+    onArm: () => void;
+    onUninstall: () => void;
 }) {
+    const description = () => props.ext.manifest.description ?? "";
     return (
-        <label class={s.toggle}>
-            <input
-                type="checkbox"
-                class={s.toggleInput}
-                checked={props.checked}
-                onChange={e => props.onChange(e.currentTarget.checked)}
+        <li class={s.row}>
+            <span
+                class={props.ext.enabled ? s.node.on : s.node.off}
+                aria-hidden="true"
             />
-            <span class={s.toggleTrack} />
-            <span class={s.toggleThumb} />
-        </label>
+            <ExtensionIcon ext={props.ext} />
+            <span class={s.info}>
+                <span class={s.name}>{props.ext.name}</span>
+                <span class={s.meta}>
+                    v{props.ext.version}
+                    {description() ? ` · ${description()}` : ""}
+                </span>
+            </span>
+            <span class={s.stamp[props.ext.type === "crx" ? "crx" : "xpi"]}>
+                {props.ext.type}
+            </span>
+            {/* The switch is the only thing stating enabled/disabled to a
+                screen reader — the spine node beside it is decorative — so it
+                carries the extension's name in its own label rather than
+                relying on the row for context. */}
+            <label class={s.toggle}>
+                <input
+                    type="checkbox"
+                    class={s.toggleInput}
+                    checked={props.ext.enabled}
+                    aria-label={`Enable ${props.ext.name}`}
+                    onChange={e => props.onToggle(e.currentTarget.checked)}
+                />
+                <span class={s.toggleTrack} />
+                <span class={s.toggleThumb} />
+            </label>
+            <Show
+                when={props.armed}
+                fallback={
+                    <button
+                        type="button"
+                        class={s.removeBtn}
+                        aria-label={`Uninstall ${props.ext.name}`}
+                        onClick={props.onArm}
+                    >
+                        <IconClose size={14} />
+                    </button>
+                }
+            >
+                <button
+                    type="button"
+                    class={s.removeArmed}
+                    onClick={props.onUninstall}
+                >
+                    confirm uninstall
+                </button>
+            </Show>
+        </li>
     );
 }
 
@@ -98,6 +155,19 @@ export default function ExtensionsPage() {
     const [error, setError] = createSignal<string | null>(null);
     const [checking, setChecking] = createSignal(false);
     const [updateStatus, setUpdateStatus] = createSignal<string | null>(null);
+
+    // Uninstalling deletes the extension's stored files, so the control asks
+    // once. Keyed by id rather than a boolean because arming one row must
+    // disarm any other — two live "confirm" buttons is how the wrong one gets
+    // clicked.
+    const [armedId, setArmedId] = createSignal<string | null>(null);
+    let armTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const arm = (id: string) => {
+        clearTimeout(armTimer);
+        setArmedId(id);
+        armTimer = setTimeout(() => setArmedId(null), 4000);
+    };
 
     const handleInstallUrl = async () => {
         const url = urlInput().trim();
@@ -183,44 +253,61 @@ export default function ExtensionsPage() {
         }
     };
 
-    const handleToggle = (id: string, enabled: boolean) => {
-        extensionsSetEnabled(id, enabled);
-    };
-
     const handleUninstall = async (id: string) => {
+        clearTimeout(armTimer);
+        setArmedId(null);
         await extensionsUninstall(id);
     };
 
     const crxExts = () => extensions().filter(e => e.type === "crx");
     const xpiExts = () => extensions().filter(e => e.type === "xpi");
 
-    return (
-        <div class={s.root}>
-            <header class={l.masthead}>
-                <div class={l.mastheadTop}>
-                    <div class={l.mastheadTitleGroup}>
-                        <span class={l.eyebrow}>
-                            <span class={l.eyebrowMark} />
-                            Preferences
-                        </span>
-                        <h1 class={l.pageTitle}>Extensions</h1>
-                    </div>
-                    <Show when={extensions().length > 0}>
-                        <span class={l.pageMeta}>
-                            {extensions().filter(e => e.enabled).length} of{" "}
-                            {extensions().length} enabled
-                        </span>
-                    </Show>
-                </div>
-                <div class={l.mastheadRule} />
-            </header>
+    const enabledCount = () => extensions().filter(e => e.enabled).length;
 
-            <div class={s.installBar}>
+    return (
+        <Sheet>
+            <TitleBlock
+                eyebrow="preferences"
+                title="Extensions"
+                meta={
+                    extensions().length > 0
+                        ? `${enabledCount()} of ${extensions().length} enabled`
+                        : "none installed"
+                }
+                actions={
+                    <div class={s.titleActions}>
+                        <button
+                            type="button"
+                            class={s.textBtn}
+                            onClick={handleCheckUpdates}
+                            disabled={checking() || extensions().length === 0}
+                        >
+                            <Show
+                                when={checking()}
+                                fallback={
+                                    <>
+                                        <IconRefresh size={13} /> check for
+                                        updates
+                                    </>
+                                }
+                            >
+                                <IconLoader size={13} /> checking
+                            </Show>
+                        </button>
+                    </div>
+                }
+            />
+
+            <div class={s.intake}>
+                <span class={s.intakeLabel} id="ext-intake-label">
+                    source
+                </span>
                 <input
-                    class={s.installInput}
+                    class={s.intakeInput}
                     type="text"
-                    placeholder="Install from URL (.crx or .xpi)"
+                    placeholder="https://… .crx or .xpi"
                     value={urlInput()}
+                    aria-labelledby="ext-intake-label"
                     onInput={e => setUrlInput(e.currentTarget.value)}
                     onKeyDown={e => {
                         if (e.key === "Enter") handleInstallUrl();
@@ -228,7 +315,7 @@ export default function ExtensionsPage() {
                 />
                 <button
                     type="button"
-                    class={s.installBtn}
+                    class={s.textBtn}
                     onClick={handleInstallUrl}
                     disabled={installing() || !urlInput().trim()}
                 >
@@ -236,169 +323,93 @@ export default function ExtensionsPage() {
                         when={installing()}
                         fallback={
                             <>
-                                <IconLink size={14} /> Install
+                                <IconLink size={13} /> install
                             </>
                         }
                     >
-                        <IconLoader size={14} /> Installing
+                        <IconLoader size={13} /> installing
                     </Show>
                 </button>
-                <label class={s.uploadBtnLabel}>
-                    <IconUpload size={14} /> Upload file
+                <label class={s.uploadLabel}>
+                    <IconUpload size={13} /> upload file
                     <input
                         type="file"
                         accept=".crx,.xpi"
-                        style={{ display: "none" }}
+                        class={s.uploadInput}
                         onChange={handleFileUpload}
                     />
                 </label>
-                <button
-                    type="button"
-                    class={s.installBtn}
-                    onClick={handleCheckUpdates}
-                    disabled={checking() || extensions().length === 0}
-                >
-                    <Show
-                        when={checking()}
-                        fallback={
-                            <>
-                                <IconRefresh size={14} /> Check for updates
-                            </>
-                        }
-                    >
-                        <IconLoader size={14} /> Checking
-                    </Show>
-                </button>
             </div>
 
-            <Show when={updateStatus()}>
-                <p
-                    style={{
-                        color: "var(--civil-color-text-muted, #888)",
-                        "font-size": "13px",
-                        "margin-bottom": "16px",
-                    }}
-                >
-                    {updateStatus()}
-                </p>
-            </Show>
-
-            <Show when={error()}>
-                <p
-                    style={{
-                        color: "var(--civil-color-red)",
-                        "font-size": "13px",
-                        "margin-bottom": "16px",
-                    }}
-                >
-                    {error()}
-                </p>
-            </Show>
+            {/* One region for both outcomes, always present in the DOM. A live
+                region that is added at the same moment its text arrives is
+                frequently missed entirely — the announcement has to land in a
+                region the screen reader was already watching. */}
+            <p
+                class={`${s.status} ${error() ? s.statusTone.error : s.statusTone.info}`}
+                role="status"
+                aria-live="polite"
+            >
+                <Show when={error() ?? updateStatus()}>
+                    <span class={s.statusMark} aria-hidden="true" />
+                    {error() ?? updateStatus()}
+                </Show>
+            </p>
 
             <Show when={extensions().length === 0}>
+                <Rule label="none installed" weight="major" />
                 <div class={s.empty}>
-                    <IconPuzzle size={40} class={s.emptyIcon} />
-                    <p class={s.emptyText}>
-                        No extensions installed. Install a .crx or .xpi above.
-                    </p>
+                    <Anno muted>
+                        no extensions yet — install a .crx or .xpi above
+                    </Anno>
                 </div>
             </Show>
 
             <Show when={crxExts().length > 0}>
-                <p class={s.sectionTitle}>Chrome Extensions</p>
-                <div class={s.list}>
-                    <For each={crxExts()} keyed={false}>
-                        {ext => (
-                            <div class={s.card}>
-                                <ExtensionIcon ext={ext()} />
-                                <div class={s.cardInfo}>
-                                    <div class={s.cardName}>
-                                        <span
-                                            class={[
-                                                s.statusDot,
-                                                {
-                                                    [s.statusDotOn]:
-                                                        ext().enabled,
-                                                },
-                                            ]}
-                                        />{" "}
-                                        {ext().name}
-                                    </div>
-                                    <div class={s.cardMeta}>
-                                        v{ext().version} ·{" "}
-                                        {ext().manifest.description ?? ""}
-                                    </div>
-                                </div>
-                                <span
-                                    class={`${s.cardBadge} ${s.cardBadgeCrx}`}
-                                >
-                                    CRX
-                                </span>
-                                <ToggleSwitch
-                                    checked={ext().enabled}
-                                    onChange={v => handleToggle(ext().id, v)}
+                <div class={s.section}>
+                    <Rule label="chrome · crx" weight="major" />
+                    <ul class={s.list}>
+                        <For each={crxExts()} keyed={false}>
+                            {ext => (
+                                <ExtensionRow
+                                    ext={ext()}
+                                    armed={armedId() === ext().id}
+                                    onToggle={v =>
+                                        extensionsSetEnabled(ext().id, v)
+                                    }
+                                    onArm={() => arm(ext().id)}
+                                    onUninstall={() =>
+                                        handleUninstall(ext().id)
+                                    }
                                 />
-                                <button
-                                    type="button"
-                                    class={s.removeBtn}
-                                    title="Uninstall"
-                                    onClick={() => handleUninstall(ext().id)}
-                                >
-                                    <IconClose size={15} />
-                                </button>
-                            </div>
-                        )}
-                    </For>
+                            )}
+                        </For>
+                    </ul>
                 </div>
             </Show>
 
             <Show when={xpiExts().length > 0}>
-                <p class={s.sectionTitle}>Firefox Extensions</p>
-                <div class={s.list}>
-                    <For each={xpiExts()} keyed={false}>
-                        {ext => (
-                            <div class={s.card}>
-                                <ExtensionIcon ext={ext()} />
-                                <div class={s.cardInfo}>
-                                    <div class={s.cardName}>
-                                        <span
-                                            class={[
-                                                s.statusDot,
-                                                {
-                                                    [s.statusDotOn]:
-                                                        ext().enabled,
-                                                },
-                                            ]}
-                                        />{" "}
-                                        {ext().name}
-                                    </div>
-                                    <div class={s.cardMeta}>
-                                        v{ext().version} ·{" "}
-                                        {ext().manifest.description ?? ""}
-                                    </div>
-                                </div>
-                                <span
-                                    class={`${s.cardBadge} ${s.cardBadgeXpi}`}
-                                >
-                                    XPI
-                                </span>
-                                <ToggleSwitch
-                                    checked={ext().enabled}
-                                    onChange={v => handleToggle(ext().id, v)}
+                <div class={s.section}>
+                    <Rule label="firefox · xpi" weight="major" />
+                    <ul class={s.list}>
+                        <For each={xpiExts()} keyed={false}>
+                            {ext => (
+                                <ExtensionRow
+                                    ext={ext()}
+                                    armed={armedId() === ext().id}
+                                    onToggle={v =>
+                                        extensionsSetEnabled(ext().id, v)
+                                    }
+                                    onArm={() => arm(ext().id)}
+                                    onUninstall={() =>
+                                        handleUninstall(ext().id)
+                                    }
                                 />
-                                <button
-                                    type="button"
-                                    class={s.removeBtn}
-                                    title="Uninstall"
-                                    onClick={() => handleUninstall(ext().id)}
-                                >
-                                    <IconClose size={15} />
-                                </button>
-                            </div>
-                        )}
-                    </For>
+                            )}
+                        </For>
+                    </ul>
                 </div>
             </Show>
-        </div>
+        </Sheet>
     );
 }

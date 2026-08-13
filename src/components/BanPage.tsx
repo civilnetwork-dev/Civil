@@ -1,4 +1,5 @@
 import { createSignal, onSettled, Show } from "solid-js";
+import StrikeGauge from "~/components/StrikeGauge";
 import * as s from "~/styles/BanPage.css";
 
 type ViolationsData = {
@@ -20,49 +21,63 @@ export default function BanPage({ banReason }: { banReason: string }) {
     });
 
     const isPermanentlyBanned = () => status()?.banned === true;
+    const tone = () => (isPermanentlyBanned() ? "banned" : "restricted");
 
     return (
-        <div class={s.banRoot}>
-            <div class={s.banBackground} />
-            <div class={s.banText}>
+        <div class={s.root}>
+            <div class={s.plate}>
+                <div class={s.band[tone()]} aria-hidden="true" />
                 <Show
                     when={isPermanentlyBanned()}
                     fallback={
                         <>
-                            <span class={s.banEyebrow}>
-                                <span class={s.banEyebrowMark} />
-                                Blocked by Civil
+                            <span class={s.eyebrow}>
+                                <span
+                                    class={s.eyebrowMark.restricted}
+                                    aria-hidden="true"
+                                />
+                                blocked by civil
                             </span>
-                            <h1>Site Restricted</h1>
-                            <p>
+                            <h1 class={s.title}>Site restricted</h1>
+                            <p class={s.reason}>
                                 {banReason ||
                                     "This site is restricted by the proxy."}
                             </p>
+                            {/* The strike count is the actionable part of this
+                                page — it is the difference between "try
+                                something else" and "one more and you are
+                                locked out" — so it gets the gauge rather than
+                                the 14px, 60%-opacity line of text it was. */}
                             <Show when={status()}>
-                                <p
-                                    style={{
-                                        "font-size": "14px",
-                                        opacity: "0.6",
-                                    }}
-                                >
-                                    Strike {status()!.violations} of{" "}
-                                    {status()!.maxViolations}
-                                </p>
+                                <div class={s.gaugeSlot}>
+                                    <StrikeGauge
+                                        violations={status()!.violations}
+                                        maxViolations={status()!.maxViolations}
+                                    />
+                                </div>
                             </Show>
-                            <a href="/baninfo">View your proxy status</a>
+                            <div class={s.actions}>
+                                <a class={s.link} href="/baninfo">
+                                    view your proxy status
+                                </a>
+                            </div>
                         </>
                     }
                 >
-                    <span class={s.banEyebrow}>
-                        <span class={s.banEyebrowMark} />
-                        Account suspended
+                    <span class={s.eyebrow}>
+                        <span class={s.eyebrowMark.banned} aria-hidden="true" />
+                        account suspended
                     </span>
-                    <h1>Banned</h1>
-                    <p>
+                    <h1 class={s.title}>Banned</h1>
+                    <p class={s.reason}>
                         {status()?.banReason ??
                             "You have been permanently banned from this proxy."}
                     </p>
-                    <a href="/baninfo">View ban details</a>
+                    <div class={s.actions}>
+                        <a class={s.link} href="/baninfo">
+                            view ban details
+                        </a>
+                    </div>
                 </Show>
             </div>
         </div>

@@ -1,260 +1,386 @@
-import { keyframes, style } from "@vanilla-extract/css";
-import { PAGE_PADDING } from "./layout.css";
-import {
-    atmosphere,
-    DUR,
-    EASE,
-    focusRing,
-    glow,
-    lit,
-    machined,
-    SHADOW,
-} from "./material.css";
+import { style, styleVariants } from "@vanilla-extract/css";
+import { DUR, EASE, hitArea } from "./material.css";
+import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
-const T_FAST = "0.1s ease";
+/**
+ * The state spine.
+ *
+ * Extensions is the only page in the app where every row carries a binary the
+ * reader actually scans for — enabled or not. So that binary becomes the
+ * drawing: a vertical spine down the left of each section with a node per
+ * extension, filled when the extension is live and hollow when it is not.
+ * "What is running right now" is answerable from the gutter alone, without
+ * reading a single name.
+ *
+ * This is why the page does not reuse Bookmarks' call numbers or History's
+ * hour meters: an extension's position in a list means nothing, and its
+ * install time means almost nothing. Its state means everything.
+ */
 
-const emptyFadeIn = keyframes({
-    from: { opacity: 0, transform: "translateY(6px)" },
-    to: { opacity: 1, transform: "translateY(0)" },
-});
+/* -------------------------------------------------------------------- */
+/* Title block actions                                                   */
+/* -------------------------------------------------------------------- */
 
-export const root = style({
-    ...atmosphere(vars.color.vega),
-    minHeight: "100vh",
-    padding: PAGE_PADDING,
-    color: vars.color.daylight,
-    fontFamily: '"Rubik", sans-serif',
-});
-
-export const installBar = style({
+export const titleActions = style({
     display: "flex",
+    alignItems: "center",
+    gap: "14px",
     flexWrap: "wrap",
-    gap: "10px",
-    marginBottom: "32px",
 });
 
-export const installInput = style({
-    // Grow to fill the row, but allow shrinking below the intrinsic input
-    // width so the buttons wrap onto a second line instead of being pushed
-    // off-screen (the body clips overflow-x, so they became unreachable).
-    flex: "1 1 240px",
-    minWidth: 0,
-    background: machined(
-        vars.color.horizon,
-        `color-mix(in srgb, ${vars.color.horizon} 80%, ${vars.color.night})`,
-    ),
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "10px",
-    padding: "9px 14px",
-    fontSize: "14px",
-    color: vars.color.daylight,
-    outline: "none",
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "border-color, box-shadow",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:focus": {
-            borderColor: `color-mix(in srgb, ${vars.color.vega} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.vega)),
-        },
-        "&::placeholder": {
-            color: vars.color.cinder,
-        },
-    },
-});
-
-export const installBtn = style({
-    background: `linear-gradient(135deg, ${vars.color.vega} 0%, ${vars.color.sirius} 100%)`,
-    color: vars.color.void,
-    border: "none",
-    borderRadius: "10px",
-    padding: "9px 22px",
-    fontSize: "13px",
-    fontWeight: 600,
-    letterSpacing: "0.03em",
-    cursor: "pointer",
-    boxShadow: glow(vars.color.vega, 26),
-    transitionProperty: "transform, box-shadow, filter",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:hover:not(:disabled)": {
-            transform: "translateY(-1px)",
-            boxShadow: glow(vars.color.vega, 44),
-        },
-        "&:active:not(:disabled)": { transform: "translateY(0)" },
-        "&:disabled": {
-            filter: "saturate(0.25)",
-            opacity: 0.45,
-            boxShadow: "none",
-            cursor: "not-allowed",
-        },
-    },
-});
-
-export const uploadBtnLabel = style({
+const textBtnBase = style({
+    ...ANNO,
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    background: machined(vars.color.horizon, vars.color.night),
-    color: vars.color.halo,
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "10px",
-    padding: "9px 16px",
-    fontSize: "13px",
-    fontWeight: 500,
+    background: "none",
+    border: "none",
+    borderBottom: RULE.hair,
+    padding: "2px",
     cursor: "pointer",
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "background, color, border-color",
+    textTransform: "uppercase",
+    transitionProperty: "color, border-color, opacity",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        "&:hover": {
-            background: vars.color.haze,
-            color: vars.color.daylight,
-            borderColor: vars.color.ember,
-        },
+        "&:disabled": { opacity: 0.45, cursor: "default" },
     },
 });
 
-export const list = style({
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
+export const textBtn = style([
+    textBtnBase,
+    {
+        color: vars.color.moonlight,
+        selectors: {
+            "&:not(:disabled):hover": {
+                color: vars.color.daylight,
+                borderBottomColor: vars.color.sirius,
+            },
+        },
+    },
+]);
+
+export const textBtnDanger = style([
+    textBtnBase,
+    {
+        color: vars.color.antares,
+        selectors: {
+            "&:not(:disabled):hover": { borderBottomColor: vars.color.antares },
+        },
+    },
+]);
+
+// Armed state for a destructive second click. The label already says what the
+// next click does; the ground is the redundant channel, not the only one.
+export const textBtnArmed = style({
+    color: vars.color.daylight,
+    borderBottomColor: vars.color.antares,
+    background: `color-mix(in srgb, ${vars.color.antares} 16%, transparent)`,
+    padding: "2px 6px",
 });
 
-export const card = style({
+/* -------------------------------------------------------------------- */
+/* Intake                                                                */
+/* -------------------------------------------------------------------- */
+
+export const intake = style({
     display: "flex",
     alignItems: "center",
-    gap: "16px",
-    padding: "13px 16px",
-    borderRadius: "10px",
-    background: machined(vars.color.horizon, vars.color.night),
-    border: `1px solid ${vars.color.haze}`,
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "background, border-color, transform, box-shadow",
+    gap: "12px",
+    flexWrap: "wrap",
+    margin: "20px 0 8px",
+    paddingBottom: "8px",
+    borderBottom: RULE.hair,
+    transitionProperty: "border-color",
     transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:hover": {
-            borderColor: `color-mix(in srgb, ${vars.color.vega} 40%, ${vars.color.haze})`,
-            transform: "translateX(2px)",
-            boxShadow: lit(SHADOW.lifted),
-        },
-    },
-});
-
-// Enabled/disabled at-a-glance indicator for a real settings-panel scan,
-// not a colored border strip (the system reserves those for structural cards).
-// A seated indicator lamp: recessed bezel at rest, lit from within when the
-// extension is enabled. Static - the system forbids anything that pulses.
-export const statusDot = style({
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-    flexShrink: 0,
-    backgroundColor: vars.color.ember,
-    boxShadow: `inset 0 1px 1px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.35)`,
-    transitionProperty: "background-color, box-shadow",
     transitionDuration: DUR.base,
-    transitionTimingFunction: EASE.standard,
+    selectors: {
+        "&:focus-within": { borderBottomColor: vars.color.sirius },
+    },
 });
 
-export const statusDotOn = style({
-    backgroundColor: vars.color.airglow,
-    boxShadow: `inset 0 1px 1px rgba(255,255,255,0.35), 0 0 0 1px rgba(0,0,0,0.35), 0 0 10px color-mix(in srgb, ${vars.color.airglow} 70%, transparent)`,
-});
-
-export const cardIcon = style({
-    width: "36px",
-    height: "36px",
-    borderRadius: "8px",
-    backgroundColor: vars.color.haze,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+export const intakeLabel = style({
+    ...ANNO,
     flexShrink: 0,
-    color: vars.color.vega,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+});
+
+export const intakeInput = style({
+    flex: "1 1 260px",
+    minWidth: 0,
+    border: "none",
+    background: "transparent",
+    outline: "none",
+    color: vars.color.daylight,
+    fontFamily: FONT_MONO,
+    fontSize: "13px",
+    caretColor: vars.color.sirius,
+    selectors: {
+        "&::placeholder": { color: vars.color.cinder },
+    },
+});
+
+/**
+ * The file picker is a <label> wrapping a hidden <input type="file">, which is
+ * the only way to restyle one. A label is not focusable, so the input keeps
+ * its own focus ring rather than being `display: none` — that would drop it
+ * out of the tab order and leave upload keyboard-unreachable.
+ */
+export const uploadLabel = style([
+    textBtnBase,
+    {
+        position: "relative",
+        color: vars.color.moonlight,
+        selectors: {
+            "&:hover": {
+                color: vars.color.daylight,
+                borderBottomColor: vars.color.sirius,
+            },
+            "&:focus-within": {
+                color: vars.color.daylight,
+                outline: `1px solid ${vars.color.sirius}`,
+                outlineOffset: "2px",
+            },
+        },
+    },
+]);
+
+export const uploadInput = style({
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    opacity: 0,
+    cursor: "pointer",
+});
+
+/**
+ * Install and update both run async against the network. Their outcome was
+ * previously two bare <p>s with inline colours pointing at CSS variables that
+ * do not exist (`--civil-color-red`, `--civil-color-text-muted`), so the text
+ * rendered unstyled or off-palette — and nothing announced it, which on a
+ * page whose only feedback is this line meant a screen reader user learned
+ * nothing about whether an install worked.
+ */
+export const status = style({
+    ...ANNO,
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "8px",
+    margin: "10px 0 0",
+    minHeight: "15px",
+});
+
+export const statusTone = styleVariants({
+    info: { color: vars.color.starlight },
+    error: { color: vars.color.antares },
+});
+
+// The leading mark is decorative; the tone is already carried by the text
+// itself and by colour, so this is a third channel rather than the only one.
+export const statusMark = style({
+    flexShrink: 0,
+    width: "10px",
+    height: "1px",
+    marginTop: "7px",
+    background: "currentColor",
+});
+
+/* -------------------------------------------------------------------- */
+/* Section + spine                                                       */
+/* -------------------------------------------------------------------- */
+
+export const section = style({
+    margin: "26px 0 0",
+});
+
+/**
+ * The spine itself. It is drawn on the list rather than on each row so it runs
+ * continuously between nodes instead of breaking at every gap, and it is inset
+ * to sit under the centre of the node column.
+ */
+export const list = style({
+    position: "relative",
+    listStyle: "none",
+    margin: "4px 0 0",
+    padding: 0,
+    selectors: {
+        "&::before": {
+            content: '""',
+            position: "absolute",
+            left: "5px",
+            top: "16px",
+            bottom: "16px",
+            width: 0,
+            borderLeft: RULE.hair,
+        },
+    },
+});
+
+export const row = style({
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "11px 26px 1fr auto auto auto",
+    alignItems: "center",
+    gap: "12px",
+    padding: "12px 0",
+    borderBottom: RULE.hair,
+});
+
+/**
+ * The node on the spine. Filled means enabled. The fill is not the only signal
+ * — the switch beside it carries the same state, and the row's own accessible
+ * name does too — but it is the one that reads at a glance down the gutter.
+ */
+export const nodeBase = style({
+    width: "11px",
+    height: "11px",
+    borderRadius: "50%",
+    // Punches the spine out from behind the node so the line appears to pass
+    // between nodes rather than through them.
+    boxShadow: `0 0 0 3px ${vars.color.dusk}`,
+    transitionProperty: "background-color, border-color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.base,
+});
+
+export const node = styleVariants({
+    on: [
+        nodeBase,
+        {
+            background: vars.color.sirius,
+            border: `1px solid ${vars.color.sirius}`,
+        },
+    ],
+    off: [
+        nodeBase,
+        {
+            background: vars.color.dusk,
+            border: `1px solid ${vars.color.dust}`,
+        },
+    ],
+});
+
+export const iconPlate = style({
+    width: "26px",
+    height: "26px",
+    display: "grid",
+    placeItems: "center",
+    border: `0.5px solid ${vars.color.horizon}`,
+    color: vars.color.ember,
     overflow: "hidden",
 });
 
-export const cardIconImg = style({
-    width: "100%",
-    height: "100%",
+export const iconImg = style({
+    width: "18px",
+    height: "18px",
     objectFit: "contain",
-    borderRadius: "8px",
 });
 
-export const cardInfo = style({
-    flex: 1,
+export const info = style({
     minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "3px",
 });
 
-export const cardName = style({
-    fontSize: "14px",
-    fontWeight: 600,
+export const name = style({
+    fontSize: "13.5px",
+    fontWeight: 500,
     color: vars.color.daylight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
 });
 
-export const cardMeta = style({
-    fontSize: "12px",
-    color: vars.color.moonlight,
-    marginTop: "2px",
+export const meta = style({
+    ...ANNO,
+    color: vars.color.starlight,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
 });
 
-export const cardBadge = style({
-    fontSize: "11px",
-    fontWeight: 500,
-    padding: "2px 8px",
-    borderRadius: "20px",
-    backgroundColor: vars.color.haze,
-    color: vars.color.cinder,
+/**
+ * The packaging format, as a stamp. crx and xpi differ in tone rather than
+ * only in hue — aurora is lighter than arcturus — so they stay distinguishable
+ * under deuteranopia, where the two would otherwise converge.
+ */
+const stampBase = style({
+    ...ANNO,
     flexShrink: 0,
+    padding: "2px 6px",
+    fontSize: "10px",
+    textTransform: "uppercase",
 });
 
-export const cardBadgeCrx = style({
-    backgroundColor: `color-mix(in srgb, ${vars.color.rigel} 18%, transparent)`,
-    color: vars.color.rigel,
+export const stamp = styleVariants({
+    crx: [
+        stampBase,
+        {
+            color: vars.color.aurora,
+            border: `0.5px solid color-mix(in srgb, ${vars.color.aurora} 45%, transparent)`,
+        },
+    ],
+    xpi: [
+        stampBase,
+        {
+            color: vars.color.arcturus,
+            border: `0.5px solid color-mix(in srgb, ${vars.color.arcturus} 45%, transparent)`,
+        },
+    ],
 });
 
-export const cardBadgeXpi = style({
-    backgroundColor: `color-mix(in srgb, ${vars.color.corona} 18%, transparent)`,
-    color: vars.color.corona,
-});
+/* -------------------------------------------------------------------- */
+/* Switch                                                                */
+/* -------------------------------------------------------------------- */
 
+/**
+ * A native checkbox drives this, kept in the tab order and merely made
+ * transparent. The visible track and thumb are siblings that read its state
+ * through `:checked`, so keyboard, assistive tech and forms all behave without
+ * any of it being reimplemented in script.
+ */
 export const toggle = style({
-    flexShrink: 0,
     position: "relative",
-    width: "36px",
-    height: "20px",
+    flexShrink: 0,
+    display: "inline-grid",
+    alignItems: "center",
+    width: "34px",
+    height: "18px",
     cursor: "pointer",
 });
 
 export const toggleInput = style({
-    opacity: 0,
-    width: 0,
-    height: 0,
     position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    margin: 0,
+    opacity: 0,
+    cursor: "pointer",
 });
 
 export const toggleTrack = style({
     position: "absolute",
     inset: 0,
-    borderRadius: "20px",
-    backgroundColor: vars.color.dust,
-    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.45)",
-    transitionProperty: "background-color, box-shadow",
+    border: `0.5px solid ${vars.color.dust}`,
+    background: "transparent",
+    transitionProperty: "border-color, background-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        [`.${toggleInput}:checked + &`]: {
-            backgroundColor: vars.color.vega,
-            boxShadow: `inset 0 1px 2px rgba(0,0,0,0.28), 0 0 12px color-mix(in srgb, ${vars.color.vega} 45%, transparent)`,
+        [`${toggleInput}:checked ~ &`]: {
+            borderColor: vars.color.sirius,
+            background: `color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
+        },
+        // The ring has to live on the track: the input it belongs to is
+        // transparent, so its own outline would be invisible.
+        [`${toggleInput}:focus-visible ~ &`]: {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "2px",
         },
     },
 });
@@ -263,67 +389,66 @@ export const toggleThumb = style({
     position: "absolute",
     top: "3px",
     left: "3px",
-    width: "14px",
-    height: "14px",
-    borderRadius: "50%",
-    background: machined("#f2f4ff", vars.color.halo),
-    boxShadow: "0 1px 3px rgba(0,0,0,0.45)",
-    transitionProperty: "transform",
-    transitionTimingFunction: EASE.spring,
+    width: "12px",
+    height: "12px",
+    background: vars.color.dust,
+    transitionProperty: "transform, background-color",
+    transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        [`.${toggleInput}:checked ~ &`]: {
+        [`${toggleInput}:checked ~ &`]: {
             transform: "translateX(16px)",
+            background: vars.color.sirius,
         },
     },
 });
 
+/* -------------------------------------------------------------------- */
+/* Uninstall                                                             */
+/* -------------------------------------------------------------------- */
+
 export const removeBtn = style({
-    background: "none",
+    position: "relative",
+    flexShrink: 0,
+    display: "grid",
+    placeItems: "center",
+    width: "24px",
+    height: "24px",
+    padding: 0,
     border: "none",
-    color: vars.color.cinder,
+    background: "none",
+    color: vars.color.ember,
     cursor: "pointer",
-    padding: "4px",
-    borderRadius: "6px",
-    transition: `color ${T_FAST}`,
-    transitionDuration: "0.1s",
+    transitionProperty: "color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
-        "&:hover": {
-            color: vars.color.antares,
-        },
+        "&::after": hitArea(),
+        "&:hover, &:focus-visible": { color: vars.color.antares },
     },
 });
+
+// The armed state is a word, not a colour on an X. Uninstalling deletes the
+// extension's stored files, and an icon cannot say "click again".
+export const removeArmed = style([
+    textBtnBase,
+    {
+        color: vars.color.daylight,
+        borderBottomColor: vars.color.antares,
+        background: `color-mix(in srgb, ${vars.color.antares} 16%, transparent)`,
+        padding: "2px 6px",
+        whiteSpace: "nowrap",
+    },
+]);
+
+/* -------------------------------------------------------------------- */
+/* Empty                                                                 */
+/* -------------------------------------------------------------------- */
 
 export const empty = style({
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
-    gap: "16px",
-    marginTop: "60px",
-    animationName: emptyFadeIn,
-    animationTimingFunction: "ease",
-    animationFillMode: "both",
-    animationDuration: "0.3s",
-});
-
-export const emptyIcon = style({
-    color: vars.color.dust,
-});
-
-export const emptyText = style({
-    color: vars.color.moonlight,
-    fontSize: "14px",
-    textAlign: "center",
-});
-
-export const sectionTitle = style({
-    fontSize: "12px",
-    fontWeight: 600,
-    color: vars.color.cinder,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    marginBottom: "10px",
-    marginTop: "28px",
-    paddingBottom: "8px",
-    borderBottom: `1px solid ${vars.color.horizon}`,
+    alignItems: "flex-start",
+    gap: "10px",
+    padding: "34px 0 8px",
 });

@@ -1,5 +1,9 @@
 import { createSignal, For, onSettled, Show } from "solid-js";
 import { IconBan, IconLoader } from "~/components/icons";
+import StrikeGauge from "~/components/StrikeGauge";
+import Rule from "~/components/schematic/Rule";
+import Sheet from "~/components/schematic/Sheet";
+import TitleBlock from "~/components/schematic/TitleBlock";
 import * as s from "~/styles/BanInfoPage.css";
 
 const PAGE_SIZE = 50;
@@ -25,79 +29,30 @@ function StatusSection() {
 
     return (
         <Show when={status()}>
-            <div class={s.statusSection}>
+            <div class={s.statusBlock}>
                 <Show
                     when={status()!.banned}
                     fallback={
-                        <div class={s.strikeCard}>
-                            <div class={s.strikeHeader}>
-                                <span class={s.strikeLabel}>
-                                    Your proxy strikes
-                                </span>
-                                <span class={s.strikeCount}>
-                                    {status()!.violations} /{" "}
-                                    {status()!.maxViolations}
-                                </span>
-                            </div>
-                            {/* A segmented gauge rather than a progress bar:
-                                strikes are discrete and capped, so the meter
-                                should read as "how many are left" at a glance
-                                instead of a percentage of a continuous fill. */}
-                            {/* Presentational: the "n / max" readout above is
-                                the accessible value, so the cells don't need
-                                to be announced a second time. */}
-                            <div class={s.strikeGauge} aria-hidden="true">
-                                <For
-                                    each={Array.from(
-                                        { length: status()!.maxViolations },
-                                        (_, i) => i,
-                                    )}
-                                    keyed={false}
-                                >
-                                    {i => (
-                                        <span
-                                            class={`${s.strikeSegment}${
-                                                i() < status()!.violations
-                                                    ? ` ${s.strikeSegmentUsed}`
-                                                    : ""
-                                            }`}
-                                            style={{
-                                                "--seg-color":
-                                                    status()!.violations <= 1
-                                                        ? "var(--civil-color-yellow)"
-                                                        : status()!.violations <
-                                                            status()!
-                                                                .maxViolations
-                                                          ? "var(--civil-color-maroon)"
-                                                          : "var(--civil-color-red)",
-                                            }}
-                                        />
-                                    )}
-                                </For>
-                            </div>
-                            <p class={s.policyText}>
-                                Accessing restricted domains through the proxy
-                                counts as a strike. At {status()!.maxViolations}{" "}
-                                strikes your account is permanently banned.
-                                Strikes reset after 24 hours of inactivity.
-                            </p>
-                        </div>
+                        <StrikeGauge
+                            violations={status()!.violations}
+                            maxViolations={status()!.maxViolations}
+                        />
                     }
                 >
-                    <div class={s.bannedBanner}>
-                        <IconBan class={s.bannedIcon} />
+                    <div class={s.banned}>
+                        <IconBan size={20} class={s.bannedIcon} />
                         <div class={s.bannedInfo}>
                             <span class={s.bannedTitle}>
                                 Your account has been banned
                             </span>
                             <Show when={status()!.banReason}>
-                                <span class={s.bannedReason}>
-                                    Reason: {status()!.banReason}
+                                <span class={s.bannedDetail}>
+                                    reason: {status()!.banReason}
                                 </span>
                             </Show>
                             <Show when={status()!.bannedAt}>
-                                <span class={s.bannedDate}>
-                                    Banned on:{" "}
+                                <span class={s.bannedDetail}>
+                                    banned on:{" "}
                                     {new Date(
                                         status()!.bannedAt!,
                                     ).toLocaleString()}
@@ -116,6 +71,7 @@ export default function BanInfoPage() {
     const [maxCount, setMaxCount] = createSignal(500);
     const [visibleCount, setVisibleCount] = createSignal(PAGE_SIZE);
     const [loading, setLoading] = createSignal(true);
+    const [loadError, setLoadError] = createSignal<string | null>(null);
     let sentinelRef!: HTMLDivElement;
 
     const cappedDomains = () => domains().slice(0, maxCount());
@@ -159,7 +115,17 @@ export default function BanInfoPage() {
         window.addEventListener("scroll", checkForMore, { passive: true });
         window.addEventListener("resize", checkForMore);
 
-        void load();
+        // The blocklist is fetched from a third-party host at runtime, so it
+        // can fail for reasons that have nothing to do with this app — and the
+        // school filter this proxy exists to get around is one of them. Without
+        // this the page sat on "loading blocklist" forever, which reads as a
+        // hung app rather than an unreachable list.
+        void load().catch(() => {
+            setLoading(false);
+            setLoadError(
+                "Couldn't reach the blocklist source. It's fetched from GitHub, which may itself be blocked here.",
+            );
+        });
 
         return () => {
             window.removeEventListener("scroll", checkForMore);
@@ -168,60 +134,77 @@ export default function BanInfoPage() {
     });
 
     return (
-        <div class={s.banInfoRoot}>
-            <div class={s.header}>
-                <h1 class={s.title}>Restricted Domains</h1>
-                <StatusSection />
-                <div class={s.inputRow}>
-                    <label class={s.label} for={s.input}>
-                        Max entries shown:
-                    </label>
-                    <input
-                        class={s.input}
-                        id={s.input}
-                        type="number"
-                        value={maxCount()}
-                        min={1}
-                        onInput={e => {
-                            const val = parseInt(e.currentTarget.value, 10);
-                            if (!Number.isNaN(val) && val > 0) {
-                                setMaxCount(val);
-                                setVisibleCount(PAGE_SIZE);
-                                queueMicrotask(() =>
-                                    requestAnimationFrame(checkForMore),
-                                );
-                            }
-                        }}
-                    />
-                </div>
-                <Show when={!loading()}>
-                    <span class={s.statsText}>
-                        {`Showing ${visibleDomains().length.toLocaleString()} of ${cappedDomains().length.toLocaleString()} entries (${domains().length.toLocaleString()} total)`}
-                    </span>
-                </Show>
+        <Sheet density="fine">
+            <TitleBlock
+                eyebrow="policy"
+                title="Restricted domains"
+                meta={
+                    loading()
+                        ? "loading"
+                        : `${domains().length.toLocaleString()} on file`
+                }
+            />
+
+            <StatusSection />
+
+            <div class={s.controls}>
+                <label class={s.controlLabel} for="baninfo-max">
+                    max entries shown
+                </label>
+                <input
+                    class={s.controlInput}
+                    id="baninfo-max"
+                    type="number"
+                    value={maxCount()}
+                    min={1}
+                    onInput={e => {
+                        const val = parseInt(e.currentTarget.value, 10);
+                        if (!Number.isNaN(val) && val > 0) {
+                            setMaxCount(val);
+                            setVisibleCount(PAGE_SIZE);
+                            queueMicrotask(() =>
+                                requestAnimationFrame(checkForMore),
+                            );
+                        }
+                    }}
+                />
+                {/* One region, always mounted, so the count is announced as it
+                    grows rather than appearing in a region the screen reader
+                    was never watching. */}
+                <span class={s.stats} aria-live="polite">
+                    <Show when={!loading() && !loadError()}>
+                        {`showing ${visibleDomains().length.toLocaleString()} of ${cappedDomains().length.toLocaleString()}`}
+                    </Show>
+                </span>
             </div>
 
-            <Show
-                when={!loading()}
-                fallback={
-                    <p class={s.loadingText}>
-                        <IconLoader class={s.loadingIcon} /> Loading blocklist
-                    </p>
-                }
-            >
-                <div class={s.scrollContainer}>
-                    <For each={visibleDomains()} keyed={false}>
-                        {domain => <div class={s.domainItem}>{domain()}</div>}
-                    </For>
+            <Rule label="roll" weight="major" />
 
-                    <Show
-                        when={hasMore()}
-                        fallback={<p class={s.endText}>end of list</p>}
-                    >
-                        <div ref={sentinelRef} class={s.sentinel} />
-                    </Show>
-                </div>
+            <Show when={loadError()}>
+                <span class={s.note.error}>{loadError()}</span>
             </Show>
-        </div>
+
+            <Show when={loading()}>
+                <span class={s.note.loading}>
+                    <IconLoader size={14} class={s.spin} />
+                    loading blocklist
+                </span>
+            </Show>
+
+            <Show when={!loading() && !loadError()}>
+                <div class={s.roll}>
+                    <For each={visibleDomains()} keyed={false}>
+                        {domain => <div class={s.domain}>{domain()}</div>}
+                    </For>
+                </div>
+
+                <Show
+                    when={hasMore()}
+                    fallback={<span class={s.note.end}>end of list</span>}
+                >
+                    <div ref={sentinelRef} class={s.sentinel} />
+                </Show>
+            </Show>
+        </Sheet>
     );
 }
