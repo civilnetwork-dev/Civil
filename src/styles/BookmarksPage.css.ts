@@ -1,454 +1,380 @@
-import { keyframes, style } from "@vanilla-extract/css";
-import {
-    atmosphere,
-    DUR,
-    EASE,
-    focusRing,
-    hairline,
-    hitArea,
-    lit,
-    machined,
-    microLabel,
-    SHADOW,
-} from "./material.css";
+import { style, styleVariants } from "@vanilla-extract/css";
+import { DUR, EASE, hitArea } from "./material.css";
+import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
-const T_FAST = "0.1s ease";
+/**
+ * The index register.
+ *
+ * History's axis is time, so it draws hour meters under day rules. A bookmark
+ * has no interesting time axis — it is an address someone chose to keep — so
+ * this page is a register instead: a sequential call number, a stamped
+ * favicon, the title, and the host as its own aligned column. The call numbers
+ * give the page its vertical rhythm and make "how many, and where am I in
+ * them" answerable without counting rows.
+ *
+ * Call numbers are positional, not identity. They renumber when the scope or
+ * the search changes, because they describe the current view — which is the
+ * question a register answers.
+ */
 
-const emptyFadeIn = keyframes({
-    from: { opacity: 0, transform: "translateY(6px)" },
-    to: { opacity: 1, transform: "translateY(0)" },
-});
+/* -------------------------------------------------------------------- */
+/* Title block actions                                                   */
+/* -------------------------------------------------------------------- */
 
-export const root = style({
-    ...atmosphere(vars.color.sirius),
-    minHeight: "100vh",
-    display: "flex",
-    fontFamily: '"Rubik", sans-serif',
-    color: vars.color.daylight,
-    boxSizing: "border-box",
-    // Below this width a fixed 224px rail leaves ~150px for the list, which
-    // renders rows as unusable slivers. The rail becomes a filter bar above
-    // the content instead.
-    "@media": {
-        "(max-width: 720px)": {
-            flexDirection: "column",
-        },
-    },
-});
-
-export const sidebar = style({
-    width: "224px",
-    flexShrink: 0,
-    background: `linear-gradient(180deg, ${vars.color.night} 0%, ${vars.color.void} 100%)`,
-    borderRight: `1px solid ${vars.color.horizon}`,
-    boxShadow: "inset -1px 0 0 rgba(0,0,0,0.3)",
-    padding: "36px 16px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    "@media": {
-        "(max-width: 720px)": {
-            width: "100%",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: "8px",
-            padding: "12px clamp(16px, 4vw, 24px)",
-            borderRight: "none",
-            borderBottom: `1px solid ${vars.color.horizon}`,
-            boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.3)",
-            background: `linear-gradient(180deg, ${vars.color.night} 0%, ${vars.color.void} 100%)`,
-            overflowX: "auto",
-            scrollbarWidth: "none",
-        },
-    },
-});
-
-export const sidebarTitle = style({
-    ...microLabel,
+export const titleActions = style({
     display: "flex",
     alignItems: "center",
-    gap: "9px",
-    padding: "0 8px",
-    marginBottom: "14px",
-    "@media": {
-        // The page title already says "Bookmarks" once the rail is a bar.
-        "(max-width: 720px)": { display: "none" },
-    },
-    selectors: {
-        "&::after": {
-            content: '""',
-            flex: 1,
-            height: "1px",
-            background: `linear-gradient(90deg, ${vars.color.horizon}, transparent)`,
-        },
-    },
-});
-
-export const sidebarItem = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "9px",
-    whiteSpace: "nowrap",
-    flexShrink: 0,
-    padding: "7px 10px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    color: vars.color.halo,
-    background: "transparent",
-    border: "none",
-    fontSize: "13px",
-    fontFamily: "inherit",
-    fontWeight: 400,
-    textAlign: "left",
-    transition: `background ${T_FAST}, color ${T_FAST}`,
-    transitionDuration: "0.1s",
-    selectors: {
-        "&:hover": {
-            background: vars.color.horizon,
-            color: vars.color.daylight,
-        },
-    },
-});
-
-export const sidebarItemActive = style({
-    position: "relative",
-    background: `color-mix(in srgb, ${vars.color.sirius} 15%, transparent)`,
-    color: vars.color.sirius,
-    fontWeight: 500,
-    selectors: {
-        // A lit bar on the leading edge marks the selected filter the way a
-        // channel strip marks the armed channel.
-        "&::before": {
-            content: '""',
-            position: "absolute",
-            left: 0,
-            top: "22%",
-            bottom: "22%",
-            width: "2px",
-            borderRadius: "0 2px 2px 0",
-            background: vars.color.sirius,
-            boxShadow: `0 0 8px color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
-            "@media": {
-                // Horizontally the same marker belongs on the bottom edge.
-                "(max-width: 720px)": {
-                    left: "18%",
-                    right: "18%",
-                    top: "auto",
-                    bottom: 0,
-                    width: "auto",
-                    height: "2px",
-                    borderRadius: "2px 2px 0 0",
-                },
-            },
-        },
-        "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 21%, transparent)`,
-            color: vars.color.sirius,
-        },
-    },
-});
-
-export const main = style({
-    flex: 1,
-    padding: "40px clamp(20px, 4vw, 48px) 64px",
-    minWidth: 0,
-    overflowY: "auto",
-    "@media": {
-        "(max-width: 720px)": { padding: "28px clamp(16px, 4vw, 24px) 56px" },
-    },
-});
-
-export const mainHeader = style({
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "26px",
-    paddingBottom: "20px",
     gap: "16px",
-    borderBottom: "1px solid transparent",
-    borderImage: `${hairline(vars.color.haze)} 1`,
+    flexWrap: "wrap",
 });
 
-export const mainTitle = style({
-    fontSize: "clamp(24px, 3.4vw, 31px)",
-    fontWeight: 600,
-    lineHeight: 1.05,
-    letterSpacing: "-0.015em",
-    color: vars.color.daylight,
+/**
+ * The scope selector, which replaced a full-height sidebar holding two links.
+ * A sidebar is a lot of structure to spend on a binary, and it was the only
+ * page in the app not built from Sheet + TitleBlock.
+ */
+export const scopeSwitch = style({
+    display: "flex",
+    alignItems: "stretch",
+    border: `0.5px solid ${vars.color.horizon}`,
 });
 
-export const searchInput = style({
-    width: "240px",
-    maxWidth: "100%",
-    background: machined(
-        vars.color.horizon,
-        `color-mix(in srgb, ${vars.color.horizon} 80%, ${vars.color.night})`,
-    ),
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "10px",
-    padding: "8px 14px",
-    fontSize: "13px",
-    color: vars.color.daylight,
-    outline: "none",
-    fontFamily: "inherit",
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "border-color, box-shadow",
+const scopeBtnBase = style({
+    ...ANNO,
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "5px 10px",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    textTransform: "uppercase",
+    transitionProperty: "color, background-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        "&:focus": {
-            borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.sirius)),
+        "&:not(:first-child)": { borderLeft: RULE.hair },
+    },
+});
+
+/**
+ * The selected scope is carried by `aria-pressed` for assistive tech, and here
+ * by both a colour shift and a filled ground — two visual channels, so the
+ * state does not rest on colour alone (DESIGN.md's Redundant-Channel Rule).
+ */
+export const scopeBtn = styleVariants({
+    off: [scopeBtnBase, { color: vars.color.cinder }],
+    on: [
+        scopeBtnBase,
+        {
+            color: vars.color.daylight,
+            background: `color-mix(in srgb, ${vars.color.sirius} 14%, transparent)`,
         },
+    ],
+});
+
+// Text-button recipe shared with History's clearBtn: antares is the system's
+// destructive tier.
+export const clearBtn = style({
+    ...ANNO,
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    background: "none",
+    border: "none",
+    borderBottom: RULE.hair,
+    padding: "2px",
+    cursor: "pointer",
+    color: vars.color.antares,
+    textTransform: "uppercase",
+    transitionProperty: "color, border-color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
+    selectors: {
+        "&:hover": { borderBottomColor: vars.color.antares },
+    },
+});
+
+export const clearBtnArmed = style({
+    color: vars.color.daylight,
+    borderBottomColor: vars.color.antares,
+    background: `color-mix(in srgb, ${vars.color.antares} 16%, transparent)`,
+    padding: "2px 6px",
+});
+
+/* -------------------------------------------------------------------- */
+/* Lookup                                                                */
+/* -------------------------------------------------------------------- */
+
+/**
+ * Search is the primary control on a register — the whole point of numbering
+ * and aligning entries is to find one — so it gets a labelled full-width row
+ * rather than History's compact inline filter.
+ */
+export const lookup = style({
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    margin: "22px 0 10px",
+    paddingBottom: "8px",
+    borderBottom: RULE.hair,
+    transitionProperty: "border-color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.base,
+    selectors: {
+        "&:focus-within": { borderBottomColor: vars.color.sirius },
+    },
+});
+
+export const lookupLabel = style({
+    ...ANNO,
+    flexShrink: 0,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+});
+
+// ember colours a glyph, not text, so 1.4.11's non-text 3:1 applies rather
+// than 1.4.3's 4.5:1.
+export const lookupIcon = style({
+    flexShrink: 0,
+    color: vars.color.ember,
+    transition: `color ${DUR.base} ${EASE.standard}`,
+    selectors: {
+        [`${lookup}:focus-within &`]: { color: vars.color.sirius },
+    },
+});
+
+export const lookupInput = style({
+    flex: 1,
+    minWidth: 0,
+    border: "none",
+    background: "transparent",
+    outline: "none",
+    color: vars.color.daylight,
+    fontFamily: FONT_MONO,
+    fontSize: "14px",
+    caretColor: vars.color.sirius,
+    selectors: {
         "&::placeholder": { color: vars.color.cinder },
     },
 });
 
-export const list = style({
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-});
-
-export const card = style({
+export const lookupClear = style({
     position: "relative",
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    padding: "12px 16px 12px 22px",
-    borderRadius: "12px",
-    background: machined(vars.color.horizon, vars.color.night),
-    border: `1px solid ${vars.color.haze}`,
+    flexShrink: 0,
+    display: "grid",
+    placeItems: "center",
+    width: "20px",
+    height: "20px",
+    padding: 0,
+    border: "none",
+    background: "none",
+    color: vars.color.starlight,
     cursor: "pointer",
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "background, border-color, transform, box-shadow",
+    transitionProperty: "color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        "&:hover": {
-            borderColor: `color-mix(in srgb, ${vars.color.sirius} 40%, ${vars.color.haze})`,
-            transform: "translateX(3px)",
-            boxShadow: lit(SHADOW.lifted),
-        },
-        // A literal bookmark ribbon marks each row's leading edge instead of
-        // the plain favicon-row recipe shared with History. Anchored to the
-        // row's vertical centre like the favicon and text: pinned near the
-        // top it sat on a different baseline to everything else in the row
-        // and read as a rendering slip rather than a motif.
-        "&::before": {
-            content: '""',
-            position: "absolute",
-            left: "8px",
-            top: "50%",
-            width: "6px",
-            height: "18px",
-            marginTop: "-9px",
-            background: vars.color.cinder,
-            clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%)",
-            transitionProperty: "background-color, height, margin-top",
-            transitionTimingFunction: "ease",
-            transitionDuration: "0.1s",
-        },
-        // Grows from the centre, so the hover state doesn't shunt it upward.
-        "&:hover::before": {
-            background: vars.color.sirius,
-            height: "24px",
-            marginTop: "-12px",
+        "&::after": hitArea(),
+        "&:hover": { color: vars.color.daylight },
+    },
+});
+
+/**
+ * The count is one text node, not a row of separately-styled number and word
+ * spans. Splitting it would leave no whitespace between the parts in the DOM,
+ * and a live region announces `textContent` — History shipped exactly that bug
+ * and now needs a hidden sibling to work around it.
+ */
+export const lookupCount = style({
+    ...ANNO,
+    flexShrink: 0,
+    color: vars.color.starlight,
+    whiteSpace: "nowrap",
+});
+
+/* -------------------------------------------------------------------- */
+/* Register                                                              */
+/* -------------------------------------------------------------------- */
+
+export const register = style({
+    listStyle: "none",
+    margin: "6px 0 0",
+    padding: 0,
+});
+
+/**
+ * `34px` holds a three-digit call number without reflowing at 100, and the
+ * `28px` end column holds the remove control. The middle track is the open
+ * target and absorbs everything else.
+ */
+export const row = style({
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "34px 1fr 28px",
+    alignItems: "center",
+    gap: "12px",
+    borderBottom: RULE.hair,
+});
+
+/**
+ * The accent bar that marks the row under the pointer or holding focus. It is
+ * `scaleY` on a fixed-position element rather than a width or border change so
+ * it cannot shift the row's layout, and it reads as a register mark rather
+ * than a highlight.
+ */
+export const rowMark = style({
+    position: "absolute",
+    left: "-10px",
+    top: "6px",
+    bottom: "6px",
+    width: "2px",
+    background: vars.color.sirius,
+    transform: "scaleY(0)",
+    transformOrigin: "center",
+    transition: `transform ${DUR.base} ${EASE.standard}`,
+    selectors: {
+        [`${row}:hover &, ${row}:focus-within &`]: { transform: "scaleY(1)" },
+    },
+});
+
+export const callNo = style({
+    ...ANNO,
+    color: vars.color.cinder,
+    textAlign: "right",
+    fontVariantNumeric: "tabular-nums",
+});
+
+/**
+ * The open target is a real `<button>`, and the remove control is its sibling
+ * rather than its child. The previous card was a `<div>` with an `onClick` and
+ * two biome suppressions: unreachable by keyboard, invisible to assistive tech,
+ * and it could not have nested the remove button legally anyway.
+ */
+export const openBtn = style({
+    display: "grid",
+    gridTemplateColumns: "22px 1fr",
+    alignItems: "center",
+    gap: "12px",
+    width: "100%",
+    minWidth: 0,
+    padding: "11px 0",
+    background: "none",
+    border: "none",
+    textAlign: "left",
+    cursor: "pointer",
+    outline: "none",
+    selectors: {
+        // The row mark is the hover affordance; focus needs its own visible
+        // indicator that does not depend on the pointer being anywhere.
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "2px",
         },
     },
 });
 
-export const cardFavicon = style({
-    width: "20px",
-    height: "20px",
-    borderRadius: "5px",
+export const stamp = style({
+    width: "22px",
+    height: "22px",
+    display: "grid",
+    placeItems: "center",
+    border: `0.5px solid ${vars.color.horizon}`,
+    overflow: "hidden",
+});
+
+export const stampImg = style({
+    width: "14px",
+    height: "14px",
     objectFit: "contain",
-    flexShrink: 0,
 });
 
-export const cardFaviconFallback = style({
-    width: "20px",
-    height: "20px",
-    borderRadius: "5px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    color: vars.color.cinder,
-    background: vars.color.haze,
-});
+export const stampFallback = style([stamp, { color: vars.color.ember }]);
 
-export const cardInfo = style({
-    flex: 1,
+export const entry = style({
     minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
 });
 
-export const cardTitle = style({
-    fontSize: "13px",
+export const entryTitle = style({
+    fontSize: "13.5px",
     fontWeight: 500,
     color: vars.color.daylight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+    transition: `color ${DUR.fast} ${EASE.standard}`,
+    selectors: {
+        [`${openBtn}:hover &`]: { color: vars.color.vega },
+    },
 });
 
-export const cardUrl = style({
-    fontSize: "11.5px",
-    color: vars.color.moonlight,
+export const entryUrl = style({
+    ...ANNO,
+    color: vars.color.starlight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    marginTop: "2px",
 });
 
 export const removeBtn = style({
     position: "relative",
-    background: "none",
+    display: "grid",
+    placeItems: "center",
+    width: "24px",
+    height: "24px",
+    padding: 0,
     border: "none",
-    color: vars.color.cinder,
+    background: "none",
+    color: vars.color.ember,
     cursor: "pointer",
-    padding: "4px",
-    borderRadius: "6px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    // Hover-/focus-revealed, matching the app tiles, history rows and
-    // bookmark bar - six always-on delete crosses made the list read as a
-    // management screen rather than a set of links.
     opacity: 0,
-    // See AppsPage.removeBtn: hidden controls must not stay clickable.
-    pointerEvents: "none",
-    transitionProperty: "color, background, opacity",
-    transitionTimingFunction: "ease",
-    transitionDuration: "0.1s",
+    transitionProperty: "opacity, color",
+    transitionTimingFunction: EASE.standard,
+    transitionDuration: DUR.fast,
     selectors: {
         "&::after": hitArea(),
-        [`${card}:hover &, &:focus-visible`]: {
+        // Revealed on hover for tidiness, but never hidden from keyboard users
+        // or from touch, where there is no hover state to trigger it.
+        //
+        // `:focus-within` on the row is what covers the keyboard, and it has to
+        // be here rather than only `&:focus-visible`: with just the latter the
+        // control stays invisible while focus sits on the open button beside
+        // it, so the next Tab lands on something the user never saw.
+        [`${row}:hover &, ${row}:focus-within &, &:focus-visible`]: {
             opacity: 1,
-            pointerEvents: "auto",
         },
-        "&:hover": {
-            color: vars.color.antares,
-            background: `color-mix(in srgb, ${vars.color.antares} 14%, transparent)`,
-        },
+        "&:hover, &:focus-visible": { color: vars.color.antares },
+    },
+    // Touch has no hover state to reveal the control, so it is always shown
+    // there. Keyboard is covered by the :focus-visible selector above.
+    "@media": {
+        "(hover: none)": { opacity: 1 },
     },
 });
+
+/* -------------------------------------------------------------------- */
+/* Empty                                                                 */
+/* -------------------------------------------------------------------- */
 
 export const empty = style({
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
-    gap: "16px",
-    marginTop: "60px",
-    animationName: emptyFadeIn,
-    animationTimingFunction: "ease",
-    animationFillMode: "both",
-    animationDuration: "0.3s",
+    alignItems: "flex-start",
+    gap: "12px",
+    padding: "34px 0 8px",
 });
 
-// A large dimmed ribbon - the same clip-path silhouette as each row's
-// leading edge, scaled up as the empty-state motif instead of stock text.
-export const emptyRibbon = style({
-    width: "28px",
-    height: "40px",
-    background: vars.color.haze,
-    clipPath: "polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%)",
-});
-
-export const emptyText = style({
-    color: vars.color.moonlight,
-    fontSize: "14px",
-    textAlign: "center",
-});
-
-export const clearBtn = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    background: "none",
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "8px",
-    color: vars.color.moonlight,
-    cursor: "pointer",
-    padding: "6px 14px",
-    fontSize: "13px",
-    fontFamily: "inherit",
-    transition: `color ${T_FAST}, border-color ${T_FAST}, background ${T_FAST}`,
-    transitionDuration: "0.1s",
-    selectors: {
-        "&:hover": {
-            color: vars.color.antares,
-            borderColor: vars.color.antares,
-            background: `color-mix(in srgb, ${vars.color.antares} 8%, transparent)`,
-        },
-    },
-});
-
-// Armed state for the second click on Clear.
-export const clearBtnArmed = style({
-    color: vars.color.antares,
-    borderColor: vars.color.antares,
-    background: `color-mix(in srgb, ${vars.color.antares} 14%, transparent)`,
-});
-
-// Recovery action inside an empty state - quiet, but a real target.
 export const emptyAction = style({
+    ...ANNO,
     background: "none",
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "8px",
-    color: vars.color.halo,
+    border: "none",
+    borderBottom: `0.5px solid ${vars.color.sirius}`,
+    padding: "2px",
     cursor: "pointer",
-    padding: "6px 14px",
-    fontSize: "13px",
-    fontFamily: "inherit",
-    transitionProperty: "color, border-color, background",
-    transitionTimingFunction: "ease",
-    transitionDuration: "0.1s",
-    selectors: {
-        "&:hover": {
-            color: vars.color.daylight,
-            borderColor: vars.color.ember,
-            background: vars.color.horizon,
-        },
-    },
-});
-
-// Count beside the page title. moonlight rather than cinder: the previous
-// inline style sat under the 4.5:1 contrast floor.
-export const mainCount = style({
-    color: vars.color.moonlight,
-    fontSize: "16px",
-    fontWeight: 400,
-});
-
-export const mainTitleGroup = style({
-    display: "flex",
-    flexDirection: "column",
-    gap: "7px",
-    minWidth: 0,
-});
-
-export const mainEyebrow = style({
-    ...microLabel,
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-});
-
-export const mainEyebrowMark = style({
-    width: "16px",
-    height: "2px",
-    borderRadius: "1px",
-    background: vars.color.sirius,
-    opacity: 0.75,
-});
-
-export const mainActions = style({
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "10px",
-    alignItems: "center",
+    color: vars.color.vega,
+    textTransform: "uppercase",
 });
