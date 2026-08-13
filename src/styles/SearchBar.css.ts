@@ -1,10 +1,23 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
-import { DUR, EASE, focusRing, lit, machined, SHADOW } from "./material.css";
+import { DUR, EASE } from "./material.css";
+import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
-const blurBackground = `color-mix(in srgb, ${vars.color.horizon} 65%, transparent)`;
-const blurBorder = `color-mix(in srgb, ${vars.color.haze} 55%, transparent)`;
-const blurFilter = "blur(20px) saturate(1.5)";
+/**
+ * The New Tab omnibox.
+ *
+ * This is the single control on the highest-traffic page in the app, and it
+ * was the last thing still built from the superseded material language:
+ * `machined()` faces, `lit()` top edges, `SHADOW.resting`, a 3px `focusRing`
+ * halo and a 14px radius. schematic.css.ts states plainly that those and the
+ * ruled-drawing language do not coexist on one page — and the star chart
+ * behind this field is as ruled as the app gets.
+ *
+ * It is now a ruled field: one hairline underline that turns sirius on focus,
+ * square corners, mono for the thing being typed, because what goes in here is
+ * an address. The suggestions hang off it as a ruled list, not as a menu
+ * floating on a shadow.
+ */
 
 export const sbHost = style({
     position: "fixed",
@@ -28,66 +41,59 @@ const dropdownIn = keyframes({
     to: { opacity: 1, transform: "translateY(0)" },
 });
 
-/**
- * The suggestions menu hangs directly off the omnibox, so it has to be built
- * from the same parts: same 14px corner radius, same machined fill, and the
- * accent border the field takes on focus. It also sits over the field's
- * bottom border rather than below it, so the two read as one surface with no
- * hairline seam across the join - the same construction as the Select menu.
- */
 export const sbDropdown = style({
     position: "absolute",
-    top: "calc(100% - 1px)",
+    top: "100%",
     left: 0,
     width: "100%",
     zIndex: 10000,
-    background: machined(
-        vars.color.horizon,
-        `color-mix(in srgb, ${vars.color.horizon} 78%, ${vars.color.night})`,
-    ),
-    border: `1px solid color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
+    background: vars.color.night,
+    border: `1px solid ${vars.color.haze}`,
     borderTop: "none",
-    borderRadius: "0 0 14px 14px",
     overflow: "hidden",
     listStyle: "none",
     margin: 0,
     padding: 0,
     boxSizing: "border-box",
-    // Docked, not free-floating: `SHADOW.menu` blurs upward and paints a dark
-    // band across the join with the field above.
-    boxShadow: SHADOW.attached,
     animation: `${dropdownIn} ${DUR.base} ${EASE.enter} both`,
 });
 
+/**
+ * The translucent variant, kept because the New Tab page can show the star
+ * chart through it. The saturate() boost is gone — it shifted the palette's
+ * hues wherever it applied, which on a page whose whole subject is a measured
+ * colour field is the one thing it must not do.
+ */
 export const sbDropdownBlur = style({
-    background: blurBackground,
-    backdropFilter: blurFilter,
-    borderColor: blurBorder,
+    background: `color-mix(in srgb, ${vars.color.night} 82%, transparent)`,
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+    borderColor: `color-mix(in srgb, ${vars.color.haze} 70%, transparent)`,
     borderTop: "none",
 });
 
 export const sbRow = style({
     position: "relative",
     cursor: "pointer",
-    padding: "10px 16px",
+    padding: "10px 14px",
     color: vars.color.moonlight,
-    fontFamily: '"Rubik", sans-serif',
-    fontSize: "14px",
-    fontWeight: 400,
+    fontFamily: FONT_MONO,
+    fontSize: "13px",
     transitionProperty: "background, color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        // Inset, fading divider rather than an edge-to-edge rule - the menu
-        // is a single surface, not a stack of separate cells.
+        // A plain hairline. The gradient-faded inset rule this replaced was
+        // making the menu read as one soft surface; the drawing language rules
+        // cells apart instead.
         "& + &::before": {
             content: '""',
             position: "absolute",
             top: 0,
-            left: "16px",
-            right: "16px",
-            height: "1px",
-            background: `linear-gradient(90deg, transparent, ${vars.color.haze} 15%, ${vars.color.haze} 85%, transparent)`,
+            left: 0,
+            right: 0,
+            height: 0,
+            borderTop: RULE.hair,
         },
         "&:hover": {
             background: `color-mix(in srgb, ${vars.color.sirius} 12%, transparent)`,
@@ -99,45 +105,28 @@ export const sbRow = style({
 export const sbInputWrapper = style({
     display: "flex",
     alignItems: "stretch",
-    height: "52px",
-    // A machined face rather than a flat fill, lit along its top edge. This
-    // is the only control on the New Tab page, so it carries the material
-    // language by itself.
-    background: machined(
-        vars.color.horizon,
-        `color-mix(in srgb, ${vars.color.horizon} 78%, ${vars.color.night})`,
-    ),
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "14px",
-    overflow: "hidden",
-    boxShadow: lit(SHADOW.resting),
-    transitionProperty: "border-color, border-radius, background, box-shadow",
+    height: "48px",
+    background: "transparent",
+    border: "none",
+    borderBottom: `1px solid ${vars.color.haze}`,
+    transitionProperty: "border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        "&:focus-within": {
-            borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
-            boxShadow: lit(focusRing(vars.color.sirius), true),
-        },
+        "&:focus-within": { borderBottomColor: vars.color.sirius },
     },
 });
 
 /**
- * Docked state. The focus ring is dropped here on purpose: it is a 3px halo
- * around the *field* only, so once the suggestions are attached it wrapped
- * half the control and was sliced off where the menu overlapped it. The
- * shared lavender border carries the focus signal across both parts instead.
+ * Docked state. The field keeps its accent underline while the menu is open so
+ * the two read as one control; the menu's own border picks up from there.
  */
 globalStyle(`.${sbRoot}:has(.${sbDropdown}) .${sbInputWrapper}`, {
-    borderRadius: "14px 14px 0 0",
-    borderBottomColor: "transparent",
-    borderColor: `color-mix(in srgb, ${vars.color.sirius} 70%, transparent)`,
-    boxShadow: lit(SHADOW.resting),
+    borderBottomColor: vars.color.sirius,
 });
+
 export const sbInputWrapperBlur = style({
-    background: blurBackground,
-    backdropFilter: blurFilter,
-    borderColor: blurBorder,
+    background: "transparent",
 });
 
 export const sbInput = style({
@@ -146,10 +135,12 @@ export const sbInput = style({
     border: "none",
     background: "transparent",
     color: vars.color.daylight,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    // An address is data. It is also the one string on this page where telling
+    // rn from m matters, so it is set in mono like every other address in the
+    // app.
+    fontFamily: FONT_MONO,
     fontSize: "15px",
-    fontWeight: 400,
-    padding: "0 16px",
+    padding: "0 4px",
     outline: "none",
     caretColor: vars.color.sirius,
     selectors: {
@@ -168,37 +159,21 @@ export const sbHostInline = style({
 });
 
 export const sbButton = style({
+    ...ANNO,
     flexShrink: 0,
-    border: "none",
-    // A hairline separator that fades at both ends, so the button reads as
-    // part of the same machined face rather than a second component welded
-    // on. This is the page's primary action, so it also carries the Label
-    // tier's tracking instead of sitting at body weight.
-    borderLeft: "none",
     position: "relative",
+    border: "none",
+    borderLeft: RULE.hair,
     background: "transparent",
     color: vars.color.moonlight,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
-    fontSize: "12px",
-    fontWeight: 600,
-    letterSpacing: "0.1em",
     textTransform: "uppercase",
-    padding: "0 22px",
+    padding: "0 20px",
     cursor: "pointer",
     whiteSpace: "nowrap",
     transitionProperty: "background, color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        "&::before": {
-            content: '""',
-            position: "absolute",
-            left: 0,
-            top: "22%",
-            bottom: "22%",
-            width: "1px",
-            background: `linear-gradient(to bottom, transparent, ${vars.color.haze} 30%, ${vars.color.haze} 70%, transparent)`,
-        },
         "&:hover": {
             background: `color-mix(in srgb, ${vars.color.sirius} 12%, transparent)`,
             color: vars.color.sirius,
@@ -206,6 +181,10 @@ export const sbButton = style({
         "&:active": {
             background: `color-mix(in srgb, ${vars.color.sirius} 20%, transparent)`,
             color: vars.color.sirius,
+        },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "-1px",
         },
     },
 });

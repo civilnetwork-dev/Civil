@@ -1,11 +1,21 @@
 import { keyframes, style } from "@vanilla-extract/css";
+import { FONT_MONO } from "./schematic.css";
 import { vars } from "./theme.css";
+
+/**
+ * Extension buttons in the identification strip. Square, like every other
+ * control in the chrome.
+ *
+ * The popup keeps its border but loses the 32px drop shadow: it renders an
+ * extension's own HTML on a white ground, so it is already unmistakably a
+ * separate surface without simulating elevation underneath it.
+ */
 
 const T_FAST = "0.1s ease";
 
 const popupIn = keyframes({
-    from: { opacity: 0, transform: "scale(0.96) translateY(-4px)" },
-    to: { opacity: 1, transform: "scale(1) translateY(0)" },
+    from: { opacity: 0, transform: "translateY(-4px)" },
+    to: { opacity: 1, transform: "translateY(0)" },
 });
 
 export const bar = style({
@@ -21,7 +31,6 @@ export const extBtn = style({
     justifyContent: "center",
     width: "28px",
     height: "28px",
-    borderRadius: "7px",
     border: "none",
     background: "transparent",
     cursor: "pointer",
@@ -34,13 +43,16 @@ export const extBtn = style({
         "&:hover": {
             background: vars.color.horizon,
         },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "-1px",
+        },
     },
 });
 
 export const extIcon = style({
     width: "18px",
     height: "18px",
-    borderRadius: "3px",
     objectFit: "contain",
     display: "block",
 });
@@ -48,7 +60,6 @@ export const extIcon = style({
 export const extIconFallback = style({
     width: "18px",
     height: "18px",
-    borderRadius: "3px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -56,7 +67,7 @@ export const extIconFallback = style({
     background: vars.color.horizon,
     fontSize: "10px",
     fontWeight: 600,
-    fontFamily: "monospace",
+    fontFamily: FONT_MONO,
     userSelect: "none",
 });
 
@@ -65,8 +76,6 @@ export const popup = style({
     zIndex: 99999,
     background: "#fff",
     border: `1px solid ${vars.color.haze}`,
-    borderRadius: "10px",
-    boxShadow: `0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.14)`,
     overflow: "hidden",
     animation: `${popupIn} 0.12s cubic-bezier(0.22,1,0.36,1) both`,
     animationDuration: "0.12s",

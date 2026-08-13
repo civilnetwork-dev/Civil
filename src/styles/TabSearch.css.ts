@@ -1,7 +1,18 @@
 import { keyframes, style } from "@vanilla-extract/css";
+import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
-const T_SPRING = "0.28s cubic-bezier(0.34, 1.56, 0.64, 1)";
+/**
+ * The overlay sheet.
+ *
+ * Same drawing language as everything behind it: square corners, hairline
+ * rules between rows, mono for addresses. What it drops is the depth kit — a
+ * 16px radius, a 64px drop shadow and a spring scale-in that together read as
+ * a card floating above the app. A sheet laid over the board is separated by
+ * its border and by the dimmed ground, not by simulated elevation.
+ */
+
+const T_SPRING = "0.2s cubic-bezier(0.22, 1, 0.36, 1)";
 const T_EASE = "0.18s cubic-bezier(0.4, 0, 0.2, 1)";
 const T_POOF = "0.22s cubic-bezier(0.55, 0, 1, 0.45)";
 
@@ -15,14 +26,17 @@ const backdropOut = keyframes({
     to: { opacity: 0 },
 });
 
+// Opacity and a short translate only. The spring scale this replaced made the
+// panel read as a physical object springing forward, which is the elevation
+// metaphor the rest of the system dropped.
 const panelIn = keyframes({
-    from: { opacity: 0, transform: "scale(0.92) translateY(-10px)" },
-    to: { opacity: 1, transform: "scale(1) translateY(0)" },
+    from: { opacity: 0, transform: "translateY(-6px)" },
+    to: { opacity: 1, transform: "translateY(0)" },
 });
 
 const panelOut = keyframes({
-    from: { opacity: 1, transform: "scale(1) translateY(0)" },
-    to: { opacity: 0, transform: "scale(0.88) translateY(6px)" },
+    from: { opacity: 1, transform: "translateY(0)" },
+    to: { opacity: 0, transform: "translateY(4px)" },
 });
 
 export const backdrop = style({
@@ -30,8 +44,8 @@ export const backdrop = style({
     inset: 0,
     zIndex: 10000,
     background: `color-mix(in srgb, ${vars.color.dusk} 55%, transparent)`,
-    backdropFilter: "blur(12px) saturate(1.4)",
-    WebkitBackdropFilter: "blur(12px) saturate(1.4)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "center",
@@ -49,17 +63,11 @@ export const panel = style({
     width: "min(580px, 92vw)",
     background: vars.color.night,
     border: `1px solid ${vars.color.haze}`,
-    borderRadius: "16px",
     overflow: "hidden",
-    boxShadow: `
-        0 0 0 1px ${vars.color.horizon},
-        0 24px 64px rgba(0,0,0,0.55),
-        0 8px 24px rgba(0,0,0,0.35)
-    `,
     display: "flex",
     flexDirection: "column",
     animation: `${panelIn} ${T_SPRING} both`,
-    animationDuration: "0.28s",
+    animationDuration: "0.2s",
 });
 
 export const panelLeaving = style({
@@ -72,7 +80,7 @@ export const inputRow = style({
     alignItems: "center",
     gap: "10px",
     padding: "14px 16px",
-    borderBottom: `1px solid ${vars.color.horizon}`,
+    borderBottom: RULE.hair,
 });
 
 export const searchIcon = style({
@@ -111,10 +119,10 @@ export const hint = style({
 export const results = style({
     overflowY: "auto",
     maxHeight: "360px",
-    padding: "6px",
+    padding: 0,
     display: "flex",
     flexDirection: "column",
-    gap: "2px",
+    gap: 0,
     // The list rarely ends on a row boundary, so the overflow used to slice a
     // row cleanly in half against the footer - and with the scrollbar hidden
     // there was nothing to read as "this scrolls" either. Fading the last few
@@ -133,12 +141,12 @@ export const resultItem = style({
     display: "flex",
     alignItems: "center",
     gap: "10px",
-    padding: "8px 10px",
-    borderRadius: "10px",
+    padding: "9px 10px",
     cursor: "pointer",
     transition: `background ${T_EASE}`,
     transitionDuration: "0.18s",
     selectors: {
+        "& + &": { borderTop: RULE.hair },
         "&:hover": { background: vars.color.horizon },
     },
 });
@@ -159,7 +167,6 @@ export const resultItemCurrent = style({
 export const favicon = style({
     width: "16px",
     height: "16px",
-    borderRadius: "3px",
     objectFit: "contain",
     flexShrink: 0,
 });
@@ -167,7 +174,6 @@ export const favicon = style({
 export const faviconFallback = style({
     width: "16px",
     height: "16px",
-    borderRadius: "3px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -194,32 +200,28 @@ export const resultTitle = style({
 });
 
 export const resultUrl = style({
-    fontSize: "11.5px",
-    color: vars.color.moonlight,
+    ...ANNO,
+    color: vars.color.starlight,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
 });
 
 export const matchMark = style({
     color: vars.color.sirius,
     fontWeight: 700,
     background: `color-mix(in srgb, ${vars.color.sirius} 14%, transparent)`,
-    borderRadius: "2px",
     padding: "0 1px",
 });
 
 export const tabBadge = style({
+    ...ANNO,
     fontSize: "10px",
-    fontWeight: 600,
     padding: "1px 6px",
-    borderRadius: "20px",
     flexShrink: 0,
-    background: `color-mix(in srgb, ${vars.color.sirius} 15%, transparent)`,
+    border: `0.5px solid color-mix(in srgb, ${vars.color.sirius} 45%, transparent)`,
     color: vars.color.sirius,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
-    letterSpacing: "0.04em",
+    textTransform: "uppercase",
 });
 
 export const emptyState = style({
@@ -236,7 +238,7 @@ export const footer = style({
     justifyContent: "flex-end",
     gap: "16px",
     padding: "8px 16px",
-    borderTop: `1px solid ${vars.color.horizon}`,
+    borderTop: RULE.hair,
 });
 
 export const footerKey = style({
@@ -252,12 +254,11 @@ export const kbd = style({
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: vars.color.horizon,
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "4px",
+    background: "transparent",
+    border: `0.5px solid ${vars.color.haze}`,
     padding: "1px 5px",
     fontSize: "10px",
-    fontFamily: '"Rubik", monospace, ui-monospace',
+    fontFamily: FONT_MONO,
     color: vars.color.halo,
     lineHeight: 1.6,
 });

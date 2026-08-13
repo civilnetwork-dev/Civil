@@ -1,12 +1,31 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
 import { hitArea } from "./material.css";
+import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
+/**
+ * The drawing border.
+ *
+ * Every interior page is a sheet; the chrome is the border those sheets are
+ * bound into. Tabs are index tabs on a set of drawings — square, hairline
+ * ruled, the open one continuous with the plane below it — and the address row
+ * is the identification strip that names what is currently on the board.
+ *
+ * This replaces a floating-pill metaphor: 999px stadium tabs that lifted 5px
+ * off the strip at rest and "docked" into a 14px flat-bottomed shape when
+ * active, with drop shadows, inset highlights and a glow ring on focus. That
+ * was the backlit language the rest of the app dropped, and the chrome is what
+ * frames every page, so it was the single loudest contradiction left.
+ *
+ * What that means concretely, and is worth not undoing:
+ *   - no border radius anywhere; corners are square
+ *   - no box-shadow used to imply light, depth or elevation
+ *   - focus is a 1px sirius outline, never a glow
+ *   - separation is a rule, never a gradient or a shadow
+ */
+
 const T_FAST = "0.1s ease";
-const TAB_H = "32px";
-// Floating pill at rest; the active tab trades this for a flat-bottomed dock shape.
-const TAB_R_PILL = "999px";
-const TAB_R_DOCK = "14px 14px 0 0";
+const TAB_H = "30px";
 
 const spinAnim = keyframes({ to: { transform: "rotate(360deg)" } });
 
@@ -15,9 +34,6 @@ const suggInAnim = keyframes({
     to: { opacity: 1 },
 });
 
-// Opacity only: the resting/docked position lives on the plain `transform`
-// property below so it can also transition smoothly on every later
-// activate/deactivate, independent of this one-time mount animation.
 const tabEnterAnim = keyframes({
     from: { opacity: 0 },
     to: { opacity: 1 },
@@ -44,33 +60,25 @@ export const browserChrome = style({
 
 export const browserTabstrip = style({
     display: "flex",
-    alignItems: "flex-end",
-    gap: "6px",
-    padding: "8px 8px 0",
+    alignItems: "stretch",
+    gap: 0,
+    padding: "6px 8px 0",
     background: vars.color.void,
     overflow: "visible",
     position: "relative",
-    selectors: {
-        "&::after": {
-            content: '""',
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "1px",
-            background: vars.color.void,
-            zIndex: 3,
-            pointerEvents: "none",
-        },
-    },
 });
 
+/**
+ * An index tab. Square, and separated from its neighbour by a single hairline
+ * rather than by a gap — a row of detached pills reads as a toolbar, a row of
+ * ruled tabs reads as a set of sheets.
+ */
 export const tab = style({
     position: "relative",
     display: "flex",
     alignItems: "center",
-    gap: "6px",
-    padding: "0 10px",
+    gap: "7px",
+    padding: "0 11px",
     height: TAB_H,
     minWidth: 0,
     // Past the TAB_MIN floor (roughly twenty tabs) the computed widths stop
@@ -79,62 +87,73 @@ export const tab = style({
     flexShrink: 1,
     overflow: "visible",
     userSelect: "none",
-    // Detached floating pill at rest: a distinct object sitting one tone
-    // above the Crust strip it floats on (see Recede-to-Advance).
-    background: vars.color.night,
-    color: vars.color.ember,
-    borderRadius: TAB_R_PILL,
-    // Floats above the strip's bottom seam; docking (below) resets this to 0.
-    // transform, not margin, so the lift/dock motion never triggers layout.
-    transform: "translateY(-5px)",
+    background: "transparent",
+    color: vars.color.cinder,
+    borderTop: "1px solid transparent",
+    borderLeft: "1px solid transparent",
+    borderRight: "1px solid transparent",
     cursor: "pointer",
     // width intentionally left out of transitionProperty: resizing many tabs
     // at once must stay an instant layout snap, never an animated reflow.
-    transitionProperty: "background, color, border-radius, transform",
+    transitionProperty: "background, color, border-color",
     transitionTimingFunction: "ease",
     animation: `${tabEnterAnim} 0.16s cubic-bezier(0.22, 1, 0.36, 1) both`,
     animationDuration: "0.16s",
     transitionDuration: "0.1s",
     selectors: {
+        // The divider between adjacent inactive tabs. It retracts next to the
+        // active tab, whose own border takes over.
+        "& + &::before": {
+            content: '""',
+            position: "absolute",
+            left: "-1px",
+            top: "7px",
+            bottom: "7px",
+            width: 0,
+            borderLeft: RULE.hair,
+        },
         "&:hover": {
-            background: vars.color.horizon,
+            background: vars.color.night,
             color: vars.color.halo,
-            zIndex: 4,
         },
     },
 });
 
+/**
+ * The open sheet. It takes the content plane's own colour and loses its bottom
+ * edge, so tab and viewport read as one continuous surface; the accent rule
+ * along its top is the only accent in the chrome.
+ */
 export const tabActive = style({
     background: vars.color.dusk,
     color: vars.color.daylight,
     zIndex: 4,
-    // Docks flush with the content plane below: flat bottom corners, no lift.
-    borderRadius: TAB_R_DOCK,
-    transform: "translateY(0)",
-    boxShadow: [
-        `inset 0 1px 0 0 color-mix(in srgb, ${vars.color.haze} 35%, transparent)`,
-        `0 -1px 0 0 ${vars.color.horizon}`,
-        `-1px 0 0 0 ${vars.color.horizon}`,
-        `1px 0 0 0 ${vars.color.horizon}`,
-    ].join(", "),
+    borderTop: RULE.accent,
+    borderLeft: `1px solid ${vars.color.haze}`,
+    borderRight: `1px solid ${vars.color.haze}`,
     selectors: {
-        "&::before": {
+        // Bridges the 1px seam between the tab and the row below it so the two
+        // surfaces meet with no line between them.
+        "&::after": {
             content: '""',
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: "-2px",
-            height: "3px",
+            bottom: "-1px",
+            height: "1px",
             background: vars.color.dusk,
             zIndex: 10,
             pointerEvents: "none",
         },
+        // Suppresses the neighbouring divider on both sides.
+        "&::before": { borderLeft: "none" },
+        "& + &::before": { borderLeft: "none" },
     },
 });
 
 globalStyle(`.${tab}:focus-visible`, {
-    outline: "none",
-    boxShadow: `0 0 0 2px ${vars.color.dusk}, 0 0 0 4px color-mix(in srgb, ${vars.color.sirius} 55%, transparent)`,
+    outline: `1px solid ${vars.color.sirius}`,
+    outlineOffset: "-1px",
 });
 
 export const tabIconActive = style({
@@ -158,21 +177,15 @@ export const tabDragging = style({
 globalStyle(`.${tab}[data-tab-drop-over="true"]`, {
     background: `color-mix(in srgb, ${vars.color.sirius} 14%, ${vars.color.night})`,
     color: vars.color.daylight,
-    boxShadow: [
-        // top edge
-        `inset 0 1.5px 0 0 color-mix(in srgb, ${vars.color.sirius} 65%, transparent)`,
-        // left edge
-        `inset 1.5px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 65%, transparent)`,
-        // right edge
-        `inset -1.5px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 65%, transparent)`,
-    ].join(", "),
+    // A drop target is marked by a solid accent edge on the side the tab will
+    // land against, not by a glow.
+    boxShadow: `inset 2px 0 0 0 ${vars.color.sirius}`,
 });
 
 export const tabFavicon = style({
     width: "14px",
     height: "14px",
     flexShrink: 0,
-    borderRadius: "3px",
     objectFit: "contain",
 });
 
@@ -209,12 +222,11 @@ export const tabClose = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "18px",
-    height: "18px",
+    width: "16px",
+    height: "16px",
     border: "none",
     background: "transparent",
     color: vars.color.ember,
-    borderRadius: "50%",
     cursor: "pointer",
     padding: 0,
     opacity: 0,
@@ -229,9 +241,10 @@ export const tabClose = style({
             opacity: 1,
             pointerEvents: "auto",
         },
-        "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.antares} 22%, transparent)`,
-            color: vars.color.antares,
+        "&:hover": { color: vars.color.antares },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "1px",
         },
     },
 });
@@ -242,20 +255,23 @@ export const tabNew = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "26px",
-    height: "26px",
-    marginLeft: "4px",
-    border: "none",
+    width: "24px",
+    height: "24px",
+    marginLeft: "6px",
+    border: `0.5px solid ${vars.color.horizon}`,
     background: "transparent",
-    color: vars.color.ember,
-    borderRadius: "50%",
+    color: vars.color.cinder,
     cursor: "pointer",
-    transition: `background ${T_FAST}, color ${T_FAST}`,
+    transition: `background ${T_FAST}, color ${T_FAST}, border-color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.horizon,
             color: vars.color.sirius,
+            borderColor: vars.color.sirius,
+        },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "1px",
         },
     },
 });
@@ -263,15 +279,14 @@ export const tabNew = style({
 export const tabDragClone = style({
     display: "flex",
     alignItems: "center",
-    gap: "6px",
-    padding: "0 10px",
+    gap: "7px",
+    padding: "0 11px",
     overflow: "hidden",
     background: vars.color.night,
     color: vars.color.daylight,
-    // A dragged tab is the pill fully detached from the strip: full stadium
-    // radius on every corner, not the docked flat-bottom shape.
-    borderRadius: TAB_R_PILL,
-    boxShadow: `0 0 0 1px ${vars.color.haze}, 0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)`,
+    border: `1px solid ${vars.color.haze}`,
+    // No lift shadow: a dragged tab is distinguished by its accent border and
+    // by moving, which is signal enough without simulating a light source.
     pointerEvents: "none",
     cursor: "grabbing",
     willChange: "transform",
@@ -286,14 +301,17 @@ export const spin = style({
     transformOrigin: "center",
 });
 
+/* -------------------------------------------------------------------- */
+/* Identification strip                                                  */
+/* -------------------------------------------------------------------- */
+
 export const urlbarRow = style({
     display: "flex",
     alignItems: "center",
     gap: "4px",
     padding: "0 8px",
     background: vars.color.void,
-    borderTop: `1px solid ${vars.color.horizon}`,
-    borderBottom: `1px solid ${vars.color.horizon}`,
+    borderBottom: RULE.major,
     position: "relative",
     zIndex: 2,
 });
@@ -302,53 +320,52 @@ export const urlbar = style({
     display: "flex",
     alignItems: "center",
     gap: "2px",
-    height: "44px",
+    height: "42px",
     flex: 1,
     minWidth: 0,
 });
 
-export const extensionsBtn = style({
+const chromeBtn = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "30px",
-    height: "30px",
+    width: "28px",
+    height: "28px",
     border: "none",
     background: "transparent",
-    color: vars.color.cinder,
-    borderRadius: "50%",
     cursor: "pointer",
     flexShrink: 0,
     padding: 0,
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
+} as const;
+
+export const extensionsBtn = style({
+    ...chromeBtn,
+    color: vars.color.cinder,
     selectors: {
         "&:hover": {
             background: vars.color.horizon,
             color: vars.color.sirius,
         },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "-1px",
+        },
     },
 });
 
 export const urlbarNavBtn = style({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "30px",
-    height: "30px",
-    border: "none",
-    background: "transparent",
+    ...chromeBtn,
     color: vars.color.moonlight,
-    borderRadius: "50%",
-    cursor: "pointer",
-    flexShrink: 0,
-    padding: 0,
-    transition: `background ${T_FAST}, color ${T_FAST}`,
-    transitionDuration: "0.1s",
     selectors: {
         "&:hover:not(:disabled)": {
             background: vars.color.horizon,
             color: vars.color.daylight,
+        },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "-1px",
         },
     },
 });
@@ -366,25 +383,28 @@ export const urlbarOmniboxWrap = style({
     margin: "0 6px",
 });
 
+/**
+ * The address field, ruled rather than boxed. A single bottom hairline that
+ * turns sirius on focus is the same field treatment every page-level input
+ * uses, so the chrome and the sheets agree on what an input looks like.
+ */
 export const urlbarOmnibox = style({
     flex: 1,
     boxSizing: "border-box",
     display: "flex",
     alignItems: "center",
-    gap: "6px",
-    height: "28px",
-    background: vars.color.horizon,
-    border: "1.5px solid transparent",
-    borderRadius: "14px",
-    padding: "0 8px 0 10px",
-    transition: `border-color ${T_FAST}, background ${T_FAST}, box-shadow ${T_FAST}`,
+    gap: "7px",
+    height: "26px",
+    background: "transparent",
+    border: "none",
+    borderBottom: `1px solid ${vars.color.haze}`,
+    padding: "0 4px 0 2px",
+    transition: `border-color ${T_FAST}, background ${T_FAST}`,
     transitionDuration: "0.1s",
 });
 
 export const urlbarOmniboxFocus = style({
-    borderColor: vars.color.sirius,
-    background: vars.color.night,
-    boxShadow: `0 0 0 3px color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
+    borderBottomColor: vars.color.sirius,
 });
 
 export const urlbarLock = style({
@@ -392,7 +412,6 @@ export const urlbarLock = style({
     alignItems: "center",
     color: vars.color.airglow,
     flexShrink: 0,
-    opacity: 0.85,
 });
 
 export const urlbarInput = style({
@@ -402,14 +421,12 @@ export const urlbarInput = style({
     background: "transparent",
     color: vars.color.daylight,
     fontSize: "12.5px",
-    fontFamily: "inherit",
+    // An address is data, not prose, and the rest of the app sets data in
+    // mono. It also makes a lookalike domain easier to read character by
+    // character, which on a proxy is not a cosmetic concern.
+    fontFamily: FONT_MONO,
     outline: "none",
     caretColor: vars.color.sirius,
-    // With no padding the text box starts exactly at the content edge, so a
-    // glyph with any left side bearing - the "g" in github.com, for one - gets
-    // its first pixel column clipped by the field, and the 14px corner radius
-    // crowds it further. Two pixels is enough to clear both and is invisible
-    // as indentation.
     padding: "0 2px",
     selectors: {
         "&::selection": {
@@ -430,7 +447,6 @@ export const urlbarGoBtn = style({
     border: "none",
     background: "transparent",
     color: vars.color.cinder,
-    borderRadius: "50%",
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
@@ -438,9 +454,10 @@ export const urlbarGoBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&::after": hitArea(),
-        "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 15%, transparent)`,
-            color: vars.color.sirius,
+        "&:hover": { color: vars.color.sirius },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "1px",
         },
     },
 });
@@ -448,19 +465,17 @@ export const urlbarGoBtn = style({
 export const urlbarSuggestions = style({
     position: "absolute",
     boxSizing: "border-box",
-    top: "calc(100% - 1.5px)",
+    top: "100%",
     left: 0,
     right: 0,
     background: vars.color.night,
-    border: `1.5px solid ${vars.color.sirius}`,
-    borderTop: "none",
-    borderRadius: "0 0 14px 14px",
+    border: `1px solid ${vars.color.haze}`,
+    borderTop: `1px solid ${vars.color.sirius}`,
     overflow: "hidden",
     listStyle: "none",
     margin: 0,
     padding: 0,
     zIndex: 100,
-    boxShadow: `3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), -3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), 0 3px 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
     animation: `${suggInAnim} 0.12s cubic-bezier(0.4, 0, 0.2, 1) both`,
     animationDuration: "0.12s",
 });
@@ -469,7 +484,7 @@ export const urlbarSuggestionRow = style({
     position: "relative",
     padding: "7px 12px",
     fontSize: "12.5px",
-    fontFamily: "inherit",
+    fontFamily: FONT_MONO,
     color: vars.color.moonlight,
     cursor: "pointer",
     whiteSpace: "nowrap",
@@ -478,16 +493,17 @@ export const urlbarSuggestionRow = style({
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
-        // Inset divider that fades at both ends, matching the New Tab
-        // search menu: the list is one surface, not stacked cells.
+        // A plain full-bleed hairline. The gradient-faded inset rule this
+        // replaced was trying to make the list read as one soft surface; the
+        // schematic language wants the opposite, so cells are ruled apart.
         "& + &::before": {
             content: '""',
             position: "absolute",
             top: 0,
-            left: "12px",
-            right: "12px",
-            height: "1px",
-            background: `linear-gradient(90deg, transparent, ${vars.color.horizon} 15%, ${vars.color.horizon} 85%, transparent)`,
+            left: 0,
+            right: 0,
+            height: 0,
+            borderTop: RULE.hair,
         },
         "&:hover": {
             background: vars.color.horizon,
@@ -498,18 +514,14 @@ export const urlbarSuggestionRow = style({
 
 globalStyle(
     `.${urlbarOmniboxWrap}:has(.${urlbarSuggestions}) .${urlbarOmnibox}`,
-    {
-        borderRadius: "14px 14px 0 0",
-        borderBottomColor: "transparent",
-        boxShadow: `3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), -3px 0 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent), 0 -3px 0 0 color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
-    },
+    { borderBottomColor: vars.color.sirius },
 );
 
 export const urlbarHistoryRow = style({
     position: "relative",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "9px",
     padding: "6px 12px",
     fontSize: "12.5px",
     fontFamily: "inherit",
@@ -517,16 +529,14 @@ export const urlbarHistoryRow = style({
     transition: `background ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
-        // Same inset, fading divider the search rows below use - the two
-        // halves of this one menu were drawing different rules.
         "& + &::before": {
             content: '""',
             position: "absolute",
             top: 0,
-            left: "12px",
-            right: "12px",
-            height: "1px",
-            background: `linear-gradient(90deg, transparent, ${vars.color.horizon} 15%, ${vars.color.horizon} 85%, transparent)`,
+            left: 0,
+            right: 0,
+            height: 0,
+            borderTop: RULE.hair,
         },
         "&:hover": { background: vars.color.horizon },
     },
@@ -535,7 +545,6 @@ export const urlbarHistoryRow = style({
 export const urlbarHistoryFavicon = style({
     width: "14px",
     height: "14px",
-    borderRadius: "3px",
     objectFit: "contain",
     flexShrink: 0,
     color: vars.color.cinder,
@@ -558,21 +567,25 @@ export const urlbarHistoryTitle = style({
 });
 
 export const urlbarHistoryUrl = style({
-    color: vars.color.moonlight,
+    ...ANNO,
+    color: vars.color.starlight,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    fontSize: "11px",
+    display: "block",
 });
 
-// Separates the history block from the search-suggestion block. Inset and
-// fading like the row dividers, just one tone brighter so it reads as the
-// stronger break of the two.
+// Separates the history block from the search-suggestion block: the stronger
+// of the two breaks, so it is a major rule against the rows' hairlines.
 export const urlbarSuggestionDivider = style({
-    height: "1px",
-    margin: "3px 12px",
-    background: `linear-gradient(90deg, transparent, ${vars.color.haze} 12%, ${vars.color.haze} 88%, transparent)`,
+    height: 0,
+    margin: 0,
+    borderTop: RULE.major,
 });
+
+/* -------------------------------------------------------------------- */
+/* Viewport                                                              */
+/* -------------------------------------------------------------------- */
 
 export const browserViewport = style({
     flex: 1,
@@ -603,33 +616,35 @@ export const browserEmpty = style({
     alignItems: "center",
     justifyContent: "center",
     height: "100%",
-    gap: "14px",
+    gap: "16px",
     color: vars.color.ember,
     fontSize: "14px",
 });
 
 export const browserEmptyIcon = style({
     color: vars.color.dust,
-    opacity: 0.5,
 });
 
 globalStyle(`.${browserEmpty} p`, { margin: 0, color: vars.color.moonlight });
 
+// The one call to action in the chrome. A ruled text button rather than a
+// filled pill, matching the text buttons every sheet uses.
 globalStyle(`.${browserEmpty} button`, {
-    padding: "8px 20px",
-    background: vars.color.sirius,
-    color: vars.color.void,
-    border: "none",
-    borderRadius: "8px",
+    padding: "5px 14px",
+    background: "transparent",
+    color: vars.color.vega,
+    border: `0.5px solid ${vars.color.sirius}`,
     cursor: "pointer",
-    fontFamily: "inherit",
-    fontSize: "13px",
-    fontWeight: 600,
-    transition: `opacity ${T_FAST}, box-shadow ${T_FAST}`,
+    fontFamily: FONT_MONO,
+    fontSize: "11px",
+    fontWeight: 500,
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+    transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
 });
 
 globalStyle(`.${browserEmpty} button:hover`, {
-    opacity: 0.88,
-    boxShadow: `0 2px 12px color-mix(in srgb, ${vars.color.sirius} 35%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.sirius} 16%, transparent)`,
+    color: vars.color.daylight,
 });
