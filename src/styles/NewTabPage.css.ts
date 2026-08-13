@@ -51,29 +51,52 @@ export const pageGrid = style({
  * this into its own stacking layer so the star field (painted first, see
  * `starLayer` below) reads as behind it rather than on top.
  */
+/**
+ * Three rows in reading order — dimension line + omnibox, the horizon rule,
+ * then the session readout — vertically centred as a block.
+ *
+ * They are rows, not two stacked items in one cell. Stacking them meant the
+ * full-width rule centred on the whole stack rather than on the omnibox, so it
+ * emerged through the middle of the input, crossing the placeholder and the
+ * UNBLOCK divider. Anything that reintroduces `gridArea: 1 / 1` here brings
+ * that back.
+ */
 export const omniboxZone = style({
     position: "relative",
     display: "grid",
     gridTemplateColumns: "1fr",
-    alignItems: "center",
+    alignContent: "center",
     justifyItems: "center",
-});
-
-/** Fills the grid cell edge-to-edge so its child `Rule` spans the sheet. */
-export const horizonRuleTrack = style({
-    gridArea: "1 / 1",
     width: "100%",
 });
 
-export const omniboxWrap = style({
-    gridArea: "1 / 1",
-    justifySelf: "center",
+export const omniboxSeat = style({
     width: "min(560px, 100%)",
     display: "flex",
     flexDirection: "column",
     gap: "10px",
 });
 
+/**
+ * Fills the row edge-to-edge so its `Rule` spans the sheet.
+ *
+ * The -1px is what seats the omnibox *on* this rule rather than above it: the
+ * input carries its own hairline underline, and pulling the full-width rule up
+ * by one pixel lands the two on the same line. The result reads as one rule
+ * crossing the sheet with the omnibox sitting on it, which is the arrangement
+ * DESIGN.md's FIRST VIEWPORT describes.
+ */
+export const horizonRuleTrack = style({
+    width: "100%",
+    marginTop: "-1px",
+});
+
+export const omniboxBelow = style({
+    width: "min(560px, 100%)",
+    marginTop: "10px",
+});
+
+/** The dimension line above the field, marking the span it occupies. */
 export const omniboxRule = style({
     opacity: 0.7,
 });

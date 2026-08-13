@@ -135,14 +135,28 @@ export default function NewTabPage() {
                     <Anno class={s.catalogueLabel}>{CATALOGUE_LABEL}</Anno>
                 </div>
 
+                {/* Reading order is the drawing order: the dimension line
+                    marking the omnibox's span, the omnibox itself, then the
+                    horizon rule it is seated on, then the session readout
+                    hanging below it.
+
+                    These used to be two stacked grid items in one cell, both
+                    centred — so the full-width rule centred on the whole stack
+                    and came out *through the middle of the input*, crossing the
+                    placeholder text and the UNBLOCK divider. Three horizontals
+                    where the design calls for the omnibox to sit on one. */}
                 <div class={s.omniboxZone}>
+                    <Show when={inFrame()}>
+                        <div class={s.omniboxSeat}>
+                            <Rule caps class={s.omniboxRule} />
+                            <SearchBarContainer inline />
+                        </div>
+                    </Show>
                     <div class={s.horizonRuleTrack}>
                         <Rule weight="major" />
                     </div>
                     <Show when={inFrame()}>
-                        <div class={s.omniboxWrap}>
-                            <Rule caps class={s.omniboxRule} />
-                            <SearchBarContainer inline />
+                        <div class={s.omniboxBelow}>
                             <Unfold
                                 label="Session detail"
                                 summary={<Anno muted>session</Anno>}

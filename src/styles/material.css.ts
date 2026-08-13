@@ -1,29 +1,27 @@
 /**
- * Shared material language — "Backlit Instrumentation".
+ * Shared low-level tokens: motion, one type recipe, and two geometry helpers.
  *
- * DESIGN.md's north star is a stealth cockpit: dense, precise, and quiet
- * enough to sit open on a shared screen. What the system described but never
- * actually rendered was *material*. Every surface was a flat fill, so the
- * panel read as dark rectangles rather than machined objects.
+ * This module used to be the "Backlit Instrumentation" material language —
+ * `edgeLit`, `SHADOW`, `glow()`, `focusRing()`, `lit()`, `machined()`,
+ * `atmosphere()` and a grain wash, all built to make flat fills read as
+ * machined objects under a light source.
  *
- * This module supplies the missing physicality, all of it static (the system
- * forbids ambient motion) and all of it inside the twilight palette (it
- * forbids neon):
+ * That metaphor is retired. The system draws hairlines on a ruled field now,
+ * where depth comes from rules and alignment rather than from simulated light,
+ * and DESIGN.md records the two as incompatible. Everything specific to it has
+ * been deleted rather than left importable, because a dead export is an
+ * invitation — `Select` was still pulling `SHADOW.attached` long after the rest
+ * of the app had moved on.
  *
- *   - `edgeLit` / `edgeLitStrong` — a hairline of light along a surface's top
- *     edge, the way light catches a milled edge. This is the single highest
- *     leverage detail in the set: it turns a filled rect into an object.
- *   - `SHADOW` — the shadow vocabulary from DESIGN.md, finally in one place
- *     instead of re-typed with drifting alpha values at each call site.
+ * What survives is language-neutral and used everywhere:
+ *
  *   - `EASE` / `DUR` — motion tokens. The codebase had 0.1/0.12/0.15/0.16/
  *     0.2/0.3s and four different easings scattered across twenty files with
  *     no rule; unevenness at that scale reads as sloppiness even when no
  *     single value is wrong.
- *   - `atmosphere()` — a page-level backdrop: one soft accent bloom plus a
- *     fine grain wash, so a full-page surface has a light source and a
- *     texture instead of being one flat colour.
- *   - `microLabel` — the Label type tier (12px/600/uppercase/0.06em) as a
- *     recipe, since it appears on nearly every page.
+ *   - `microLabel` — a small uppercase label recipe.
+ *   - `hairline()` — a rule that fades at both ends.
+ *   - `hitArea()` — WCAG 2.5.8 target expansion without changing the visuals.
  */
 
 import { vars } from "./theme.css";
@@ -56,128 +54,15 @@ export const DUR = {
 } as const;
 
 /* -------------------------------------------------------------------- */
-/* Elevation                                                             */
+/* Type recipe                                                           */
 /* -------------------------------------------------------------------- */
 
 /**
- * Structural elevation is always neutral black (DESIGN.md's
- * Colored-Glow-vs-Black-Shadow rule); accent glows live in `glow()`.
- */
-export const SHADOW = {
-    /** Cards and rows resting on the page. */
-    resting: "0 1px 2px rgba(0, 0, 0, 0.28)",
-    /** Cards lifted under the cursor. */
-    lifted: "0 10px 26px -8px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.22)",
-    /** Free-floating dropdowns and popovers. */
-    menu: "0 14px 34px -10px rgba(0, 0, 0, 0.6), 0 3px 10px rgba(0, 0, 0, 0.28)",
-    /**
-     * Menus docked to a control (Select, omnibox suggestions).
-     *
-     * `menu` blurs ~7px upward, which lands right on the seam where the menu
-     * meets its trigger and paints a dark band across a join that is supposed
-     * to read as one continuous surface. Offset and negative spread are
-     * balanced here so the shadow never reaches above the element's own top
-     * edge: top = offsetY - spread - blur/2 = 16 + 10 - 15 = +11px.
-     */
-    attached: "0 16px 30px -10px rgba(0, 0, 0, 0.55)",
-    /** Command palette / modal-scale surfaces. */
-    overlay:
-        "0 0 0 1px rgba(0, 0, 0, 0.4), 0 32px 70px -20px rgba(0, 0, 0, 0.7), 0 10px 26px rgba(0, 0, 0, 0.35)",
-    /** The tab being dragged. */
-    drag: "0 10px 26px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3)",
-} as const;
-
-/** Interactive accent feedback — never structural elevation. */
-export const glow = (accent: string, strength = 34) =>
-    `0 6px 20px -4px color-mix(in srgb, ${accent} ${strength}%, transparent)`;
-
-/** The focus ring used across every accent lane. */
-export const focusRing = (accent: string) =>
-    `0 0 0 3px color-mix(in srgb, ${accent} 22%, transparent)`;
-
-/* -------------------------------------------------------------------- */
-/* Surface material                                                      */
-/* -------------------------------------------------------------------- */
-
-/**
- * A hairline of light on the top edge and a matching shadow on the bottom.
- * Layered as insets so it composes with any real box-shadow on the element.
- */
-export const edgeLit = {
-    boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.045), inset 0 -1px 0 rgba(0, 0, 0, 0.22)`,
-} as const;
-
-export const edgeLitStrong = {
-    boxShadow: `inset 0 1px 0 rgba(255, 255, 255, 0.075), inset 0 -1px 0 rgba(0, 0, 0, 0.3)`,
-} as const;
-
-/** Compose the edge highlight with an outer shadow in one declaration. */
-export const lit = (outer: string, strong = false) =>
-    `${strong ? edgeLitStrong.boxShadow : edgeLit.boxShadow}, ${outer}`;
-
-/**
- * A brushed, very slightly warmer fill for surfaces that should read as a
- * machined face rather than a hole in the page. The gradient is only a few
- * percent — at twilight's contrast it reads as a sheen, not a stripe.
- */
-export const machined = (from: string, to: string) =>
-    `linear-gradient(168deg, ${from} 0%, ${to} 100%)`;
-
-/* -------------------------------------------------------------------- */
-/* Atmosphere                                                            */
-/* -------------------------------------------------------------------- */
-
-/**
- * A fine luminance grain, as a data-URI SVG so it costs no request and
- * cannot be blocked. Two percent opacity: invisible as texture, but it
- * breaks up the flat fills that made large dark areas look like voids.
- */
-const GRAIN =
-    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
-
-/**
- * Page backdrop: a soft off-centre bloom in the page's accent, a second
- * cooler bloom for depth, then grain over the top.
+ * A small uppercase label.
  *
- * Static by design — DESIGN.md forbids anything that animates at rest.
- */
-export const atmosphere = (accent: string, intensity = 1) => ({
-    backgroundColor: vars.color.dusk,
-    backgroundImage: [
-        `radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, ${accent} ${Math.round(
-            7 * intensity,
-        )}%, transparent) 0%, transparent 60%)`,
-        `radial-gradient(80% 60% at 85% 110%, color-mix(in srgb, ${vars.color.vega} ${Math.round(
-            4 * intensity,
-        )}%, transparent) 0%, transparent 70%)`,
-        GRAIN,
-    ].join(", "),
-    backgroundAttachment: "fixed, fixed, fixed",
-    backgroundBlendMode: "normal, normal, overlay",
-});
-
-/** Just the grain, for surfaces that already own their background. */
-export const grainOverlay = {
-    content: '""',
-    position: "absolute",
-    inset: 0,
-    backgroundImage: GRAIN,
-    opacity: 0.025,
-    pointerEvents: "none",
-    mixBlendMode: "overlay",
-} as const;
-
-/* -------------------------------------------------------------------- */
-/* Type recipes                                                          */
-/* -------------------------------------------------------------------- */
-
-/**
- * DESIGN.md's Label tier.
- *
- * subtext0, not an Overlay tier: at 11px this is small text, so it needs
- * 4.5:1. Overlay 0 and 1 measure 3.15:1 and 4.14:1 on Base — both below the
- * floor. The tier still reads as quiet because it's small, tracked and
- * uppercase, not because it's dim.
+ * `moonlight`, not one of the dim tiers: at 11px this is small text and needs
+ * 4.5:1. It reads as quiet because it is small, tracked and uppercase, not
+ * because it is dim.
  */
 export const microLabel = {
     fontSize: "11px",
@@ -187,22 +72,19 @@ export const microLabel = {
     color: vars.color.moonlight,
 } as const;
 
-/** Numeric readouts: equal-width digits so columns never jitter. */
-export const readout = {
-    fontVariantNumeric: "tabular-nums",
-    fontFeatureSettings: '"tnum" 1, "ss01" 1',
-} as const;
+/* -------------------------------------------------------------------- */
+/* Geometry helpers                                                      */
+/* -------------------------------------------------------------------- */
 
 /**
  * A hairline rule that fades at both ends, so a divider reads as etched
  * into the panel rather than drawn edge to edge with a ruler.
+ *
+ * Returns a gradient *value*, not a border shorthand, so it cannot sit in
+ * `borderTop` directly — pair it with `borderImage`, as the ledger dividers do.
  */
 export const hairline = (color: string = vars.color.haze) =>
     `linear-gradient(90deg, transparent 0%, ${color} 12%, ${color} 88%, transparent 100%)`;
-
-/* -------------------------------------------------------------------- */
-/* Hit targets                                                           */
-/* -------------------------------------------------------------------- */
 
 /**
  * Expands an element's clickable area to at least `size`×`size` without
