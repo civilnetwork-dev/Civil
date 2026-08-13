@@ -60,6 +60,12 @@ export default function BanPage({ banReason }: { banReason: string }) {
                                 <a class={s.link} href="/baninfo">
                                     view your proxy status
                                 </a>
+                                {/* A filter's block page tells you to contact
+                                    an administrator. Civil's says which list
+                                    this came from and lets you read it. */}
+                                <span class={s.note}>
+                                    civil publishes its whole list
+                                </span>
                             </div>
                         </>
                     }

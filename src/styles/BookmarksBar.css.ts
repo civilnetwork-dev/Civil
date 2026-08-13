@@ -1,6 +1,6 @@
 import { globalStyle, style } from "@vanilla-extract/css";
 import { hitArea } from "./material.css";
-import { ANNO, RULE } from "./schematic.css";
+import { ANNO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -41,7 +41,7 @@ export const bookmark = style({
     background: "transparent",
     border: "1px solid transparent",
     fontSize: "12px",
-    fontFamily: '"Rubik", sans-serif',
+    fontFamily: FONT_SANS,
     fontWeight: 400,
     whiteSpace: "nowrap",
     flexShrink: 0,

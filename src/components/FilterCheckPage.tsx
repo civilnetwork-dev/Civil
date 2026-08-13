@@ -24,6 +24,7 @@ import {
 } from "~/lib/filterCheckVendors";
 import { checkFiltersNow } from "~/lib/swUtils";
 import * as s from "~/styles/FilterCheckPage.css";
+import * as schematic from "~/styles/schematic.css";
 import FilterCheckForm from "./FilterCheckForm";
 import FilterCheckResults from "./FilterCheckResults";
 import GoGuardianManifestToast from "./GoGuardianManifestToast";
@@ -402,6 +403,18 @@ export default function FilterCheckPage() {
                         </div>
                     }
                 />
+
+                {/* The one page where Civil's voice has a direct target. The
+                    vendors this page queries describe themselves in soft nouns
+                    — visibility, insights, oversight, "observed" — for systems
+                    that record screens minute by minute. This page asks their
+                    own classifiers the same question from the other side, and
+                    prints whatever comes back. */}
+                <p class={schematic.lede}>
+                    Every vendor below calls this visibility. Here is the same
+                    question, asked from your side of the glass — and their own
+                    answer, unedited.
+                </p>
 
                 <Rule label="specimen" />
                 <div class={s.specimenRow}>

@@ -9,3 +9,4 @@ tests/bench_results.json
 misc/wisp/native/target
 misc/wisp/zig-client/.zig-cache
 misc/wisp/zig-client/zig-out
+data/

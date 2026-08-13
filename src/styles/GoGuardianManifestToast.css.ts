@@ -1,4 +1,5 @@
 import { keyframes, style } from "@vanilla-extract/css";
+import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 const slideUp = keyframes({
@@ -23,7 +24,7 @@ export const toast = style({
     gap: "12px",
     animation: `${slideUp} 0.28s cubic-bezier(0.4, 0, 0.2, 1) both`,
     animationDuration: "0.28s",
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
 });
 
 export const header = style({

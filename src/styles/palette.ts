@@ -14,12 +14,11 @@
  * Surfaces descend into atmospheric depth; accents are stellar spectral
  * classes plus airglow, the green emission visible at a dark site. No pure
  * black (causes halation against a bright screen) and no pure white
- * (`daylight`, the primary text colour, sits at 12.88:1 against `dusk`
- * rather than pure white's 16.32:1) — both are deliberate, not oversights.
+ * (`daylight`, the primary text colour, sits at 13.07:1 against `dusk`
+ * rather than pure white's 15.23:1) — both are deliberate, not oversights.
  *
- * Every value below was measured for contrast against `dusk` (#18202F), the
- * active content plane. See `.superpowers/sdd/task-T1-brief.md` for the
- * full rename table and measured ratios.
+ * Every value below was measured for contrast against `dusk` (#122834), the
+ * active content plane. DESIGN.md carries the full measured table.
  */
 /**
  * Derived from an alpine-lake photograph (Snowy Range: granite, conifer, glacial

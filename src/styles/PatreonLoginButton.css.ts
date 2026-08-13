@@ -1,4 +1,5 @@
 import { style } from "@vanilla-extract/css";
+import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 export const PATREON = "#FF424D";
@@ -17,7 +18,7 @@ export const button = style({
     border: `1px solid color-mix(in srgb, ${PATREON} 35%, transparent)`,
     background: `color-mix(in srgb, ${PATREON} 12%, ${vars.color.horizon})`,
     color: `color-mix(in srgb, ${PATREON} 75%, ${vars.color.daylight})`,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     fontSize: "13px",
     fontWeight: 500,
     lineHeight: 1,
@@ -51,7 +52,7 @@ export const loggedIn = style({
     border: `1px solid ${vars.color.haze}`,
     background: vars.color.horizon,
     color: vars.color.daylight,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     fontSize: "13px",
     userSelect: "none",
     transition: `border-color ${T}`,
@@ -80,7 +81,7 @@ export const avatarFallback = style({
     alignItems: "center",
     justifyContent: "center",
     color: "#fff",
-    fontSize: "10px",
+    fontSize: "11px",
     fontWeight: 700,
     flexShrink: 0,
 });
@@ -106,7 +107,7 @@ export const signOutBtn = style({
     border: "none",
     background: "transparent",
     color: vars.color.cinder,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     fontSize: "11px",
     cursor: "pointer",
     transition: `color ${T}, background ${T}`,

@@ -5,6 +5,7 @@ import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import * as s from "~/styles/BanInfoPage.css";
+import * as schematic from "~/styles/schematic.css";
 
 const PAGE_SIZE = 50;
 
@@ -144,6 +145,16 @@ export default function BanInfoPage() {
                         : `${domains().length.toLocaleString()} on file`
                 }
             />
+
+            {/* Every vendor whose list this overlaps keeps theirs behind an
+                administrator login, so a student who is blocked cannot see what
+                they were blocked by. Civil's is on this page, in full, with a
+                count. */}
+            <p class={schematic.lede}>
+                The whole list, in the open. Every filter vendor keeps theirs
+                behind an administrator login — this one has a count at the top
+                and a last line you can scroll to.
+            </p>
 
             <StatusSection />
 

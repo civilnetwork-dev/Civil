@@ -1,6 +1,6 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
 import { DUR, EASE } from "./material.css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO, FONT_MONO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -32,7 +32,7 @@ export const sbHost = style({
 export const sbRoot = style({
     pointerEvents: "all",
     position: "relative",
-    fontFamily: '"Rubik", sans-serif',
+    fontFamily: FONT_SANS,
     width: "min(640px, 90vw)",
 });
 
@@ -59,16 +59,22 @@ export const sbDropdown = style({
 });
 
 /**
- * The translucent variant, kept because the New Tab page can show the star
- * chart through it. The saturate() boost is gone — it shifted the palette's
- * hues wherever it applied, which on a page whose whole subject is a measured
- * colour field is the one thing it must not do.
+ * The variant used when the omnibox floats over a loaded page rather than the
+ * New Tab sheet.
+ *
+ * It carries no `backdrop-filter`. DESIGN.md forbids it outright and names the
+ * reason — the target hardware is low-end school Chromebooks, where compositing
+ * a blurred backdrop on every frame is one of the most expensive things a page
+ * can ask for. The previous rule also applied `saturate(1.5)`, which shifted
+ * every hue behind it; on a product whose whole subject is a measured colour
+ * field, that is the one effect it must never use.
+ *
+ * A near-opaque `night` ground separates the menu from the page underneath just
+ * as well, costs nothing, and is what the rest of the drawing language does.
  */
 export const sbDropdownBlur = style({
-    background: `color-mix(in srgb, ${vars.color.night} 82%, transparent)`,
-    backdropFilter: "blur(14px)",
-    WebkitBackdropFilter: "blur(14px)",
-    borderColor: `color-mix(in srgb, ${vars.color.haze} 70%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.night} 96%, transparent)`,
+    borderColor: vars.color.haze,
     borderTop: "none",
 });
 

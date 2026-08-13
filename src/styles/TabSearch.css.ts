@@ -1,5 +1,5 @@
 import { keyframes, style } from "@vanilla-extract/css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO, FONT_MONO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -43,9 +43,12 @@ export const backdrop = style({
     position: "fixed",
     inset: 0,
     zIndex: 10000,
-    background: `color-mix(in srgb, ${vars.color.dusk} 55%, transparent)`,
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
+    // A plain dim, not a blurred one. DESIGN.md forbids `backdrop-filter` and
+    // names the reason: the target hardware is low-end school Chromebooks,
+    // where compositing a blurred backdrop every frame is among the most
+    // expensive things a page can do. A darker scrim separates the panel from
+    // the page just as clearly and costs nothing.
+    background: `color-mix(in srgb, ${vars.color.void} 78%, transparent)`,
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "center",
@@ -97,7 +100,7 @@ export const input = style({
     outline: "none",
     color: vars.color.daylight,
     fontSize: "15px",
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     fontWeight: 400,
     caretColor: vars.color.sirius,
     selectors: {
@@ -112,7 +115,7 @@ export const hint = style({
     fontSize: "11px",
     color: vars.color.ember,
     flexShrink: 0,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     letterSpacing: "0.02em",
 });
 
@@ -196,7 +199,7 @@ export const resultTitle = style({
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
 });
 
 export const resultUrl = style({
@@ -216,7 +219,7 @@ export const matchMark = style({
 
 export const tabBadge = style({
     ...ANNO,
-    fontSize: "10px",
+    fontSize: "11px",
     padding: "1px 6px",
     flexShrink: 0,
     border: `0.5px solid color-mix(in srgb, ${vars.color.sirius} 45%, transparent)`,
@@ -229,7 +232,7 @@ export const emptyState = style({
     textAlign: "center",
     color: vars.color.cinder,
     fontSize: "13px",
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
 });
 
 export const footer = style({
@@ -247,7 +250,7 @@ export const footerKey = style({
     gap: "4px",
     fontSize: "11px",
     color: vars.color.cinder,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
 });
 
 export const kbd = style({
@@ -257,7 +260,7 @@ export const kbd = style({
     background: "transparent",
     border: `0.5px solid ${vars.color.haze}`,
     padding: "1px 5px",
-    fontSize: "10px",
+    fontSize: "11px",
     fontFamily: FONT_MONO,
     color: vars.color.halo,
     lineHeight: 1.6,

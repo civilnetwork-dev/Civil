@@ -99,6 +99,14 @@ export const actions = style({
     borderTop: RULE.major,
 });
 
+// The house line on the one page a reader did not choose to open, so it stays
+// quiet: annotation tier, no accent, sitting after the link rather than above.
+export const note = style({
+    ...ANNO,
+    color: vars.color.starlight,
+    marginLeft: "auto",
+});
+
 export const link = style({
     ...ANNO,
     color: vars.color.vega,

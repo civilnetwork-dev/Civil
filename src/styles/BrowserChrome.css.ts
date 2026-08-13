@@ -1,6 +1,6 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
 import { hitArea } from "./material.css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO, FONT_MONO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -46,7 +46,7 @@ export const browser = style({
     height: "100vh",
     minHeight: 0,
     background: vars.color.dusk,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     fontSize: "13px",
     color: vars.color.daylight,
     overflow: "hidden",
@@ -291,7 +291,7 @@ export const tabDragClone = style({
     cursor: "grabbing",
     willChange: "transform",
     transition: "none",
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     fontSize: "13px",
 });
 

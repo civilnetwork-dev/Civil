@@ -170,7 +170,14 @@ export default function NewTabPage() {
                     <div class={s.titleBlockCorner}>
                         <Rule weight="major" class={s.titleRule} />
                         <h1 class={s.wordmark}>Civil</h1>
-                        <Anno muted>rev 2.0 · your web proxy</Anno>
+                        {/* The house line. Filtering vendors describe what they
+                            do in soft nouns — visibility, insights, wellbeing,
+                            "observed" — for machinery that records screens
+                            minute by minute and flags students for reading
+                            college and therapy pages. Civil's voice is the
+                            inverse: name the mechanism, state the number, claim
+                            nothing that isn't built. */}
+                        <Anno muted>rev 2.0 · nothing here is flagged</Anno>
                     </div>
                     <p class={s.adNote}>
                         <Anno muted>

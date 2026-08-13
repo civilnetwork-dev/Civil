@@ -1,4 +1,5 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
+import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 const T_FAST = "0.1s ease";
@@ -25,7 +26,7 @@ export const menu = style({
     borderRadius: "10px",
     overflow: "hidden",
     boxShadow: `0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18)`,
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
     fontSize: "13px",
     color: vars.color.daylight,
     userSelect: "none",

@@ -360,7 +360,7 @@ export default function ExtensionsPage() {
                 <Rule label="none installed" weight="major" />
                 <div class={s.empty}>
                     <Anno muted>
-                        no extensions yet — install a .crx or .xpi above
+                        no extensions yet — yours to add, never pushed to you
                     </Anno>
                 </div>
             </Show>

@@ -282,7 +282,9 @@ export default function HistoryPage() {
             <Show when={entries().length === 0}>
                 <Rule label="record" weight="hair" />
                 <div class={s.empty}>
-                    <Anno class={s.emptyText}>no history yet</Anno>
+                    <Anno class={s.emptyText}>
+                        no history yet — and no copy of it anywhere else
+                    </Anno>
                 </div>
             </Show>
 

@@ -17,6 +17,7 @@ import {
     tooltipBase,
 } from "~/lib/benchmarkConfig";
 import * as s from "~/styles/BenchmarksPage.css";
+import { FONT_MONO } from "~/styles/schematic.css";
 
 interface BenchmarkChartProps {
     data: BenchmarkData;
@@ -172,7 +173,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                 label: {
                                     formatter: "parity",
                                     color: colors.starlight,
-                                    fontFamily: "monospace",
+                                    fontFamily: FONT_MONO,
                                     fontSize: 10,
                                 },
                             },
@@ -242,8 +243,10 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
             />
 
             <p class={s.lede}>
-                Two UltraViolet JavaScript implementations compared against
-                Civil's C++/WebAssembly encoder, built with Emscripten.
+                Measured, not marketed. Two UltraViolet JavaScript
+                implementations against Civil's C++/WebAssembly encoder, built
+                with Emscripten — the harness is in the repo and the numbers
+                below are the ones it printed.
             </p>
 
             <Show when={headline()}>

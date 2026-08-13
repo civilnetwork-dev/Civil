@@ -10,6 +10,7 @@ import TitleBlock from "~/components/schematic/TitleBlock";
 import Unfold from "~/components/schematic/Unfold";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/AppsPage.css";
+import * as schematic from "~/styles/schematic.css";
 import type { CivilApp } from "~/types";
 
 const GHOST_POSITIONS = 8;
@@ -115,6 +116,14 @@ export default function AppsPage() {
                 title="Apps"
                 meta={`${apps().length} pinned`}
             />
+
+            {/* The equivalent screen on a managed device is a catalogue an
+                administrator curates, with a request queue for anything not on
+                it. This one is just a list the reader edits. */}
+            <p class={schematic.lede}>
+                Pinned by you, not approved for you. Add anything that loads —
+                there is no catalogue and no request queue.
+            </p>
 
             <Field
                 label="add item"

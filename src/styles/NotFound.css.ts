@@ -1,4 +1,5 @@
 import { style } from "@vanilla-extract/css";
+import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 export const notFoundRoot = style({
@@ -38,7 +39,7 @@ export const notFoundContent = style({
     alignItems: "center",
     gap: "0.75rem",
     textAlign: "center",
-    fontFamily: '"Rubik", sans-serif',
+    fontFamily: FONT_SANS,
     color: vars.color.daylight,
     padding: "1rem",
 });

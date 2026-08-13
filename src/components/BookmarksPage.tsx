@@ -213,7 +213,7 @@ export default function BookmarksPage() {
                             ? `nothing matches “${search()}”`
                             : scope() === "recent"
                               ? "nothing bookmarked in the last week"
-                              : "no bookmarks yet"}
+                              : "no bookmarks yet — saved to this device, not to a console"}
                     </Anno>
                     {/* A dead end otherwise: the list is empty and the only way
                         back is to find the lookup again. */}

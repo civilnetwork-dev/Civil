@@ -114,7 +114,7 @@ export const filterHint = style({
     width: "16px",
     height: "16px",
     border: `0.5px solid ${vars.color.haze}`,
-    fontSize: "10px",
+    fontSize: "11px",
     transition: `opacity ${DUR.base} ${EASE.standard}`,
     selectors: {
         [`${filterField}:focus-within &`]: { opacity: 0 },

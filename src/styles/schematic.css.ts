@@ -19,11 +19,26 @@ import { vars } from "./theme.css";
  */
 
 /**
- * System monospace. Zero packages, zero download. Rubik stays the voice of the
- * product; mono carries data — numerals, hostnames, timings, scores, IDs.
+ * The two faces, defined once.
+ *
+ * IBM Plex Sans carries anything a person reads as a sentence; IBM Plex Mono
+ * carries data — numerals, hostnames, timings, scores, IDs. They are one
+ * superfamily drawn for technical documentation, so the two share a skeleton
+ * and sit on the same rhythm rather than reading as two products.
+ *
+ * These live here, not as string literals at each call site. The stack was
+ * previously written out by hand in twelve files, which is exactly how one of
+ * them ends up a font behind the rest.
+ *
+ * The system fallbacks matter: a school network that blocks the font request
+ * still gets a monospace for data and a sans for prose, so the alignment the
+ * ledgers depend on survives the font never arriving.
  */
+export const FONT_SANS =
+    '"IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif';
+
 export const FONT_MONO =
-    'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
+    '"IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
 
 /* -------------------------------------------------------------------- */
 /* Rules                                                                 */
@@ -84,6 +99,21 @@ export const ANNO = {
 } as const;
 
 export const anno = style({ ...ANNO });
+
+/**
+ * The house line: one sentence directly under a title block, in prose rather
+ * than the annotation tier.
+ *
+ * Reserved for the page's brand statement, so it stays rare. A drawing that
+ * explains itself in a paragraph on every sheet is not a drawing any more.
+ */
+export const lede = style({
+    maxWidth: "60ch",
+    margin: "0 0 24px",
+    fontSize: "13.5px",
+    lineHeight: 1.55,
+    color: vars.color.halo,
+});
 
 /**
  * starlight (7.27:1 against dusk) is used here rather than cinder (4.82:1)

@@ -65,7 +65,7 @@ export const extIconFallback = style({
     justifyContent: "center",
     color: vars.color.cinder,
     background: vars.color.horizon,
-    fontSize: "10px",
+    fontSize: "11px",
     fontWeight: 600,
     fontFamily: FONT_MONO,
     userSelect: "none",

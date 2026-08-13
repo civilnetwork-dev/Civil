@@ -1,4 +1,5 @@
 import { globalStyle, style } from "@vanilla-extract/css";
+import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 export const loadingContainer = style({
@@ -38,7 +39,7 @@ globalStyle(`.${loadingLottie} canvas`, {
 });
 
 export const loadingStatusWrapper = style({
-    fontFamily: '"Rubik", sans-serif',
+    fontFamily: FONT_SANS,
     fontWeight: 500,
     fontSize: "0.9rem",
     letterSpacing: "0.01em",

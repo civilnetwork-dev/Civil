@@ -2,6 +2,7 @@ import { globalStyle } from "@vanilla-extract/css";
 import { vars } from "./theme.css";
 
 import "./themes/twilight.css";
+import { FONT_SANS } from "./schematic.css";
 
 globalStyle("*, *::before, *::after", {
     margin: 0,
@@ -32,7 +33,7 @@ globalStyle("html, body", {
 });
 
 globalStyle("body", {
-    fontFamily: '"Rubik", ui-sans-serif, sans-serif',
+    fontFamily: FONT_SANS,
 });
 
 globalStyle("button, input, textarea, select", {

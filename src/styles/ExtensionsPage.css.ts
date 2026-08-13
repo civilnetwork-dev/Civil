@@ -312,7 +312,7 @@ const stampBase = style({
     ...ANNO,
     flexShrink: 0,
     padding: "2px 6px",
-    fontSize: "10px",
+    fontSize: "11px",
     textTransform: "uppercase",
 });
 
