@@ -1,6 +1,12 @@
 import { keyframes, style } from "@vanilla-extract/css";
-import { SHADOW } from "./material.css";
+import { ANNO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
+
+/**
+ * The last shared control still built from the superseded material language:
+ * 8px corners and `SHADOW.attached` under the menu. Square and ruled now, to
+ * match the fields and menus in the chrome and on every sheet.
+ */
 
 const T = "0.12s ease";
 
@@ -18,13 +24,14 @@ export const trigger = style({
     display: "inline-flex",
     alignItems: "center",
     gap: "6px",
-    padding: "6px 10px 6px 12px",
-    backgroundColor: vars.color.horizon,
+    padding: "5px 8px 5px 10px",
+    ...ANNO,
+    backgroundColor: "transparent",
+    // After the spread, not before: ANNO carries its own `color` and would
+    // otherwise overwrite this one.
     color: vars.color.daylight,
-    border: `1px solid ${vars.color.haze}`,
-    borderRadius: "8px",
-    fontSize: "14px",
-    fontFamily: "inherit",
+    border: `0.5px solid ${vars.color.horizon}`,
+    textTransform: "uppercase",
     cursor: "pointer",
     outline: "none",
     transition: `border-color ${T}`,
@@ -32,6 +39,10 @@ export const trigger = style({
     whiteSpace: "nowrap",
     selectors: {
         "&:hover": { borderColor: vars.color.cinder },
+        "&:focus-visible": {
+            outline: `1px solid ${vars.color.sirius}`,
+            outlineOffset: "-1px",
+        },
     },
 });
 
@@ -39,7 +50,6 @@ export const trigger = style({
 // never as a bold outline (see the note on AppsPage's addBtn).
 export const triggerOpen = style({
     borderColor: vars.color.sirius,
-    borderRadius: "8px 8px 0 0",
     borderBottomColor: "transparent",
     selectors: {
         // `trigger`'s own :hover rule sets borderColor and would otherwise
@@ -70,10 +80,9 @@ export const dropdown = style({
     top: "calc(100% - 1px)",
     left: 0,
     right: 0,
-    backgroundColor: vars.color.horizon,
+    backgroundColor: vars.color.night,
     border: `1px solid ${vars.color.sirius}`,
     borderTop: "none",
-    borderRadius: "0 0 8px 8px",
     overflow: "hidden",
     zIndex: 200,
     animation: `${fadeDown} 0.12s ease both`,
@@ -81,22 +90,19 @@ export const dropdown = style({
     listStyle: "none",
     margin: 0,
     padding: 0,
-    // A 0.15-alpha shadow is invisible against a dark surface; a menu needs
-    // to read as floating above the page, so this goes deeper and softer.
-    boxShadow: SHADOW.attached,
 });
 
 export const option = style({
-    padding: "7px 12px",
-    fontSize: "14px",
-    fontFamily: "inherit",
+    padding: "7px 10px",
+    ...ANNO,
     color: vars.color.moonlight,
     cursor: "pointer",
     transition: `background ${T}, color ${T}`,
     transitionDuration: "0.12s",
     selectors: {
+        "& + &": { borderTop: RULE.hair },
         "&:hover": {
-            background: vars.color.haze,
+            background: vars.color.horizon,
             color: vars.color.daylight,
         },
         // These options are keyboard-focusable and sit flush against the
