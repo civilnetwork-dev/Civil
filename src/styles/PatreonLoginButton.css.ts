@@ -5,16 +5,19 @@ import { vars } from "./theme.css";
 export const PATREON = "#FF424D";
 export const T = "0.12s ease";
 
-// Tinted-accent recipe (same shape as the system's Status Triad): a solid
-// brand-red block would clash against the muted twilight palette everywhere
-// else, so Patreon's red is toned into a background tint + accent text/icon
-// instead of a full-saturation fill.
+// Tinted-accent recipe: a solid brand-red block would clash against the muted
+// alpine palette everywhere else, so Patreon's red is toned into a background
+// tint plus accent text and icon rather than a full-saturation fill.
+//
+// Square, like every other control. This was the one rounded element left in an
+// app with no border radius anywhere, which made a third-party button read as
+// pasted on rather than as part of the page. The mark and the wordmark carry
+// the brand recognition; the corner radius was never doing that work.
 export const button = style({
     display: "inline-flex",
     alignItems: "center",
     gap: "7px",
     padding: "7px 14px",
-    borderRadius: "8px",
     border: `1px solid color-mix(in srgb, ${PATREON} 35%, transparent)`,
     background: `color-mix(in srgb, ${PATREON} 12%, ${vars.color.horizon})`,
     color: `color-mix(in srgb, ${PATREON} 75%, ${vars.color.daylight})`,
@@ -48,7 +51,6 @@ export const loggedIn = style({
     alignItems: "center",
     gap: "8px",
     padding: "5px 10px",
-    borderRadius: "8px",
     border: `1px solid ${vars.color.haze}`,
     background: vars.color.horizon,
     color: vars.color.daylight,
@@ -72,15 +74,23 @@ export const avatar = style({
     flexShrink: 0,
 });
 
+/**
+ * The initial shown when a supporter has no Patreon avatar.
+ *
+ * White on full-strength Patreon red measures 3.42:1 — below the 4.5:1 floor
+ * for text this size, and pure white is barred by the palette anyway. Dropping
+ * the ground toward `void` keeps the red unmistakably Patreon's while lifting
+ * the initial to 6.88:1 against `daylight`.
+ */
 export const avatarFallback = style({
     width: "20px",
     height: "20px",
     borderRadius: "50%",
-    background: PATREON,
+    background: `color-mix(in srgb, ${PATREON} 55%, ${vars.color.void})`,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#fff",
+    color: vars.color.daylight,
     fontSize: "11px",
     fontWeight: 700,
     flexShrink: 0,
@@ -103,7 +113,6 @@ export const divider = style({
 
 export const signOutBtn = style({
     padding: "2px 6px",
-    borderRadius: "4px",
     border: "none",
     background: "transparent",
     color: vars.color.cinder,

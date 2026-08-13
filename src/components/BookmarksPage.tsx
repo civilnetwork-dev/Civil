@@ -14,6 +14,7 @@ import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/BookmarksPage.css";
+import * as schematic from "~/styles/schematic.css";
 import type { CivilBookmark } from "~/types";
 
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -79,6 +80,13 @@ export default function BookmarksPage() {
             : `${inScope().length} saved`,
     );
 
+    /** Compact and absolute: "3 Aug" beats "11 days ago" for scanning a column. */
+    const savedOn = (ts: number) =>
+        new Date(ts).toLocaleDateString(undefined, {
+            day: "numeric",
+            month: "short",
+        });
+
     const handleOpen = (bm: CivilBookmark) => {
         const existing = tabManager.tabs.find(t => t.url === bm.url);
         if (existing) {
@@ -112,7 +120,10 @@ export default function BookmarksPage() {
             <TitleBlock
                 eyebrow="collection"
                 title="Bookmarks"
-                meta={countLabel()}
+                // The lookup row states this same count in a live region a few
+                // pixels below. Printing it twice on one screen is noise, and
+                // the lookup's copy is the one that responds to a search.
+                meta={undefined}
                 actions={
                     <div class={s.titleActions}>
                         <div class={s.scopeSwitch}>
@@ -162,6 +173,11 @@ export default function BookmarksPage() {
                     </div>
                 }
             />
+
+            <p class={schematic.lede}>
+                Saved to this device, not to a district console. Yours to keep,
+                rename, or delete — no approval, no sync you did not ask for.
+            </p>
 
             <div class={s.lookup}>
                 <span class={s.lookupLabel} id="bookmarks-lookup-label">
@@ -253,6 +269,15 @@ export default function BookmarksPage() {
                                         {bm().title}
                                     </span>
                                     <span class={s.entryUrl}>{bm().url}</span>
+                                </span>
+                                {/* A register's second axis. Without it the
+                                    rows carried one column of text down the
+                                    left and left the rest of the sheet blank,
+                                    and "when did I save this" — the question
+                                    the RECENT scope exists to answer — was not
+                                    on the page at all. */}
+                                <span class={s.entryAdded}>
+                                    {savedOn(bm().addedAt)}
                                 </span>
                             </button>
                             <button

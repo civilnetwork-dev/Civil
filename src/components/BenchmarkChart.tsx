@@ -68,7 +68,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     const c = implColors[p.dataIndex];
                     return (
                         `<span style="color:${c};font-weight:600">${names[p.dataIndex]}</span><br/>` +
-                        `<span style="font-size:16px;font-weight:600;color:${c}">${p.value}</span>` +
+                        `<span style="font-size:15px;font-weight:600;color:${c}">${p.value}</span>` +
                         `<span style="color:${colors.moonlight}"> Mops/s</span>`
                     );
                 },
@@ -100,7 +100,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     const c = implColors[p.dataIndex];
                     return (
                         `<span style="color:${c};font-weight:600">${names[p.dataIndex]}</span><br/>` +
-                        `<span style="font-size:16px;font-weight:600;color:${c}">${p.value}</span>` +
+                        `<span style="font-size:15px;font-weight:600;color:${c}">${p.value}</span>` +
                         `<span style="color:${colors.moonlight}"> ns/op</span>`
                     );
                 },
@@ -139,7 +139,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     const c = win ? colors.airglow : colors.antares;
                     return (
                         `<span style="color:${colors.halo}">${names[p.dataIndex]}</span><br/>` +
-                        `<span style="font-size:20px;font-weight:600;color:${c}">${p.value}×</span>` +
+                        `<span style="font-size:15px;font-weight:600;color:${c}">${p.value}×</span>` +
                         `<span style="color:${colors.moonlight}"> ${win ? "faster" : "slower"}</span>`
                     );
                 },
@@ -172,9 +172,15 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                 yAxis: 1,
                                 label: {
                                     formatter: "parity",
+                                    // Inside the plot, not hanging off the
+                                    // right edge: echarts anchors markLine
+                                    // labels at the axis end by default, where
+                                    // the grid's right inset clipped this to
+                                    // "parit".
+                                    position: "insideEndTop" as const,
                                     color: colors.starlight,
                                     fontFamily: FONT_MONO,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                 },
                             },
                         ],

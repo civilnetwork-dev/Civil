@@ -6,9 +6,12 @@ import * as s from "~/styles/schematic.css";
  * A drawing's title block: what this sheet is, what it's called, and its
  * measured state.
  *
- * Supersedes the `masthead` pattern in layout.css.ts for schematic pages. That
- * module keeps its exports because three unmigrated pages still use it
- * (AppsPage, ExtensionsPage, and HistoryPage); do not delete it until pass 2.
+ * The meta sits *under* the title, not as a third flex child. The row is
+ * `space-between`, so a floating meta landed in a different place on every
+ * page — centred where a page had actions, hard right where it did not — which
+ * read as a value that had come loose rather than as the sheet's state. A real
+ * title block stacks its identifying data in one corner, and that is also the
+ * only arrangement that is stable across pages.
  */
 export default function TitleBlock(props: {
     eyebrow: string;
@@ -19,16 +22,16 @@ export default function TitleBlock(props: {
     return (
         <header class={s.titleBlock}>
             <div class={s.titleBlockTop}>
-                <div>
+                <div class={s.titleBlockIdent}>
                     <span class={s.titleBlockEyebrow}>
                         <span class={s.titleBlockMark} aria-hidden="true" />
                         {props.eyebrow}
                     </span>
                     <h1 class={s.titleBlockTitle}>{props.title}</h1>
+                    <Show when={props.meta}>
+                        <span class={s.titleBlockMeta}>{props.meta}</span>
+                    </Show>
                 </div>
-                <Show when={props.meta}>
-                    <span class={s.titleBlockMeta}>{props.meta}</span>
-                </Show>
                 {props.actions}
             </div>
         </header>

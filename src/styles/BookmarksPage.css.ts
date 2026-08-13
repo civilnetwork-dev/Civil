@@ -254,7 +254,9 @@ export const callNo = style({
  */
 export const openBtn = style({
     display: "grid",
-    gridTemplateColumns: "22px 1fr",
+    // minmax(0, 1fr) so a long title ellipses instead of pushing the date
+    // column off the sheet — a grid track's default minimum is its content.
+    gridTemplateColumns: "22px minmax(0, 1fr) auto",
     alignItems: "center",
     gap: "12px",
     width: "100%",
@@ -318,6 +320,14 @@ export const entryUrl = style({
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
+});
+
+export const entryAdded = style({
+    ...ANNO,
+    color: vars.color.starlight,
+    justifySelf: "end",
+    whiteSpace: "nowrap",
+    paddingLeft: "16px",
 });
 
 export const removeBtn = style({

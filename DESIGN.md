@@ -51,6 +51,11 @@ typography:
     fontFamily: '"IBM Plex Sans Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "12.5px"
     fontWeight: 500
+  readout:
+    fontFamily: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace'
+    fontSize: "15px"
+    fontWeight: 600
+    fontVariantNumeric: "tabular-nums"
   annotation:
     fontFamily: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace'
     fontSize: "11px"
@@ -154,11 +159,12 @@ Two earlier directions are recorded here so nobody reinstates them by accident:
   `focusRing` belong to that world. They are not compatible with flat ink on
   paper and must not return.
 
-  This is no longer aspirational. Nothing outside `material.css.ts` itself and
-  the deferred loading animation calls any of them; `Select` was the last
-  consumer. `material.css.ts` still exports `DUR`, `EASE`, `hitArea` and
-  `hairline`, which are language-neutral and stay. The rest is dead and can be
-  deleted the moment the loader is redrawn.
+  This is no longer aspirational: those exports are **deleted**, not merely
+  unused. `Select` was the last consumer, and a dead export is an invitation —
+  it kept pulling `SHADOW.attached` long after everything else had moved on.
+  `material.css.ts` now holds only `EASE`, `DUR`, `microLabel`, `hairline` and
+  `hitArea`, which are language-neutral. `layout.css.ts`, the old `masthead`
+  pattern, is gone with it.
 
 ## Colors
 
@@ -257,6 +263,11 @@ column in the app. Each stack therefore ends in its generic family, and
 **11px is the floor**, not a target. Nothing renders below it — not kbd hints,
 not badges, not stamps. Six styles had drifted to 10px and were raised.
 
+**`readout` is the one emphasis step above body**, for a data figure that has to
+carry a tooltip or a callout. It exists because the benchmark tooltips had
+invented two sizes of their own (16px and 20px) rather than one; they now share
+this step. It is not a licence for a third.
+
 ## The sheet model
 
 Every interior surface is a **sheet**: a bounded plane carrying a ruled field,
@@ -312,6 +323,25 @@ One grammar, distinct silhouettes. Each is earned by the job the page does.
 | Ban | **stop plate** — one centred block that refuses to fill the viewport | the one page nobody chooses to open |
 | Ban Info | **tally and roll** — segmented strike gauge over a column-set index | two questions: where do I stand, what is on the list |
 | Chrome | **drawing border** — index tabs on a sheet set | it is the binding every sheet sits in |
+
+### One row grammar across the three list pages
+
+History, Bookmarks and Extensions all render a list of things with a name and
+some state, so they share one row: **ruled apart by a hairline, identity on the
+left, state right-aligned into true columns.** No page wraps its rows in a
+`Plate` — a plate draws corner ticks at the full width of the sheet, and with
+content clustered left that leaves an orphan tick floating in empty space on
+every row.
+
+The right-hand columns are what make the row worth its width. History carries
+host and time, Bookmarks the date it was saved, Extensions the format stamp,
+switch and remove. Before those columns existed each page put a single short
+string on the left and left two-thirds of the sheet blank, which reads as an
+unfinished page rather than a spare one. Any new list page joins this grammar.
+
+Long values use `minmax(0, 1fr)` on the flexible track. A grid track's default
+minimum is its content, so without it a long title pushes the state columns off
+the sheet instead of ellipsing.
 
 ### The chrome is the border, not a toolbar
 

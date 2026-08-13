@@ -244,7 +244,15 @@ export const titleBlockTitle = style({
     color: vars.color.daylight,
 });
 
-export const titleBlockMeta = style({ ...ANNO });
+/** Eyebrow, title and meta as one stacked identity, kept out of the flex row. */
+export const titleBlockIdent = style({
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    minWidth: 0,
+});
+
+export const titleBlockMeta = style({ ...ANNO, color: vars.color.starlight });
 
 /* -------------------------------------------------------------------- */
 /* Labelled rule                                                         */

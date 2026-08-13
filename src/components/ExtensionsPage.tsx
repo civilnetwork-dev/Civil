@@ -21,6 +21,7 @@ import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import * as s from "~/styles/ExtensionsPage.css";
+import * as schematic from "~/styles/schematic.css";
 import type { CivilExtension } from "~/types";
 
 type ExtensionListItem = Omit<CivilExtension, "files"> & {
@@ -297,6 +298,12 @@ export default function ExtensionsPage() {
                     </div>
                 }
             />
+
+            <p class={schematic.lede}>
+                Extensions you chose and can remove. Nothing here was pushed to
+                your device by a policy, and nothing needs an administrator to
+                approve it.
+            </p>
 
             <div class={s.intake}>
                 <span class={s.intakeLabel} id="ext-intake-label">

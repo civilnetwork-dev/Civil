@@ -9,7 +9,6 @@ import {
 } from "~/api/history";
 import { IconClose, IconSearch, IconWorld } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
-import Plate from "~/components/schematic/Plate";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
@@ -103,6 +102,18 @@ export default function HistoryPage() {
         historySetMethod(m);
         setMethod(m);
         reload();
+    };
+
+    /**
+     * Hostname only. A full URL in the row would push the timestamp column off
+     * the sheet on long paths; the complete address is one unfold away.
+     */
+    const hostOf = (url: string) => {
+        try {
+            return new URL(url).hostname.replace(/^www\./, "");
+        } catch {
+            return url;
+        }
     };
 
     const formatTime = (ts: number) => {
@@ -208,6 +219,12 @@ export default function HistoryPage() {
             />
 
             <Show when={entries().length > 0}>
+                <p class={schematic.lede}>
+                    Kept on this device. Both storage backends are local —
+                    nothing here is uploaded, and no console anywhere holds a
+                    second copy.
+                </p>
+
                 <div class={s.scopeRow}>
                     <div class={s.filterField}>
                         <IconSearch size={15} class={s.filterIcon} />
@@ -354,7 +371,7 @@ export default function HistoryPage() {
                             <div class={s.entries}>
                                 <For each={group().items} keyed={false}>
                                     {entry => (
-                                        <Plate class={s.entry}>
+                                        <div class={s.entry}>
                                             <Unfold
                                                 label={`${entry().title || entry().url} detail`}
                                                 summary={
@@ -397,6 +414,32 @@ export default function HistoryPage() {
                                                             {entry().title ||
                                                                 entry().url}
                                                         </span>
+                                                        {/* Host and time are in
+                                                            the row, not behind
+                                                            the unfold. A row
+                                                            carrying only a
+                                                            title left 60% of
+                                                            the sheet empty and
+                                                            made "where and
+                                                            when" a click each,
+                                                            which is the whole
+                                                            question an archive
+                                                            answers. */}
+                                                        <span
+                                                            class={s.entryHost}
+                                                        >
+                                                            {hostOf(
+                                                                entry().url,
+                                                            )}
+                                                        </span>
+                                                        <span
+                                                            class={s.entryStamp}
+                                                        >
+                                                            {formatTime(
+                                                                entry()
+                                                                    .visitedAt,
+                                                            )}
+                                                        </span>
                                                     </span>
                                                 }
                                             >
@@ -412,14 +455,6 @@ export default function HistoryPage() {
                                                             s.entryDetailActions
                                                         }
                                                     >
-                                                        <Anno
-                                                            class={s.entryTime}
-                                                        >
-                                                            {formatTime(
-                                                                entry()
-                                                                    .visitedAt,
-                                                            )}
-                                                        </Anno>
                                                         <button
                                                             type="button"
                                                             class={s.deleteBtn}
@@ -434,7 +469,7 @@ export default function HistoryPage() {
                                                     </div>
                                                 </div>
                                             </Unfold>
-                                        </Plate>
+                                        </div>
                                     )}
                                 </For>
                             </div>

@@ -197,7 +197,13 @@ export const dayMetrics = style({
  */
 export const dayMeter = style({
     position: "relative",
-    flex: "0 1 216px",
+    // Takes the row's slack rather than sitting at a fixed 216px. Pinned
+    // narrow, twenty-four hours were plotted across a fifth of the sheet with
+    // the count stranded a thousand pixels away, so the gap read as a layout
+    // fault rather than as a chart. Given the width, the bars resolve into a
+    // day's actual shape — which is the only reason this chart exists.
+    flex: "1 1 auto",
+    maxWidth: "640px",
     display: "flex",
     alignItems: "flex-end",
     gap: "1px",
@@ -289,17 +295,61 @@ export const entries = style({
     gap: "6px",
 });
 
+/**
+ * A ruled row, not a `Plate`.
+ *
+ * The plate drew corner ticks at the full width of the sheet while the row's
+ * content sat in the left third, so each entry left an orphan tick floating in
+ * empty space on the right. Bookmarks and Extensions already rule their rows
+ * apart; this is the same grammar, which is the point of having one.
+ */
 export const entry = style({
+    borderBottom: RULE.hair,
     transition: `background ${DUR.fast} ${EASE.standard}`,
     selectors: {
         "&:hover, &:focus-within": { background: vars.color.horizon },
     },
 });
 
+/**
+ * Title takes the slack; host and time are fixed columns on the right.
+ *
+ * `minmax(0, 1fr)` rather than `1fr`: a grid track's default minimum is its
+ * content, so a long title would push the two columns past the sheet edge
+ * instead of ellipsing.
+ */
 export const entrySummary = style({
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "16px minmax(0, 1fr) auto auto",
     alignItems: "center",
-    gap: "10px",
+    gap: "12px",
+    padding: "9px 0",
+});
+
+export const entryHost = style({
+    ...ANNO,
+    color: vars.color.starlight,
+    justifySelf: "end",
+    maxWidth: "22ch",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    "@media": {
+        // A host like developer.mozilla.org takes half a phone's width and
+        // crushed the title to about twelve characters. In a day-grouped
+        // archive the timestamp is the column worth keeping; the address is one
+        // tap away in the unfold.
+        "screen and (max-width: 560px)": { display: "none" },
+    },
+});
+
+/** Fixed width so the timestamps form a true column down the day. */
+export const entryStamp = style({
+    ...ANNO,
+    color: vars.color.cinder,
+    justifySelf: "end",
+    minWidth: "7ch",
+    textAlign: "right",
 });
 
 export const favicon = style({
@@ -343,8 +393,6 @@ export const entryDetailActions = style({
     gap: "12px",
     flexShrink: 0,
 });
-
-export const entryTime = style({ color: vars.color.starlight });
 
 export const deleteBtn = style({
     ...ANNO,
