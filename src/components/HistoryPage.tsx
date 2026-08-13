@@ -8,9 +8,15 @@ import {
     historySetMethod,
 } from "~/api/history";
 import { IconClose, IconSearch, IconWorld } from "~/components/icons";
+import Anno from "~/components/schematic/Anno";
+import Plate from "~/components/schematic/Plate";
+import Rule from "~/components/schematic/Rule";
+import Sheet from "~/components/schematic/Sheet";
+import TitleBlock from "~/components/schematic/TitleBlock";
+import Unfold from "~/components/schematic/Unfold";
 import { onLsChange } from "~/lib/reactiveStorage";
 import * as s from "~/styles/HistoryPage.css";
-import * as l from "~/styles/layout.css";
+import * as schematic from "~/styles/schematic.css";
 import type { CivilHistoryEntry, HistoryStorageMethod } from "~/types";
 import { Select } from "./ui/Select";
 
@@ -119,7 +125,7 @@ export default function HistoryPage() {
     };
 
     // Entries arrive newest-first; group consecutive same-day entries under
-    // one rail so the timeline reads as days, not one undifferentiated list.
+    // one rule so the timeline reads as days, not one undifferentiated list.
     //
     // Each group also carries a 24-slot tally of when in that day the visits
     // happened. The header renders it as a small chart, which turns a date
@@ -152,18 +158,25 @@ export default function HistoryPage() {
         return groups;
     });
 
+    /**
+     * The same counts the visual scope line shows, as one sentence. Kept next to
+     * the memos it reads so the two cannot report different numbers.
+     */
+    const scopeSentence = createMemo(() => {
+        const total = entries().length;
+        const days = groupedByDay().length;
+        const scope = query().trim() ? `${matches().length} of ` : "";
+        return `${scope}${total} ${total === 1 ? "page" : "pages"} across ${days} ${days === 1 ? "day" : "days"}`;
+    });
+
     return (
-        <div class={s.root}>
-            <header class={l.masthead}>
-                <div class={l.mastheadTop}>
-                    <div class={l.mastheadTitleGroup}>
-                        <span class={l.eyebrow}>
-                            <span class={l.eyebrowMark} />
-                            Record
-                        </span>
-                        <h1 class={l.pageTitle}>History</h1>
-                    </div>
-                    <div class={l.mastheadActions}>
+        <Sheet>
+            <TitleBlock
+                eyebrow="archive"
+                title="History"
+                meta={`${String(entries().length)} entries`}
+                actions={
+                    <div class={s.titleActions}>
                         <Select
                             value={method()}
                             options={[
@@ -186,17 +199,16 @@ export default function HistoryPage() {
                                     "clear" alone reads as "clear these" when
                                     it actually deletes the whole record. */}
                                 {confirmingClear()
-                                    ? `Click again to delete ${entries().length}`
-                                    : "Clear all"}
+                                    ? `click again to delete ${String(entries().length)}`
+                                    : "clear all"}
                             </button>
                         </Show>
                     </div>
-                </div>
-                <div class={l.mastheadRule} />
-            </header>
+                }
+            />
 
             <Show when={entries().length > 0}>
-                <div class={s.scopeBar}>
+                <div class={s.scopeRow}>
                     <div class={s.filterField}>
                         <IconSearch size={15} class={s.filterIcon} />
                         <input
@@ -231,41 +243,55 @@ export default function HistoryPage() {
                             <kbd class={s.filterHint}>/</kbd>
                         </Show>
                     </div>
-                    <p class={s.scopeStat} aria-live="polite">
+                    {/* The visual scope line lays its numbers and words out as
+                        separate spans so they can be sized and coloured
+                        independently, but that leaves no whitespace between
+                        them in the DOM — a live region over this markup
+                        announces "3pages2days". So the columns are hidden from
+                        the accessibility tree and the announcement is carried
+                        by a visually-hidden sibling that reads as a sentence.
+                        Measured in a browser; happy-dom computes no layout and
+                        no test can see the difference. */}
+                    <p class={s.scopeStat} aria-hidden="true">
                         <Show when={query().trim()}>
                             <span class={s.scopeStatNum}>
-                                {matches().length}
+                                {String(matches().length)}
                             </span>
                             <span class={s.scopeStatWord}>of</span>
                         </Show>
-                        <span class={s.scopeStatNum}>{entries().length}</span>
+                        <span class={s.scopeStatNum}>
+                            {String(entries().length)}
+                        </span>
                         <span class={s.scopeStatWord}>
                             {entries().length === 1 ? "page" : "pages"}
                         </span>
                         <span class={s.scopeStatSep} />
                         <span class={s.scopeStatNum}>
-                            {groupedByDay().length}
+                            {String(groupedByDay().length)}
                         </span>
                         <span class={s.scopeStatWord}>
                             {groupedByDay().length === 1 ? "day" : "days"}
                         </span>
                     </p>
+                    <p class={schematic.srOnly} aria-live="polite">
+                        {scopeSentence()}
+                    </p>
                 </div>
             </Show>
 
             <Show when={entries().length === 0}>
+                <Rule label="record" weight="hair" />
                 <div class={s.empty}>
-                    <span class={s.emptyDot} />
-                    <p class={s.emptyText}>No history yet.</p>
+                    <Anno class={s.emptyText}>no history yet</Anno>
                 </div>
             </Show>
 
             <Show when={entries().length > 0 && matches().length === 0}>
+                <Rule label="record" weight="hair" />
                 <div class={s.empty}>
-                    <span class={s.emptyDot} />
-                    <p class={s.emptyText}>
-                        Nothing recorded matches “{query().trim()}”.
-                    </p>
+                    <Anno class={s.emptyText}>
+                        nothing recorded matches “{query().trim()}”
+                    </Anno>
                     <button
                         type="button"
                         class={s.emptyAction}
@@ -274,7 +300,7 @@ export default function HistoryPage() {
                             filterInput?.focus();
                         }}
                     >
-                        Clear filter
+                        clear filter
                     </button>
                 </div>
             </Show>
@@ -283,9 +309,12 @@ export default function HistoryPage() {
                 <For each={groupedByDay()} keyed={false}>
                     {group => (
                         <div class={s.dayGroup}>
-                            <div class={s.dayHeader}>
-                                <span class={s.dayLabel}>{group().label}</span>
-                                <span class={s.dayRule} />
+                            <Rule
+                                label={group().label}
+                                weight="hair"
+                                class={s.dayRuleEl}
+                            />
+                            <div class={s.dayMetrics}>
                                 {/* Presentational: the count beside it is the
                                     accessible summary of the same data. */}
                                 <span class={s.dayMeter} aria-hidden="true">
@@ -293,7 +322,7 @@ export default function HistoryPage() {
                                         {(n, i) => (
                                             <span
                                                 class={`${s.dayMeterBar}${n() > 0 ? ` ${s.dayMeterBarOn}` : ""}${i % 6 === 0 ? ` ${s.dayMeterBarTick}` : ""}`}
-                                                title={`${String(i).padStart(2, "0")}:00 — ${n()} ${n() === 1 ? "page" : "pages"}`}
+                                                title={`${String(i).padStart(2, "0")}:00 — ${String(n())} ${n() === 1 ? "page" : "pages"}`}
                                                 style={{
                                                     // Lit hours start at 35%
                                                     // of the plot rather than
@@ -311,66 +340,106 @@ export default function HistoryPage() {
                                         )}
                                     </For>
                                 </span>
-                                <span class={s.dayCount}>
-                                    {group().items.length}
+                                <Anno class={s.dayCount}>
+                                    {String(group().items.length)}{" "}
                                     <span class={s.dayCountUnit}>
                                         {group().items.length === 1
                                             ? "page"
                                             : "pages"}
                                     </span>
-                                </span>
+                                </Anno>
                             </div>
-                            <For each={group().items} keyed={false}>
-                                {entry => (
-                                    <div class={s.entry}>
-                                        <Show
-                                            when={entry().favicon}
-                                            fallback={
-                                                <IconWorld
-                                                    size={16}
-                                                    class={s.favicon}
-                                                />
-                                            }
-                                        >
-                                            <img
-                                                src={entry().favicon}
-                                                class={s.favicon}
-                                                alt=""
-                                                onError={e => {
-                                                    (
-                                                        e.currentTarget as HTMLImageElement
-                                                    ).style.display = "none";
-                                                }}
-                                            />
-                                        </Show>
-                                        <div class={s.entryInfo}>
-                                            <div class={s.entryTitle}>
-                                                {entry().title || entry().url}
-                                            </div>
-                                            <div class={s.entryUrl}>
-                                                {entry().url}
-                                            </div>
-                                        </div>
-                                        <span class={s.entryTime}>
-                                            {formatTime(entry().visitedAt)}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            class={s.deleteBtn}
-                                            title="Remove"
-                                            onClick={() =>
-                                                handleDelete(entry().id)
-                                            }
-                                        >
-                                            <IconClose size={14} />
-                                        </button>
-                                    </div>
-                                )}
-                            </For>
+                            <div class={s.entries}>
+                                <For each={group().items} keyed={false}>
+                                    {entry => (
+                                        <Plate class={s.entry}>
+                                            <Unfold
+                                                label={`${entry().title || entry().url} detail`}
+                                                summary={
+                                                    <span
+                                                        class={s.entrySummary}
+                                                    >
+                                                        <Show
+                                                            when={
+                                                                entry().favicon
+                                                            }
+                                                            fallback={
+                                                                <IconWorld
+                                                                    size={16}
+                                                                    class={
+                                                                        s.favicon
+                                                                    }
+                                                                />
+                                                            }
+                                                        >
+                                                            <img
+                                                                src={
+                                                                    entry()
+                                                                        .favicon
+                                                                }
+                                                                class={
+                                                                    s.favicon
+                                                                }
+                                                                alt=""
+                                                                onError={e => {
+                                                                    (
+                                                                        e.currentTarget as HTMLImageElement
+                                                                    ).style.display =
+                                                                        "none";
+                                                                }}
+                                                            />
+                                                        </Show>
+                                                        <span
+                                                            class={s.entryTitle}
+                                                        >
+                                                            {entry().title ||
+                                                                entry().url}
+                                                        </span>
+                                                    </span>
+                                                }
+                                            >
+                                                <div class={s.entryDetail}>
+                                                    <Anno
+                                                        muted
+                                                        class={s.entryUrl}
+                                                    >
+                                                        {entry().url}
+                                                    </Anno>
+                                                    <div
+                                                        class={
+                                                            s.entryDetailActions
+                                                        }
+                                                    >
+                                                        <Anno
+                                                            class={s.entryTime}
+                                                        >
+                                                            {formatTime(
+                                                                entry()
+                                                                    .visitedAt,
+                                                            )}
+                                                        </Anno>
+                                                        <button
+                                                            type="button"
+                                                            class={s.deleteBtn}
+                                                            onClick={() =>
+                                                                handleDelete(
+                                                                    entry().id,
+                                                                )
+                                                            }
+                                                        >
+                                                            remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </Unfold>
+                                        </Plate>
+                                    )}
+                                </For>
+                            </div>
                         </div>
                     )}
                 </For>
             </div>
-        </div>
+        </Sheet>
     );
 }
