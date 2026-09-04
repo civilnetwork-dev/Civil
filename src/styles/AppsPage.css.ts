@@ -1,6 +1,6 @@
 import { style } from "@vanilla-extract/css";
 import { DUR, EASE } from "./material.css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO } from "./schematic.css";
 import { vars } from "./theme.css";
 
 export const addingNote = style({ display: "block", marginTop: "6px" });
@@ -16,22 +16,71 @@ export const grid = style({
     gap: "10px",
 });
 
+/**
+ * One tile, one primary action. The whole face of the tile is the open
+ * button; remove is a small corner control revealed on hover and focus.
+ */
 export const position = style({
+    position: "relative",
     transition: `background ${DUR.fast} ${EASE.standard}`,
     selectors: {
-        // horizon (1.19:1 on dusk) is the system's "raised surface" tier — the
-        // same step BookmarksPage uses for a hovered row.
         "&:hover, &:focus-within": {
-            background: vars.color.horizon,
+            background: vars.color.scree,
         },
     },
 });
 
-export const summary = style({
+export const openBtn = style({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: "6px",
+    width: "100%",
+    padding: "12px 8px",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: "inherit",
+    font: "inherit",
+});
+
+/**
+ * Revealed on row hover, row focus-within, and unconditionally where there is
+ * no hover to trigger it. `display: none` until hover would remove it from
+ * the tab order outright — the keyboard-trap failure DESIGN.md records.
+ */
+export const removeBtn = style({
+    position: "absolute",
+    top: "4px",
+    right: "4px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "24px",
+    height: "24px",
+    padding: 0,
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: vars.color.ash,
+    opacity: 0,
+    pointerEvents: "none",
+    transition: `opacity ${DUR.fast} ${EASE.standard}`,
+    selectors: {
+        [`${position}:hover &, ${position}:focus-within &`]: {
+            opacity: 1,
+            pointerEvents: "auto",
+        },
+        "&:hover, &:focus-visible": {
+            color: vars.color.wine,
+        },
+    },
+    "@media": {
+        "(hover: none)": {
+            opacity: 1,
+            pointerEvents: "auto",
+        },
+    },
 });
 
 export const iconStage = style({
@@ -52,19 +101,15 @@ export const iconFallback = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    // ember deliberately, not a text tier: this colours a glyph, not text, so
-    // WCAG 1.4.11's 3:1 non-text threshold applies rather than 4.5:1. ember
-    // measures 3.56:1 on dusk, which clears it.
-    color: vars.color.ember,
+    // Colours a glyph, not text, so WCAG 1.4.11's 3:1 non-text threshold
+    // applies rather than 4.5:1; ash clears it with room.
+    color: vars.color.ash,
 });
 
 export const name = style({
     fontSize: "12.5px",
     fontWeight: 500,
-    // daylight, matching the tier BookmarksPage uses for its own item title
-    // (cardTitle) — a filled position's name is the primary label, not a
-    // muted annotation.
-    color: vars.color.daylight,
+    color: vars.color.firn,
     textAlign: "center",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -72,63 +117,8 @@ export const name = style({
     maxWidth: "100%",
 });
 
-export const detail = style({
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    alignItems: "center",
-});
-
-export const detailActions = style({
-    display: "flex",
-    gap: "8px",
-});
-
-const detailBtnBase = {
-    background: "none",
-    border: "none",
-    padding: "2px 4px",
-    cursor: "pointer",
-    fontFamily: FONT_MONO,
-    fontSize: "11px",
-    letterSpacing: "0.02em",
-    borderBottom: RULE.hair,
-} as const;
-
-export const detailBtn = style({
-    ...detailBtnBase,
-    // sirius is the system's chrome/action accent — the same tier used for
-    // the title block mark and every other affirmative control.
-    color: vars.color.sirius,
-});
-
-export const detailBtnDanger = style({
-    ...detailBtnBase,
-    // antares is the "blocked" status tier, reused here as the destructive
-    // accent — the same colour BanInfoPage and BookmarksPage use for remove.
-    color: vars.color.antares,
-});
-
-export const ghostGrid = style({
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
-    gap: "10px",
-});
-
-export const ghost = style({
-    height: "74px",
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "center",
-    paddingTop: "6px",
-    // dust is the system's "strongest border" tier and is what Plate's own
-    // corner ticks use — an empty position borrows that same boundary
-    // vocabulary so filled and unfilled positions read as one language.
-    border: `0.5px dashed ${vars.color.dust}`,
-});
-
-export const ghostNote = style({
+export const empty = style({
     ...ANNO,
-    gridColumn: "1 / -1",
-    margin: "10px 0 0",
+    display: "block",
+    margin: "14px 0 0",
 });

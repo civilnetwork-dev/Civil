@@ -1,0 +1,5 @@
+# The whole tree is COPY'd into a Linux image, so the working tree must use LF
+# regardless of the platform it was checked out on. Without this, a Windows
+# checkout under core.autocrlf=true gives build.sh a `#!/usr/bin/env bash\r`
+# shebang, and the container build dies with exit status 127.
+* text=auto eol=lf

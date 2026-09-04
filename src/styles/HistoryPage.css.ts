@@ -20,8 +20,8 @@ export const titleActions = style({
     flexWrap: "wrap",
 });
 
-// Text-button recipe shared with Apps' detailBtnDanger: antares is the
-// system's "blocked"/destructive tier, reused here as the clear-all accent.
+// wine is the system's "blocked"/destructive tier, reused as the clear-all
+// accent — the same colour every remove control in the app wears.
 export const clearBtn = style({
     ...ANNO,
     background: "none",
@@ -29,22 +29,22 @@ export const clearBtn = style({
     borderBottom: RULE.hair,
     padding: "2px 2px",
     cursor: "pointer",
-    color: vars.color.antares,
+    color: vars.color.wine,
     textTransform: "uppercase",
     transitionProperty: "color, border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        "&:hover": { borderBottomColor: vars.color.antares },
+        "&:hover": { borderBottomColor: vars.color.wine },
     },
 });
 
 // Armed state for the second click — stated plainly in the label already;
 // the colour shift is the redundant, not the only, channel.
 export const clearBtnArmed = style({
-    color: vars.color.daylight,
-    borderBottomColor: vars.color.antares,
-    background: `color-mix(in srgb, ${vars.color.antares} 16%, transparent)`,
+    color: vars.color.firn,
+    borderBottomColor: vars.color.wine,
+    background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
     padding: "2px 6px",
 });
 
@@ -74,7 +74,7 @@ export const filterField = style({
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.sirius },
+        "&:focus-within": { borderBottomColor: vars.color.cobalt },
     },
 });
 
@@ -82,10 +82,10 @@ export const filterField = style({
 // threshold applies rather than 4.5:1.
 export const filterIcon = style({
     flexShrink: 0,
-    color: vars.color.ember,
+    color: vars.color.ash,
     transition: `color ${DUR.base} ${EASE.standard}`,
     selectors: {
-        [`${filterField}:focus-within &`]: { color: vars.color.sirius },
+        [`${filterField}:focus-within &`]: { color: vars.color.cobalt },
     },
 });
 
@@ -95,12 +95,12 @@ export const filterInput = style({
     border: "none",
     background: "transparent",
     outline: "none",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontFamily: FONT_MONO,
     fontSize: "13px",
-    caretColor: vars.color.sirius,
+    caretColor: vars.color.cobalt,
     selectors: {
-        "&::placeholder": { color: vars.color.cinder },
+        "&::placeholder": { color: vars.color.ash },
     },
 });
 
@@ -113,7 +113,7 @@ export const filterHint = style({
     placeItems: "center",
     width: "16px",
     height: "16px",
-    border: `0.5px solid ${vars.color.haze}`,
+    border: `0.5px solid ${vars.color.talus}`,
     fontSize: "11px",
     transition: `opacity ${DUR.base} ${EASE.standard}`,
     selectors: {
@@ -131,40 +131,28 @@ export const filterClear = style({
     padding: 0,
     border: "none",
     background: "none",
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     cursor: "pointer",
     transitionProperty: "color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
         "&::after": hitArea(),
-        "&:hover": { color: vars.color.daylight },
+        "&:hover": { color: vars.color.firn },
     },
 });
 
-/** A readout, not a sentence: figures carry tabular digits via ANNO. */
+/**
+ * One text node, one style. The previous readout split its numbers and words
+ * into separately-styled spans, which left no whitespace between them in the
+ * DOM — so the live region announced "3pages2days" and the page needed an
+ * `aria-hidden` copy plus a visually-hidden sibling to say one sentence.
+ * A sentence set as a sentence needs none of that.
+ */
 export const scopeStat = style({
     ...ANNO,
-    display: "flex",
-    alignItems: "baseline",
-    gap: "5px",
-});
-
-export const scopeStatNum = style({
-    fontWeight: 600,
-    color: vars.color.daylight,
-});
-
-export const scopeStatWord = style({
-    color: vars.color.starlight,
-});
-
-export const scopeStatSep = style({
-    alignSelf: "center",
-    width: "3px",
-    height: "3px",
-    margin: "0 3px",
-    background: vars.color.dust,
+    color: vars.color.snowmelt,
+    whiteSpace: "nowrap",
 });
 
 export const list = style({
@@ -224,7 +212,7 @@ export const dayMeter = style({
             right: 0,
             bottom: "4px",
             height: "0.5px",
-            background: vars.color.haze,
+            background: vars.color.talus,
         },
     },
 });
@@ -235,7 +223,7 @@ export const dayMeterBar = style({
     minWidth: "2px",
     height: "100%",
     selectors: {
-        "&:hover::after": { background: vars.color.ember },
+        "&:hover::after": { background: vars.color.ash },
         "&::after": {
             content: '""',
             position: "absolute",
@@ -243,7 +231,7 @@ export const dayMeterBar = style({
             right: 0,
             bottom: 0,
             height: "max(2px, var(--fill, 0%))",
-            background: `color-mix(in srgb, ${vars.color.haze} 55%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.talus} 55%, transparent)`,
             transitionProperty: "background",
             transitionTimingFunction: EASE.standard,
             transitionDuration: DUR.fast,
@@ -255,8 +243,8 @@ export const dayMeterBar = style({
 // 3:1 threshold rather than needing 4.5:1.
 export const dayMeterBarOn = style({
     selectors: {
-        "&::after": { background: vars.color.ember },
-        "&:hover::after": { background: vars.color.sirius },
+        "&::after": { background: vars.color.ash },
+        "&:hover::after": { background: vars.color.cobalt },
     },
 });
 
@@ -271,7 +259,7 @@ export const dayMeterBarTick = style({
             bottom: "-4px",
             height: "3px",
             width: "0.5px",
-            background: vars.color.haze,
+            background: vars.color.talus,
         },
     },
 });
@@ -282,11 +270,11 @@ export const dayCount = style({
     display: "flex",
     alignItems: "baseline",
     gap: "4px",
-    color: vars.color.daylight,
+    color: vars.color.firn,
 });
 
 export const dayCountUnit = style({
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });
 
 export const entries = style({
@@ -304,10 +292,15 @@ export const entries = style({
  * apart; this is the same grammar, which is the point of having one.
  */
 export const entry = style({
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "1fr 28px",
+    alignItems: "center",
+    gap: "8px",
     borderBottom: RULE.hair,
     transition: `background ${DUR.fast} ${EASE.standard}`,
     selectors: {
-        "&:hover, &:focus-within": { background: vars.color.horizon },
+        "&:hover, &:focus-within": { background: vars.color.scree },
     },
 });
 
@@ -318,17 +311,26 @@ export const entry = style({
  * content, so a long title would push the two columns past the sheet edge
  * instead of ellipsing.
  */
+/** A real button now: clicking a history entry opens the page. */
 export const entrySummary = style({
     display: "grid",
     gridTemplateColumns: "16px minmax(0, 1fr) auto auto",
     alignItems: "center",
     gap: "12px",
     padding: "9px 0",
+    width: "100%",
+    minWidth: 0,
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: "inherit",
+    font: "inherit",
+    textAlign: "inherit",
 });
 
 export const entryHost = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     justifySelf: "end",
     maxWidth: "22ch",
     overflow: "hidden",
@@ -337,8 +339,8 @@ export const entryHost = style({
     "@media": {
         // A host like developer.mozilla.org takes half a phone's width and
         // crushed the title to about twelve characters. In a day-grouped
-        // archive the timestamp is the column worth keeping; the address is one
-        // tap away in the unfold.
+        // archive the timestamp is the column worth keeping; the full address
+        // is the row's hover title.
         "screen and (max-width: 560px)": { display: "none" },
     },
 });
@@ -346,7 +348,7 @@ export const entryHost = style({
 /** Fixed width so the timestamps form a true column down the day. */
 export const entryStamp = style({
     ...ANNO,
-    color: vars.color.cinder,
+    color: vars.color.ash,
     justifySelf: "end",
     minWidth: "7ch",
     textAlign: "right",
@@ -357,7 +359,7 @@ export const favicon = style({
     height: "16px",
     objectFit: "contain",
     flexShrink: 0,
-    color: vars.color.ember,
+    color: vars.color.ash,
 });
 
 export const entryTitle = style({
@@ -365,48 +367,42 @@ export const entryTitle = style({
     minWidth: 0,
     fontSize: "13px",
     fontWeight: 500,
-    color: vars.color.daylight,
+    color: vars.color.firn,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
 });
 
-export const entryDetail = style({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: "10px",
-});
-
-export const entryUrl = style({
-    flex: "1 1 200px",
-    minWidth: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-});
-
-export const entryDetailActions = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    flexShrink: 0,
-});
-
+/**
+ * Revealed on row hover, row focus-within, and unconditionally where there is
+ * no hover to trigger it — `display: none` until hover would be the keyboard
+ * trap DESIGN.md records.
+ */
 export const deleteBtn = style({
-    ...ANNO,
     position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "24px",
+    height: "24px",
+    padding: 0,
     background: "none",
     border: "none",
-    borderBottom: RULE.hair,
-    padding: "2px 2px",
     cursor: "pointer",
-    color: vars.color.antares,
-    textTransform: "uppercase",
+    color: vars.color.ash,
+    opacity: 0,
+    pointerEvents: "none",
+    transition: `opacity ${DUR.fast} ${EASE.standard}`,
     selectors: {
         "&::after": hitArea(),
-        "&:hover": { borderBottomColor: vars.color.antares },
+        [`${entry}:hover &, ${entry}:focus-within &`]: {
+            opacity: 1,
+            pointerEvents: "auto",
+        },
+        "&:hover, &:focus-visible": { color: vars.color.wine },
+    },
+    "@media": {
+        "(hover: none)": { opacity: 1, pointerEvents: "auto" },
     },
 });
 
@@ -420,7 +416,7 @@ export const empty = style({
 
 export const emptyText = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });
 
 // The way back out of a filter that matched nothing, offered where the user
@@ -432,9 +428,9 @@ export const emptyAction = style({
     borderBottom: RULE.hair,
     padding: "2px 0",
     cursor: "pointer",
-    color: vars.color.sirius,
+    color: vars.color.cobalt,
     textTransform: "uppercase",
     selectors: {
-        "&:hover": { color: vars.color.vega },
+        "&:hover": { color: vars.color.cobalt },
     },
 });

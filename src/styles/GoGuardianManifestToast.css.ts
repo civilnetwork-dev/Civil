@@ -14,8 +14,8 @@ export const toast = style({
     zIndex: 9999,
     width: "360px",
     maxWidth: "calc(100vw - 48px)",
-    backgroundColor: vars.color.horizon,
-    border: `1px solid ${vars.color.haze}`,
+    backgroundColor: vars.color.scree,
+    border: `1px solid ${vars.color.talus}`,
     borderRadius: "12px",
     padding: "20px",
     boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
@@ -44,12 +44,12 @@ export const title = style({
     margin: 0,
     fontSize: "14px",
     fontWeight: 600,
-    color: vars.color.vega,
+    color: vars.color.cobalt,
 });
 
 export const districtName = style({
     fontSize: "12px",
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -60,7 +60,7 @@ export const dismissBtn = style({
     background: "none",
     border: "none",
     cursor: "pointer",
-    color: vars.color.ember,
+    color: vars.color.ash,
     padding: "2px",
     fontSize: "16px",
     lineHeight: 1,
@@ -69,32 +69,32 @@ export const dismissBtn = style({
     transitionTimingFunction: "ease",
     transitionDuration: "0.1s",
     ":hover": {
-        color: vars.color.daylight,
+        color: vars.color.firn,
     },
 });
 
 export const description = style({
     fontSize: "12px",
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
     lineHeight: 1.5,
     margin: 0,
 });
 
 export const dropZone = style({
-    border: `1.5px dashed ${vars.color.haze}`,
+    border: `1.5px dashed ${vars.color.talus}`,
     borderRadius: "8px",
     padding: "12px",
     textAlign: "center",
     fontSize: "12px",
-    color: vars.color.ember,
+    color: vars.color.ash,
     cursor: "pointer",
     transition: "border-color 0.15s, background 0.15s",
     transitionDuration: "0.15s",
     selectors: {
         "&[data-active='true']": {
-            borderColor: vars.color.vega,
-            backgroundColor: `color-mix(in srgb, ${vars.color.vega} 8%, transparent)`,
-            color: vars.color.vega,
+            borderColor: vars.color.cobalt,
+            backgroundColor: `color-mix(in srgb, ${vars.color.cobalt} 8%, transparent)`,
+            color: vars.color.cobalt,
         },
     },
 });
@@ -104,18 +104,18 @@ export const orDivider = style({
     alignItems: "center",
     gap: "8px",
     fontSize: "11px",
-    color: vars.color.ember,
+    color: vars.color.ash,
     "::before": {
         content: '""',
         flex: 1,
         height: "1px",
-        backgroundColor: vars.color.haze,
+        backgroundColor: vars.color.talus,
     },
     "::after": {
         content: '""',
         flex: 1,
         height: "1px",
-        backgroundColor: vars.color.haze,
+        backgroundColor: vars.color.talus,
     },
 });
 
@@ -123,20 +123,20 @@ export const textarea = style({
     width: "100%",
     minHeight: "72px",
     resize: "vertical",
-    backgroundColor: vars.color.dusk,
-    border: `1px solid ${vars.color.haze}`,
+    backgroundColor: vars.color.stratum,
+    border: `1px solid ${vars.color.talus}`,
     borderRadius: "6px",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontSize: "11px",
     fontFamily: '"JetBrains Mono", ui-monospace, monospace',
     padding: "8px 10px",
     boxSizing: "border-box",
     outline: "none",
     "::placeholder": {
-        color: vars.color.cinder,
+        color: vars.color.ash,
     },
     ":focus": {
-        borderColor: vars.color.vega,
+        borderColor: vars.color.cobalt,
     },
 });
 
@@ -153,14 +153,14 @@ export const cancelBtn = style({
     fontWeight: 500,
     cursor: "pointer",
     background: "none",
-    border: `1px solid ${vars.color.haze}`,
-    color: vars.color.moonlight,
+    border: `1px solid ${vars.color.talus}`,
+    color: vars.color.snowmelt,
     transitionProperty: "border-color, color",
     transitionTimingFunction: "ease",
     transitionDuration: "0.1s",
     ":hover": {
-        borderColor: vars.color.ember,
-        color: vars.color.daylight,
+        borderColor: vars.color.ash,
+        color: vars.color.firn,
     },
 });
 
@@ -171,8 +171,8 @@ export const submitBtn = style({
     fontWeight: 600,
     cursor: "pointer",
     border: "none",
-    backgroundColor: vars.color.vega,
-    color: vars.color.dusk,
+    backgroundColor: vars.color.cobalt,
+    color: vars.color.stratum,
     transitionProperty: "filter",
     transitionTimingFunction: "ease",
     transitionDuration: "0.1s",
@@ -187,6 +187,6 @@ export const submitBtn = style({
 
 export const errorText = style({
     fontSize: "11px",
-    color: vars.color.antares,
+    color: vars.color.wine,
     margin: 0,
 });

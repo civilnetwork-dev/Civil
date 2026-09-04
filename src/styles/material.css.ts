@@ -69,7 +69,7 @@ export const microLabel = {
     fontWeight: 600,
     letterSpacing: "0.09em",
     textTransform: "uppercase",
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
 } as const;
 
 /* -------------------------------------------------------------------- */
@@ -83,7 +83,7 @@ export const microLabel = {
  * Returns a gradient *value*, not a border shorthand, so it cannot sit in
  * `borderTop` directly — pair it with `borderImage`, as the ledger dividers do.
  */
-export const hairline = (color: string = vars.color.haze) =>
+export const hairline = (color: string = vars.color.talus) =>
     `linear-gradient(90deg, transparent 0%, ${color} 12%, ${color} 88%, transparent 100%)`;
 
 /**

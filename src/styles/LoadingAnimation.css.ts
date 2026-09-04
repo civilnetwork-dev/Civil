@@ -1,4 +1,5 @@
-import { globalStyle, style } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
+import { EASE } from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
@@ -8,7 +9,7 @@ export const loadingContainer = style({
     alignItems: "center",
     justifyContent: "center",
     gap: "0.75rem",
-    backgroundColor: vars.color.dusk,
+    backgroundColor: vars.color.stratum,
     padding: "1.5rem 2rem",
     position: "fixed",
     inset: 0,
@@ -24,26 +25,83 @@ export const loadingContainerHidden = style({
     pointerEvents: "none",
 });
 
-export const loadingLottie = style({
-    width: "120px",
-    height: "120px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+/* -------------------------------------------------------------------- */
+/* The mark, arriving                                                    */
+/* -------------------------------------------------------------------- */
+
+/**
+ * The loading screen is the favicon, animated: the C stands still and the route
+ * arrives through its mouth.
+ *
+ * This is the wordmark's own idea at glyph scale. There, one route runs *behind*
+ * five letters and is visible only where a letter opens for it. Here the nodes
+ * are painted **before** the C, so the letter's own material occludes them and
+ * they surface only in the mouth and the counter — the occlusion is paint order,
+ * not a clip path or a mask. Each node then slides under the stem and is
+ * absorbed, which is what "routed through" looks like when you draw it.
+ *
+ * What this replaced, in order: a Lottie canvas playing artwork from the retired
+ * design through a WASM player and a network fetch, and then a strata core log
+ * that was on-palette but said nothing about what the app does.
+ *
+ * Only `transform` and `opacity` animate. Target hardware is low-end school
+ * Chromebooks and DESIGN.md permits those two plus `grid-template-rows` —
+ * nothing here blurs, blends, or draws to a canvas. `prefers-reduced-motion` is
+ * handled globally in `global.css.ts`, which collapses the duration rather than
+ * disabling the animation, so this still reaches its final frame.
+ *
+ * DESIGN.md forbids motion at rest or on a timer. A loader is the explicit
+ * exception: progress must be conveyed.
+ */
+const arrive = keyframes({
+    // Outside the glyph entirely, and invisible while it is.
+    "0%": { transform: "translateX(2.8px)", opacity: 0 },
+    // At rest the node fills the mouth exactly, 10.9 → 13.5. Sized to the
+    // opening rather than to a round number: a smaller node reads as a dot
+    // passing a gap instead of the route filling it.
+    "20%": { transform: "translateX(0)", opacity: 1 },
+    // Crossing the counter.
+    "70%": { transform: "translateX(-4.6px)", opacity: 1 },
+    // Absorbed into the stem, whose inner edge is at 5.43.
+    "88%, 100%": { transform: "translateX(-5.5px)", opacity: 0 },
 });
 
-globalStyle(`.${loadingLottie} canvas`, {
-    width: "100% !important",
-    height: "100% !important",
-    background: "transparent !important",
+/** The mark's own 16-unit grid, blown up. */
+export const loadingMark = style({
+    width: "132px",
+    height: "132px",
+    display: "block",
+    overflow: "visible",
 });
+
+export const loadingMarkC = style({
+    fill: vars.color.cobalt,
+});
+
+/**
+ * `translateX` values in the keyframes are in the SVG's own user units, not
+ * screen pixels — the element sits inside a `viewBox`, so `px` in a transform
+ * resolves against the user coordinate system. That is why 6.1 moves a node
+ * most of the way across a 16-wide glyph rather than six screen pixels.
+ */
+export const loadingMarkNode = style({
+    fill: vars.color.firn,
+    animationName: arrive,
+    animationDuration: "2.4s",
+    animationIterationCount: "infinite",
+    animationTimingFunction: EASE.standard,
+});
+
+/* -------------------------------------------------------------------- */
+/* Status readout                                                        */
+/* -------------------------------------------------------------------- */
 
 export const loadingStatusWrapper = style({
     fontFamily: FONT_SANS,
     fontWeight: 500,
     fontSize: "0.9rem",
     letterSpacing: "0.01em",
-    color: vars.color.halo,
+    color: vars.color.firn,
     textAlign: "center",
     minWidth: "260px",
 });

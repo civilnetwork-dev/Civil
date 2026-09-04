@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     FILTER_CONFIGS,
     findFilterConfig,
+    formatRetryAfter,
     prettifyFilterName,
 } from "./filterCheckVendors";
 
@@ -110,5 +111,25 @@ describe("prettifyFilterName", () => {
         for (const key of Object.keys(FILTER_CONFIGS)) {
             expect(prettifyFilterName(key).length, key).toBeGreaterThan(0);
         }
+    });
+});
+
+describe("formatRetryAfter", () => {
+    /**
+     * The values are the ones production actually produced: PostHog's
+     * `filter_rate_limited` events carry retryAfterSeconds of 477, 3829, 11766,
+     * 28511 and 86372. Each has to come out as something a person can act on.
+     */
+    it("humanises the retry windows production emits", () => {
+        expect(formatRetryAfter(30)).toBe("in 30s");
+        expect(formatRetryAfter(477)).toBe("in about 8 min");
+        expect(formatRetryAfter(3829)).toBe("in about 1 hour");
+        expect(formatRetryAfter(86372)).toBe("in about 24 hours");
+    });
+
+    it("never renders a negative or absent window as a duration", () => {
+        expect(formatRetryAfter(0)).toBe("in a moment");
+        expect(formatRetryAfter(-5)).toBe("in a moment");
+        expect(formatRetryAfter(Number.NaN)).toBe("in a moment");
     });
 });

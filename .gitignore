@@ -1,5 +1,11 @@
-# Docker Persistent Data
-data/
+# Docker Persistent Data. Contents are ignored, but the bind-mount directories
+# themselves are tracked via .gitkeep: Docker Engine creates a missing bind
+# source, while Podman refuses to and fails the container with
+# `statfs ...: no such file or directory`.
+data/*
+!data/*/
+data/*/*
+!data/*/.gitkeep
 
 # Generated Directories & Files
 dist-config
@@ -63,3 +69,24 @@ MAINTENANCE.md
 
 # local .env backups taken before dev-only edits
 .env.bak*
+
+# Zig Packages
+zig-pkg/
+
+# Unpacked filter extensions the filter route check loads (misc/filterProbe).
+# Never published — twenty-eight vendor bundles, ~200MB — and downloaded on
+# demand (misc/filterProbe/downloadBundles.ts), then kept warm in the
+# Blacksmith cache, the same shape Filter-Sources uses for them. The small
+# committed probeData.json is the offline answer; the bundles themselves stay
+# out of the repo. A local checkout usually lives at ~/extensions instead, but
+# a `CIVIL_FILTER_BUNDLES=extensions` run must not commit it.
+/extensions/
+
+# To ensure Claude's temporary JavaScript files don't get pushed by accident.
+*.tmp.mjs
+
+# SkillOpt Sleep
+.skillopt-sleep/
+
+# Excess Data
+misc/schoolDistricts/data/tmp/*

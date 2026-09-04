@@ -1,5 +1,5 @@
 import { style, styleVariants } from "@vanilla-extract/css";
-import { ANNO, FONT_MONO, RULE, SHEET_VPAD_VAR } from "./schematic.css";
+import { FONT_MONO, RULE, SHEET_VPAD_VAR } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -45,21 +45,20 @@ export const pageGrid = style({
 });
 
 /**
- * Grid rather than flex so the horizon rule and the omnibox wrap can occupy
- * the exact same cell — that is what pins the rule to "the omnibox's
- * baseline" without hand-measured offsets. `position: relative` promotes
- * this into its own stacking layer so the star field (painted first, see
- * `starLayer` below) reads as behind it rather than on top.
- */
-/**
- * Three rows in reading order — dimension line + omnibox, the horizon rule,
- * then the session readout — vertically centred as a block.
+ * Two rows in reading order — the omnibox, then the horizon rule it sits on —
+ * vertically centred as a block. `position: relative` promotes this above the
+ * section layer, which paints first.
  *
  * They are rows, not two stacked items in one cell. Stacking them meant the
  * full-width rule centred on the whole stack rather than on the omnibox, so it
  * emerged through the middle of the input, crossing the placeholder and the
  * UNBLOCK divider. Anything that reintroduces `gridArea: 1 / 1` here brings
  * that back.
+ *
+ * The dimension rule that used to sit above the field, and the session readout
+ * (engine / transport / wisp) that hung below it, are gone: the first was
+ * drafting ornament, the second was a developer diagnostic. This page has one
+ * job — take an address — and now shows exactly one control.
  */
 export const omniboxZone = style({
     position: "relative",
@@ -72,9 +71,6 @@ export const omniboxZone = style({
 
 export const omniboxSeat = style({
     width: "min(560px, 100%)",
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
 });
 
 /**
@@ -89,45 +85,6 @@ export const omniboxSeat = style({
 export const horizonRuleTrack = style({
     width: "100%",
     marginTop: "-1px",
-});
-
-export const omniboxBelow = style({
-    width: "min(560px, 100%)",
-    marginTop: "10px",
-});
-
-/** The dimension line above the field, marking the span it occupies. */
-export const omniboxRule = style({
-    opacity: 0.7,
-});
-
-export const statusStrip = style({
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "18px",
-    margin: 0,
-});
-
-export const statusPair = style({
-    display: "flex",
-    alignItems: "baseline",
-    gap: "6px",
-});
-
-// starlight (7.27:1 against dusk) is the muted annotation tier used
-// elsewhere in the schematic language (see schematic.css.ts); cinder
-// (4.82:1) would also clear the 4.5:1 WCAG AA small-text minimum, but
-// starlight keeps this label visually consistent with that tier.
-export const statusKey = style({
-    ...ANNO,
-    color: vars.color.starlight,
-    textTransform: "uppercase",
-});
-
-export const statusValue = style({
-    ...ANNO,
-    margin: 0,
-    color: vars.color.daylight,
 });
 
 export const titleZone = style({
@@ -153,13 +110,16 @@ export const titleRule = style({
     marginBottom: "3px",
 });
 
+/**
+ * The wordmark is drawn art now, not type, so the heading carries no font
+ * properties — only the box. `Wordmark` renders an `<svg role="img">` with its
+ * own accessible name, and the `h1` is what puts that name in the document
+ * outline; an `srOnly` duplicate here would announce "Civil" twice.
+ */
 export const wordmark = style({
     margin: 0,
-    fontSize: "clamp(28px, 4vw, 35px)",
-    fontWeight: 500,
-    lineHeight: 1.1,
-    letterSpacing: "-0.015em",
-    color: vars.color.daylight,
+    lineHeight: 0,
+    color: vars.color.firn,
 });
 
 export const adNote = style({
@@ -172,56 +132,50 @@ export const adNote = style({
 });
 
 /* -------------------------------------------------------------------- */
-/* Star field                                                            */
+/* The strata section                                                    */
 /* -------------------------------------------------------------------- */
 
 /**
+ * Bands of stone descending the page, ruled apart — pure ground. The depth
+ * log and the sample callout that used to annotate this layer were cut in the
+ * minimal pass: numbers that look like information are worse than no numbers,
+ * and this layer's whole job now is to sit quietly behind one input.
+ *
+ * Nine flat divs and a hairline each. Target hardware is low-end school
+ * Chromebooks; nothing here blurs, blends or casts a shadow.
+ *
  * Covers `pageGrid` edge to edge — reliable because `pageGrid` has a real,
  * definite height (see its comment above), unlike `sheetBody` on its own.
- * The percentage-based catalogue label below shares this same box as its
- * positioning reference, which is what keeps it lined up with the leader
- * line drawn inside the SVG. Placed first in DOM order among the sheet's
- * real content (see NewTabPage.tsx) so it paints behind the omnibox and
- * title zones, both of which are `position: relative` for exactly that
- * reason.
+ * Placed first in DOM order among the sheet's real content so it paints behind
+ * the omnibox and title zones, both of which are `position: relative` for
+ * exactly that reason.
  */
-export const starLayer = style({
+export const sectionLayer = style({
     position: "absolute",
     inset: 0,
     pointerEvents: "none",
-});
-
-export const starField = style({
-    display: "block",
-    width: "100%",
-    height: "100%",
+    display: "flex",
+    flexDirection: "column",
 });
 
 /**
- * Brightness tiers, dimmest to brightest. `daylight` is reserved for the one
- * catalogued star — every field star stays at or below `moonlight` so the
- * catalogued object is unambiguously the brightest thing in the sky.
+ * One bed. Flex-grow carries the band's thickness so the section always fills
+ * the viewport exactly, at any height, without a single computed pixel.
  */
-export const starTier = styleVariants({
-    cinder: { fill: vars.color.cinder },
-    starlight: { fill: vars.color.starlight },
-    moonlight: { fill: vars.color.moonlight },
-    daylight: { fill: vars.color.daylight },
-});
-
-export const leaderLine = style({
-    stroke: vars.color.cinder,
-    strokeWidth: 0.5,
+export const band = style({
+    position: "relative",
+    borderBottom: RULE.hair,
+    selectors: { "&:last-child": { borderBottom: "none" } },
 });
 
 /**
- * Position is hardcoded to match the leader line's endpoint in
- * NewTabPage.tsx (`CATALOGUE_LEADER`) — both describe the same static point,
- * so a change to one must be mirrored in the other.
+ * Density by tone, not by hue. Every bed is the same `scree`, held at a
+ * different opacity, so the section reads as one rock face lit unevenly rather
+ * than as nine coloured stripes.
  */
-export const catalogueLabel = style({
-    position: "absolute",
-    top: "18%",
-    left: "77%",
-    whiteSpace: "nowrap",
+export const bandTone = styleVariants({
+    0: { background: vars.color.scree, opacity: 0.16 },
+    1: { background: vars.color.scree, opacity: 0.3 },
+    2: { background: vars.color.scree, opacity: 0.44 },
+    3: { background: vars.color.talus, opacity: 0.26 },
 });

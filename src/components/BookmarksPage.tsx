@@ -118,7 +118,6 @@ export default function BookmarksPage() {
     return (
         <Sheet>
             <TitleBlock
-                eyebrow="collection"
                 title="Bookmarks"
                 // The lookup row states this same count in a live region a few
                 // pixels below. Printing it twice on one screen is noise, and
@@ -180,9 +179,6 @@ export default function BookmarksPage() {
             </p>
 
             <div class={s.lookup}>
-                <span class={s.lookupLabel} id="bookmarks-lookup-label">
-                    index
-                </span>
                 <IconSearch size={15} class={s.lookupIcon} />
                 <input
                     ref={lookupInput}
@@ -190,7 +186,7 @@ export default function BookmarksPage() {
                     type="text"
                     value={search()}
                     placeholder="Search title or address"
-                    aria-labelledby="bookmarks-lookup-label"
+                    aria-label="Search bookmarks"
                     onInput={e => setSearch(e.currentTarget.value)}
                     onKeyDown={e => {
                         if (e.key === "Escape") {
@@ -218,7 +214,7 @@ export default function BookmarksPage() {
             </div>
 
             <Rule
-                label={scope() === "recent" ? "recent · 7 days" : "register"}
+                label={scope() === "recent" ? "last 7 days" : undefined}
                 weight="major"
             />
 
@@ -250,14 +246,8 @@ export default function BookmarksPage() {
 
             <ul class={s.register}>
                 <For each={listed()} keyed={false}>
-                    {(bm, i) => (
+                    {bm => (
                         <li class={s.row}>
-                            <span class={s.rowMark} aria-hidden="true" />
-                            {/* Positional, so it renumbers with the view. Padded
-                                to three so the column never reflows. */}
-                            <span class={s.callNo} aria-hidden="true">
-                                {String(i + 1).padStart(3, "0")}
-                            </span>
                             <button
                                 type="button"
                                 class={s.openBtn}
@@ -270,12 +260,8 @@ export default function BookmarksPage() {
                                     </span>
                                     <span class={s.entryUrl}>{bm().url}</span>
                                 </span>
-                                {/* A register's second axis. Without it the
-                                    rows carried one column of text down the
-                                    left and left the rest of the sheet blank,
-                                    and "when did I save this" — the question
-                                    the RECENT scope exists to answer — was not
-                                    on the page at all. */}
+                                {/* The date column is what the RECENT scope
+                                    exists to answer. */}
                                 <span class={s.entryAdded}>
                                     {savedOn(bm().addedAt)}
                                 </span>

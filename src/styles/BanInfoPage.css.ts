@@ -29,12 +29,12 @@ export const banned = style({
     alignItems: "start",
     gap: "14px",
     padding: "16px",
-    border: `0.5px solid color-mix(in srgb, ${vars.color.antares} 45%, transparent)`,
-    background: `color-mix(in srgb, ${vars.color.antares} 10%, transparent)`,
+    border: `0.5px solid color-mix(in srgb, ${vars.color.wine} 45%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.wine} 10%, transparent)`,
 });
 
 export const bannedIcon = style({
-    color: vars.color.antares,
+    color: vars.color.wine,
     flexShrink: 0,
 });
 
@@ -48,12 +48,12 @@ export const bannedInfo = style({
 export const bannedTitle = style({
     fontSize: "14.5px",
     fontWeight: 600,
-    color: vars.color.daylight,
+    color: vars.color.firn,
 });
 
 export const bannedDetail = style({
     ...ANNO,
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
 });
 
 /* -------------------------------------------------------------------- */
@@ -72,7 +72,7 @@ export const controls = style({
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.sirius },
+        "&:focus-within": { borderBottomColor: vars.color.cobalt },
     },
 });
 
@@ -88,17 +88,17 @@ export const controlInput = style({
     border: "none",
     background: "transparent",
     outline: "none",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontFamily: FONT_MONO,
     fontSize: "13px",
     fontVariantNumeric: "tabular-nums",
-    caretColor: vars.color.sirius,
+    caretColor: vars.color.cobalt,
 });
 
 export const stats = style({
     ...ANNO,
     marginLeft: "auto",
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });
 
 /* -------------------------------------------------------------------- */
@@ -120,7 +120,7 @@ export const domain = style({
     fontFamily: FONT_MONO,
     fontSize: "11.5px",
     lineHeight: 1.9,
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
     // Keeps a hostname from being split across a column boundary, which would
     // read as two different domains.
     breakInside: "avoid",
@@ -138,7 +138,7 @@ export const note = styleVariants({
         alignItems: "center",
         gap: "9px",
         margin: "22px 0 0",
-        color: vars.color.starlight,
+        color: vars.color.snowmelt,
     },
     end: {
         ...ANNO,
@@ -146,7 +146,7 @@ export const note = styleVariants({
         margin: "22px 0 0",
         paddingTop: "10px",
         borderTop: RULE.hair,
-        color: vars.color.starlight,
+        color: vars.color.snowmelt,
         textTransform: "uppercase",
     },
     error: {
@@ -155,11 +155,11 @@ export const note = styleVariants({
         margin: "22px 0 0",
         paddingTop: "10px",
         borderTop: RULE.hair,
-        color: vars.color.antares,
+        color: vars.color.wine,
     },
 });
 
 export const spin = style({
-    color: vars.color.ember,
+    color: vars.color.ash,
     flexShrink: 0,
 });

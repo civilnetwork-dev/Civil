@@ -37,7 +37,7 @@ export const titleActions = style({
 export const scopeSwitch = style({
     display: "flex",
     alignItems: "stretch",
-    border: `0.5px solid ${vars.color.horizon}`,
+    border: `0.5px solid ${vars.color.scree}`,
 });
 
 const scopeBtnBase = style({
@@ -64,12 +64,12 @@ const scopeBtnBase = style({
  * state does not rest on colour alone (DESIGN.md's Redundant-Channel Rule).
  */
 export const scopeBtn = styleVariants({
-    off: [scopeBtnBase, { color: vars.color.cinder }],
+    off: [scopeBtnBase, { color: vars.color.ash }],
     on: [
         scopeBtnBase,
         {
-            color: vars.color.daylight,
-            background: `color-mix(in srgb, ${vars.color.sirius} 14%, transparent)`,
+            color: vars.color.firn,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 14%, transparent)`,
         },
     ],
 });
@@ -86,20 +86,20 @@ export const clearBtn = style({
     borderBottom: RULE.hair,
     padding: "2px",
     cursor: "pointer",
-    color: vars.color.antares,
+    color: vars.color.wine,
     textTransform: "uppercase",
     transitionProperty: "color, border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        "&:hover": { borderBottomColor: vars.color.antares },
+        "&:hover": { borderBottomColor: vars.color.wine },
     },
 });
 
 export const clearBtnArmed = style({
-    color: vars.color.daylight,
-    borderBottomColor: vars.color.antares,
-    background: `color-mix(in srgb, ${vars.color.antares} 16%, transparent)`,
+    color: vars.color.firn,
+    borderBottomColor: vars.color.wine,
+    background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
     padding: "2px 6px",
 });
 
@@ -123,25 +123,18 @@ export const lookup = style({
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.sirius },
+        "&:focus-within": { borderBottomColor: vars.color.cobalt },
     },
-});
-
-export const lookupLabel = style({
-    ...ANNO,
-    flexShrink: 0,
-    textTransform: "uppercase",
-    whiteSpace: "nowrap",
 });
 
 // ember colours a glyph, not text, so 1.4.11's non-text 3:1 applies rather
 // than 1.4.3's 4.5:1.
 export const lookupIcon = style({
     flexShrink: 0,
-    color: vars.color.ember,
+    color: vars.color.ash,
     transition: `color ${DUR.base} ${EASE.standard}`,
     selectors: {
-        [`${lookup}:focus-within &`]: { color: vars.color.sirius },
+        [`${lookup}:focus-within &`]: { color: vars.color.cobalt },
     },
 });
 
@@ -151,12 +144,12 @@ export const lookupInput = style({
     border: "none",
     background: "transparent",
     outline: "none",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontFamily: FONT_MONO,
     fontSize: "14px",
-    caretColor: vars.color.sirius,
+    caretColor: vars.color.cobalt,
     selectors: {
-        "&::placeholder": { color: vars.color.cinder },
+        "&::placeholder": { color: vars.color.ash },
     },
 });
 
@@ -170,14 +163,14 @@ export const lookupClear = style({
     padding: 0,
     border: "none",
     background: "none",
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     cursor: "pointer",
     transitionProperty: "color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
         "&::after": hitArea(),
-        "&:hover": { color: vars.color.daylight },
+        "&:hover": { color: vars.color.firn },
     },
 });
 
@@ -190,7 +183,7 @@ export const lookupClear = style({
 export const lookupCount = style({
     ...ANNO,
     flexShrink: 0,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     whiteSpace: "nowrap",
 });
 
@@ -205,45 +198,17 @@ export const register = style({
 });
 
 /**
- * `34px` holds a three-digit call number without reflowing at 100, and the
- * `28px` end column holds the remove control. The middle track is the open
- * target and absorbs everything else.
+ * The `28px` end column holds the remove control; the rest is the open
+ * target. The call-number column went in the minimal pass — fake catalogue
+ * numbers were decoration pretending to be data.
  */
 export const row = style({
     position: "relative",
     display: "grid",
-    gridTemplateColumns: "34px 1fr 28px",
+    gridTemplateColumns: "1fr 28px",
     alignItems: "center",
     gap: "12px",
     borderBottom: RULE.hair,
-});
-
-/**
- * The accent bar that marks the row under the pointer or holding focus. It is
- * `scaleY` on a fixed-position element rather than a width or border change so
- * it cannot shift the row's layout, and it reads as a register mark rather
- * than a highlight.
- */
-export const rowMark = style({
-    position: "absolute",
-    left: "-10px",
-    top: "6px",
-    bottom: "6px",
-    width: "2px",
-    background: vars.color.sirius,
-    transform: "scaleY(0)",
-    transformOrigin: "center",
-    transition: `transform ${DUR.base} ${EASE.standard}`,
-    selectors: {
-        [`${row}:hover &, ${row}:focus-within &`]: { transform: "scaleY(1)" },
-    },
-});
-
-export const callNo = style({
-    ...ANNO,
-    color: vars.color.cinder,
-    textAlign: "right",
-    fontVariantNumeric: "tabular-nums",
 });
 
 /**
@@ -271,7 +236,7 @@ export const openBtn = style({
         // The row mark is the hover affordance; focus needs its own visible
         // indicator that does not depend on the pointer being anywhere.
         "&:focus-visible": {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "2px",
         },
     },
@@ -282,7 +247,7 @@ export const stamp = style({
     height: "22px",
     display: "grid",
     placeItems: "center",
-    border: `0.5px solid ${vars.color.horizon}`,
+    border: `0.5px solid ${vars.color.scree}`,
     overflow: "hidden",
 });
 
@@ -292,7 +257,7 @@ export const stampImg = style({
     objectFit: "contain",
 });
 
-export const stampFallback = style([stamp, { color: vars.color.ember }]);
+export const stampFallback = style([stamp, { color: vars.color.ash }]);
 
 export const entry = style({
     minWidth: 0,
@@ -304,19 +269,19 @@ export const entry = style({
 export const entryTitle = style({
     fontSize: "13.5px",
     fontWeight: 500,
-    color: vars.color.daylight,
+    color: vars.color.firn,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     transition: `color ${DUR.fast} ${EASE.standard}`,
     selectors: {
-        [`${openBtn}:hover &`]: { color: vars.color.vega },
+        [`${openBtn}:hover &`]: { color: vars.color.cobalt },
     },
 });
 
 export const entryUrl = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -324,7 +289,7 @@ export const entryUrl = style({
 
 export const entryAdded = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     justifySelf: "end",
     whiteSpace: "nowrap",
     paddingLeft: "16px",
@@ -339,7 +304,7 @@ export const removeBtn = style({
     padding: 0,
     border: "none",
     background: "none",
-    color: vars.color.ember,
+    color: vars.color.ash,
     cursor: "pointer",
     opacity: 0,
     transitionProperty: "opacity, color",
@@ -357,7 +322,7 @@ export const removeBtn = style({
         [`${row}:hover &, ${row}:focus-within &, &:focus-visible`]: {
             opacity: 1,
         },
-        "&:hover, &:focus-visible": { color: vars.color.antares },
+        "&:hover, &:focus-visible": { color: vars.color.wine },
     },
     // Touch has no hover state to reveal the control, so it is always shown
     // there. Keyboard is covered by the :focus-visible selector above.
@@ -382,9 +347,9 @@ export const emptyAction = style({
     ...ANNO,
     background: "none",
     border: "none",
-    borderBottom: `0.5px solid ${vars.color.sirius}`,
+    borderBottom: `0.5px solid ${vars.color.cobalt}`,
     padding: "2px",
     cursor: "pointer",
-    color: vars.color.vega,
+    color: vars.color.cobalt,
     textTransform: "uppercase",
 });

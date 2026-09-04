@@ -51,11 +51,11 @@ const textBtnBase = style({
 export const textBtn = style([
     textBtnBase,
     {
-        color: vars.color.moonlight,
+        color: vars.color.snowmelt,
         selectors: {
             "&:not(:disabled):hover": {
-                color: vars.color.daylight,
-                borderBottomColor: vars.color.sirius,
+                color: vars.color.firn,
+                borderBottomColor: vars.color.cobalt,
             },
         },
     },
@@ -64,9 +64,9 @@ export const textBtn = style([
 export const textBtnDanger = style([
     textBtnBase,
     {
-        color: vars.color.antares,
+        color: vars.color.wine,
         selectors: {
-            "&:not(:disabled):hover": { borderBottomColor: vars.color.antares },
+            "&:not(:disabled):hover": { borderBottomColor: vars.color.wine },
         },
     },
 ]);
@@ -74,9 +74,9 @@ export const textBtnDanger = style([
 // Armed state for a destructive second click. The label already says what the
 // next click does; the ground is the redundant channel, not the only one.
 export const textBtnArmed = style({
-    color: vars.color.daylight,
-    borderBottomColor: vars.color.antares,
-    background: `color-mix(in srgb, ${vars.color.antares} 16%, transparent)`,
+    color: vars.color.firn,
+    borderBottomColor: vars.color.wine,
+    background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
     padding: "2px 6px",
 });
 
@@ -96,7 +96,7 @@ export const intake = style({
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.sirius },
+        "&:focus-within": { borderBottomColor: vars.color.cobalt },
     },
 });
 
@@ -113,12 +113,12 @@ export const intakeInput = style({
     border: "none",
     background: "transparent",
     outline: "none",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontFamily: FONT_MONO,
     fontSize: "13px",
-    caretColor: vars.color.sirius,
+    caretColor: vars.color.cobalt,
     selectors: {
-        "&::placeholder": { color: vars.color.cinder },
+        "&::placeholder": { color: vars.color.ash },
     },
 });
 
@@ -132,15 +132,15 @@ export const uploadLabel = style([
     textBtnBase,
     {
         position: "relative",
-        color: vars.color.moonlight,
+        color: vars.color.snowmelt,
         selectors: {
             "&:hover": {
-                color: vars.color.daylight,
-                borderBottomColor: vars.color.sirius,
+                color: vars.color.firn,
+                borderBottomColor: vars.color.cobalt,
             },
             "&:focus-within": {
-                color: vars.color.daylight,
-                outline: `1px solid ${vars.color.sirius}`,
+                color: vars.color.firn,
+                outline: `1px solid ${vars.color.cobalt}`,
                 outlineOffset: "2px",
             },
         },
@@ -174,8 +174,8 @@ export const status = style({
 });
 
 export const statusTone = styleVariants({
-    info: { color: vars.color.starlight },
-    error: { color: vars.color.antares },
+    info: { color: vars.color.snowmelt },
+    error: { color: vars.color.wine },
 });
 
 // The leading mark is decorative; the tone is already carried by the text
@@ -240,7 +240,7 @@ export const nodeBase = style({
     borderRadius: "50%",
     // Punches the spine out from behind the node so the line appears to pass
     // between nodes rather than through them.
-    boxShadow: `0 0 0 3px ${vars.color.dusk}`,
+    boxShadow: `0 0 0 3px ${vars.color.stratum}`,
     transitionProperty: "background-color, border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
@@ -250,15 +250,15 @@ export const node = styleVariants({
     on: [
         nodeBase,
         {
-            background: vars.color.sirius,
-            border: `1px solid ${vars.color.sirius}`,
+            background: vars.color.cobalt,
+            border: `1px solid ${vars.color.cobalt}`,
         },
     ],
     off: [
         nodeBase,
         {
-            background: vars.color.dusk,
-            border: `1px solid ${vars.color.dust}`,
+            background: vars.color.stratum,
+            border: `1px solid ${vars.color.talus}`,
         },
     ],
 });
@@ -268,8 +268,8 @@ export const iconPlate = style({
     height: "26px",
     display: "grid",
     placeItems: "center",
-    border: `0.5px solid ${vars.color.horizon}`,
-    color: vars.color.ember,
+    border: `0.5px solid ${vars.color.scree}`,
+    color: vars.color.ash,
     overflow: "hidden",
 });
 
@@ -289,7 +289,7 @@ export const info = style({
 export const name = style({
     fontSize: "13.5px",
     fontWeight: 500,
-    color: vars.color.daylight,
+    color: vars.color.firn,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -297,7 +297,7 @@ export const name = style({
 
 export const meta = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -320,15 +320,15 @@ export const stamp = styleVariants({
     crx: [
         stampBase,
         {
-            color: vars.color.aurora,
-            border: `0.5px solid color-mix(in srgb, ${vars.color.aurora} 45%, transparent)`,
+            color: vars.color.cobalt,
+            border: `0.5px solid color-mix(in srgb, ${vars.color.cobalt} 45%, transparent)`,
         },
     ],
     xpi: [
         stampBase,
         {
-            color: vars.color.arcturus,
-            border: `0.5px solid color-mix(in srgb, ${vars.color.arcturus} 45%, transparent)`,
+            color: vars.color.sandstone,
+            border: `0.5px solid color-mix(in srgb, ${vars.color.sandstone} 45%, transparent)`,
         },
     ],
 });
@@ -366,20 +366,20 @@ export const toggleInput = style({
 export const toggleTrack = style({
     position: "absolute",
     inset: 0,
-    border: `0.5px solid ${vars.color.dust}`,
+    border: `0.5px solid ${vars.color.talus}`,
     background: "transparent",
     transitionProperty: "border-color, background-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
         [`${toggleInput}:checked ~ &`]: {
-            borderColor: vars.color.sirius,
-            background: `color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
+            borderColor: vars.color.cobalt,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 18%, transparent)`,
         },
         // The ring has to live on the track: the input it belongs to is
         // transparent, so its own outline would be invisible.
         [`${toggleInput}:focus-visible ~ &`]: {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "2px",
         },
     },
@@ -391,14 +391,14 @@ export const toggleThumb = style({
     left: "3px",
     width: "12px",
     height: "12px",
-    background: vars.color.dust,
+    background: vars.color.talus,
     transitionProperty: "transform, background-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
         [`${toggleInput}:checked ~ &`]: {
             transform: "translateX(16px)",
-            background: vars.color.sirius,
+            background: vars.color.cobalt,
         },
     },
 });
@@ -417,14 +417,14 @@ export const removeBtn = style({
     padding: 0,
     border: "none",
     background: "none",
-    color: vars.color.ember,
+    color: vars.color.ash,
     cursor: "pointer",
     transitionProperty: "color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
         "&::after": hitArea(),
-        "&:hover, &:focus-visible": { color: vars.color.antares },
+        "&:hover, &:focus-visible": { color: vars.color.wine },
     },
 });
 
@@ -433,9 +433,9 @@ export const removeBtn = style({
 export const removeArmed = style([
     textBtnBase,
     {
-        color: vars.color.daylight,
-        borderBottomColor: vars.color.antares,
-        background: `color-mix(in srgb, ${vars.color.antares} 16%, transparent)`,
+        color: vars.color.firn,
+        borderBottomColor: vars.color.wine,
+        background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
         padding: "2px 6px",
         whiteSpace: "nowrap",
     },

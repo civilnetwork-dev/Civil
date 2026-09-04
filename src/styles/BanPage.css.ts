@@ -22,7 +22,7 @@ export const root = style({
     display: "grid",
     placeItems: "center",
     padding: "40px 24px",
-    background: vars.color.dusk,
+    background: vars.color.stratum,
 });
 
 export const plate = style({
@@ -30,8 +30,8 @@ export const plate = style({
     width: "100%",
     maxWidth: "580px",
     padding: "34px 32px 30px",
-    border: `0.5px solid ${vars.color.horizon}`,
-    background: vars.color.night,
+    border: `0.5px solid ${vars.color.scree}`,
+    background: vars.color.basalt,
 });
 
 // Severity as a full-width band rather than a tinted card: at 3px it is a
@@ -40,12 +40,12 @@ export const band = styleVariants({
     restricted: {
         height: "3px",
         margin: "-34px -32px 26px",
-        background: vars.color.arcturus,
+        background: vars.color.sandstone,
     },
     banned: {
         height: "3px",
         margin: "-34px -32px 26px",
-        background: vars.color.antares,
+        background: vars.color.wine,
     },
 });
 
@@ -61,9 +61,9 @@ export const eyebrowMark = styleVariants({
     restricted: {
         width: "16px",
         height: "2px",
-        background: vars.color.arcturus,
+        background: vars.color.sandstone,
     },
-    banned: { width: "16px", height: "2px", background: vars.color.antares },
+    banned: { width: "16px", height: "2px", background: vars.color.wine },
 });
 
 export const title = style({
@@ -72,7 +72,7 @@ export const title = style({
     fontWeight: 600,
     lineHeight: 1.05,
     letterSpacing: "-0.015em",
-    color: vars.color.daylight,
+    color: vars.color.firn,
 });
 
 export const reason = style({
@@ -81,7 +81,7 @@ export const reason = style({
     borderTop: RULE.hair,
     fontSize: "14px",
     lineHeight: 1.6,
-    color: vars.color.halo,
+    color: vars.color.firn,
 });
 
 export const gaugeSlot = style({
@@ -103,15 +103,15 @@ export const actions = style({
 // quiet: annotation tier, no accent, sitting after the link rather than above.
 export const note = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     marginLeft: "auto",
 });
 
 export const link = style({
     ...ANNO,
-    color: vars.color.vega,
+    color: vars.color.cobalt,
     textDecoration: "none",
-    borderBottom: `0.5px solid ${vars.color.sirius}`,
+    borderBottom: `0.5px solid ${vars.color.cobalt}`,
     paddingBottom: "2px",
     textTransform: "uppercase",
     transitionProperty: "color, border-color",
@@ -119,8 +119,8 @@ export const link = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
-            color: vars.color.daylight,
-            borderBottomColor: vars.color.daylight,
+            color: vars.color.firn,
+            borderBottomColor: vars.color.firn,
         },
     },
 });

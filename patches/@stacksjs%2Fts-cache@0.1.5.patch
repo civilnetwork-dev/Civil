@@ -1,0 +1,18 @@
+diff --git a/dist/index.js b/dist/index.js
+index 410d20391ea378a7379d6ee0964619668dbcaea5..070b91734da9ca47f0cedbf1cbd3d132e54e8d04 100644
+--- a/dist/index.js	
++++ b/dist/index.js
+@@ -10211,7 +10211,12 @@ class MemoryLRUDriver {
+   }
+ }
+ // src/drivers/redis.ts
+-var {RedisClient } = globalThis.Bun;
++// Guarded: `globalThis.Bun` is absent under non-Bun runners (e.g. vitest's
++// default worker pool, which runs under plain Node even when the CLI itself
++// was invoked via `bunx`), and this module is evaluated eagerly by every
++// `createCache()` caller regardless of whether the redis driver is ever
++// selected. Only `new RedisClient(...)` below needs the real export.
++var {RedisClient } = globalThis.Bun ?? {};
+ import process19 from "process";
+ 
+ class RedisDriver {

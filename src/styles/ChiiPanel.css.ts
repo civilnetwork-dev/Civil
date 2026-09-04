@@ -6,7 +6,7 @@ const T_FAST = "0.1s ease";
 export const panel = style({
     position: "absolute",
     zIndex: 10,
-    background: vars.color.night,
+    background: vars.color.basalt,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -17,8 +17,8 @@ export const toolbar = style({
     alignItems: "center",
     gap: "3px",
     padding: "3px 6px",
-    background: vars.color.void,
-    borderBottom: `1px solid ${vars.color.horizon}`,
+    background: vars.color.basalt,
+    borderBottom: `1px solid ${vars.color.scree}`,
     flexShrink: 0,
     minHeight: "28px",
 });
@@ -38,25 +38,25 @@ export const dockBtn = style({
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
-    background: vars.color.horizon,
-    color: vars.color.halo,
+    background: vars.color.scree,
+    color: vars.color.firn,
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.haze,
-            color: vars.color.daylight,
+            background: vars.color.talus,
+            color: vars.color.firn,
         },
     },
 });
 
 export const dockBtnActive = style({
-    background: `color-mix(in srgb, ${vars.color.sirius} 20%, transparent)`,
-    color: vars.color.sirius,
+    background: `color-mix(in srgb, ${vars.color.cobalt} 20%, transparent)`,
+    color: vars.color.cobalt,
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
-            color: vars.color.sirius,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 28%, transparent)`,
+            color: vars.color.cobalt,
         },
     },
 });
@@ -72,14 +72,14 @@ export const detachBtn = style({
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
-    background: vars.color.horizon,
-    color: vars.color.halo,
+    background: vars.color.scree,
+    color: vars.color.firn,
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.haze,
-            color: vars.color.daylight,
+            background: vars.color.talus,
+            color: vars.color.firn,
         },
     },
 });
@@ -95,14 +95,14 @@ export const closeBtn = style({
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
-    background: vars.color.horizon,
-    color: vars.color.cinder,
+    background: vars.color.scree,
+    color: vars.color.ash,
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.antares} 18%, transparent)`,
-            color: vars.color.antares,
+            background: `color-mix(in srgb, ${vars.color.wine} 18%, transparent)`,
+            color: vars.color.wine,
         },
     },
 });
@@ -112,12 +112,12 @@ export const dividerHoriz = style({
     height: "4px",
     flexShrink: 0,
     cursor: "row-resize",
-    background: vars.color.haze,
+    background: vars.color.talus,
     transition: `background ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.ember,
+            background: vars.color.ash,
         },
     },
 });
@@ -127,18 +127,18 @@ export const dividerVert = style({
     height: "100%",
     flexShrink: 0,
     cursor: "col-resize",
-    background: vars.color.haze,
+    background: vars.color.talus,
     transition: `background ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            background: vars.color.ember,
+            background: vars.color.ash,
         },
     },
 });
 
 export const dividerDragging = style({
-    background: `${vars.color.sirius} !important`,
+    background: `${vars.color.cobalt} !important`,
 });
 
 export const devtoolsFrame = style({

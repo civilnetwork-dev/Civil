@@ -8,11 +8,11 @@ const spin = keyframes({
 });
 
 const STATUS_COLOR = {
-    allowed: vars.color.airglow,
-    blocked: vars.color.antares,
-    warned: vars.color.sol,
-    unknown: vars.color.starlight,
-    error: vars.color.arcturus,
+    allowed: vars.color.juniper,
+    blocked: vars.color.wine,
+    warned: vars.color.calcite,
+    unknown: vars.color.snowmelt,
+    error: vars.color.sandstone,
 } as const;
 
 const LEDGER_COLUMNS = "minmax(0, 1fr) 96px 40px";
@@ -23,7 +23,7 @@ export const rescan = style({
     border: "none",
     borderBottom: RULE.hair,
     cursor: "pointer",
-    color: vars.color.vega,
+    color: vars.color.cobalt,
 });
 
 export const specimenRow = style({
@@ -37,7 +37,7 @@ export const specimenChip = style({
     ...ANNO,
     padding: "2px 8px",
     border: RULE.hair,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });
 
 export const unsupported = style({
@@ -45,6 +45,18 @@ export const unsupported = style({
     flexDirection: "column",
     gap: "4px",
     marginBottom: "18px",
+});
+
+/**
+ * The rate-limit notice. Carried on a left rule in the error tier rather than
+ * as a filled banner: it is a condition of the page, not an alarm, and the
+ * sheet has no other filled surfaces to sit beside.
+ */
+export const rateLimit = style({
+    borderLeft: `2px solid ${vars.color.sandstone}`,
+    paddingLeft: "10px",
+    margin: "18px 0 0",
+    maxWidth: "520px",
 });
 
 export const form = style({
@@ -59,8 +71,8 @@ export const submit = style({
     alignSelf: "flex-start",
     marginTop: "4px",
     padding: "7px 18px",
-    background: vars.color.vega,
-    color: vars.color.void,
+    background: vars.color.cobalt,
+    color: vars.color.basalt,
     border: "none",
     cursor: "pointer",
     textTransform: "uppercase",
@@ -79,7 +91,7 @@ export const ledgerHead = style({
     gridTemplateColumns: LEDGER_COLUMNS,
     gap: "10px",
     paddingBottom: "6px",
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     textTransform: "uppercase",
 });
 
@@ -101,7 +113,7 @@ export const rowVendor = style({
     gap: "8px",
     fontSize: "12.5px",
     fontWeight: 500,
-    color: vars.color.daylight,
+    color: vars.color.firn,
 });
 
 export const rowVerdict = styleVariants(STATUS_COLOR, color => ({
@@ -140,9 +152,9 @@ export const catChip = style({
     borderRadius: "20px",
     fontSize: "11px",
     fontWeight: 500,
-    background: vars.color.horizon,
-    color: vars.color.halo,
-    border: `1px solid ${vars.color.haze}`,
+    background: vars.color.scree,
+    color: vars.color.firn,
+    border: `1px solid ${vars.color.talus}`,
 });
 
 /** Groups the Patreon sign-in and re-scan controls in the title block. */

@@ -1,0 +1,17 @@
+diff --git a/dist/_chunks/cloudflared.mjs b/dist/_chunks/cloudflared.mjs
+index 5b0d78b184ce2664802702fa01ec1afd1efad45c..0aa4250bad1499bd475b0c7e2800ca25d4067575 100644
+--- a/dist/_chunks/cloudflared.mjs	
++++ b/dist/_chunks/cloudflared.mjs
+@@ -121,7 +121,11 @@ function startCloudflaredTunnel(options = {}, extraArgs = []) {
+ 	const connectionResolvers = [];
+ 	const connectionRejectors = [];
+ 	const connections = [];
+-	for (let i = 0; i < 1; i++) connections.push(new Promise((...pair) => [connectionResolvers[i], connectionRejectors[i]] = pair));
++	for (let i = 0; i < 1; i++) {
++		const connection = new Promise((...pair) => [connectionResolvers[i], connectionRejectors[i]] = pair);
++		connection.catch(() => void 0);
++		connections.push(connection);
++	}
+ 	const recentOutput = [];
+ 	const parser = (data) => {
+ 		const str = data.toString();

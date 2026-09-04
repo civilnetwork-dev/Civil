@@ -20,6 +20,7 @@ import {
     type FilterResult,
     type FilterStatus,
     findFilterConfig,
+    formatRetryAfter,
     prettifyFilterName,
 } from "~/lib/filterCheckVendors";
 import { checkFiltersNow } from "~/lib/swUtils";
@@ -30,6 +31,23 @@ import FilterCheckResults from "./FilterCheckResults";
 import GoGuardianManifestToast from "./GoGuardianManifestToast";
 import IbossGatewayToast from "./IbossGatewayToast";
 import PatreonLoginButton from "./ui/PatreonLoginButton";
+
+/**
+ * The middleware sends both `Retry-After` and a JSON `retryAfterSeconds`. Read
+ * the header first: a proxy that rewrites the body still has to keep the header
+ * honest, and the body may not be JSON at all if something upstream answered.
+ */
+async function readRetryAfter(res: Response): Promise<number> {
+    const header = Number(res.headers.get("Retry-After"));
+    if (Number.isFinite(header) && header > 0) return header;
+    try {
+        const body = (await res.json()) as { retryAfterSeconds?: unknown };
+        const seconds = Number(body?.retryAfterSeconds);
+        return Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+    } catch {
+        return 0;
+    }
+}
 
 async function checkFilter(
     key: string,
@@ -45,6 +63,20 @@ async function checkFilter(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
+        // 429 is the shared filter-check rate limiter, not a vendor verdict.
+        // It used to fall through the generic branch below and print the raw
+        // JSON body into the ledger — the single most common failure this page
+        // produces (79 `filter_rate_limited` events), shown as gibberish.
+        if (res.status === 429) {
+            const retryAfterSeconds = await readRetryAfter(res);
+            return {
+                filterKey: key,
+                filterName: config.name,
+                status: "error",
+                detail: `Daily check limit reached. You can check again ${formatRetryAfter(retryAfterSeconds)}.`,
+                retryAfterSeconds,
+            };
+        }
         if (!res.ok) {
             const text = await res.text();
             return {
@@ -77,6 +109,11 @@ export default function FilterCheckPage() {
     const [results, setResults] = createSignal<FilterResult[]>([]);
     const [loading, setLoading] = createSignal(false);
     const [checked, setChecked] = createSignal(false);
+    /**
+     * The rate limit is per person, not per vendor, so it belongs above the
+     * ledger rather than repeated down every row.
+     */
+    const [retryAfter, setRetryAfter] = createSignal<number | null>(null);
 
     const [detectedLeaId, setDetectedLeaId] = createSignal<string | null>(null);
     const [detectedDistrictName, setDetectedDistrictName] = createSignal<
@@ -319,6 +356,9 @@ export default function FilterCheckPage() {
             });
         }
 
+        setRetryAfter(
+            mapped.find(r => r.retryAfterSeconds)?.retryAfterSeconds ?? null,
+        );
         setResults(mapped);
         setLoading(false);
         setChecked(true);
@@ -374,9 +414,7 @@ export default function FilterCheckPage() {
 
             <Sheet marks={["tl", "tr", "br"]}>
                 <TitleBlock
-                    eyebrow="diagnostic"
-                    title="Filter report"
-                    meta={`${detectedFilters().length} detected`}
+                    title="Filter check"
                     actions={
                         // PatreonLoginButton lives here because this page is
                         // its only host in the app. Patreon entitlement is what
@@ -416,15 +454,11 @@ export default function FilterCheckPage() {
                     answer, unedited.
                 </p>
 
-                <Rule label="specimen" />
+                <Rule label="filters on this network" />
                 <div class={s.specimenRow}>
                     <Show
                         when={detectedFilters().length > 0}
-                        fallback={
-                            <Anno muted>
-                                no filters detected on this network
-                            </Anno>
-                        }
+                        fallback={<Anno muted>none detected</Anno>}
                     >
                         <For each={detectedFilters()} keyed={false}>
                             {f => <span class={s.specimenChip}>{f()}</span>}
@@ -437,8 +471,7 @@ export default function FilterCheckPage() {
                         <For each={unsupportedFilters()} keyed={false}>
                             {f => (
                                 <Anno muted>
-                                    unsupported extension id —{" "}
-                                    {prettifyFilterName(f())}
+                                    can't check {prettifyFilterName(f())} yet
                                 </Anno>
                             )}
                         </For>
@@ -454,6 +487,16 @@ export default function FilterCheckPage() {
                     onUrl={setUrl}
                     onSubmit={() => void handleCheck()}
                 />
+
+                <Show when={retryAfter() !== null}>
+                    <div class={s.rateLimit}>
+                        <Anno>
+                            Daily check limit reached — you can check again{" "}
+                            {formatRetryAfter(retryAfter()!)}. Signing in with
+                            Patreon above raises the limit.
+                        </Anno>
+                    </div>
+                </Show>
 
                 <Show when={checked()}>
                     <Rule

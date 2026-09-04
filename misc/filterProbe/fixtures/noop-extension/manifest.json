@@ -1,0 +1,6 @@
+{
+    "manifest_version": 3,
+    "name": "Noop probe fixture",
+    "version": "1.0.0",
+    "background": { "service_worker": "background.js" }
+}

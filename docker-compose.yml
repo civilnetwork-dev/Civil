@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: civil
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     # Bound to the loopback interface only: reachable from this machine for
     # local dev and tooling, never from the network. Dropping the 127.0.0.1
     # prefix would publish Postgres on every interface.
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --save 60 1 --loglevel warning
     volumes:
-      - ./data/redis:/data
+      - redis-data:/data
     # Loopback only, same reasoning as Postgres above.
     ports:
       - "127.0.0.1:6379:6379"
@@ -40,6 +40,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Defaults to obscura-rs, unchanged from before this existed. Set
+        # OBFUSCATE_ENGINE=obfuscatti on the host before `compose build`/`up`
+        # to opt into misc/obfuscatti instead -- see Dockerfile.
+        OBFUSCATE_ENGINE: "${OBFUSCATE_ENGINE:-obscura}"
     restart: unless-stopped
     depends_on:
       postgres:
@@ -81,4 +86,15 @@ services:
     environment:
       DATABASE_URL: postgresql://civil:${DB_PASSWORD}@postgres:5432/civil
     command: ["sh", "-c", "bun run db:studio"]
+
+# Postgres and Redis own their storage through named volumes rather than host
+# bind mounts. Both need to chown/chmod their data directory (Postgres refuses
+# to start unless it is 0700 and owned by the server user), which a bind mount
+# backed by a Windows path cannot support -- under Podman on Windows the host
+# directory reaches the VM as drvfs and chmod fails with EPERM. Named volumes
+# live on the VM's Linux filesystem, so this works the same on every platform.
+# Use `bun run db:studio` or pg_dump to get at the data, not the host filesystem.
+volumes:
+  postgres-data:
+  redis-data:
 

@@ -20,7 +20,28 @@ export type FilterResult = {
     status: FilterStatus;
     detail: string;
     categories?: string[];
+    /**
+     * Seconds until the shared rate limiter (misc/filters/sharedMiddleware.ts)
+     * will accept another check. Set only on HTTP 429.
+     */
+    retryAfterSeconds?: number;
 };
+
+/**
+ * "in about 23 hours" rather than `{"error":"Too many requests",
+ * "retryAfterSeconds":86372}`, which is what the ledger used to print verbatim.
+ *
+ * The window is a whole day at the free tier, so minutes are noise above an
+ * hour and seconds are noise above a minute; each unit is dropped once the one
+ * above it can answer the only question being asked — when can I try again.
+ */
+export function formatRetryAfter(seconds: number): string {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "in a moment";
+    if (seconds < 60) return `in ${Math.ceil(seconds)}s`;
+    if (seconds < 3600) return `in about ${Math.round(seconds / 60)} min`;
+    const hours = Math.round(seconds / 3600);
+    return `in about ${hours} hour${hours === 1 ? "" : "s"}`;
+}
 
 export type FilterConfig = {
     name: string;

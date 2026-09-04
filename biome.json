@@ -19,7 +19,8 @@
             "tsconfig.json",
             "app.config.ts",
             "!src/routeTree.gen.ts",
-            "!misc/wisp/native/index.*"
+            "!misc/wisp/native/index.*",
+            "!public/assets/civil-wordmark.svg"
         ]
     },
     "linter": {

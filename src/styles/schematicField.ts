@@ -22,7 +22,7 @@ export type FieldDensity = keyof typeof FIELD_DENSITY;
 export function createField() {
     return function field(
         density: FieldDensity = "base",
-        color: string = vars.color.horizon,
+        color: string = vars.color.scree,
     ) {
         const px = FIELD_DENSITY[density];
         return {

@@ -133,6 +133,11 @@ export interface ChromeManifest {
         persistent?: boolean;
         type?: "module" | "classic";
     };
+    /** Legacy Chrome Packaged Apps nest their background under `app`, not at
+     *  the top level — lanschoolStudent still ships this shape. */
+    app?: {
+        background?: { scripts?: string[] };
+    };
     action?: ActionDef;
     browser_action?: ActionDef;
     page_action?: ActionDef;

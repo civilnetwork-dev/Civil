@@ -1,17 +1,34 @@
-import { DotLottie } from "@lottiefiles/dotlottie-web";
-import { createSignal, onCleanup, onSettled } from "solid-js";
+import { createSignal, For, onSettled } from "solid-js";
 import * as s from "~/styles/LoadingAnimation.css";
 
-interface LoadingAnimationProps {
-    iframed?: boolean;
-}
+/**
+ * The mark's C, on its own 16-unit grid — the same path the favicon draws.
+ *
+ * A literal rather than a shared export: `Wordmark` draws the full lockup on a
+ * 248-unit canvas, and this screen needs the C alone with its node animated.
+ * Two consumers, two shapes — the only thing they share is the path string, and
+ * a constant exported for one caller is not reuse.
+ */
+const MARK_C = "M2.5 1H13.5V6.6H10.57V3.8H5.43V12.2H10.57V9.4H13.5V15H2.5Z";
 
-export default function LoadingAnimation(_props: LoadingAnimationProps) {
+/**
+ * Nodes arriving along the route. Three is enough to read as a stream and few
+ * enough that none of them collide in the mouth.
+ *
+ * Their stagger is a literal fraction of the cycle rather than a computed
+ * offset: this screen server-side renders, and anything derived at render time
+ * risks drawing differently on the server pass than the client one.
+ */
+const NODES = [0, 1, 2];
+
+/** One pass of a node from outside the mouth to absorbed at the stem. */
+const CYCLE_MS = 2400;
+
+export default function LoadingAnimation() {
     const [visible, setVisible] = createSignal(true);
     const [liveStatus, setLiveStatus] = createSignal<string | null>(
         "Loading...",
     );
-    let containerRef: HTMLDivElement | undefined;
 
     const formatResource = (url: string): string => {
         try {
@@ -32,17 +49,22 @@ export default function LoadingAnimation(_props: LoadingAnimationProps) {
         }
     };
 
+    /**
+     * Everything torn down when this screen goes away, collected as it is set
+     * up and released by the function this returns.
+     *
+     * `onSettled` must **return** its cleanup; calling `onCleanup` inside it
+     * throws `CLEANUP_IN_FORBIDDEN_SCOPE` in Solid 2.0, and because the throw
+     * happens during the effect run it halts the reactive system for the whole
+     * root — "no further updates will be processed". This screen mounts on
+     * every cold load, so that was every cold load. It never surfaced because
+     * the halt is reported to the console rather than thrown to the caller, and
+     * the loader looks identical either way: the artwork was a canvas driving
+     * itself, and the status text stops updating on a screen that is about to
+     * be replaced anyway.
+     */
     onSettled(() => {
-        if (!containerRef) return;
-
-        const anim = new DotLottie({
-            autoplay: true,
-            loop: true,
-            canvas: document.createElement("canvas"),
-            src: "/assets/civil-loading.lottie",
-        });
-        containerRef.appendChild(anim.canvas as Node);
-
+        const teardown: (() => void)[] = [];
         let aborted = false;
         let liveTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -117,7 +139,7 @@ export default function LoadingAnimation(_props: LoadingAnimationProps) {
                 };
             } catch {}
 
-            onCleanup(() => {
+            teardown.push(() => {
                 swContainer.removeEventListener(
                     "controllerchange",
                     onControllerChange,
@@ -126,17 +148,39 @@ export default function LoadingAnimation(_props: LoadingAnimationProps) {
             });
         }
 
-        onCleanup(() => {
+        return () => {
             aborted = true;
             clearTimeout(liveTimer);
             perfObserver?.disconnect();
-            anim.destroy();
-        });
+            for (const release of teardown) release();
+        };
     });
 
     return (
         <div class={s.loadingContainer}>
-            <div class={s.loadingLottie} ref={containerRef} />
+            {/* Nodes first, then the C over them: the letter's own material is
+                what hides the route, so it surfaces only in the mouth and the
+                counter. Reordering these two blocks makes the nodes float over
+                the glyph and the whole idea disappears. */}
+            <svg class={s.loadingMark} viewBox="0 0 16 16" aria-hidden="true">
+                <For each={NODES}>
+                    {i => (
+                        <rect
+                            class={s.loadingMarkNode}
+                            x="10.9"
+                            y="6.8"
+                            width="2.6"
+                            height="2.4"
+                            style={{
+                                "animation-delay": `${
+                                    (i * CYCLE_MS) / NODES.length
+                                }ms`,
+                            }}
+                        />
+                    )}
+                </For>
+                <path class={s.loadingMarkC} d={MARK_C} />
+            </svg>
             <div class={s.loadingStatusWrapper}>
                 <span
                     class={[

@@ -56,20 +56,24 @@ describe("AppsPage", () => {
         unmount();
     });
 
-    it("labels the add field", () => {
+    it("labels the add field in plain words", () => {
         const { container, unmount } = renderSolid(() => <AppsPage />);
         const label = container.querySelector("label") as HTMLLabelElement;
         const input = container.querySelector("input") as HTMLInputElement;
         expect(label.getAttribute("for")).toBe(input.id);
-        expect(container.textContent?.toLowerCase()).toContain("add item");
+        expect(container.textContent?.toLowerCase()).toContain("add a site");
         unmount();
     });
 
-    it("renders the empty state as ghost positions", () => {
+    /**
+     * One line of text, not a grid of dashed numbered slots. The ghost grid
+     * looked like a broken page to a first-time user — eight empty boxes
+     * labelled 01–08 with nothing in them reads as "this failed to load".
+     */
+    it("renders the empty state as one plain sentence", () => {
         const { container, unmount } = renderSolid(() => <AppsPage />);
-        expect(
-            container.querySelectorAll("[data-ghost]").length,
-        ).toBeGreaterThan(0);
+        expect(container.textContent).toContain("Nothing pinned yet");
+        expect(container.querySelectorAll("[data-ghost]").length).toBe(0);
         unmount();
     });
 
@@ -89,10 +93,7 @@ describe("AppsPage", () => {
         unmount();
     });
 
-    it("renders each position as a direct child li of the ul", () => {
-        // Not just "a ul exists somewhere": Plate's as="li" only produces valid
-        // markup if the li is a real child of the list. A div here would be
-        // invalid and announced badly by screen readers.
+    it("renders each app as a direct child li of the ul", () => {
         mockApps = ONE_APP;
         const { container, unmount } = renderSolid(() => <AppsPage />);
         const list = container.querySelector("ul") as HTMLUListElement;
@@ -102,17 +103,29 @@ describe("AppsPage", () => {
         unmount();
     });
 
-    it("shows the app name and hides its detail until asked", () => {
+    /**
+     * Clicking an app opens it — one step. The earlier layout put "open"
+     * inside a per-tile disclosure, so the primary action was two clicks and
+     * the first click taught the user that clicking does not open.
+     */
+    it("opens the app on a single click of the tile", async () => {
         mockApps = ONE_APP;
+        const { tabManager } = await import("~/lib/TabManager");
         const { container, unmount } = renderSolid(() => <AppsPage />);
         expect(container.textContent).toContain("chess.org");
-        const trigger = container.querySelector(
-            "li button",
-        ) as HTMLButtonElement;
-        expect(trigger.getAttribute("aria-expanded")).toBe("false");
-        trigger.click();
+        (container.querySelector("li button") as HTMLButtonElement).click();
         flush();
-        expect(trigger.getAttribute("aria-expanded")).toBe("true");
+        expect(tabManager.createTab).toHaveBeenCalledWith("https://chess.org/");
+        expect(tabManager.activateTab).toHaveBeenCalled();
+        unmount();
+    });
+
+    it("labels the remove control with the app's name", () => {
+        mockApps = ONE_APP;
+        const { container, unmount } = renderSolid(() => <AppsPage />);
+        expect(
+            container.querySelector('[aria-label="Remove chess.org"]'),
+        ).not.toBeNull();
         unmount();
     });
 

@@ -147,7 +147,7 @@ const civil = {
             /**
              * Extract CSS custom properties from a theme CSS URL and inject them into the chii devtools.
              * Supports `/* @name ThemeName *\/` comments for naming themes.
-             * Pre-made themes: use `/themes/twilight-devtools.css`
+             * Pre-made themes: use `/themes/strata-devtools.css`
              * @param cssUrl - URL to a CSS file containing custom property definitions.
              */
             setTheme: devtoolsSetTheme,

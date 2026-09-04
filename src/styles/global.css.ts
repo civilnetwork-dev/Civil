@@ -28,7 +28,7 @@ globalStyle("*, *::before, *::after", {
 });
 
 globalStyle("html, body", {
-    backgroundColor: vars.color.dusk,
+    backgroundColor: vars.color.stratum,
     overflowX: "hidden",
 });
 
@@ -45,7 +45,7 @@ globalStyle("button, input, textarea, select", {
 // makes every control reachable without one. Components that need a
 // different offset override it locally.
 globalStyle("*:focus-visible", {
-    outline: `2px solid ${vars.color.sirius}`,
+    outline: `2px solid ${vars.color.cobalt}`,
     outlineOffset: 2,
     borderRadius: "inherit",
 });
@@ -64,14 +64,14 @@ globalStyle("*::-webkit-scrollbar-track", {
 });
 
 globalStyle("*::-webkit-scrollbar-thumb", {
-    backgroundColor: vars.color.haze,
+    backgroundColor: vars.color.talus,
     borderRadius: 999,
     border: "2px solid transparent",
     backgroundClip: "content-box",
 });
 
 globalStyle("*::-webkit-scrollbar-thumb:hover", {
-    backgroundColor: vars.color.dust,
+    backgroundColor: vars.color.talus,
 });
 
 globalStyle("*::-webkit-scrollbar-corner", {
@@ -80,5 +80,5 @@ globalStyle("*::-webkit-scrollbar-corner", {
 
 globalStyle("*", {
     scrollbarWidth: "thin" as "thin",
-    scrollbarColor: `${vars.color.haze} transparent`,
+    scrollbarColor: `${vars.color.talus} transparent`,
 });

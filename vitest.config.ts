@@ -2,6 +2,22 @@ import { resolve } from "node:path";
 import solid from "vite-plugin-solid";
 import { defineConfig } from "vitest/config";
 
+// vm.SourceTextModule (misc/extensionHost/host.ts's dynamic-import resolver,
+// for a chrome-extension:// specifier the default loader can't resolve on its
+// own) needs this Node flag to exist at all. Set here, before vitest spawns
+// its worker pool, rather than requiring `NODE_OPTIONS=--experimental-vm-
+// modules` from whoever runs `bun run test` — workers inherit `process.env`
+// by default, so setting it this early is enough. Bun's own vm shim doesn't
+// need it, but vitest's pool runs its workers under plain Node regardless of
+// what invoked the CLI (see misc/extensionHost's own devDependency patch on
+// @stacksjs/ts-cache for the same underlying fact, hit for a different
+// reason).
+const experimentalFlag = "--experimental-vm-modules";
+if (!(process.env.NODE_OPTIONS ?? "").includes(experimentalFlag)) {
+    process.env.NODE_OPTIONS =
+        `${process.env.NODE_OPTIONS ?? ""} ${experimentalFlag}`.trim();
+}
+
 /**
  * Deliberately does NOT reuse vite.config.ts.
  *

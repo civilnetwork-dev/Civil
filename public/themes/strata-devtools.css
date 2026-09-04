@@ -1,33 +1,76 @@
-/* @name Twilight */
+/* @name Strata */
+
+/*
+ * The chii devtools panel, dressed in the app's own palette.
+ *
+ * This file is a plain stylesheet rather than part of the vanilla-extract
+ * contract, because chii loads it as a theme by URL and never sees our build.
+ * That means the values below are duplicated from `src/styles/palette.ts` by
+ * hand and cannot drift silently — if the palette changes, this changes with
+ * it. The token names are DevTools', not ours; only the values are ours.
+ *
+ * ## Where the extra colours come from
+ *
+ * The palette is twelve colours and DevTools wants more distinct accents than
+ * that — it uses them to separate token types in the source viewer and console,
+ * so collapsing purple onto red and teal onto blue would cost real information.
+ * The two extras here are *tones* of palette colours rather than new hues:
+ * `--color-accent-purple` is a lighter tone of `wine` and both
+ * `--color-accent-teal` and `--color-primary-variant` are lighter tones of
+ * `cobalt`. A tone of a palette colour is not a thirteenth colour.
+ *
+ * `--color-background-elevation-2` is the same idea downward: nothing in the
+ * palette sits below `basalt`, and DevTools needs a third plane beneath the
+ * working one, so the deepest well is a darker tone of it.
+ *
+ * ## Contrast, measured against the background
+ *
+ * text-primary 13.94 · text-secondary 8.87 · accent-blue 4.80 · warning 12.63 ·
+ * success 9.53 · error 4.77 · on-primary 5.98 against `--color-primary`.
+ * `--color-text-disabled` lands at 4.80, which is *higher* than the tier it
+ * replaced (3.56) — disabled text is exempt from WCAG 1.4.3 either way, but
+ * there was no reason to keep it at the old value.
+ */
+
 :root {
-    --color-background: #122834;
-    --color-background-elevation-1: #0c1f2b;
-    --color-background-elevation-2: #071620;
-    --color-background-inverted: #e6eff4;
-    --color-primary: #4895e0;
-    --color-primary-variant: #7fd4d8;
-    --color-secondary: #95caff;
-    --color-error: #d77679;
-    --color-warning: #e6d6a9;
-    --color-success: #bac48f;
-    --color-on-primary: #122834;
-    --color-text-primary: #e6eff4;
-    --color-text-secondary: #c0d2dd;
-    --color-text-disabled: #5b7f94;
-    --color-details-hairline: #1b3543;
-    --color-accent-red: #d77679;
-    --color-accent-orange: #e9c79b;
-    --color-accent-yellow: #e6d6a9;
-    --color-accent-green: #bac48f;
-    --color-accent-blue: #4895e0;
-    --color-accent-purple: #95caff;
-    --color-accent-teal: #79bfb4;
-    --toolbar-bg-color: #0c1f2b;
-    --toolbar-color: #e6eff4;
-    --selection-bg-color: #1b3543;
-    /* 28% of the way from dusk toward the active-selection tint, matching the
-       proportion the Macchiato original used. Mapping this to dusk outright
-       made inactive selection identical to the background, i.e. invisible. */
-    --selection-inactive-bg-color: #152c38;
-    --focus-ring-color: #4895e0;
+    /* Surfaces, descending. The working plane matches the app's own content
+       plane, exactly as this theme's previous background matched it. */
+    --color-background: #22262f; /* stratum */
+    --color-background-elevation-1: #0e1119; /* basalt */
+    --color-background-elevation-2: #060911; /* basalt, deeper tone */
+    --color-background-inverted: #edf1fb; /* firn */
+
+    --color-primary: #4295e4; /* cobalt */
+    --color-primary-variant: #93caff; /* cobalt, lighter tone */
+    --color-secondary: #c2c6d2; /* snowmelt */
+    --color-on-primary: #0e1119; /* basalt */
+
+    /* The four verdicts, same assignments the app uses. */
+    --color-error: #c8789b; /* wine */
+    --color-warning: #f2e0c7; /* calcite */
+    --color-success: #c3caa4; /* juniper */
+
+    --color-text-primary: #edf1fb; /* firn */
+    --color-text-secondary: #c2c6d2; /* snowmelt */
+    --color-text-disabled: #8c919e; /* ash */
+    --color-details-hairline: #434751; /* talus */
+
+    --color-accent-red: #c8789b; /* wine */
+    --color-accent-orange: #e29b69; /* sandstone */
+    --color-accent-yellow: #f2e0c7; /* calcite */
+    --color-accent-green: #c3caa4; /* juniper */
+    --color-accent-blue: #4295e4; /* cobalt */
+    --color-accent-purple: #e195b5; /* wine, lighter tone */
+    --color-accent-teal: #93caff; /* cobalt, lighter tone */
+
+    --toolbar-bg-color: #0e1119; /* basalt */
+    --toolbar-color: #edf1fb; /* firn */
+
+    --selection-bg-color: #434751; /* talus */
+    /* 28% of the way from the background toward the active-selection tint,
+       matching the proportion the Macchiato original used. Mapping this to the
+       background outright made inactive selection invisible. */
+    --selection-inactive-bg-color: #2b2f39;
+
+    --focus-ring-color: #4295e4; /* cobalt */
 }

@@ -427,11 +427,119 @@ export function cleanupChiiArtifacts(iframe: HTMLIFrameElement): void {
     } catch {}
 }
 
+/**
+ * A proxied navigation that never fires `load`.
+ *
+ * The transport can die *after* it initialises — epoxy's wisp socket comes back
+ * `400 != 101` at connect time, long past `createTransport`'s init-time
+ * fallback — and when it does, `sframe.go()` resolves, nothing loads, and the
+ * tab sits on "Loading…" against a blank frame forever. Session replay shows
+ * exactly what people do next: they hammer Reload, which re-runs the same dead
+ * transport and changes nothing.
+ *
+ * So the timeout rotates to the next transport and retries once on its own,
+ * and only shows a page when the whole ladder is spent. Fifteen seconds is
+ * past a slow school link's first paint but well inside the patience that
+ * produced those rage clicks.
+ */
+const NAV_TIMEOUT_MS = 15_000;
+
+/** Mirrors the fallback ladder in `misc/config/scramjet/scramjetInit.ts`. */
+const TRANSPORT_ORDER = ["epoxy", "libcurl", "bare"] as const;
+type TransportName = (typeof TRANSPORT_ORDER)[number];
+
+function currentTransport(): TransportName {
+    const stored = localStorage.getItem("transport");
+    return TRANSPORT_ORDER.includes(stored as TransportName)
+        ? (stored as TransportName)
+        : TRANSPORT_ORDER[0];
+}
+
+/** True once the ladder is spent — kept side-effect free, unlike the rotate. */
+function isLastTransport(): boolean {
+    return (
+        TRANSPORT_ORDER.indexOf(currentTransport()) ===
+        TRANSPORT_ORDER.length - 1
+    );
+}
+
+/**
+ * Move to the next transport in the ladder, or return null when the current one
+ * is already the last. Persisted, so the next page load starts on the transport
+ * that actually works on this network rather than rediscovering the failure.
+ */
+function rotateTransport(): TransportName | null {
+    const index = TRANSPORT_ORDER.indexOf(currentTransport());
+    const next = TRANSPORT_ORDER[index + 1];
+    if (!next) return null;
+    localStorage.setItem("transport", next);
+    return next;
+}
+
+const CONNECTION_ERROR_STYLE = `
+:root{color-scheme:dark}
+body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
+background:#22262F;color:#C2C6D2;
+font:400 14px/1.55 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:34rem;padding:2rem}
+h1{margin:0 0 .75rem;font-size:15px;font-weight:600;letter-spacing:.02em;color:#EDF1FB}
+p{margin:0 0 .75rem}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;color:#E29B69}
+.rule{height:1px;background:#434751;margin:1.25rem 0}
+button,a.btn{font:inherit;color:#EDF1FB;background:transparent;border:1px solid #434751;
+padding:.45rem .9rem;cursor:pointer;text-decoration:none;display:inline-block}
+button:hover,a.btn:hover{border-color:#4295E4;color:#4295E4}
+.muted{color:#8C919E;font-size:12px}
+`;
+
+/**
+ * Rendered into the frame itself rather than over it: the frame is the thing
+ * that failed, and an overlay would leave a blank page underneath for anyone
+ * who dismissed it.
+ */
+function connectionErrorDoc(url: string, exhausted: boolean): string {
+    const safeUrl = url.replace(/[<&>"]/g, c => `&#${c.charCodeAt(0)};`);
+    const action = exhausted
+        ? `<p>Every connection method Civil has — <code>epoxy</code>,
+             <code>libcurl</code> and <code>bare</code> — failed on this
+             network. That usually means the filter is blocking Civil's
+             WebSocket, not that the site is down.</p>
+           <a class="btn" href="/checkfilters" target="_top">Check this network</a>`
+        : `<p>Civil switched to <code>${currentTransport()}</code>. Try again.</p>
+           <button type="button" id="retry">Try again</button>`;
+
+    return `<!doctype html><meta charset="utf-8"><title>Can't connect</title>
+<style>${CONNECTION_ERROR_STYLE}</style>
+<main>
+  <h1>Can't reach ${safeUrl}</h1>
+  <p>The connection to Civil's proxy opened but never delivered the page.</p>
+  <div class="rule"></div>
+  ${action}
+  <p class="muted">Reloading on its own won't help — the connection method has to change.</p>
+</main>
+<script>
+document.getElementById("retry")?.addEventListener("click", function () {
+  parent.postMessage({ type: "civil:nav-retry" }, location.origin);
+});
+</script>`;
+}
+
 export function createIframeManager(
     bar: BarInstance,
     push: (id: string, url: string) => void,
 ) {
     const iframeMap = new Map<string, HTMLIFrameElement>();
+    /** Pending navigation watchdogs, keyed by tab id. */
+    const navTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    /** Last proxied URL per tab, so a retry knows what to re-request. */
+    const lastProxiedUrl = new Map<string, string>();
+
+    const clearNavTimer = (id: string) => {
+        const timer = navTimers.get(id);
+        if (timer === undefined) return;
+        clearTimeout(timer);
+        navTimers.delete(id);
+    };
 
     void extensionsLaunchBackgrounds();
 
@@ -446,9 +554,16 @@ export function createIframeManager(
          * never navigates. The caller knows the scheme, so it says so.
          */
         forceInternal = false,
+        /** 0 for a user-initiated navigation, 1 for the automatic retry. */
+        attempt = 0,
     ) => {
         const iframe = iframeMap.get(id);
         if (!iframe) return;
+
+        clearNavTimer(id);
+        // A frame left holding the error page keeps rendering it: `srcdoc`
+        // outranks whatever `src` the proxy sets next.
+        iframe.removeAttribute("srcdoc");
 
         const chromeTab = extensionTab(id, url, "loading");
         dispatchExtensionBrowserEvent("webNavigation.onBeforeNavigate", [
@@ -501,23 +616,64 @@ export function createIframeManager(
 
         if (internal) {
             iframe.src = url;
-        } else {
-            bar.emit("submit", iframe, normalizeNav(url));
+            return;
         }
+
+        const target = normalizeNav(url);
+        lastProxiedUrl.set(id, target);
+        bar.emit("submit", iframe, target);
+
+        navTimers.set(
+            id,
+            setTimeout(() => {
+                navTimers.delete(id);
+                const rotated = attempt === 0 ? rotateTransport() : null;
+                if (rotated) {
+                    navigateIframe(id, url, forceInternal, attempt + 1);
+                    return;
+                }
+                tabManager.updateTab(id, {
+                    isLoading: false,
+                    title: "Can't connect",
+                });
+                iframe.removeAttribute("src");
+                iframe.srcdoc = connectionErrorDoc(target, isLastTransport());
+            }, NAV_TIMEOUT_MS),
+        );
     };
 
     const navigate = (id: string, url: string) =>
         navigateIframe(id, resolveUrl(url), url.startsWith("browser:"));
 
+    if (typeof window !== "undefined") {
+        window.addEventListener("message", event => {
+            if (event.origin !== window.location.origin) return;
+            if ((event.data as { type?: string })?.type !== "civil:nav-retry")
+                return;
+            const id = tabManager.activeId;
+            const url = id ? lastProxiedUrl.get(id) : undefined;
+            if (id && url) navigateIframe(id, url);
+        });
+    }
+
     const registerIframe = (id: string, el: HTMLIFrameElement) => {
         iframeMap.set(id, el);
 
         el.addEventListener("load", async () => {
+            // The page arrived, so the watchdog has nothing left to catch.
+            // Cleared before the early returns: a cross-origin frame throws on
+            // `location.href` and would otherwise leave the timer armed, firing
+            // a spurious "can't connect" over a page that loaded fine.
+            clearNavTimer(id);
+
             let href: string | undefined;
             try {
                 href = el.contentWindow?.location.href;
             } catch {}
-            if (!href || href === "about:blank") return;
+            // `about:srcdoc` is the connection-error page below — a Civil
+            // artefact, not somewhere the user went, so it stays out of history.
+            if (!href || href === "about:blank" || href === "about:srcdoc")
+                return;
 
             try {
                 const docTitle = el.contentDocument?.title;

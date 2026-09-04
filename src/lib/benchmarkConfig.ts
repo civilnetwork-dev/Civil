@@ -31,17 +31,17 @@ export type ImplMetadata = { short: string; color: string; tag: string };
 const IMPL_METADATA: Record<string, ImplMetadata> = {
     "UltraViolet new encoding method": {
         short: "UltraViolet new",
-        color: colors.rigel,
+        color: colors.cobalt,
         tag: "JavaScript",
     },
     "UltraViolet old encoding method": {
         short: "UltraViolet old",
-        color: colors.vega,
+        color: colors.sandstone,
         tag: "JavaScript",
     },
     "Civil C++/WebAssembly encoding method": {
         short: "C++/WASM",
-        color: colors.airglow,
+        color: colors.juniper,
         tag: "WebAssembly",
     },
 };
@@ -68,13 +68,13 @@ export function getImplMeta(impl: string): ImplMetadata {
  */
 
 export const axisBase = {
-    axisLine: { lineStyle: { color: colors.haze } },
+    axisLine: { lineStyle: { color: colors.talus } },
     axisTick: { show: false },
     // The ruled field on every other page is a hairline grid; the chart's
     // split lines are the same idea, so they are solid hairlines rather than
     // the dashes echarts defaults to.
-    splitLine: { lineStyle: { color: colors.horizon, type: "solid" as const } },
-    axisLabel: { color: colors.moonlight, fontFamily: FONT_MONO, fontSize: 10 },
+    splitLine: { lineStyle: { color: colors.scree, type: "solid" as const } },
+    axisLabel: { color: colors.snowmelt, fontFamily: FONT_MONO, fontSize: 10 },
 };
 
 export const gridBase = {
@@ -88,17 +88,17 @@ export const gridBase = {
 export const tooltipBase = {
     trigger: "axis" as const,
     axisPointer: { type: "shadow" as const },
-    backgroundColor: colors.night,
-    borderColor: colors.haze,
+    backgroundColor: colors.basalt,
+    borderColor: colors.talus,
     borderWidth: 1,
-    textStyle: { color: colors.daylight, fontFamily: FONT_MONO, fontSize: 12 },
+    textStyle: { color: colors.firn, fontFamily: FONT_MONO, fontSize: 12 },
     // Square, and no drop shadow: depth in this language comes from rules and
     // alignment, never from simulated light.
     extraCssText: "box-shadow:none;border-radius:0",
 };
 
 export const axisNameStyle = {
-    color: colors.starlight,
+    color: colors.snowmelt,
     fontFamily: FONT_MONO,
     fontSize: 10,
 };

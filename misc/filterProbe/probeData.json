@@ -1,0 +1,156 @@
+{
+    "aristotle": {
+        "displayName": "Aristotle K12",
+        "domains": ["aristotleinsight.com"],
+        "blockMarkers": [
+            "blocked for a video",
+            "blocked by a teacher.",
+            "blocked by an administrator.",
+            "blocked by a guardian using AristotleK12 Parent.",
+            "blocked for a video to be blocked regardless of classification"
+        ]
+    },
+    "blocksi": {
+        "displayName": "Blocksi",
+        "domains": ["blocksi.net", "appcontext.app"],
+        "blockMarkers": [
+            "Page blocked, count updated",
+            "blocked by your administrator.",
+            "Blocked by Youtube Keyword Filter",
+            "Blocked by Blocksi web chat policy",
+            "Access denied for security reasons.",
+            "Access blocked due to YT access time restrictions.",
+            "Access blocked due to bedtime restrictions by parent.",
+            "Access blocked due to gaming access time restrictions",
+            "Access blocked due to general access time restrictions",
+            "Access blocked due to social media access time restric",
+            "Access blocked due to YT access time restrictions by p",
+            "Access blocked due to Google Games access time restric",
+            "blocked by the schoolâs keyword filter list, with id:"
+        ]
+    },
+    "cisco": {
+        "displayName": "Cisco Umbrella",
+        "domains": [
+            "opendns.com",
+            "opendnstest.com",
+            "checkumbrella.com",
+            "internetbadguys.com"
+        ],
+        "blockMarkers": [
+            "This site is blocked due to a security threat.",
+            "site has been blocked to prevent an attack on your browser."
+        ]
+    },
+    "contentkeeper": {
+        "displayName": "ContentKeeper",
+        "domains": ["contentkeeper.com"],
+        "blockMarkers": []
+    },
+    "fortiguard": {
+        "displayName": "FortiGuard",
+        "domains": ["fortinet.net", "fortiguard.net"],
+        "blockMarkers": ["This content was blocked due to policy setting"]
+    },
+    "goguardian": {
+        "displayName": "GoGuardian",
+        "domains": ["goguardian.com"],
+        "blockMarkers": [
+            "Blocked by School Admin",
+            "blocked by your school.",
+            "url was blocked by admin filter",
+            "url was blocked by parent filter",
+            "blocked due to domain settings",
+            "URL is restricted to the same domain and protocol as the * application docu"
+        ]
+    },
+    "hapara": {
+        "displayName": "Hāpara",
+        "domains": ["hapara.com"],
+        "blockMarkers": []
+    },
+    "iboss": {
+        "displayName": "iboss",
+        "domains": [
+            "ibosscloud.com",
+            "ibossgov.com",
+            "myiboss.net",
+            "ibosstest.com",
+            "iboss.com"
+        ],
+        "blockMarkers": ["site has been restricted."]
+    },
+    "impero": {
+        "displayName": "Impero",
+        "domains": ["imperosoftware.com"],
+        "blockMarkers": ["blocked for school code"]
+    },
+    "imtlazarus": {
+        "displayName": "IMTLazarus",
+        "domains": ["imtlazarus.com"],
+        "blockMarkers": []
+    },
+    "interclass": {
+        "displayName": "InterCLASS",
+        "domains": ["interclasscloud.com"],
+        "blockMarkers": ["blocked by other connection holding version"]
+    },
+    "lanschool": {
+        "displayName": "LanSchool",
+        "domains": ["lenovosoftware.com", "lanschool.com", "stone-ware.com"],
+        "blockMarkers": []
+    },
+    "lightspeed": {
+        "displayName": "Lightspeed",
+        "domains": [
+            "lightspeedsystems.com",
+            "lsfilter.com",
+            "catchon.com",
+            "lsclassroom.com",
+            "lsrelayaccess.com",
+            "lsaccess.me",
+            "lsurl.me"
+        ],
+        "blockMarkers": [
+            "blocked by the // active filter policy. We start tracking f"
+        ]
+    },
+    "linewize": {
+        "displayName": "Linewize",
+        "domains": ["linewize.net", "linewize.com", "familyzone.com"],
+        "blockMarkers": [
+            "URL not available in config",
+            "blocked due to focus lock mode.",
+            "access has been blocked by your school",
+            "blocked by other connection holding version",
+            "Access has been denied by your internet access provider becaus"
+        ]
+    },
+    "loilo": {
+        "displayName": "LoiLo",
+        "domains": ["loilonote.app", "loilo.tv"],
+        "blockMarkers": []
+    },
+    "mobileguardian": {
+        "displayName": "Mobile Guardian",
+        "domains": ["mobileguardian.com"],
+        "blockMarkers": ["Blocked by Policy"]
+    },
+    "netsupport": {
+        "displayName": "NetSupport",
+        "domains": ["classroom.cloud", "netsupportsoftware.com"],
+        "blockMarkers": []
+    },
+    "securly": {
+        "displayName": "Securly",
+        "domains": ["securly.com", "securly.io"],
+        "blockMarkers": [
+            "blocked by another connection",
+            "blocked by school policy. Please speak with an adult you tru",
+            "This site has been blocked by a teacher",
+            "This site is not available during site lock",
+            "This site has been blocked by the administrator",
+            "This content has been blocked by your administrator"
+        ]
+    }
+}

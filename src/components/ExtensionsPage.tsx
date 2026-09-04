@@ -268,12 +268,11 @@ export default function ExtensionsPage() {
     return (
         <Sheet>
             <TitleBlock
-                eyebrow="preferences"
                 title="Extensions"
                 meta={
                     extensions().length > 0
                         ? `${enabledCount()} of ${extensions().length} enabled`
-                        : "none installed"
+                        : undefined
                 }
                 actions={
                     <div class={s.titleActions}>
@@ -363,8 +362,11 @@ export default function ExtensionsPage() {
                 </Show>
             </p>
 
+            {/* One statement, not three. The title block's meta, this rule's
+                label and the body line all said "none installed" within 150px
+                of each other; the rule label and the meta are gone. */}
             <Show when={extensions().length === 0}>
-                <Rule label="none installed" weight="major" />
+                <Rule weight="major" />
                 <div class={s.empty}>
                     <Anno muted>
                         no extensions yet — yours to add, never pushed to you

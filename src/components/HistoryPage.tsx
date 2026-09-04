@@ -4,26 +4,20 @@ import {
     historyClear,
     historyDelete,
     historyGetAll,
-    historyGetMethod,
-    historySetMethod,
 } from "~/api/history";
 import { IconClose, IconSearch, IconWorld } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
-import Unfold from "~/components/schematic/Unfold";
 import { onLsChange } from "~/lib/reactiveStorage";
+import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/HistoryPage.css";
 import * as schematic from "~/styles/schematic.css";
-import type { CivilHistoryEntry, HistoryStorageMethod } from "~/types";
-import { Select } from "./ui/Select";
+import type { CivilHistoryEntry } from "~/types";
 
 export default function HistoryPage() {
     const [entries, setEntries] = createSignal<CivilHistoryEntry[]>([]);
-    const [method, setMethod] = createSignal<HistoryStorageMethod>(
-        historyGetMethod(),
-    );
     const [query, setQuery] = createSignal("");
     let filterInput: HTMLInputElement | undefined;
 
@@ -76,6 +70,23 @@ export default function HistoryPage() {
         setEntries(entries().filter(e => e.id !== id));
     };
 
+    /**
+     * Clicking an entry opens the page — the expectation every browser's
+     * history page has trained. This page previously could not navigate at
+     * all: clicking an entry opened a disclosure showing the full URL and a
+     * remove link, so the one thing a user comes to history to do was the one
+     * thing it did not offer.
+     */
+    const handleOpen = (entry: CivilHistoryEntry) => {
+        const existing = tabManager.tabs.find(t => t.url === entry.url);
+        if (existing) {
+            tabManager.activateTab(existing.id);
+        } else {
+            const t = tabManager.createTab(entry.url);
+            tabManager.activateTab(t.id);
+        }
+    };
+
     // "/" jumps to the filter the way it does in a pager, but only when the
     // user isn't already typing somewhere.
     onSettled(() => {
@@ -95,18 +106,9 @@ export default function HistoryPage() {
         return () => window.removeEventListener("keydown", onKey);
     });
 
-    // Each backend holds its own records, so the switch has to re-read.
-    // Without the reload the page kept showing the previous store's entries
-    // under the new store's name.
-    const handleMethodChange = (m: HistoryStorageMethod) => {
-        historySetMethod(m);
-        setMethod(m);
-        reload();
-    };
-
     /**
      * Hostname only. A full URL in the row would push the timestamp column off
-     * the sheet on long paths; the complete address is one unfold away.
+     * the sheet on long paths; the full address is the row's hover title.
      */
     const hostOf = (url: string) => {
         try {
@@ -182,23 +184,15 @@ export default function HistoryPage() {
 
     return (
         <Sheet>
+            {/* The storage-backend Select (localStorage vs IndexedDB) that
+                used to sit here was a developer control in a user page: no
+                student can weigh that choice, and offering it suggests they
+                should. The API keeps whatever method is stored; only the
+                chooser is gone. */}
             <TitleBlock
-                eyebrow="archive"
                 title="History"
-                meta={`${String(entries().length)} entries`}
                 actions={
                     <div class={s.titleActions}>
-                        <Select
-                            value={method()}
-                            options={[
-                                {
-                                    value: "localstorage",
-                                    label: "localStorage",
-                                },
-                                { value: "indexeddb", label: "IndexedDB" },
-                            ]}
-                            onChange={handleMethodChange}
-                        />
                         <Show when={entries().length > 0}>
                             <button
                                 type="button"
@@ -260,44 +254,19 @@ export default function HistoryPage() {
                             <kbd class={s.filterHint}>/</kbd>
                         </Show>
                     </div>
-                    {/* The visual scope line lays its numbers and words out as
-                        separate spans so they can be sized and coloured
-                        independently, but that leaves no whitespace between
-                        them in the DOM — a live region over this markup
-                        announces "3pages2days". So the columns are hidden from
-                        the accessibility tree and the announcement is carried
-                        by a visually-hidden sibling that reads as a sentence.
-                        Measured in a browser; happy-dom computes no layout and
-                        no test can see the difference. */}
-                    <p class={s.scopeStat} aria-hidden="true">
-                        <Show when={query().trim()}>
-                            <span class={s.scopeStatNum}>
-                                {String(matches().length)}
-                            </span>
-                            <span class={s.scopeStatWord}>of</span>
-                        </Show>
-                        <span class={s.scopeStatNum}>
-                            {String(entries().length)}
-                        </span>
-                        <span class={s.scopeStatWord}>
-                            {entries().length === 1 ? "page" : "pages"}
-                        </span>
-                        <span class={s.scopeStatSep} />
-                        <span class={s.scopeStatNum}>
-                            {String(groupedByDay().length)}
-                        </span>
-                        <span class={s.scopeStatWord}>
-                            {groupedByDay().length === 1 ? "day" : "days"}
-                        </span>
-                    </p>
-                    <p class={schematic.srOnly} aria-live="polite">
+                    {/* One text node, so the live region reads exactly what
+                        the eye does. The previous markup styled numbers and
+                        words as separate spans, which announced "3pages2days"
+                        and needed an aria-hidden copy plus a hidden sibling
+                        to repair — two structures saying one sentence. */}
+                    <p class={s.scopeStat} aria-live="polite">
                         {scopeSentence()}
                     </p>
                 </div>
             </Show>
 
             <Show when={entries().length === 0}>
-                <Rule label="record" weight="hair" />
+                <Rule weight="hair" />
                 <div class={s.empty}>
                     <Anno class={s.emptyText}>
                         no history yet — and no copy of it anywhere else
@@ -306,7 +275,7 @@ export default function HistoryPage() {
             </Show>
 
             <Show when={entries().length > 0 && matches().length === 0}>
-                <Rule label="record" weight="hair" />
+                <Rule weight="hair" />
                 <div class={s.empty}>
                     <Anno class={s.emptyText}>
                         nothing recorded matches “{query().trim()}”
@@ -372,103 +341,58 @@ export default function HistoryPage() {
                                 <For each={group().items} keyed={false}>
                                     {entry => (
                                         <div class={s.entry}>
-                                            <Unfold
-                                                label={`${entry().title || entry().url} detail`}
-                                                summary={
-                                                    <span
-                                                        class={s.entrySummary}
-                                                    >
-                                                        <Show
-                                                            when={
-                                                                entry().favicon
-                                                            }
-                                                            fallback={
-                                                                <IconWorld
-                                                                    size={16}
-                                                                    class={
-                                                                        s.favicon
-                                                                    }
-                                                                />
-                                                            }
-                                                        >
-                                                            <img
-                                                                src={
-                                                                    entry()
-                                                                        .favicon
-                                                                }
-                                                                class={
-                                                                    s.favicon
-                                                                }
-                                                                alt=""
-                                                                onError={e => {
-                                                                    (
-                                                                        e.currentTarget as HTMLImageElement
-                                                                    ).style.display =
-                                                                        "none";
-                                                                }}
-                                                            />
-                                                        </Show>
-                                                        <span
-                                                            class={s.entryTitle}
-                                                        >
-                                                            {entry().title ||
-                                                                entry().url}
-                                                        </span>
-                                                        {/* Host and time are in
-                                                            the row, not behind
-                                                            the unfold. A row
-                                                            carrying only a
-                                                            title left 60% of
-                                                            the sheet empty and
-                                                            made "where and
-                                                            when" a click each,
-                                                            which is the whole
-                                                            question an archive
-                                                            answers. */}
-                                                        <span
-                                                            class={s.entryHost}
-                                                        >
-                                                            {hostOf(
-                                                                entry().url,
-                                                            )}
-                                                        </span>
-                                                        <span
-                                                            class={s.entryStamp}
-                                                        >
-                                                            {formatTime(
-                                                                entry()
-                                                                    .visitedAt,
-                                                            )}
-                                                        </span>
-                                                    </span>
+                                            <button
+                                                type="button"
+                                                class={s.entrySummary}
+                                                title={entry().url}
+                                                onClick={() =>
+                                                    handleOpen(entry())
                                                 }
                                             >
-                                                <div class={s.entryDetail}>
-                                                    <Anno
-                                                        muted
-                                                        class={s.entryUrl}
-                                                    >
-                                                        {entry().url}
-                                                    </Anno>
-                                                    <div
-                                                        class={
-                                                            s.entryDetailActions
-                                                        }
-                                                    >
-                                                        <button
-                                                            type="button"
-                                                            class={s.deleteBtn}
-                                                            onClick={() =>
-                                                                handleDelete(
-                                                                    entry().id,
-                                                                )
-                                                            }
-                                                        >
-                                                            remove
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </Unfold>
+                                                <Show
+                                                    when={entry().favicon}
+                                                    fallback={
+                                                        <IconWorld
+                                                            size={16}
+                                                            class={s.favicon}
+                                                        />
+                                                    }
+                                                >
+                                                    <img
+                                                        src={entry().favicon}
+                                                        class={s.favicon}
+                                                        alt=""
+                                                        onError={e => {
+                                                            (
+                                                                e.currentTarget as HTMLImageElement
+                                                            ).style.display =
+                                                                "none";
+                                                        }}
+                                                    />
+                                                </Show>
+                                                <span class={s.entryTitle}>
+                                                    {entry().title ||
+                                                        entry().url}
+                                                </span>
+                                                <span class={s.entryHost}>
+                                                    {hostOf(entry().url)}
+                                                </span>
+                                                <span class={s.entryStamp}>
+                                                    {formatTime(
+                                                        entry().visitedAt,
+                                                    )}
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class={s.deleteBtn}
+                                                aria-label={`Remove ${entry().title || entry().url} from history`}
+                                                onClick={() =>
+                                                    handleDelete(entry().id)
+                                                }
+                                            >
+                                                <IconClose size={14} />
+                                            </button>
                                         </div>
                                     )}
                                 </For>

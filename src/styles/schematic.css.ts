@@ -50,9 +50,9 @@ export const FONT_MONO =
  * one line that matters on the page.
  */
 export const RULE = {
-    hair: `0.5px solid ${vars.color.horizon}`,
-    major: `1px solid ${vars.color.haze}`,
-    accent: `1px solid ${vars.color.sirius}`,
+    hair: `0.5px solid ${vars.color.scree}`,
+    major: `1px solid ${vars.color.talus}`,
+    accent: `1px solid ${vars.color.cobalt}`,
 } as const;
 
 /* -------------------------------------------------------------------- */
@@ -95,7 +95,7 @@ export const ANNO = {
     fontWeight: 500,
     letterSpacing: "0.02em",
     fontVariantNumeric: "tabular-nums",
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
 } as const;
 
 export const anno = style({ ...ANNO });
@@ -112,7 +112,7 @@ export const lede = style({
     margin: "0 0 24px",
     fontSize: "13.5px",
     lineHeight: 1.55,
-    color: vars.color.halo,
+    color: vars.color.firn,
 });
 
 /**
@@ -123,7 +123,7 @@ export const lede = style({
  */
 export const annoMuted = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });
 
 /* -------------------------------------------------------------------- */
@@ -231,7 +231,7 @@ export const titleBlockEyebrow = style({
 export const titleBlockMark = style({
     width: "16px",
     height: "2px",
-    background: vars.color.sirius,
+    background: vars.color.cobalt,
     opacity: 0.75,
 });
 
@@ -241,7 +241,7 @@ export const titleBlockTitle = style({
     fontWeight: 600,
     lineHeight: 1.05,
     letterSpacing: "-0.015em",
-    color: vars.color.daylight,
+    color: vars.color.firn,
 });
 
 /** Eyebrow, title and meta as one stacked identity, kept out of the flex row. */
@@ -252,7 +252,7 @@ export const titleBlockIdent = style({
     minWidth: 0,
 });
 
-export const titleBlockMeta = style({ ...ANNO, color: vars.color.starlight });
+export const titleBlockMeta = style({ ...ANNO, color: vars.color.snowmelt });
 
 /* -------------------------------------------------------------------- */
 /* Labelled rule                                                         */
@@ -303,7 +303,7 @@ export const plateTick = style({
     width: "6px",
     height: "6px",
     pointerEvents: "none",
-    borderColor: vars.color.dust,
+    borderColor: vars.color.talus,
 });
 
 export const plateTickCorner = styleVariants({
@@ -421,7 +421,7 @@ export const inputRow = style({
     paddingBottom: "6px",
     borderBottom: RULE.hair,
     selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.sirius },
+        "&:focus-within": { borderBottomColor: vars.color.cobalt },
     },
 });
 
@@ -440,13 +440,13 @@ export const inputControl = style({
     outline: "none",
     fontFamily: FONT_MONO,
     fontSize: "13px",
-    color: vars.color.daylight,
-    "::placeholder": { color: vars.color.cinder },
+    color: vars.color.firn,
+    "::placeholder": { color: vars.color.ash },
 });
 
 export const inputHint = style({
     ...ANNO,
-    color: vars.color.antares,
+    color: vars.color.wine,
     display: "block",
     marginTop: "5px",
 });
@@ -463,5 +463,5 @@ export const inputHint = style({
 export const divider = style({
     height: 0,
     borderTop: "1px solid transparent",
-    borderImage: `${hairline(vars.color.horizon)} 1`,
+    borderImage: `${hairline(vars.color.scree)} 1`,
 });

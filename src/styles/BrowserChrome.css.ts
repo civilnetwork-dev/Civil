@@ -45,16 +45,16 @@ export const browser = style({
     width: "100%",
     height: "100vh",
     minHeight: 0,
-    background: vars.color.dusk,
+    background: vars.color.stratum,
     fontFamily: FONT_SANS,
     fontSize: "13px",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     overflow: "hidden",
 });
 
 export const browserChrome = style({
     flexShrink: 0,
-    background: vars.color.void,
+    background: vars.color.basalt,
     position: "relative",
 });
 
@@ -63,7 +63,7 @@ export const browserTabstrip = style({
     alignItems: "stretch",
     gap: 0,
     padding: "6px 8px 0",
-    background: vars.color.void,
+    background: vars.color.basalt,
     overflow: "visible",
     position: "relative",
 });
@@ -88,7 +88,7 @@ export const tab = style({
     overflow: "visible",
     userSelect: "none",
     background: "transparent",
-    color: vars.color.cinder,
+    color: vars.color.ash,
     borderTop: "1px solid transparent",
     borderLeft: "1px solid transparent",
     borderRight: "1px solid transparent",
@@ -113,8 +113,8 @@ export const tab = style({
             borderLeft: RULE.hair,
         },
         "&:hover": {
-            background: vars.color.night,
-            color: vars.color.halo,
+            background: vars.color.basalt,
+            color: vars.color.firn,
         },
     },
 });
@@ -125,12 +125,12 @@ export const tab = style({
  * along its top is the only accent in the chrome.
  */
 export const tabActive = style({
-    background: vars.color.dusk,
-    color: vars.color.daylight,
+    background: vars.color.stratum,
+    color: vars.color.firn,
     zIndex: 4,
     borderTop: RULE.accent,
-    borderLeft: `1px solid ${vars.color.haze}`,
-    borderRight: `1px solid ${vars.color.haze}`,
+    borderLeft: `1px solid ${vars.color.talus}`,
+    borderRight: `1px solid ${vars.color.talus}`,
     selectors: {
         // Bridges the 1px seam between the tab and the row below it so the two
         // surfaces meet with no line between them.
@@ -141,7 +141,7 @@ export const tabActive = style({
             right: 0,
             bottom: "-1px",
             height: "1px",
-            background: vars.color.dusk,
+            background: vars.color.stratum,
             zIndex: 10,
             pointerEvents: "none",
         },
@@ -152,14 +152,14 @@ export const tabActive = style({
 });
 
 globalStyle(`.${tab}:focus-visible`, {
-    outline: `1px solid ${vars.color.sirius}`,
+    outline: `1px solid ${vars.color.cobalt}`,
     outlineOffset: "-1px",
 });
 
 export const tabIconActive = style({
     width: "14px",
     height: "14px",
-    color: vars.color.sirius,
+    color: vars.color.cobalt,
 });
 
 export const tabTitleActive = style({
@@ -175,11 +175,11 @@ export const tabDragging = style({
 });
 
 globalStyle(`.${tab}[data-tab-drop-over="true"]`, {
-    background: `color-mix(in srgb, ${vars.color.sirius} 14%, ${vars.color.night})`,
-    color: vars.color.daylight,
+    background: `color-mix(in srgb, ${vars.color.cobalt} 14%, ${vars.color.basalt})`,
+    color: vars.color.firn,
     // A drop target is marked by a solid accent edge on the side the tab will
     // land against, not by a glow.
-    boxShadow: `inset 2px 0 0 0 ${vars.color.sirius}`,
+    boxShadow: `inset 2px 0 0 0 ${vars.color.cobalt}`,
 });
 
 export const tabFavicon = style({
@@ -196,12 +196,12 @@ export const tabIcon = style({
     width: "14px",
     height: "14px",
     flexShrink: 0,
-    color: vars.color.ember,
+    color: vars.color.ash,
     transitionProperty: "color",
     transitionDuration: "0.1s",
     transitionTimingFunction: "ease",
     selectors: {
-        [`.${tabActive} &`]: { color: vars.color.sirius },
+        [`.${tabActive} &`]: { color: vars.color.cobalt },
     },
 });
 
@@ -226,7 +226,7 @@ export const tabClose = style({
     height: "16px",
     border: "none",
     background: "transparent",
-    color: vars.color.ember,
+    color: vars.color.ash,
     cursor: "pointer",
     padding: 0,
     opacity: 0,
@@ -241,9 +241,9 @@ export const tabClose = style({
             opacity: 1,
             pointerEvents: "auto",
         },
-        "&:hover": { color: vars.color.antares },
+        "&:hover": { color: vars.color.wine },
         "&:focus-visible": {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "1px",
         },
     },
@@ -258,19 +258,19 @@ export const tabNew = style({
     width: "24px",
     height: "24px",
     marginLeft: "6px",
-    border: `0.5px solid ${vars.color.horizon}`,
+    border: `0.5px solid ${vars.color.scree}`,
     background: "transparent",
-    color: vars.color.cinder,
+    color: vars.color.ash,
     cursor: "pointer",
     transition: `background ${T_FAST}, color ${T_FAST}, border-color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            color: vars.color.sirius,
-            borderColor: vars.color.sirius,
+            color: vars.color.cobalt,
+            borderColor: vars.color.cobalt,
         },
         "&:focus-visible": {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "1px",
         },
     },
@@ -282,9 +282,9 @@ export const tabDragClone = style({
     gap: "7px",
     padding: "0 11px",
     overflow: "hidden",
-    background: vars.color.night,
-    color: vars.color.daylight,
-    border: `1px solid ${vars.color.haze}`,
+    background: vars.color.basalt,
+    color: vars.color.firn,
+    border: `1px solid ${vars.color.talus}`,
     // No lift shadow: a dragged tab is distinguished by its accent border and
     // by moving, which is signal enough without simulating a light source.
     pointerEvents: "none",
@@ -310,7 +310,7 @@ export const urlbarRow = style({
     alignItems: "center",
     gap: "4px",
     padding: "0 8px",
-    background: vars.color.void,
+    background: vars.color.basalt,
     borderBottom: RULE.major,
     position: "relative",
     zIndex: 2,
@@ -342,14 +342,14 @@ const chromeBtn = {
 
 export const extensionsBtn = style({
     ...chromeBtn,
-    color: vars.color.cinder,
+    color: vars.color.ash,
     selectors: {
         "&:hover": {
-            background: vars.color.horizon,
-            color: vars.color.sirius,
+            background: vars.color.scree,
+            color: vars.color.cobalt,
         },
         "&:focus-visible": {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "-1px",
         },
     },
@@ -357,14 +357,14 @@ export const extensionsBtn = style({
 
 export const urlbarNavBtn = style({
     ...chromeBtn,
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
     selectors: {
         "&:hover:not(:disabled)": {
-            background: vars.color.horizon,
-            color: vars.color.daylight,
+            background: vars.color.scree,
+            color: vars.color.firn,
         },
         "&:focus-visible": {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "-1px",
         },
     },
@@ -397,20 +397,20 @@ export const urlbarOmnibox = style({
     height: "26px",
     background: "transparent",
     border: "none",
-    borderBottom: `1px solid ${vars.color.haze}`,
+    borderBottom: `1px solid ${vars.color.talus}`,
     padding: "0 4px 0 2px",
     transition: `border-color ${T_FAST}, background ${T_FAST}`,
     transitionDuration: "0.1s",
 });
 
 export const urlbarOmniboxFocus = style({
-    borderBottomColor: vars.color.sirius,
+    borderBottomColor: vars.color.cobalt,
 });
 
 export const urlbarLock = style({
     display: "flex",
     alignItems: "center",
-    color: vars.color.airglow,
+    color: vars.color.juniper,
     flexShrink: 0,
 });
 
@@ -419,20 +419,20 @@ export const urlbarInput = style({
     minWidth: 0,
     border: "none",
     background: "transparent",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontSize: "12.5px",
     // An address is data, not prose, and the rest of the app sets data in
     // mono. It also makes a lookalike domain easier to read character by
     // character, which on a proxy is not a cosmetic concern.
     fontFamily: FONT_MONO,
     outline: "none",
-    caretColor: vars.color.sirius,
+    caretColor: vars.color.cobalt,
     padding: "0 2px",
     selectors: {
         "&::selection": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 28%, transparent)`,
         },
-        "&::placeholder": { color: vars.color.cinder },
+        "&::placeholder": { color: vars.color.ash },
         "&[placeholder]:not(:focus)::placeholder": { opacity: 1 },
     },
 });
@@ -446,7 +446,7 @@ export const urlbarGoBtn = style({
     height: "20px",
     border: "none",
     background: "transparent",
-    color: vars.color.cinder,
+    color: vars.color.ash,
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
@@ -454,9 +454,9 @@ export const urlbarGoBtn = style({
     transitionDuration: "0.1s",
     selectors: {
         "&::after": hitArea(),
-        "&:hover": { color: vars.color.sirius },
+        "&:hover": { color: vars.color.cobalt },
         "&:focus-visible": {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "1px",
         },
     },
@@ -468,9 +468,9 @@ export const urlbarSuggestions = style({
     top: "100%",
     left: 0,
     right: 0,
-    background: vars.color.night,
-    border: `1px solid ${vars.color.haze}`,
-    borderTop: `1px solid ${vars.color.sirius}`,
+    background: vars.color.basalt,
+    border: `1px solid ${vars.color.talus}`,
+    borderTop: `1px solid ${vars.color.cobalt}`,
     overflow: "hidden",
     listStyle: "none",
     margin: 0,
@@ -485,7 +485,7 @@ export const urlbarSuggestionRow = style({
     padding: "7px 12px",
     fontSize: "12.5px",
     fontFamily: FONT_MONO,
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
     cursor: "pointer",
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -506,15 +506,15 @@ export const urlbarSuggestionRow = style({
             borderTop: RULE.hair,
         },
         "&:hover": {
-            background: vars.color.horizon,
-            color: vars.color.daylight,
+            background: vars.color.scree,
+            color: vars.color.firn,
         },
     },
 });
 
 globalStyle(
     `.${urlbarOmniboxWrap}:has(.${urlbarSuggestions}) .${urlbarOmnibox}`,
-    { borderBottomColor: vars.color.sirius },
+    { borderBottomColor: vars.color.cobalt },
 );
 
 export const urlbarHistoryRow = style({
@@ -538,7 +538,7 @@ export const urlbarHistoryRow = style({
             height: 0,
             borderTop: RULE.hair,
         },
-        "&:hover": { background: vars.color.horizon },
+        "&:hover": { background: vars.color.scree },
     },
 });
 
@@ -547,7 +547,7 @@ export const urlbarHistoryFavicon = style({
     height: "14px",
     objectFit: "contain",
     flexShrink: 0,
-    color: vars.color.cinder,
+    color: vars.color.ash,
 });
 
 export const urlbarHistoryInfo = style({
@@ -559,7 +559,7 @@ export const urlbarHistoryInfo = style({
 });
 
 export const urlbarHistoryTitle = style({
-    color: vars.color.daylight,
+    color: vars.color.firn,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -568,7 +568,7 @@ export const urlbarHistoryTitle = style({
 
 export const urlbarHistoryUrl = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -591,7 +591,7 @@ export const browserViewport = style({
     flex: 1,
     minHeight: 0,
     position: "relative",
-    background: vars.color.dusk,
+    background: vars.color.stratum,
 });
 
 export const browserFrame = style({
@@ -617,23 +617,23 @@ export const browserEmpty = style({
     justifyContent: "center",
     height: "100%",
     gap: "16px",
-    color: vars.color.ember,
+    color: vars.color.ash,
     fontSize: "14px",
 });
 
 export const browserEmptyIcon = style({
-    color: vars.color.dust,
+    color: vars.color.talus,
 });
 
-globalStyle(`.${browserEmpty} p`, { margin: 0, color: vars.color.moonlight });
+globalStyle(`.${browserEmpty} p`, { margin: 0, color: vars.color.snowmelt });
 
 // The one call to action in the chrome. A ruled text button rather than a
 // filled pill, matching the text buttons every sheet uses.
 globalStyle(`.${browserEmpty} button`, {
     padding: "5px 14px",
     background: "transparent",
-    color: vars.color.vega,
-    border: `0.5px solid ${vars.color.sirius}`,
+    color: vars.color.cobalt,
+    border: `0.5px solid ${vars.color.cobalt}`,
     cursor: "pointer",
     fontFamily: FONT_MONO,
     fontSize: "11px",
@@ -645,6 +645,6 @@ globalStyle(`.${browserEmpty} button`, {
 });
 
 globalStyle(`.${browserEmpty} button:hover`, {
-    background: `color-mix(in srgb, ${vars.color.sirius} 16%, transparent)`,
-    color: vars.color.daylight,
+    background: `color-mix(in srgb, ${vars.color.cobalt} 16%, transparent)`,
+    color: vars.color.firn,
 });

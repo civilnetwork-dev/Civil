@@ -88,9 +88,11 @@ describe("ANNO", () => {
     });
 
     it("keeps both annotation tiers above the WCAG AA small-text minimum", () => {
-        // moonlight (anno) measures 9.88:1 and starlight (annoMuted) measures
-        // 7.27:1 against dusk — both clear the 4.5:1 WCAG AA small-text minimum.
+        // snowmelt (anno) measures 8.87:1 and ash (annoMuted) measures 4.80:1
+        // against stratum — both clear the 4.5:1 WCAG AA small-text minimum.
+        // ash is the floor of the palette: there is nothing dimmer to reach for,
+        // which is the point of collapsing the old ember/cinder pair into it.
         expect(anno).not.toBe(annoMuted);
-        expect(ANNO.color).toBe(vars.color.moonlight);
+        expect(ANNO.color).toBe(vars.color.snowmelt);
     });
 });

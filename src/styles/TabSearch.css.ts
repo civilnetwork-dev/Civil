@@ -48,7 +48,7 @@ export const backdrop = style({
     // where compositing a blurred backdrop every frame is among the most
     // expensive things a page can do. A darker scrim separates the panel from
     // the page just as clearly and costs nothing.
-    background: `color-mix(in srgb, ${vars.color.void} 78%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.basalt} 78%, transparent)`,
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "center",
@@ -64,8 +64,8 @@ export const backdropLeaving = style({
 
 export const panel = style({
     width: "min(580px, 92vw)",
-    background: vars.color.night,
-    border: `1px solid ${vars.color.haze}`,
+    background: vars.color.basalt,
+    border: `1px solid ${vars.color.talus}`,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
@@ -87,7 +87,7 @@ export const inputRow = style({
 });
 
 export const searchIcon = style({
-    color: vars.color.sirius,
+    color: vars.color.cobalt,
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
@@ -98,22 +98,22 @@ export const input = style({
     background: "transparent",
     border: "none",
     outline: "none",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontSize: "15px",
     fontFamily: FONT_SANS,
     fontWeight: 400,
-    caretColor: vars.color.sirius,
+    caretColor: vars.color.cobalt,
     selectors: {
-        "&::placeholder": { color: vars.color.cinder },
+        "&::placeholder": { color: vars.color.ash },
         "&::selection": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 28%, transparent)`,
         },
     },
 });
 
 export const hint = style({
     fontSize: "11px",
-    color: vars.color.ember,
+    color: vars.color.ash,
     flexShrink: 0,
     fontFamily: FONT_SANS,
     letterSpacing: "0.02em",
@@ -150,21 +150,21 @@ export const resultItem = style({
     transitionDuration: "0.18s",
     selectors: {
         "& + &": { borderTop: RULE.hair },
-        "&:hover": { background: vars.color.horizon },
+        "&:hover": { background: vars.color.scree },
     },
 });
 
 export const resultItemActive = style({
-    background: `color-mix(in srgb, ${vars.color.sirius} 14%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.cobalt} 14%, transparent)`,
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 18%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 18%, transparent)`,
         },
     },
 });
 
 export const resultItemCurrent = style({
-    background: `color-mix(in srgb, ${vars.color.horizon} 60%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.scree} 60%, transparent)`,
 });
 
 export const favicon = style({
@@ -181,7 +181,7 @@ export const faviconFallback = style({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    color: vars.color.cinder,
+    color: vars.color.ash,
 });
 
 export const resultText = style({
@@ -195,7 +195,7 @@ export const resultText = style({
 export const resultTitle = style({
     fontSize: "13px",
     fontWeight: 500,
-    color: vars.color.daylight,
+    color: vars.color.firn,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -204,16 +204,16 @@ export const resultTitle = style({
 
 export const resultUrl = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
 });
 
 export const matchMark = style({
-    color: vars.color.sirius,
+    color: vars.color.cobalt,
     fontWeight: 700,
-    background: `color-mix(in srgb, ${vars.color.sirius} 14%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.cobalt} 14%, transparent)`,
     padding: "0 1px",
 });
 
@@ -222,15 +222,15 @@ export const tabBadge = style({
     fontSize: "11px",
     padding: "1px 6px",
     flexShrink: 0,
-    border: `0.5px solid color-mix(in srgb, ${vars.color.sirius} 45%, transparent)`,
-    color: vars.color.sirius,
+    border: `0.5px solid color-mix(in srgb, ${vars.color.cobalt} 45%, transparent)`,
+    color: vars.color.cobalt,
     textTransform: "uppercase",
 });
 
 export const emptyState = style({
     padding: "28px 16px",
     textAlign: "center",
-    color: vars.color.cinder,
+    color: vars.color.ash,
     fontSize: "13px",
     fontFamily: FONT_SANS,
 });
@@ -249,7 +249,7 @@ export const footerKey = style({
     alignItems: "center",
     gap: "4px",
     fontSize: "11px",
-    color: vars.color.cinder,
+    color: vars.color.ash,
     fontFamily: FONT_SANS,
 });
 
@@ -258,10 +258,10 @@ export const kbd = style({
     alignItems: "center",
     justifyContent: "center",
     background: "transparent",
-    border: `0.5px solid ${vars.color.haze}`,
+    border: `0.5px solid ${vars.color.talus}`,
     padding: "1px 5px",
     fontSize: "11px",
     fontFamily: FONT_MONO,
-    color: vars.color.halo,
+    color: vars.color.firn,
     lineHeight: 1.6,
 });

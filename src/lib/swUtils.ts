@@ -91,7 +91,30 @@ async function registerSw(): Promise<void> {
     }
 }
 
+/**
+ * bare-mux reaches for a bare `SharedWorker` identifier, so on engines without
+ * it (WebKit entirely, Chrome on Android) it throws `ReferenceError:
+ * SharedWorker is not defined` rather than its own error. That rejection used
+ * to escape SearchBar's `ready` promise, and since every navigation awaits
+ * `ready`, the search bar went permanently dead with nothing on screen.
+ * Scramjet carries its own transport and does not need bare-mux, so the honest
+ * behaviour is to skip the bare path and let the rest of setup finish.
+ */
+function hasSharedWorker(): boolean {
+    return (
+        typeof (globalThis as { SharedWorker?: unknown }).SharedWorker !==
+        "undefined"
+    );
+}
+
 async function setupBareMux(): Promise<void> {
+    if (!hasSharedWorker()) {
+        console.warn(
+            "[civil] SharedWorker unavailable; bare transport disabled, scramjet still active.",
+        );
+        return;
+    }
+
     const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
     const bareServerUrl = `${location.origin}/bare/`;
 
@@ -116,4 +139,4 @@ async function setupBareMux(): Promise<void> {
     });
 }
 
-export { checkFiltersNow, registerSw, setupBareMux };
+export { checkFiltersNow, hasSharedWorker, registerSw, setupBareMux };

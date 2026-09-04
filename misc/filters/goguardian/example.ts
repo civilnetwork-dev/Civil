@@ -1,9 +1,7 @@
 import { checkGoGuardianFilterAuthenticated } from "./checker";
 import { computeExtensionIdFromKey } from "./generateAuthToken";
 import { getGoGuardianVersion } from "./getVersion";
-
-const TEXARKANA_LICENSE_KEY =
-    "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2Zsv+sN+lREXhcFsRT0Ih6XoH3b/WArfLLGIBJnMJFtBQxzeg2JxvwOGguKnU/zlr18oqbAJIXACgGGwwuC6aJuGmfkeLZu88PX1Uwulo/9nBZQcTgdZr3Jr+brmYrEi9OoSrTvMhd0qShhSScTp76m7KGZR1C7z05yURkEIWMO9Zy37Ci18CC55O16hH2kYFB0DgPrn5qCO5In5d17SAy7HaObeW7VMon9Qx2J3BYHOFkUKc6DY/TdU1preUHRCnxQXPjjJrjcDfjhhfUZYWRTOo7SkmNsrCnfQegmuLikRLtTkmp2QAhqMoCQbDLXDK31DWXbycFPt4gmHhgeuBQIDAQAB";
+import { TEXARKANA_LICENSE_KEY } from "./license";
 
 const licenseExtensionId = computeExtensionIdFromKey(TEXARKANA_LICENSE_KEY);
 

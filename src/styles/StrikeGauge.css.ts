@@ -46,14 +46,14 @@ const used = (color: string) => [
 ];
 
 export const segment = styleVariants({
-    low: used(vars.color.sol),
-    mid: used(vars.color.arcturus),
-    high: used(vars.color.antares),
+    low: used(vars.color.calcite),
+    mid: used(vars.color.sandstone),
+    high: used(vars.color.wine),
     free: [
         segmentBase,
         {
             background: "transparent",
-            border: `1px solid ${vars.color.horizon}`,
+            border: `1px solid ${vars.color.scree}`,
         },
     ],
 });
@@ -77,7 +77,7 @@ export const count = style({
     fontSize: "17px",
     fontWeight: 600,
     fontVariantNumeric: "tabular-nums",
-    color: vars.color.daylight,
+    color: vars.color.firn,
 });
 
 export const policy = style({
@@ -86,7 +86,7 @@ export const policy = style({
     margin: "12px 0 0",
     paddingTop: "10px",
     borderTop: RULE.hair,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     lineHeight: 1.6,
     maxWidth: "62ch",
 });

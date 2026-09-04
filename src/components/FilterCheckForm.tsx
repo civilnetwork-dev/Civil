@@ -4,7 +4,7 @@ import Field from "~/components/schematic/Field";
 import * as s from "~/styles/FilterCheckPage.css";
 
 /**
- * The report's specimen section: what to test, and who to test it as.
+ * What to check, and who to check it as.
  *
  * Fields sit on rules with margin labels so they align on one column, the way a
  * spec sheet does.
@@ -36,8 +36,11 @@ export default function FilterCheckForm(props: {
                     required
                 />
             </Show>
+            {/* "specimen url" and "run report" were the drawing's vocabulary,
+                not the reader's. The page asks one question — is this site
+                blocked — so the field and the button say that. */}
             <Field
-                label="specimen url"
+                label="website"
                 type="url"
                 value={props.url}
                 onInput={props.onUrl}
@@ -45,8 +48,8 @@ export default function FilterCheckForm(props: {
                 required
             />
             <button class={s.submit} type="submit" disabled={props.loading}>
-                <Show when={props.loading} fallback="run report">
-                    <IconLoaderDots size={14} class={s.spinner} /> running…
+                <Show when={props.loading} fallback="check this site">
+                    <IconLoaderDots size={14} class={s.spinner} /> checking…
                 </Show>
             </button>
         </form>

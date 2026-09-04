@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1077" height="288" viewBox="0 0 359 96" role="img" aria-labelledby="civil-title civil-desc">
+  <title id="civil-title">CIVIL</title>
+  <desc id="civil-desc">CIVIL in five custom-drawn letters, each carrying a proxy icon inside its own form: a ring opened by a widening wedge, a keyhole, a funnel, a broadcast cone, and a port. No typeface is used.</desc>
+
+  <defs>
+    <!-- Only Strata palette values, running one warm-to-cool sweep across the word. -->
+    <linearGradient id="civil-c" x1="14" y1="14" x2="81" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F2E0C7"/><stop offset="1" stop-color="#E29B69"/>
+    </linearGradient>
+    <linearGradient id="civil-i1" x1="97" y1="14" x2="131" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E29B69"/><stop offset="1" stop-color="#C8789B"/>
+    </linearGradient>
+    <linearGradient id="civil-v" x1="147" y1="14" x2="213" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C8789B"/><stop offset="1" stop-color="#4295E4"/>
+    </linearGradient>
+    <linearGradient id="civil-i2" x1="229" y1="14" x2="263" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4295E4"/><stop offset="1" stop-color="#93CAFF"/>
+    </linearGradient>
+    <linearGradient id="civil-l" x1="279" y1="14" x2="345" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#93CAFF"/><stop offset="1" stop-color="#C3CAA4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- C — the way through. An even-weight ring with a wedge cut from its right
+       side; the aperture widens outward, so the counter is the opening. -->
+  <path d="M80.53 38.12 A34 34 0 1 0 80.53 57.88 L64.93 51.56 A17 17 0 1 1 64.93 46.44 Z" fill="url(#civil-c)"/>
+
+  <!-- I — privacy. A keyhole punched clean through the stem. The bow and the
+       flared slot are ONE closed contour: two overlapping punches would cancel
+       under even-odd and the icon would vanish. -->
+  <path fill-rule="evenodd" fill="url(#civil-i1)"
+        d="M97 14 H131 V27 H124 V69 H131 V82 H97 V69 H104 V27 H97 Z
+           M116.75 44.51 A8 8 0 1 0 111.25 44.51 L109.5 64 H118.5 Z"/>
+
+  <!-- V — the filter. The counter repeats the C's widening wedge, and the arms
+       converge into a neck that carries to the baseline. -->
+  <path d="M147 14 H167 L180 52 L193 14 H213 L189 70 L187 82 H173 L171 70 Z" fill="url(#civil-v)"/>
+
+  <!-- I — the relay. Three bars widening downward, punched through the stem. -->
+  <path fill-rule="evenodd" fill="url(#civil-i2)"
+        d="M229 14 H263 V27 H256 V69 H263 V82 H229 V69 H236 V27 H229 Z
+           M243 32 H249 V37 H243 Z
+           M240.5 44 H251.5 V49 H240.5 Z
+           M238 56 H254 V61 H238 Z"/>
+
+  <!-- L — the port. A socket cut into the foot's outer edge. -->
+  <path d="M279 14 H299 V68 H345 V71 H329 V79 H345 V82 H279 Z" fill="url(#civil-l)"/>
+</svg>

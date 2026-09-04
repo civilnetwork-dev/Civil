@@ -137,7 +137,6 @@ export default function BanInfoPage() {
     return (
         <Sheet density="fine">
             <TitleBlock
-                eyebrow="policy"
                 title="Restricted domains"
                 meta={
                     loading()

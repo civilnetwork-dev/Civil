@@ -1,19 +1,15 @@
 import { createSignal, For, flush, Show } from "solid-js";
 import { apps, appsAdd, appsRemove } from "~/api/apps";
-import { IconWorld } from "~/components/icons";
+import { IconClose, IconWorld } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
 import Field from "~/components/schematic/Field";
-import Plate from "~/components/schematic/Plate";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
-import Unfold from "~/components/schematic/Unfold";
 import { tabManager } from "~/lib/TabManager";
 import * as s from "~/styles/AppsPage.css";
 import * as schematic from "~/styles/schematic.css";
 import type { CivilApp } from "~/types";
-
-const GHOST_POSITIONS = 8;
 
 function AppIcon(props: { icon: string | null; name: string }) {
     const [failed, setFailed] = createSignal(false);
@@ -37,11 +33,19 @@ function AppIcon(props: { icon: string | null; name: string }) {
 }
 
 /**
- * The parts plate.
+ * A grid of pinned sites. Click one, it opens — that is the whole page.
  *
- * Each app is a numbered position on a ruled field rather than a card in a
- * grid. Metadata and the remove action live inside the position's unfold, which
- * is what lets a plate of forty items read as calm at rest.
+ * The earlier version buried "open" inside a per-tile disclosure: clicking an
+ * app expanded a detail panel, and the actual open action was a small text
+ * button inside it. Two steps for the page's one purpose, with the first step
+ * teaching the user that clicking an app does *not* open it. The tile face is
+ * now the open button; remove is a corner control revealed on hover and
+ * focus, the same grammar the bookmarks rows use.
+ *
+ * Also cut in the minimal pass: the "positions" framing (numbered slots,
+ * zero-padded labels, a ghost grid of dashed empty positions). An empty state
+ * that draws eight numbered boxes looks like a broken page to someone who
+ * just wants to pin YouTube; one line of text says everything the ghosts did.
  */
 export default function AppsPage() {
     const [input, setInput] = createSignal("");
@@ -65,8 +69,8 @@ export default function AppsPage() {
 
         // `new URL()` alone accepts almost anything once a scheme is bolted on:
         // "not a valid url" becomes the host "not%20a%20valid%20url", which then
-        // lands in the plate as a position labelled with the escaped text.
-        // Require something that actually looks like a host first.
+        // lands in the grid as a tile labelled with the escaped text. Require
+        // something that actually looks like a host first.
         let url: URL;
         try {
             url = new URL(
@@ -107,15 +111,9 @@ export default function AppsPage() {
         }
     };
 
-    const position = (index: number) => String(index + 1).padStart(2, "0");
-
     return (
         <Sheet>
-            <TitleBlock
-                eyebrow="launcher"
-                title="Apps"
-                meta={`${apps().length} pinned`}
-            />
+            <TitleBlock title="Apps" meta={`${apps().length} pinned`} />
 
             {/* The equivalent screen on a managed device is a catalogue an
                 administrator curates, with a request queue for anything not on
@@ -126,7 +124,7 @@ export default function AppsPage() {
             </p>
 
             <Field
-                label="add item"
+                label="add a site"
                 value={input()}
                 onInput={setInput}
                 onEnter={handleAdd}
@@ -139,78 +137,42 @@ export default function AppsPage() {
                 </Anno>
             </Show>
 
-            <Rule label="positions" weight="major" class={s.gridRule} />
+            <Rule weight="major" class={s.gridRule} />
 
             <Show
                 when={apps().length > 0}
                 fallback={
-                    <div class={s.ghostGrid}>
-                        <For
-                            each={Array.from({ length: GHOST_POSITIONS })}
-                            keyed={false}
-                        >
-                            {(_, i) => (
-                                <div class={s.ghost} data-ghost>
-                                    <Anno muted>{position(i)}</Anno>
-                                </div>
-                            )}
-                        </For>
-                        <p class={s.ghostNote}>
-                            <Anno muted>
-                                no positions filled — add an address above
-                            </Anno>
-                        </p>
-                    </div>
+                    <Anno muted class={s.empty}>
+                        Nothing pinned yet — add a site above.
+                    </Anno>
                 }
             >
                 <ul class={s.grid}>
                     <For each={apps()} keyed={false}>
-                        {(app, i) => (
-                            <Plate as="li" class={s.position}>
-                                <Unfold
-                                    label={`${app().name} detail`}
-                                    summary={
-                                        <span class={s.summary}>
-                                            <Anno muted>{position(i)}</Anno>
-                                            <span class={s.iconStage}>
-                                                <AppIcon
-                                                    icon={app().icon}
-                                                    name={app().name}
-                                                />
-                                            </span>
-                                            <span class={s.name}>
-                                                {app().name}
-                                            </span>
-                                        </span>
-                                    }
+                        {app => (
+                            <li class={s.position}>
+                                <button
+                                    type="button"
+                                    class={s.openBtn}
+                                    onClick={() => handleOpen(app())}
                                 >
-                                    <div class={s.detail}>
-                                        <Anno muted>
-                                            {new URL(app().url).hostname}
-                                        </Anno>
-                                        <div class={s.detailActions}>
-                                            <button
-                                                type="button"
-                                                class={s.detailBtn}
-                                                onClick={() =>
-                                                    handleOpen(app())
-                                                }
-                                            >
-                                                open
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class={s.detailBtnDanger}
-                                                onClick={() =>
-                                                    appsRemove(app().id)
-                                                }
-                                            >
-                                                remove
-                                            </button>
-                                        </div>
-                                    </div>
-                                </Unfold>
-                            </Plate>
+                                    <span class={s.iconStage}>
+                                        <AppIcon
+                                            icon={app().icon}
+                                            name={app().name}
+                                        />
+                                    </span>
+                                    <span class={s.name}>{app().name}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class={s.removeBtn}
+                                    aria-label={`Remove ${app().name}`}
+                                    onClick={() => appsRemove(app().id)}
+                                >
+                                    <IconClose size={13} />
+                                </button>
+                            </li>
                         )}
                     </For>
                 </ul>

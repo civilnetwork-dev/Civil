@@ -19,8 +19,8 @@ export const button = style({
     gap: "7px",
     padding: "7px 14px",
     border: `1px solid color-mix(in srgb, ${PATREON} 35%, transparent)`,
-    background: `color-mix(in srgb, ${PATREON} 12%, ${vars.color.horizon})`,
-    color: `color-mix(in srgb, ${PATREON} 75%, ${vars.color.daylight})`,
+    background: `color-mix(in srgb, ${PATREON} 12%, ${vars.color.scree})`,
+    color: `color-mix(in srgb, ${PATREON} 75%, ${vars.color.firn})`,
     fontFamily: FONT_SANS,
     fontSize: "13px",
     fontWeight: 500,
@@ -31,7 +31,7 @@ export const button = style({
     transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${PATREON} 20%, ${vars.color.horizon})`,
+            background: `color-mix(in srgb, ${PATREON} 20%, ${vars.color.scree})`,
             borderColor: `color-mix(in srgb, ${PATREON} 55%, transparent)`,
             boxShadow: `0 0 0 3px color-mix(in srgb, ${PATREON} 18%, transparent)`,
         },
@@ -51,9 +51,9 @@ export const loggedIn = style({
     alignItems: "center",
     gap: "8px",
     padding: "5px 10px",
-    border: `1px solid ${vars.color.haze}`,
-    background: vars.color.horizon,
-    color: vars.color.daylight,
+    border: `1px solid ${vars.color.talus}`,
+    background: vars.color.scree,
+    color: vars.color.firn,
     fontFamily: FONT_SANS,
     fontSize: "13px",
     userSelect: "none",
@@ -61,7 +61,7 @@ export const loggedIn = style({
     transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
-            borderColor: vars.color.dust,
+            borderColor: vars.color.talus,
         },
     },
 });
@@ -86,18 +86,18 @@ export const avatarFallback = style({
     width: "20px",
     height: "20px",
     borderRadius: "50%",
-    background: `color-mix(in srgb, ${PATREON} 55%, ${vars.color.void})`,
+    background: `color-mix(in srgb, ${PATREON} 55%, ${vars.color.basalt})`,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     fontSize: "11px",
     fontWeight: 700,
     flexShrink: 0,
 });
 
 export const userName = style({
-    color: vars.color.halo,
+    color: vars.color.firn,
     maxWidth: "140px",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -107,7 +107,7 @@ export const userName = style({
 export const divider = style({
     width: "1px",
     height: "14px",
-    background: vars.color.dust,
+    background: vars.color.talus,
     flexShrink: 0,
 });
 
@@ -115,7 +115,7 @@ export const signOutBtn = style({
     padding: "2px 6px",
     border: "none",
     background: "transparent",
-    color: vars.color.cinder,
+    color: vars.color.ash,
     fontFamily: FONT_SANS,
     fontSize: "11px",
     cursor: "pointer",
@@ -123,8 +123,8 @@ export const signOutBtn = style({
     transitionDuration: "0.12s",
     selectors: {
         "&:hover": {
-            background: vars.color.haze,
-            color: vars.color.daylight,
+            background: vars.color.talus,
+            color: vars.color.firn,
         },
         "&:active": {
             opacity: 0.7,

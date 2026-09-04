@@ -69,7 +69,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     return (
                         `<span style="color:${c};font-weight:600">${names[p.dataIndex]}</span><br/>` +
                         `<span style="font-size:15px;font-weight:600;color:${c}">${p.value}</span>` +
-                        `<span style="color:${colors.moonlight}"> Mops/s</span>`
+                        `<span style="color:${colors.snowmelt}"> Mops/s</span>`
                     );
                 },
             },
@@ -101,7 +101,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                     return (
                         `<span style="color:${c};font-weight:600">${names[p.dataIndex]}</span><br/>` +
                         `<span style="font-size:15px;font-weight:600;color:${c}">${p.value}</span>` +
-                        `<span style="color:${colors.moonlight}"> ns/op</span>`
+                        `<span style="color:${colors.snowmelt}"> ns/op</span>`
                     );
                 },
             },
@@ -127,7 +127,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
             ({ speedup_factor }) => +(speedup_factor as number).toFixed(3),
         );
         const implColors = values.map(v =>
-            v >= 1.0 ? colors.airglow : colors.antares,
+            v >= 1.0 ? colors.juniper : colors.wine,
         );
         return {
             backgroundColor: "transparent",
@@ -136,11 +136,11 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 formatter: (params: { dataIndex: number; value: number }[]) => {
                     const p = params[0];
                     const win = p.value >= 1.0;
-                    const c = win ? colors.airglow : colors.antares;
+                    const c = win ? colors.juniper : colors.wine;
                     return (
-                        `<span style="color:${colors.halo}">${names[p.dataIndex]}</span><br/>` +
+                        `<span style="color:${colors.firn}">${names[p.dataIndex]}</span><br/>` +
                         `<span style="font-size:15px;font-weight:600;color:${c}">${p.value}×</span>` +
-                        `<span style="color:${colors.moonlight}"> ${win ? "faster" : "slower"}</span>`
+                        `<span style="color:${colors.snowmelt}"> ${win ? "faster" : "slower"}</span>`
                     );
                 },
             },
@@ -163,7 +163,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                         silent: true,
                         symbol: "none",
                         lineStyle: {
-                            color: colors.sirius,
+                            color: colors.cobalt,
                             type: "solid" as const,
                             width: 1,
                         },
@@ -178,7 +178,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                                     // the grid's right inset clipped this to
                                     // "parit".
                                     position: "insideEndTop" as const,
-                                    color: colors.starlight,
+                                    color: colors.snowmelt,
                                     fontFamily: FONT_MONO,
                                     fontSize: 11,
                                 },
@@ -243,7 +243,6 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
     return (
         <Sheet density="fine">
             <TitleBlock
-                eyebrow="measurement"
                 title="XOR encoder benchmark"
                 meta={`${iterations().toLocaleString()} iterations · ${String(runs().length)} implementations`}
             />

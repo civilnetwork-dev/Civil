@@ -21,7 +21,7 @@ export const lede = style({
     margin: "0 0 26px",
     fontSize: "13.5px",
     lineHeight: 1.55,
-    color: vars.color.halo,
+    color: vars.color.firn,
 });
 
 /* -------------------------------------------------------------------- */
@@ -59,8 +59,8 @@ const figureBase = style({
  * in words regardless, which is the channel that never fails.
  */
 export const figure = styleVariants({
-    win: [figureBase, { color: vars.color.airglow }],
-    loss: [figureBase, { color: vars.color.antares }],
+    win: [figureBase, { color: vars.color.juniper }],
+    loss: [figureBase, { color: vars.color.wine }],
 });
 
 export const headlineText = style({
@@ -73,13 +73,13 @@ export const headlineText = style({
 export const headlineClaim = style({
     fontSize: "14px",
     fontWeight: 500,
-    color: vars.color.daylight,
+    color: vars.color.firn,
     lineHeight: 1.35,
 });
 
 export const headlineDatum = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });
 
 /* -------------------------------------------------------------------- */
@@ -109,12 +109,12 @@ export const legendSwatch = style({
 
 export const legendName = style({
     ...ANNO,
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
 });
 
 export const legendTag = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     paddingLeft: "8px",
     borderLeft: RULE.hair,
 });
@@ -136,7 +136,7 @@ export const chartBlock = style({
 
 export const chartCaption = style({
     ...ANNO,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
     display: "block",
     margin: "6px 0 2px",
 });
@@ -171,23 +171,39 @@ export const th = style({
     textTransform: "uppercase",
     whiteSpace: "nowrap",
     borderBottom: RULE.hair,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });
 
-// Numeric columns are right-aligned so digits line up by place value; that is
-// the whole reason the ledger is monospace and tabular in the first place.
-export const thNum = style([th, { textAlign: "right", paddingRight: 0 }]);
+/**
+ * Numeric columns are right-aligned so digits line up by place value; that is
+ * the whole reason the ledger is monospace and tabular in the first place.
+ *
+ * `paddingLeft` is what keeps them apart. With only a right padding of zero and
+ * the implementation column at `width: 100%`, every numeric column collapsed to
+ * its content and butted straight against its neighbour: the shipped table read
+ * `0.34792874.1  2874.1`, three separate figures fused into one run of digits.
+ * A right-aligned column needs its gutter on the left.
+ */
+export const thNum = style([
+    th,
+    { textAlign: "right", paddingRight: 0, paddingLeft: "20px" },
+]);
 
 export const td = style({
     padding: "9px 12px 9px 0",
     borderBottom: RULE.hair,
-    color: vars.color.halo,
+    color: vars.color.firn,
     whiteSpace: "nowrap",
 });
 
 export const tdNum = style([
     td,
-    { textAlign: "right", paddingRight: 0, color: vars.color.moonlight },
+    {
+        textAlign: "right",
+        paddingRight: 0,
+        paddingLeft: "20px",
+        color: vars.color.snowmelt,
+    },
 ]);
 
 export const tdImpl = style([td, { width: "100%", whiteSpace: "normal" }]);
@@ -196,12 +212,12 @@ export const implCell = style({
     display: "inline-flex",
     alignItems: "center",
     gap: "9px",
-    color: vars.color.daylight,
+    color: vars.color.firn,
 });
 
 export const tdLead = style([
     tdNum,
-    { fontWeight: 600, color: vars.color.daylight },
+    { fontWeight: 600, color: vars.color.firn },
 ]);
 
 // Wide content scrolls inside its own container rather than making the page
@@ -216,5 +232,5 @@ export const footer = style({
     margin: "30px 0 0",
     paddingTop: "8px",
     borderTop: RULE.hair,
-    color: vars.color.starlight,
+    color: vars.color.snowmelt,
 });

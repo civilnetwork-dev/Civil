@@ -47,8 +47,8 @@ export const sbDropdown = style({
     left: 0,
     width: "100%",
     zIndex: 10000,
-    background: vars.color.night,
-    border: `1px solid ${vars.color.haze}`,
+    background: vars.color.basalt,
+    border: `1px solid ${vars.color.talus}`,
     borderTop: "none",
     overflow: "hidden",
     listStyle: "none",
@@ -73,8 +73,8 @@ export const sbDropdown = style({
  * as well, costs nothing, and is what the rest of the drawing language does.
  */
 export const sbDropdownBlur = style({
-    background: `color-mix(in srgb, ${vars.color.night} 96%, transparent)`,
-    borderColor: vars.color.haze,
+    background: `color-mix(in srgb, ${vars.color.basalt} 96%, transparent)`,
+    borderColor: vars.color.talus,
     borderTop: "none",
 });
 
@@ -82,7 +82,7 @@ export const sbRow = style({
     position: "relative",
     cursor: "pointer",
     padding: "10px 14px",
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
     fontFamily: FONT_MONO,
     fontSize: "13px",
     transitionProperty: "background, color",
@@ -102,8 +102,8 @@ export const sbRow = style({
             borderTop: RULE.hair,
         },
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 12%, transparent)`,
-            color: vars.color.daylight,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 12%, transparent)`,
+            color: vars.color.firn,
         },
     },
 });
@@ -114,12 +114,12 @@ export const sbInputWrapper = style({
     height: "48px",
     background: "transparent",
     border: "none",
-    borderBottom: `1px solid ${vars.color.haze}`,
+    borderBottom: `1px solid ${vars.color.talus}`,
     transitionProperty: "border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
     selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.sirius },
+        "&:focus-within": { borderBottomColor: vars.color.cobalt },
     },
 });
 
@@ -128,7 +128,7 @@ export const sbInputWrapper = style({
  * the two read as one control; the menu's own border picks up from there.
  */
 globalStyle(`.${sbRoot}:has(.${sbDropdown}) .${sbInputWrapper}`, {
-    borderBottomColor: vars.color.sirius,
+    borderBottomColor: vars.color.cobalt,
 });
 
 export const sbInputWrapperBlur = style({
@@ -140,7 +140,7 @@ export const sbInput = style({
     minWidth: 0,
     border: "none",
     background: "transparent",
-    color: vars.color.daylight,
+    color: vars.color.firn,
     // An address is data. It is also the one string on this page where telling
     // rn from m matters, so it is set in mono like every other address in the
     // app.
@@ -148,11 +148,11 @@ export const sbInput = style({
     fontSize: "15px",
     padding: "0 4px",
     outline: "none",
-    caretColor: vars.color.sirius,
+    caretColor: vars.color.cobalt,
     selectors: {
-        "&::placeholder": { color: vars.color.cinder },
+        "&::placeholder": { color: vars.color.ash },
         "&::selection": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 28%, transparent)`,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 28%, transparent)`,
         },
     },
 });
@@ -171,7 +171,7 @@ export const sbButton = style({
     border: "none",
     borderLeft: RULE.hair,
     background: "transparent",
-    color: vars.color.moonlight,
+    color: vars.color.snowmelt,
     textTransform: "uppercase",
     padding: "0 20px",
     cursor: "pointer",
@@ -181,15 +181,15 @@ export const sbButton = style({
     transitionDuration: DUR.fast,
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 12%, transparent)`,
-            color: vars.color.sirius,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 12%, transparent)`,
+            color: vars.color.cobalt,
         },
         "&:active": {
-            background: `color-mix(in srgb, ${vars.color.sirius} 20%, transparent)`,
-            color: vars.color.sirius,
+            background: `color-mix(in srgb, ${vars.color.cobalt} 20%, transparent)`,
+            color: vars.color.cobalt,
         },
         "&:focus-visible": {
-            outline: `1px solid ${vars.color.sirius}`,
+            outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "-1px",
         },
     },

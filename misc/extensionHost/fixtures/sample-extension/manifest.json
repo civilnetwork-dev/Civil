@@ -1,0 +1,12 @@
+{
+    "manifest_version": 3,
+    "name": "Sample Filter Extension",
+    "version": "1.0.0",
+    "permissions": ["storage", "alarms", "declarativeNetRequest"],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "Sample Filter"
+    }
+}
