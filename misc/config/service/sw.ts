@@ -773,10 +773,17 @@ async function checkBanned(originalUrl: string): Promise<boolean> {
 
 /**
  * Build the block response for a restricted domain: /ban redirect for a
- * top-level navigation (recording a strike), 403 otherwise.
+ * top-level document navigation (recording a strike), 403 otherwise.
+ *
+ * Gate on request.destination === "document", not request.mode === "navigate".
+ * A subframe navigation also has mode "navigate". So a page that embeds a
+ * restricted tracker host redirects that iframe to /ban, boots the whole app
+ * inside the tracker frame, and posts a violation strike the user did not earn.
+ * Only a top-level navigation has destination "document". An embedded frame has
+ * destination "iframe".
  */
 function bannedBlockResponse(target: string, request: Request): Response {
-    if (request.mode === "navigate") {
+    if (request.destination === "document") {
         let hostname = target;
         try {
             hostname = new URL(target).hostname;
