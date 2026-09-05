@@ -7,6 +7,7 @@ import { start as startChii } from "chii";
 import compression from "compression";
 import express from "express";
 import { toNodeHandler } from "h3/node";
+import { usePosthogProxy } from "./misc/analytics/posthogProxy";
 import {
     createDatabaseMiddleware,
     getBannedDomains,
@@ -135,6 +136,11 @@ setupSchoolDistricts().catch(err =>
 if (process.env.REVERSE_PROXY) {
     app.set("trust proxy", 1);
 }
+
+// Register before compression and body parsing so capture payloads reach
+// PostHog unparsed and the response is not re-encoded.
+usePosthogProxy(app);
+
 app.use(compression());
 app.use(express.json());
 app.use((req, _res, next) => {
