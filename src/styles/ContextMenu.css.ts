@@ -1,12 +1,20 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
-import { FONT_SANS } from "./schematic.css";
+import { FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
+
+/**
+ * A menu is a small sheet laid over the board: square, bounded by a major
+ * rule, entering by opacity and a short translate. It previously carried a
+ * 10px radius, a two-layer drop shadow and a scale pop-in — the floating-card
+ * language TabSearch and the omnibox suggestions already dropped — and was the
+ * last overlay still speaking it.
+ */
 
 const T_FAST = "0.1s ease";
 
 const menuIn = keyframes({
-    from: { opacity: 0, transform: "scale(0.96) translateY(-4px)" },
-    to: { opacity: 1, transform: "scale(1) translateY(0)" },
+    from: { opacity: 0, transform: "translateY(-4px)" },
+    to: { opacity: 1, transform: "translateY(0)" },
 });
 
 export const iframeCover = style({
@@ -22,17 +30,14 @@ export const menu = style({
     zIndex: 9999,
     width: "220px",
     background: vars.color.basalt,
-    border: `1px solid ${vars.color.scree}`,
-    borderRadius: "10px",
+    border: RULE.major,
     overflow: "hidden",
-    boxShadow: `0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18)`,
     fontFamily: FONT_SANS,
     fontSize: "13px",
     color: vars.color.firn,
     userSelect: "none",
     animation: `${menuIn} 0.12s cubic-bezier(0.22, 1, 0.36, 1) both`,
     animationDuration: "0.12s",
-    transformOrigin: "top left",
     padding: 0,
 });
 
@@ -126,11 +131,9 @@ export const subMenu = style({
     marginLeft: "4px",
     width: "200px",
     background: vars.color.basalt,
-    border: `1px solid ${vars.color.scree}`,
-    borderRadius: "10px",
+    border: RULE.major,
     overflow: "hidden",
     padding: 0,
-    boxShadow: `0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18)`,
     zIndex: 10000,
 });
 

@@ -7,6 +7,7 @@ import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/elem
 import { preventUnhandled } from "@atlaskit/pragmatic-drag-and-drop/prevent-unhandled";
 import { onCleanup } from "solid-js";
 import type { Tab } from "~/lib/TabManager";
+import { tabDragClone } from "~/styles/BrowserChrome.css";
 
 const TAB_DATA_KEY = "civil-tab-id";
 
@@ -55,6 +56,9 @@ function createFloatingClone(
 
     const clampedLeft = clampX(pointerX - cloneOffsetX, rect.width, stripRect);
 
+    // Appearance lives in the stylesheet with the rest of the chrome; only
+    // the geometry that must be computed per drag is set inline.
+    clone.classList.add(tabDragClone);
     Object.assign(clone.style, {
         position: "fixed",
         top: `${cloneTop}px`,
@@ -63,16 +67,20 @@ function createFloatingClone(
         height: `${rect.height}px`,
         margin: "0",
         zIndex: "99999",
-        pointerEvents: "none",
         willChange: "left",
-        opacity: "0.96",
-        boxShadow:
-            "0 -2px 12px rgba(0,0,0,0.35), 0 8px 28px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)",
-        borderRadius: "10px 10px 0 0",
-        transform: "scale(1.04)",
-        transformOrigin: "bottom center",
-        transition: "transform 0.08s ease, box-shadow 0.08s ease",
-    });
+    } satisfies Partial<
+        Pick<
+            CSSStyleDeclaration,
+            | "position"
+            | "top"
+            | "left"
+            | "width"
+            | "height"
+            | "margin"
+            | "zIndex"
+            | "willChange"
+        >
+    >);
 
     document.body.appendChild(clone);
     floatingClone = clone;
