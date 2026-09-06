@@ -242,15 +242,6 @@ class SearchBar
             );
         }
     }
-
-    async submitCurrentWindow(term: string) {
-        await this.ready;
-        const cfg = await fetchBestProxy(term);
-        const proxy = this.pickProxy(cfg);
-
-        window.location.replace(this.createProxyUrl(term, proxy));
-        this.trackInternalVisit(term, proxy);
-    }
 }
 
 export default function searchBar() {

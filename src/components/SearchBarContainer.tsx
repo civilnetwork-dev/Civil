@@ -17,8 +17,14 @@ export default function SearchBarContainer(props: { inline?: boolean }) {
 
         setSuggestions([]);
 
+        // Inside a tab's frame the chrome owns navigation (see the
+        // `civil:navigate` handler in useIframeManager); this document's own
+        // scramjet controller has no frame to route through.
         if (typeof window !== "undefined" && window.self !== window.top) {
-            void bar.submitCurrentWindow(value);
+            window.parent.postMessage(
+                { type: "civil:navigate", url: value },
+                window.location.origin,
+            );
             return;
         }
 

@@ -648,11 +648,31 @@ export function createIframeManager(
     if (typeof window !== "undefined") {
         window.addEventListener("message", event => {
             if (event.origin !== window.location.origin) return;
-            if ((event.data as { type?: string })?.type !== "civil:nav-retry")
+            const data = event.data as { type?: string; url?: string } | null;
+
+            if (data?.type === "civil:nav-retry") {
+                const id = tabManager.activeId;
+                const url = id ? lastProxiedUrl.get(id) : undefined;
+                if (id && url) navigateIframe(id, url);
                 return;
-            const id = tabManager.activeId;
-            const url = id ? lastProxiedUrl.get(id) : undefined;
-            if (id && url) navigateIframe(id, url);
+            }
+
+            // The New Tab omnibox lives inside the tab's own frame, so it
+            // hands the URL up rather than navigating itself. A frame that
+            // navigates itself to a scramjet URL has no scramjet frame behind
+            // it — the URL carries only that document's own controller
+            // prefix, which owns no frames — and the service worker answers
+            // "Internal Service Worker Error: No frame found for request".
+            if (
+                data?.type === "civil:navigate" &&
+                typeof data.url === "string"
+            ) {
+                const id =
+                    [...iframeMap].find(
+                        ([, el]) => el.contentWindow === event.source,
+                    )?.[0] ?? tabManager.activeId;
+                if (id) navigate(id, data.url);
+            }
         });
     }
 
