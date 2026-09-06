@@ -720,6 +720,20 @@ function decodeScramjetUrl(s: string): string {
     }
 }
 
+/** The real-origin `/civil-ext/` request a proxied URL decodes to, or null. */
+function unwrapCivilExt(originalUrl: string): Request | null {
+    try {
+        const target = new URL(originalUrl);
+        if (
+            target.origin === self.location.origin &&
+            target.pathname.startsWith("/civil-ext/")
+        ) {
+            return new Request(target.href);
+        }
+    } catch {}
+    return null;
+}
+
 function decodeProxiedUrl(encodedUrl: string): string | null {
     try {
         const origin = self.location.origin;
@@ -915,6 +929,22 @@ async function swResponse(event: FetchEvent) {
     }
 
     const originalUrl = decodeProxiedUrl(request.url);
+
+    // An extension content script running inside a proxied page asks for its
+    // own files by `chrome.runtime.getURL`, which the shim resolves to the real
+    // origin (`/civil-ext/<id>/...`). Scramjet rewrites that fetch like any
+    // other, so it arrives here prefixed, and its request handler refuses to
+    // proxy the real origin: "attempted to fetch from same origin". Unwrap it
+    // and serve the file from OPFS as the unprefixed path would have. Only this
+    // path: a proxied page must not reach Civil's own API with the user's
+    // cookies.
+    if (originalUrl) {
+        const extRequest = unwrapCivilExt(originalUrl);
+        if (extRequest) {
+            const extResponse = await serveCivilExt(extRequest);
+            if (extResponse) return extResponse;
+        }
+    }
 
     if (
         originalUrl &&
