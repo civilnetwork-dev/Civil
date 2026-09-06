@@ -8,6 +8,20 @@ window.addEventListener("__civilDebug", (e: Event) => {
     console.log((e as CustomEvent).detail);
 });
 
+// A tab left open across a deploy still holds the old chunk hashes; the first
+// lazy route or stylesheet it asks for is gone and the page dies with a
+// blank pane. Vite reports that as `vite:preloadError`. Reloading picks up
+// the new manifest; the timestamp keeps a persistently failing chunk from
+// reloading in a loop.
+window.addEventListener("vite:preloadError", e => {
+    const key = "civil:preload-reload-at";
+    const last = Number(sessionStorage.getItem(key) ?? 0);
+    if (Date.now() - last < 60_000) return;
+    sessionStorage.setItem(key, String(Date.now()));
+    e.preventDefault();
+    window.location.reload();
+});
+
 if (window.location.host === "civil.quartinal.me") {
     const { default: posthog } = await import("posthog-js");
 

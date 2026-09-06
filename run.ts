@@ -477,6 +477,12 @@ app.use(sirv(resolve(import.meta.dirname, "dist/client")));
 app.use(sirv(resolve(import.meta.dirname, "dist/client/_build")));
 app.use(sirv(resolve(import.meta.dirname, "dist-config")));
 
+// A hashed chunk that no longer exists after a deploy must fail as a 404, not
+// fall through to the SSR handler and come back as an HTML page. Session replay
+// shows the alternative: `Uncaught SyntaxError: Unexpected token '<'` and
+// `Unable to preload CSS` in every tab that was open across the deploy.
+app.use("/_build", (_req, res) => void res.status(404).end());
+
 const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "",
