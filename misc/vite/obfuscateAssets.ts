@@ -3,6 +3,7 @@ import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import type { Plugin } from "vite";
 
 const DEFAULT_MAX_FILE_BYTES = 1024 * 1024;

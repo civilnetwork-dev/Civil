@@ -1,4 +1,5 @@
 import type { Express, RequestHandler } from "express";
+
 import { posthog } from "./posthog";
 
 type Domain = `${string}.${string}`;

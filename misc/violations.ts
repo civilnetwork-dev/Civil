@@ -1,4 +1,5 @@
 import type { IncomingMessage } from "node:http";
+
 import { redis } from "./database/cache";
 import { banUser } from "./database/models/user";
 

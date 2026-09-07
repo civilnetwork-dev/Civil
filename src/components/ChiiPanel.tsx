@@ -1,4 +1,5 @@
 import { createSignal, onCleanup, onSettled } from "solid-js";
+
 import {
     IconArrowUpRight,
     IconClose,
@@ -11,9 +12,10 @@ import {
     cleanupChiiArtifacts,
     injectChiiIntoIframe,
 } from "~/lib/useIframeManager";
+
 import * as s from "~/styles/ChiiPanel.css";
 
-export type ChiiDockSide = "bottom" | "top" | "left" | "right";
+type ChiiDockSide = "bottom" | "top" | "left" | "right";
 
 interface ChiiPanelProps {
     targetIframe: HTMLIFrameElement;

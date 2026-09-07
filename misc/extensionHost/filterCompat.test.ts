@@ -20,7 +20,9 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { afterAll, describe, expect, it } from "vitest";
+
 import type { FilterApiSurface } from "./fixtures/buildFilterApiSurface";
 import rawSurface from "./fixtures/filterApiSurface.json";
 import { loadExtension } from "./host";
@@ -234,7 +236,7 @@ const CALLBACK_PATHS: [path: string, callers: string[]][] = (() => {
             if (!byPath.has(path)) byPath.set(path, []);
             byPath.get(path)!.push(name);
         }
-    return [...byPath].sort(([a], [b]) => a.localeCompare(b));
+    return [...byPath].toSorted(([a], [b]) => a.localeCompare(b));
 })();
 
 describe("callback-style calls reach their callback", () => {
@@ -393,7 +395,7 @@ describe("background entry points", () => {
         // read the legacy `app.background.scripts` shape they actually use).
         // The synthetic "no background at all" case below still covers that
         // code path — it's just that nothing in the current corpus needs it.
-        expect([...BACKGROUND_SHAPES.keys()].sort()).toEqual([
+        expect([...BACKGROUND_SHAPES.keys()].toSorted()).toEqual([
             "page",
             "scripts",
             "service_worker",
@@ -777,7 +779,7 @@ describe.skipIf(!haveBundles)("real vendor bundles", () => {
             handle = await loadExtension({
                 dir,
                 extensionId: "a".repeat(32),
-                ...(setup ?? {}),
+                ...setup,
             });
         } catch (error) {
             problems.push(describeError(error));

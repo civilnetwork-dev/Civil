@@ -11,7 +11,9 @@
 import { readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
+
 import {
     createCaptchaSolver,
     createHybridCaptchaSolver,

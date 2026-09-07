@@ -1,8 +1,8 @@
 import type { ChromeEvent } from "../types";
 
-export class CivilEvent<TCallback extends (...args: never[]) => unknown>
-    implements ChromeEvent<TCallback>
-{
+export class CivilEvent<
+    TCallback extends (...args: never[]) => unknown,
+> implements ChromeEvent<TCallback> {
     private readonly _listeners = new Set<TCallback>();
 
     addListener(callback: TCallback): void {
@@ -36,6 +36,9 @@ export class CivilEvent<TCallback extends (...args: never[]) => unknown>
         return results;
     }
 
+    // Part of the chrome.events Event shape this class emulates: extensions
+    // read it, this repo does not.
+    // fallow-ignore-next-line unused-class-member
     get size(): number {
         return this._listeners.size;
     }

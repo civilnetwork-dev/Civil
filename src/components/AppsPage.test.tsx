@@ -1,7 +1,8 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { flush } from "solid-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
+
 import type { CivilApp } from "~/types";
 
 /**

@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { For } from "solid-js";
+
 import type { FieldDensity } from "~/styles/schematic.css";
 import * as s from "~/styles/schematic.css";
 

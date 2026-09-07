@@ -1,8 +1,10 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
-import * as s from "~/styles/schematic.css";
+
 import Rule from "./Rule";
+
+import * as s from "~/styles/schematic.css";
 
 describe("Rule", () => {
     it("renders a label when given one", () => {

@@ -1,6 +1,10 @@
 // @refresh reload
-import { mount, StartClientTanstack } from "@solidjs/start/client";
+import { hydrate } from "@solidjs/web";
+
 import { extensionsSyncExternalKeys } from "~/api/extensions";
+
+import App from "./app";
+import Document from "./Document";
 
 extensionsSyncExternalKeys();
 
@@ -36,4 +40,11 @@ if (window.location.host === "civil.quartinal.me") {
     });
 }
 
-mount((() => <StartClientTanstack />) as any, document.getElementById("app")!);
+hydrate(
+    () => (
+        <Document>
+            <App />
+        </Document>
+    ),
+    document,
+);

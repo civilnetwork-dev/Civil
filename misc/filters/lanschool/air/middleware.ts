@@ -1,4 +1,7 @@
+// fallow-ignore-file unused-file -- registered by run.ts once the commented-out
+// useLanSchoolMiddleware(app) call there is restored; see PRODUCT.md.
 import type { Express } from "express";
+
 import { isJsonEnabled } from "../../utils/isJsonEnabled";
 // import { createLanSchoolChecker } from "./checker";
 

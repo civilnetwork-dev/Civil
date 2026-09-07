@@ -6,7 +6,9 @@ import {
 import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview";
 import { preventUnhandled } from "@atlaskit/pragmatic-drag-and-drop/prevent-unhandled";
 import { onCleanup } from "solid-js";
+
 import type { Tab } from "~/lib/TabManager";
+
 import { tabDragClone } from "~/styles/BrowserChrome.css";
 
 const TAB_DATA_KEY = "civil-tab-id";
@@ -33,9 +35,6 @@ function setDropOver(el: HTMLElement | null, on: boolean) {
 let floatingClone: HTMLDivElement | null = null;
 let stripRef: HTMLDivElement | null = null;
 let cloneOffsetX = 0;
-// biome-ignore lint/correctness/noUnusedVariables: it's used in a place biome can't see
-// biome-ignore lint/style/useConst: it is assigned it's just biome can't see it lol
-let cloneOffsetY = 0;
 
 function createFloatingClone(
     sourceEl: HTMLElement,

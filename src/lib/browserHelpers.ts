@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+
 import type { Tab } from "~/lib/TabManager";
 import { BROWSER_URLS } from "~/lib/TabManager";
 
@@ -19,7 +20,7 @@ export function displayUrl(raw: string): string {
 
 export function isProbablyUrl(v: string): boolean {
     try {
-        new URL(v);
+        void new URL(v);
         return true;
     } catch {}
     return /^[\w-]+\.[a-z]{2,}/i.test(v);
@@ -27,7 +28,7 @@ export function isProbablyUrl(v: string): boolean {
 
 export function normalizeNav(term: string): string {
     try {
-        new URL(term);
+        void new URL(term);
         return term;
     } catch {}
     if (/^[\w-]+\.[a-z]{2,}/i.test(term)) return `https://${term}`;

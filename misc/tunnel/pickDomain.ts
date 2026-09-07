@@ -27,7 +27,9 @@
  */
 
 import { join } from "node:path";
+
 import { create as createCache } from "flat-cache";
+
 import {
     type Classification,
     classifyDomain,

@@ -1,7 +1,7 @@
 import { Meta, Title } from "@solidjs/meta";
+import { clientOnly } from "@solidjs/web";
 import { createFileRoute } from "@tanstack/solid-router";
 import { onCleanup, onSettled } from "solid-js";
-import { clientOnly } from "~/lib/clientOnly";
 
 const Browser = clientOnly(() => import("~/components/BrowserChrome.tsx"));
 

@@ -2,6 +2,7 @@ import { createCache } from "@stacksjs/ts-cache";
 import { err, errAsync, ok, ResultAsync } from "neverthrow";
 import UserAgent from "user-agents";
 import xior from "xior";
+
 import type { Email } from "./broker";
 
 export const clusterStatuses = {
@@ -19,7 +20,7 @@ export const clusterStatuses = {
  * `/crextn/cluster` response into a usable base URL and as a fallback when the
  * response doesn't yield one.
  */
-export const SECURLY_FILTER_CLUSTERS = [
+const SECURLY_FILTER_CLUSTERS = [
     "useast2-www.securly.com",
     "useast-www.securly.com",
     "uswest-master-www.securly.com",
@@ -44,7 +45,7 @@ const DEFAULT_CLUSTER_URL = `https://${SECURLY_FILTER_CLUSTERS[0]}/crextn`;
  * The `/crextn` path is preserved; only the origin is normalized to https.
  * Falls back to the dominant regional cluster when nothing usable is present.
  */
-export function normalizeClusterUrl(raw: string): string {
+function normalizeClusterUrl(raw: string): string {
     let text = (raw ?? "").trim();
 
     for (const marker of ["_disableIWF", "_updateIWF"]) {

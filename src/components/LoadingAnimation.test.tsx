@@ -1,8 +1,10 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
-import * as s from "~/styles/LoadingAnimation.css";
+
 import LoadingAnimation from "./LoadingAnimation";
+
+import * as s from "~/styles/LoadingAnimation.css";
 
 describe("LoadingAnimation", () => {
     it("draws the mark and a stream of route nodes", () => {

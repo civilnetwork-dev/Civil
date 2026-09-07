@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+
 import { err, errAsync, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
 import { z } from "zod";
+
 import { getLatestLinewizeConnectVersion } from "./getLatestVersion";
 
 const LINEWIZE_CONNECT_CHROME_ID = "ddfbkhpmcdbciejenfcolaaiebnjcbfc";
@@ -49,7 +51,7 @@ export type AutoLinewizeCheckerConfig = {
     authToken?: string;
 };
 
-export type CheckInput = {
+type CheckInput = {
     url: string | URL;
     searchQuery?: string;
     signatureIds?: string[];
@@ -59,7 +61,7 @@ export type CheckInput = {
     };
 };
 
-export type CheckResult = {
+type CheckResult = {
     verdict: Verdict;
     rawVerdict: string;
     allowed: boolean;
@@ -71,7 +73,7 @@ export type CheckResult = {
     raw: unknown;
 };
 
-export type NetworkStatus = {
+type NetworkStatus = {
     onNetwork: boolean;
     authenticated: boolean;
     user?: string;
@@ -80,7 +82,7 @@ export type NetworkStatus = {
     raw?: unknown;
 };
 
-export type LinewizeDiscoveredConfig = {
+type LinewizeDiscoveredConfig = {
     region: LinewizeRegion;
     gatewayUrl: string;
     verdictServerUrl: string;

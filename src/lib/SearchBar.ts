@@ -1,5 +1,6 @@
 import type { UVConfig } from "@titaniumnetwork-dev/ultraviolet";
 import { EventEmitter } from "tseep";
+
 import {
     type BestProxy,
     fetchBestProxy,
@@ -129,7 +130,7 @@ class SearchBar
 
     private isAbsoluteUrl(query: string) {
         try {
-            new URL(query);
+            void new URL(query);
             return true;
         } catch {}
         return false;

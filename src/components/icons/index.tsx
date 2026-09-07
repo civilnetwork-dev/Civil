@@ -65,7 +65,7 @@ import type { JSX } from "@solidjs/web";
  * not ours to redraw; only the container around it was restyled.
  */
 
-export type IconProps = {
+type IconProps = {
     size?: number;
     class?: string;
 };

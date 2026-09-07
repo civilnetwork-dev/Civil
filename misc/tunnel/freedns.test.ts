@@ -16,6 +16,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
+
 import { FreeDnsClient, FreeDnsError } from "./freedns";
 
 /** Builds a client whose HTTP layer is replaced by `handler`, which sees the

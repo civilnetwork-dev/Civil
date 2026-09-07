@@ -1,4 +1,4 @@
-import { MetaProvider } from "@solidjs/meta";
+import { clientOnly } from "@solidjs/web";
 import {
     createRootRoute,
     Outlet,
@@ -12,9 +12,9 @@ import {
     onSettled,
     Show,
 } from "solid-js";
+
 import { ContextMenuProvider } from "~/components/ContextMenu";
 import LoadingAnimation from "~/components/LoadingAnimation";
-import { clientOnly } from "~/lib/clientOnly";
 
 const Devtools = import.meta.env.DEV
     ? clientOnly(() => import("~/components/Devtools"))
@@ -114,14 +114,13 @@ function RootComponent() {
     });
 
     return (
-        <MetaProvider>
-            <ContextMenuProvider>
-                <RouterLoadingAnimation />
-                <Loading>
-                    <Outlet />
-                    <Devtools />
-                </Loading>
-            </ContextMenuProvider>
-        </MetaProvider>
+        // @solidjs/meta 1.x has no provider - the head registry is ambient.
+        <ContextMenuProvider>
+            <RouterLoadingAnimation />
+            <Loading>
+                <Outlet />
+                <Devtools />
+            </Loading>
+        </ContextMenuProvider>
     );
 }

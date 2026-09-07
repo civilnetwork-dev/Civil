@@ -1,5 +1,7 @@
 import { createSignal, Show } from "solid-js";
+
 import { IconClose } from "~/components/icons";
+
 import * as s from "~/styles/GoGuardianManifestToast.css";
 
 interface Props {

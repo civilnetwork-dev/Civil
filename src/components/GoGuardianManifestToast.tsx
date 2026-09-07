@@ -1,5 +1,7 @@
 import { createSignal, Show } from "solid-js";
+
 import { IconClose } from "~/components/icons";
+
 import * as s from "~/styles/GoGuardianManifestToast.css";
 
 interface Props {
@@ -25,10 +27,8 @@ export default function GoGuardianManifestToast(props: Props) {
         }
     };
 
-    const handleDrop = (e: DragEvent) => {
-        e.preventDefault();
-        setDropActive(false);
-        const file = e.dataTransfer?.files[0];
+    /** Both intake paths — a drop and the file picker — end here. */
+    const readManifestFile = (file: File | undefined) => {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = () => {
@@ -43,21 +43,14 @@ export default function GoGuardianManifestToast(props: Props) {
         reader.readAsText(file);
     };
 
+    const handleDrop = (e: DragEvent) => {
+        e.preventDefault();
+        setDropActive(false);
+        readManifestFile(e.dataTransfer?.files[0]);
+    };
+
     const handleFileInput = (e: Event) => {
-        const input = e.currentTarget as HTMLInputElement;
-        const file = input.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const key = extractKeyFromManifest(reader.result as string);
-            if (key) {
-                setManifestKey(key);
-                setError(null);
-            } else {
-                setError('No "key" field found in manifest.json');
-            }
-        };
-        reader.readAsText(file);
+        readManifestFile((e.currentTarget as HTMLInputElement).files?.[0]);
     };
 
     const handleSubmit = async () => {
@@ -118,6 +111,7 @@ export default function GoGuardianManifestToast(props: Props) {
                 checking for other students in your district.
             </p>
 
+            {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the label wraps the file input, so clicking or dropping on it activates a real control */}
             <label
                 class={s.dropZone}
                 data-active={dropActive() ? "true" : "false"}

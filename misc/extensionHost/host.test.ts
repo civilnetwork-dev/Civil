@@ -1,5 +1,7 @@
 import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
+
 import { loadExtension } from "./host";
 import { loadManifest, ManifestError, resolveBackground } from "./manifest";
 

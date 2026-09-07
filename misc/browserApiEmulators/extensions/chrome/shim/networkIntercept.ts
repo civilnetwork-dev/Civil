@@ -1,4 +1,3 @@
-// biome-ignore-all lint/suspicious/noConfusingVoidType: do I even need to explain myself biome
 import type { DNRRule } from "../types";
 
 export interface WebRequestDetails {
@@ -38,7 +37,7 @@ type WebRequestListenerEntry = {
     extraInfoSpec?: string[];
 };
 
-export class WebRequestEventImpl {
+class WebRequestEventImpl {
     private readonly _listeners: WebRequestListenerEntry[] = [];
 
     addListener(
@@ -307,7 +306,7 @@ function _applyDnrRules(
     requestHeaders: { name: string; value: string }[];
 } {
     // Sort rules by priority descending
-    const sorted = [...rules].sort(
+    const sorted = rules.toSorted(
         (a, b) => (b.priority ?? 1) - (a.priority ?? 1),
     );
 
@@ -446,7 +445,7 @@ function _buildInitWithHeaders(
             newHeaders.set(h.name, h.value);
         } catch {}
     }
-    return { ...(init ?? {}), headers: newHeaders };
+    return { ...init, headers: newHeaders };
 }
 
 export function installNetworkInterceptor(

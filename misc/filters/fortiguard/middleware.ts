@@ -1,4 +1,5 @@
 import type { Express } from "express";
+
 import { posthog } from "../posthog";
 import { isJsonEnabled } from "../utils/isJsonEnabled";
 import { createFortiGuardChecker } from "./checker";

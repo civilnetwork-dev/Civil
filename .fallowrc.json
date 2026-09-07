@@ -1,0 +1,84 @@
+{
+    "$schema": "./node_modules/fallow/schema.json",
+
+    // Everything the repo actually starts from. The build scripts and runnable
+    // per-vendor examples are listed because nothing imports them - they are
+    // invoked as `bun <file>` or reached through a glob inside bundle.js.
+    "entry": [
+        "run.ts",
+        "src/entry-client.tsx",
+        "src/entry-server.tsx",
+        "misc/config/bundle.js",
+        "misc/config/**/*.config.ts",
+        "misc/config/baremux/transport.ts",
+        "misc/config/scramjet/scramjetInit.ts",
+        "misc/config/service/*.ts",
+        "misc/config/shared/wasmDencode.ts",
+        "misc/browserApiEmulators/extensions/chrome/shim/index.ts",
+        "misc/filterProbe/harness.ts",
+        "misc/filterProbe/downloadBundles.ts",
+        "misc/filters/**/example.ts",
+        "tests/**/*.test.{ts,tsx}",
+        "tests/runBenchmarks.js"
+    ],
+
+    // Build output, generated files, and the vendored/native trees.
+    "ignorePatterns": [
+        "dist/**",
+        "dist-config/**",
+        "data/**",
+        "public/**",
+        "config/encoder/**",
+        "misc/obfuscatti/**",
+        "misc/wisp/native/index.*",
+        "misc/wisp/zig-client/**",
+        "src/routeTree.gen.ts"
+    ],
+
+    "resolve": {
+        "conditions": ["solid", "browser"]
+    },
+
+    // Real dependencies that no import statement names, so fallow cannot see
+    // the edge: `dist` is the built SSR service run.ts imports by path; the
+    // Mercury Workshop transports are served to the browser straight out of
+    // node_modules by run.ts; drizzle-kit is a CLI the container's start
+    // command runs; the rest are build- and test-time tools that get inlined
+    // into their output, which is why they stay in devDependencies even though
+    // a non-test entry reaches them.
+    "ignoreDependencies": [
+        "dist",
+        "@mercuryworkshop/epoxy-tls",
+        "@mercuryworkshop/epoxy-transport",
+        "@mercuryworkshop/libcurl-transport",
+        "@mercuryworkshop/scramjet-controller",
+        "drizzle-kit",
+        "@rollup/plugin-alias",
+        "@rollup/plugin-commonjs",
+        "@rollup/plugin-node-resolve",
+        "@rollup/plugin-terser",
+        "fake-indexeddb",
+        "fast-glob",
+        "obscura-rs",
+        "rollup-plugin-polyfill-node",
+        "rollup-plugin-typescript2",
+        "rollup-plugin-visualizer"
+    ],
+
+    // Modules whose exports are a deliberate public surface rather than a set
+    // of call sites: the two design-token stylesheets are the drawing
+    // language's shared vocabulary, and the misc/ trees below each expose a
+    // shaped API - the database and tunnel barrels, the extension-host
+    // harness, the chrome API emulation (whose whole job is to look like
+    // chrome.*), and the per-vendor filter countermeasures PRODUCT.md pins as
+    // core product surface.
+    "ignoreExports": [
+        { "file": "src/styles/material.css.ts", "exports": ["*"] },
+        { "file": "src/styles/schematic.css.ts", "exports": ["*"] },
+        { "file": "misc/database/**", "exports": ["*"] },
+        { "file": "misc/extensionHost/**", "exports": ["*"] },
+        { "file": "misc/tunnel/**", "exports": ["*"] },
+        { "file": "misc/browserApiEmulators/**", "exports": ["*"] },
+        { "file": "misc/filters/**", "exports": ["*"] }
+    ]
+}

@@ -1,9 +1,11 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { flush } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
-import * as s from "~/styles/schematic.css";
+
 import Unfold from "./Unfold";
+
+import * as s from "~/styles/schematic.css";
 
 /**
  * Every simulated event is followed by `flush()`. Solid 2.0 batches writes made

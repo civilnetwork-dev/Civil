@@ -1,4 +1,3 @@
-// biome-ignore-all lint/suspicious/noDocumentCookie: you have no idea about ts biome
 import type { DNRRule } from "../types";
 import { CivilEvent, makeNoopEvent } from "./event";
 import {
@@ -130,7 +129,7 @@ export function buildPermissionsAPI() {
                 const chromePerms = perms.permissions ?? [];
 
                 const nonMapped = chromePerms.filter(
-                    p => !_permMap[p] && !_granted.has(p),
+                    name => !_permMap[name] && !_granted.has(name),
                 );
                 if (nonMapped.length > 0) return false;
 
@@ -138,8 +137,8 @@ export function buildPermissionsAPI() {
                     typeof navigator !== "undefined" &&
                     navigator.permissions?.query
                 ) {
-                    for (const p of chromePerms) {
-                        const webName = _permMap[p];
+                    for (const name of chromePerms) {
+                        const webName = _permMap[name];
                         if (!webName) continue;
                         try {
                             const status = await navigator.permissions.query({
@@ -303,7 +302,7 @@ export function buildContextMenusAPI() {
             props: Record<string, unknown>,
             cb?: () => void,
         ) {
-            _items.set(id, { ...(_items.get(id) ?? {}), ...props });
+            _items.set(id, { ..._items.get(id), ...props });
             return resolved(undefined, cb);
         },
         remove(id: string | number, cb?: () => void) {
@@ -1533,7 +1532,7 @@ export function buildBookmarksAPI() {
         ) {
             const leaves = [..._flat.values()]
                 .filter(node => node.url)
-                .sort((a, b) => (b.dateAdded ?? 0) - (a.dateAdded ?? 0))
+                .toSorted((a, b) => (b.dateAdded ?? 0) - (a.dateAdded ?? 0))
                 .slice(0, n);
             return resolved(leaves, cb);
         },

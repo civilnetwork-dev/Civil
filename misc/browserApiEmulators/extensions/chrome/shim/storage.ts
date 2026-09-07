@@ -120,21 +120,22 @@ class StorageNamespace {
         this._cache = clone(initial);
 
         // Load from IDB on init, then seed cache
-        this._ready = openIDB(extId)
-            .then(db => {
+        this._ready = (async () => {
+            try {
+                const db = await openIDB(extId);
                 this._db = db;
-                return idbGetAll(db, area);
-            })
-            .then(data => {
                 // Merge: IDB wins over initial (IDB has persisted data)
-                this._cache = { ...this._cache, ...data };
-            })
-            .catch(err => {
+                this._cache = {
+                    ...this._cache,
+                    ...(await idbGetAll(db, area)),
+                };
+            } catch (err) {
                 console.warn(
                     "[civil-ext-shim] IDB init failed, using in-memory storage:",
                     err,
                 );
-            });
+            }
+        })();
 
         // Listen for cross-context storage changes
         bus.addEventListener("message", (e: MessageEvent) => {

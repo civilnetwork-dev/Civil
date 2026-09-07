@@ -26,7 +26,7 @@ Two things a competing unblocker (UV, Rammerhead, Interstellar, etc.) could not 
 - Ships a "Filter Checker" tool (`checkfilters` route) so users can test whether their current network/filter setup is compatible.
 - Ships ban-detection UI (`ban`, `baninfo` routes) surfacing when a filter vendor has flagged/blocked the proxy, plus vendor-specific toasts (e.g. iBoss gateway detect toast) warning users proactively.
 - Proxy transport layer built on Mercury Workshop tooling (scramjet, bare-mux, epoxy-transport, libcurl-transport) plus a custom Wisp implementation (native Rust/napi + Zig client) and a benchmarks page comparing encoder/transport performance.
-- Deployed via Docker/Docker Compose; built with SolidJS + SolidStart + TanStack Router.
+- Deployed via Docker/Docker Compose; built with SolidJS 2 + @solidjs/vite-plugin (start mode) + TanStack Router, served through Nitro.
 
 ## Capabilities and Constraints
 

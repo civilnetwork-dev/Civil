@@ -10,7 +10,7 @@ export interface BestProxy {
 
 // Fired around a first-visit probe so UI can show a brief "finding best proxy"
 // hint. `detail.pending` is true when a probe is running, false when done.
-export const BEST_PROXY_EVENT = "civil:best-proxy";
+const BEST_PROXY_EVENT = "civil:best-proxy";
 
 function emit(pending: boolean, host?: string): void {
     if (typeof window === "undefined") return;

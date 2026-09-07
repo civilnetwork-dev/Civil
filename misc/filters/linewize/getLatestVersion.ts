@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import xior from "xior";
+
 import { getLatestChromeVersion } from "../utils/getLatestChromeVersion";
 
 const parser = new XMLParser({

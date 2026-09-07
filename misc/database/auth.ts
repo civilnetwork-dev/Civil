@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { anonymous, genericOAuth, patreon } from "better-auth/plugins";
+
 import { optionalEnv, requireEnv } from "../env";
 import { db } from "./db";
 import { accounts, sessions, users, verifications } from "./schema";

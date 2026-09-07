@@ -1,4 +1,5 @@
 import { createSignal, For, Show } from "solid-js";
+
 import {
     bookmarks,
     bookmarksAdd,
@@ -12,6 +13,7 @@ import {
     IconWorld,
 } from "~/components/icons";
 import { isNewtabUrl } from "~/lib/TabManager";
+
 import * as s from "~/styles/BookmarksBar.css";
 
 function BookmarkFavicon(props: { favicon?: string }) {
@@ -50,8 +52,8 @@ export default function BookmarksBar(props: BookmarksBarProps) {
     const handleAdd = () => {
         if (isNewtab() || !props.activeUrl) return;
         if (isBookmarked()) {
-            const b = bookmarks().find(b => b.url === props.activeUrl);
-            if (b) bookmarksRemove(b.id);
+            const existing = bookmarks().find(bm => bm.url === props.activeUrl);
+            if (existing) bookmarksRemove(existing.id);
         } else {
             bookmarksAdd(
                 props.activeUrl,
@@ -81,8 +83,7 @@ export default function BookmarksBar(props: BookmarksBarProps) {
                     >
                         <BookmarkFavicon favicon={bm().favicon} />
                         <span class={s.bookmarkLabel}>{bm().title}</span>
-                        {/** biome-ignore lint/a11y/noStaticElementInteractions: biome breaking my project lmao */}
-                        {/** biome-ignore lint/a11y/useKeyWithClickEvents: biome breaking my project lmao */}
+                        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- remove control sits inside the bookmark's own button row */}
                         <span
                             class={s.bookmarkRemove}
                             onClick={e =>

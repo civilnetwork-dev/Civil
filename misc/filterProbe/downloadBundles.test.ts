@@ -7,6 +7,7 @@
 
 import { zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
+
 import { buildOmahaUrl, codebaseForApp, zipFromCrx } from "./downloadBundles";
 
 describe("buildOmahaUrl", () => {

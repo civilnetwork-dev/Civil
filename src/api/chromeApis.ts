@@ -1,18 +1,13 @@
-// biome-ignore-all lint: chrome apis
+// oxlint-disable no-eval -- emulating chrome.* APIs means evaluating
+// extension-supplied code in the page's global scope.
 
 import type {
     CivilTabCreateProperties,
     CivilTabQueryInfo,
     CivilTabUpdateProperties,
 } from "~/types";
-import {
-    civilStorage,
-    idbDelete,
-    idbGet,
-    idbGetAll,
-    idbPut,
-    openCivilDB,
-} from "./storage";
+
+import { idbDelete, idbGet, idbGetAll, idbPut, openCivilDB } from "./storage";
 import {
     tabsActivate,
     tabsCreate,
@@ -48,26 +43,6 @@ const _storageLocalListeners: Set<
         changes: Record<string, { oldValue?: unknown; newValue?: unknown }>,
     ) => void
 > = new Set();
-
-const storageLocalProxy = new Proxy(civilStorage, {
-    set(target, prop, value) {
-        const oldValue = target.getItem(prop as string);
-        target.setItem(
-            prop as string,
-            typeof value === "string" ? value : JSON.stringify(value),
-        );
-        const changes: Record<
-            string,
-            { oldValue?: unknown; newValue?: unknown }
-        > = {};
-        changes[prop as string] = {
-            oldValue: oldValue ? JSON.parse(oldValue) : undefined,
-            newValue: value,
-        };
-        _storageLocalListeners.forEach(cb => cb(changes));
-        return true;
-    },
-});
 
 let _idbRef: IDBDatabase | null = null;
 async function getIDB(): Promise<IDBDatabase> {
@@ -351,7 +326,7 @@ export const chromeNotifications = {
         options: { title: string; message: string; iconUrl?: string },
     ) => {
         if ("Notification" in window && Notification.permission === "granted") {
-            new Notification(options.title, {
+            void new Notification(options.title, {
                 body: options.message,
                 icon: options.iconUrl,
             });
@@ -495,7 +470,7 @@ export const chromeWebRequest = {
     onBeforeRequest: {
         addListener: (
             cb: (details: unknown) => boolean | void,
-            filter: unknown,
+            _filter: unknown,
             _extraInfo?: string[],
         ) =>
             addListener(
@@ -508,7 +483,7 @@ export const chromeWebRequest = {
     onBeforeSendHeaders: {
         addListener: (
             cb: (details: unknown) => void,
-            filter: unknown,
+            _filter: unknown,
             _extraInfo?: string[],
         ) =>
             addListener(
@@ -519,7 +494,7 @@ export const chromeWebRequest = {
             removeListener("webRequest.onBeforeSendHeaders", cb),
     },
     onCompleted: {
-        addListener: (cb: (details: unknown) => void, filter: unknown) =>
+        addListener: (cb: (details: unknown) => void, _filter: unknown) =>
             addListener(
                 "webRequest.onCompleted",
                 cb as (...args: unknown[]) => void,
@@ -528,7 +503,7 @@ export const chromeWebRequest = {
             removeListener("webRequest.onCompleted", cb),
     },
     onErrorOccurred: {
-        addListener: (cb: (details: unknown) => void, filter: unknown) =>
+        addListener: (cb: (details: unknown) => void, _filter: unknown) =>
             addListener(
                 "webRequest.onErrorOccurred",
                 cb as (...args: unknown[]) => void,
@@ -537,7 +512,3 @@ export const chromeWebRequest = {
             removeListener("webRequest.onErrorOccurred", cb),
     },
 };
-
-function emitChromeEvent(event: string, ...args: unknown[]): void {
-    emit(event, ...args);
-}

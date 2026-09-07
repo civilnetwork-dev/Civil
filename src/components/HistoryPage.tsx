@@ -1,4 +1,5 @@
 import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
+
 import {
     HISTORY_LS_KEY,
     historyClear,
@@ -12,9 +13,10 @@ import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import { onLsChange } from "~/lib/reactiveStorage";
 import { tabManager } from "~/lib/TabManager";
+import type { CivilHistoryEntry } from "~/types";
+
 import * as s from "~/styles/HistoryPage.css";
 import * as schematic from "~/styles/schematic.css";
-import type { CivilHistoryEntry } from "~/types";
 
 export default function HistoryPage() {
     const [entries, setEntries] = createSignal<CivilHistoryEntry[]>([]);
@@ -158,7 +160,7 @@ export default function HistoryPage() {
                 last = {
                     label,
                     items: [],
-                    hours: new Array(24).fill(0),
+                    hours: Array.from({ length: 24 }, () => 0),
                     peak: 0,
                 };
                 groups.push(last);

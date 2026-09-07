@@ -46,9 +46,8 @@ vi.mock("user-agents", () => ({
     },
 }));
 
-const { probeSite, recordCompatFeedback } = await import(
-    "../misc/database/models/siteProxy"
-);
+const { probeSite, recordCompatFeedback } =
+    await import("../misc/database/models/siteProxy");
 
 function row(over: Record<string, unknown> = {}) {
     return {

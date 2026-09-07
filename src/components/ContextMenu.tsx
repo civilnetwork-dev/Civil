@@ -1,5 +1,5 @@
-// biome-ignore-all lint/a11y/noStaticElementInteractions: biome breaking my project lmao
-// biome-ignore-all lint/a11y/useKeyWithClickEvents: biome breaking my project lmao
+// oxlint-disable jsx-a11y/no-static-element-interactions
+// oxlint-disable jsx-a11y/click-events-have-key-events
 import { type JSX, Portal } from "@solidjs/web";
 import {
     createContext,
@@ -10,6 +10,7 @@ import {
     Show,
     useContext,
 } from "solid-js";
+
 import * as s from "~/styles/ContextMenu.css";
 
 export interface ContextMenuItem {

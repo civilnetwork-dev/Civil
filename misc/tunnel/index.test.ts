@@ -6,6 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+
 import { FreeDnsClient, FreeDnsError } from "./freedns";
 import { createSubdomainWithCaptcha, openTunnel } from "./index";
 

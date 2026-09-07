@@ -6,6 +6,7 @@
 // in MAINTENANCE.md section 7.
 import { createRoot, flush } from "solid-js";
 import { describe, expect, it } from "vitest";
+
 import {
     createTabHistory,
     displayUrl,

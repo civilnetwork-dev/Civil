@@ -1,7 +1,7 @@
-import { Meta, Title } from "@solidjs/meta";
-import { createFileRoute } from "@tanstack/solid-router";
 import results from "$tests/bench_results.json" with { type: "json" };
-import { clientOnly } from "~/lib/clientOnly";
+import { Meta, Title } from "@solidjs/meta";
+import { clientOnly } from "@solidjs/web";
+import { createFileRoute } from "@tanstack/solid-router";
 
 const BenchmarkChart = clientOnly(
     () => import("~/components/BenchmarkChart.tsx"),

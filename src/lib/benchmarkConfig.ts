@@ -7,8 +7,10 @@ import {
 } from "echarts/components";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
+
 import type { SlotName } from "../styles/palette";
 import { PALETTE } from "../styles/palette";
+
 import { FONT_MONO } from "../styles/schematic.css";
 
 // TitleComponent is deliberately not registered: chart titles are DOM `Rule`s

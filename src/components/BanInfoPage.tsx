@@ -1,9 +1,11 @@
 import { createSignal, For, onSettled, Show } from "solid-js";
+
 import { IconBan, IconLoader } from "~/components/icons";
-import StrikeGauge from "~/components/StrikeGauge";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
+import StrikeGauge from "~/components/StrikeGauge";
+
 import * as s from "~/styles/BanInfoPage.css";
 import * as schematic from "~/styles/schematic.css";
 
@@ -158,6 +160,7 @@ export default function BanInfoPage() {
             <StatusSection />
 
             <div class={s.controls}>
+                {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- Solid spells the attribute "for", not "htmlFor"; it points at #baninfo-max below */}
                 <label class={s.controlLabel} for="baninfo-max">
                     max entries shown
                 </label>

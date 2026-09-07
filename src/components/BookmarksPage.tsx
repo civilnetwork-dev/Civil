@@ -1,4 +1,5 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
+
 import { bookmarks, bookmarksRemove } from "~/api/bookmarks";
 import {
     IconBookmark,
@@ -13,9 +14,10 @@ import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import { tabManager } from "~/lib/TabManager";
+import type { CivilBookmark } from "~/types";
+
 import * as s from "~/styles/BookmarksPage.css";
 import * as schematic from "~/styles/schematic.css";
-import type { CivilBookmark } from "~/types";
 
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -66,7 +68,7 @@ export default function BookmarksPage() {
                     b.title.toLowerCase().includes(q) ||
                     b.url.toLowerCase().includes(q),
             );
-        return list.slice().sort((a, b) => b.addedAt - a.addedAt);
+        return list.toSorted((a, b) => b.addedAt - a.addedAt);
     });
 
     /**

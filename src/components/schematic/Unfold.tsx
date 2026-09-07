@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { createSignal, createUniqueId } from "solid-js";
+
 import * as s from "~/styles/schematic.css";
 
 /**
@@ -117,7 +118,7 @@ export default function Unfold(props: {
     };
 
     return (
-        // biome-ignore lint/a11y/noStaticElementInteractions: hover/focus tracking wrapper around a real interactive button; the div itself is not the control
+        // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- hover/focus tracking wrapper around a real interactive button; the div itself is not the control
         <div
             ref={root}
             class={[s.unfold, props.class]}

@@ -1,10 +1,13 @@
 import { For, Show } from "solid-js";
+
 import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import { Wordmark } from "~/components/Wordmark";
-import * as s from "~/styles/NewTabPage.css";
+
 import SearchBarContainer from "./SearchBarContainer";
+
+import * as s from "~/styles/NewTabPage.css";
 
 type BandTone = keyof typeof s.bandTone;
 
@@ -91,8 +94,17 @@ export default function NewTabPage() {
                             minute by minute and flags students for reading
                             college and therapy pages. Civil's voice is the
                             inverse: name the mechanism, state the number, claim
-                            nothing that isn't built. */}
-                        <Anno muted>rev 2.0 · nothing here is flagged</Anno>
+                            nothing that isn't built.
+
+                            "nothing here is flagged" broke that last rule:
+                            Civil keeps its own restricted-domain list, and
+                            hitting it is exactly a flag - five strikes inside
+                            24h and the account is banned (misc/violations.ts).
+                            The line that survives is the one the proxy
+                            actually delivers: the network filter upstream
+                            resolves one hostname, Civil's, and sees nothing
+                            of what is loaded through it. */}
+                        <Anno muted>rev 2.0 · your filter sees one domain</Anno>
                     </div>
                     <p class={s.adNote}>
                         <Anno muted>

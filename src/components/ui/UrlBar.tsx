@@ -1,4 +1,5 @@
 import { createSignal, For, Show } from "solid-js";
+
 import { historySearch } from "~/api/history";
 import {
     IconArrowLeft,
@@ -11,8 +12,9 @@ import {
 } from "~/components/icons";
 import { displayUrl, isProbablyUrl, WS_URL } from "~/lib/browserHelpers";
 import { resolveUrl } from "~/lib/TabManager";
-import * as s from "~/styles/BrowserChrome.css";
 import type { CivilHistoryEntry } from "~/types";
+
+import * as s from "~/styles/BrowserChrome.css";
 
 interface UrlBarProps {
     value: string;
@@ -63,8 +65,8 @@ export function UrlBar(props: UrlBarProps) {
         ws = new WebSocket(WS_URL);
         ws.onmessage = ev => {
             try {
-                const { suggestions: s } = JSON.parse(ev.data);
-                if (Array.isArray(s)) setSuggestions(s);
+                const { suggestions: list } = JSON.parse(ev.data);
+                if (Array.isArray(list)) setSuggestions(list);
             } catch {}
         };
     };
@@ -232,11 +234,14 @@ export function UrlBar(props: UrlBarProps) {
                         suggestions().length > 0
                     }
                 >
-                    <ul class={s.urlbarSuggestions}>
+                    <ul class={s.urlbarSuggestions} role="listbox">
                         <For each={historySuggestions()} keyed={false}>
                             {entry => (
                                 <li
                                     class={s.urlbarHistoryRow}
+                                    role="option"
+                                    aria-selected={false}
+                                    aria-label={entry().title || entry().url}
                                     onMouseDown={armSuppressBlur}
                                     onClick={() => {
                                         suppressBlur = false;
@@ -294,6 +299,8 @@ export function UrlBar(props: UrlBarProps) {
                             {suggestion => (
                                 <li
                                     class={s.urlbarSuggestionRow}
+                                    role="option"
+                                    aria-selected={false}
                                     onMouseDown={armSuppressBlur}
                                     onClick={() => {
                                         suppressBlur = false;

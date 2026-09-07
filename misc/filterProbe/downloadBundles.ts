@@ -38,6 +38,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+
 import { unzipSync } from "fflate";
 
 const EXTENSIONS_JSON_URL =

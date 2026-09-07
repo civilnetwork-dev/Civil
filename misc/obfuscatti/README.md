@@ -30,7 +30,7 @@ analyzer already does better than js-confuser's own more ad-hoc checks.
 - `src/transforms/` — every ported transform, one file each; see the
   checklist below for the full list and what each one does.
   `array_extraction.zig` (the first one written) is now also the string-
-  *encoding* half of js-confuser's `stringConcealing`, not just extraction:
+  _encoding_ half of js-confuser's `stringConcealing`, not just extraction:
   every string literal is basE91-encoded (`base91.zig`) into one shared
   buffer, deduplicated by encoded span, and replaced with a call through an
   injected decoder function — `"hello"` becomes `__obf_arr_get(0, 5)`
@@ -62,7 +62,7 @@ synthetic, deliberately shaped to exercise one thing. Before wiring into
 `obfuscateAssets.ts`, three real, unmodified files already in this repo
 (none written for this purpose) were run through the full pipeline:
 `misc/wisp/native/index.js` (17KB, real control flow — nested if/else
-chains, try/catch, platform-detection logic; verified *behaviorally*
+chains, try/catch, platform-detection logic; verified _behaviorally_
 identical, not just syntactically — the original and obfuscated versions
 throw the exact same error, byte-for-byte, when the native binary is
 missing), `dist-config/sw.js` (34KB, a real service worker — checked for
@@ -88,12 +88,12 @@ test suite nor the earlier development testing had caught:
   getting corrupted** — a real MIME-type lookup table
   (`{"content-type": [...]}`-shaped code, an extremely common pattern)
   came out as `{j[12]+j[13]:[...]}`, a syntax error. `array_extraction`,
-  `duplicate_literals_removal`, and `string_splitting` all touch *every*
+  `duplicate_literals_removal`, and `string_splitting` all touch _every_
   string literal they see, including one sitting in a position that
   syntactically requires a static string — the getter/setter/method key
   problem `flatten.zig` hit and fixed for its own generated nodes (see
   "Scope resolution" below) turned out to be the same underlying issue
-  for *existing*, real code's own object keys too, which none of this
+  for _existing_, real code's own object keys too, which none of this
   project's own hand-written test fixtures happened to contain. Fixed
   with a new shared guard, `protected_keys.zig`, used by all three
   transforms — see that file's own doc comment. This was the known
@@ -105,7 +105,7 @@ Also found, separately: `string_splitting.zig`'s own chunks are
 `string_literal` nodes, so once the original literal's data is replaced
 with the chunk chain, the traverser descends into and re-visits each
 chunk — a chunk long enough to clear the size threshold on its own was
-getting split *again*. Concatenation is associative, so this wasn't
+getting split _again_. Concatenation is associative, so this wasn't
 observed to produce wrong output by itself, but it's needless repeated
 work this pass never intended, not a risk worth carrying, and step one in
 tracking down the object-key bug above. Fixed with a per-pass
@@ -202,7 +202,7 @@ Ported so far (see `src/transforms/`), each with a real test:
       Isn't a standalone Plugin in the original at all — its real mechanism
       had to be reverse-engineered from the installed package's actual
       output, not read off a Plugin file. Two pieces: an ordinary AST pass
-      for the key conversion, and a *post-codegen* pass over the generated
+      for the key conversion, and a _post-codegen_ pass over the generated
       text for the actual escaping (the only way to get custom escaping out
       of yuku's codegen — see `string_encoding.zig`'s own doc comment).
       Found and fixed a real, pre-existing bug in `string_splitting.zig`
@@ -210,7 +210,7 @@ Ported so far (see `src/transforms/`), each with a real test:
       Passes every unit test and the full 112-file real-source comparison —
       but breaks Solid.js's own internal Owner/scheduler machinery in the
       actual running app (`TypeError: Class constructor <X> cannot be
-      invoked without 'new'`, reproducible on every page load, confirmed on
+    invoked without 'new'`, reproducible on every page load, confirmed on
       two independent builds), and that hasn't been isolated to a root
       cause yet — never reproduced with a small hand-written repro, only
       against the real, much larger bundle. See `obfuscate.zig`'s own
@@ -228,7 +228,7 @@ replaces that role.
 
 Five of js-confuser's transforms aren't here, not because they're hard to
 port (though some are) but because implementing them faithfully would work
-*against* what this proxy actually needs from obfuscation, or because the
+_against_ what this proxy actually needs from obfuscation, or because the
 risk of shipping a subtly-broken version outweighs the value right now.
 
 - **`controlFlowFlattening`** — genuinely valuable, no counterproductive
@@ -293,7 +293,7 @@ The `zig` on PATH in this environment is a dev snapshot
 (`0.17.0-dev.1756+613c03321`). napi-zig's `build.zig`, pinned to the commit
 yuku itself depends on, references `std.Build.*.Optimize.Debug`, which that
 snapshot's std library no longer has (likely renamed/restructured since
-napi-zig's pinned commit was tested). This isn't just about *this* package's
+napi-zig's pinned commit was tested). This isn't just about _this_ package's
 own NAPI binding — **yuku's own `build.zig` unconditionally calls
 `napi_zig.addLib` for its own npm packages**, so depending on yuku at all
 under that Zig version hits the same error, regardless of which yuku module
@@ -326,34 +326,34 @@ if writing more Zig against this toolchain.
    actually useful for this proxy is ported (13, see the checklist above);
    the five that aren't have their reasoning under "Deliberately not
    ported". What's left in this area:
-   - `controlFlowFlattening` specifically — the one deliberately-skipped
-     transform that's worth coming back to (see its own entry above) as
-     dedicated future work, not a quick add-on to whatever else is
-     happening.
-   - ~~`stringEncoding`~~ — done (`src/transforms/string_encoding.zig`): every
-     string literal's characters become `\xHH`/`\uHHHH` escapes, and every
-     non-computed identifier-name member/property/method key becomes a
-     computed string literal first so its name gets the same treatment.
-     `StringLiteral.raw` genuinely isn't used verbatim by codegen (confirmed
-     by reading `emit_string_literal`, not assumed), so this runs as a
-     second pass over the *already-generated text*, not another tree
-     transform — the only real way to get custom escaping out of yuku's
-     codegen. Surfaced a real, pre-existing bug in `string_splitting.zig`
-     along the way: it split a string at a raw byte offset with no
-     awareness of UTF-8 character boundaries, and against real Civil source
-     (a `…` straddling a chunk boundary) that left one chunk holding an
-     orphaned continuation byte — silently-wrong output bytes before this,
-     a hard crash once something finally tried to decode a chunk's own text
-     as UTF-8. Fixed at the source, not worked around.
-   - ~~Known gap shared by `array_extraction.zig` and
-     `duplicate_literals_removal.zig`~~ — fixed, and turned out bigger than
-     first scoped: see "Tested against real code" above and
-     `protected_keys.zig`.
+    - `controlFlowFlattening` specifically — the one deliberately-skipped
+      transform that's worth coming back to (see its own entry above) as
+      dedicated future work, not a quick add-on to whatever else is
+      happening.
+    - ~~`stringEncoding`~~ — done (`src/transforms/string_encoding.zig`): every
+      string literal's characters become `\xHH`/`\uHHHH` escapes, and every
+      non-computed identifier-name member/property/method key becomes a
+      computed string literal first so its name gets the same treatment.
+      `StringLiteral.raw` genuinely isn't used verbatim by codegen (confirmed
+      by reading `emit_string_literal`, not assumed), so this runs as a
+      second pass over the _already-generated text_, not another tree
+      transform — the only real way to get custom escaping out of yuku's
+      codegen. Surfaced a real, pre-existing bug in `string_splitting.zig`
+      along the way: it split a string at a raw byte offset with no
+      awareness of UTF-8 character boundaries, and against real Civil source
+      (a `…` straddling a chunk boundary) that left one chunk holding an
+      orphaned continuation byte — silently-wrong output bytes before this,
+      a hard crash once something finally tried to decode a chunk's own text
+      as UTF-8. Fixed at the source, not worked around.
+    - ~~Known gap shared by `array_extraction.zig` and
+      `duplicate_literals_removal.zig`~~ — fixed, and turned out bigger than
+      first scoped: see "Tested against real code" above and
+      `protected_keys.zig`.
 3. **Scope resolution: solved — yuku ships a real analyzer.**
    `variableMasking`/`objectExtraction`/`globalConcealing` were all
    initially parked as needing scope/binding analysis yuku's `transform`
    traverser deliberately doesn't carry. That's still true of the
-   traverser — but yuku separately ships a *complete* semantic analyzer
+   traverser — but yuku separately ships a _complete_ semantic analyzer
    (`parser/semantic/`, published standalone as `yuku-analyzer`) that this
    project wasn't using yet. One call, `parser.semantic.analyze(&tree)`,
    returns a `Semantic` model with real scopes, symbols, and references —
@@ -363,70 +363,71 @@ if writing more Zig against this toolchain.
    (which scope a binding — including a hoisting `var` — actually lands
    in). All three parked transforms are ported now, all built on this. On
    `globalConcealing` specifically, real scope resolution turned out
-   *better* than the original: js-confuser checks a free name against a
+   _better_ than the original: js-confuser checks a free name against a
    hardcoded known-globals list, so a name outside that list is left alone;
    real resolution doesn't need the list at all — "nothing in this program
    declares it" already means it resolves via the environment at runtime,
    known name or not (see the file's own doc comment).
 
-   **The one hard constraint this surfaced:** `tree.string(id)` returns a
-   slice into yuku's string pool, which is backed by a plain growable
-   `ArrayList(u8)` — it can reallocate (move) on any later
-   `tree.addString()` call, silently invalidating every slice handed out
-   before. Any transform holding a `tree.string()` result across a later
-   `addString()` call — including its own — needs to `allocator.dupe()` it
-   first. Found as real, silent corruption (not a crash) in four files
-   before being fixed; see obfuscate.zig's own top doc comment for the full
-   writeup. Worth internalizing before writing another transform that reads
-   names off the tree.
+    **The one hard constraint this surfaced:** `tree.string(id)` returns a
+    slice into yuku's string pool, which is backed by a plain growable
+    `ArrayList(u8)` — it can reallocate (move) on any later
+    `tree.addString()` call, silently invalidating every slice handed out
+    before. Any transform holding a `tree.string()` result across a later
+    `addString()` call — including its own — needs to `allocator.dupe()` it
+    first. Found as real, silent corruption (not a crash) in four files
+    before being fixed; see obfuscate.zig's own top doc comment for the full
+    writeup. Worth internalizing before writing another transform that reads
+    names off the tree.
 
-   **Revised again, after `flatten` found a real bug in this design:**
-   the original plan was one `Semantic` snapshot, taken once, shared by
-   every semantic-consuming transform in the group (each guarding against
-   its *own* newly-created nodes with
-   `if (@intFromEnum(index) >= semantic.node_references.len) return;`).
-   That guard isn't enough — it only protects a transform from its own
-   mutations, not from an *earlier* transform's. `flatten` builds a
-   wrapper that forwards the original function's parameters by name into
-   the new flattened function — brand new `identifier_reference` nodes
-   naming an existing parameter. `variable_masking`, working off the
-   snapshot taken *before* `flatten` ran, correctly masked the original
-   parameter but had no idea flatten's new reference to the same name
-   existed, leaving a bare identifier with nothing left to bind to.
-   `obfuscate.zig` now calls `parser.semantic.analyze(&tree)` fresh,
-   immediately before *each* semantic-consuming transform, not once for
-   the whole group — more `analyze` calls, but every transform sees
-   exactly what every prior one actually did, which the shared-snapshot
-   version couldn't guarantee. The per-node bounds guard is still needed
-   *within* a single transform's own pass (a transform can still visit
-   nodes it just created itself, mid-traversal), just no longer across
-   transforms.
+    **Revised again, after `flatten` found a real bug in this design:**
+    the original plan was one `Semantic` snapshot, taken once, shared by
+    every semantic-consuming transform in the group (each guarding against
+    its _own_ newly-created nodes with
+    `if (@intFromEnum(index) >= semantic.node_references.len) return;`).
+    That guard isn't enough — it only protects a transform from its own
+    mutations, not from an _earlier_ transform's. `flatten` builds a
+    wrapper that forwards the original function's parameters by name into
+    the new flattened function — brand new `identifier_reference` nodes
+    naming an existing parameter. `variable_masking`, working off the
+    snapshot taken _before_ `flatten` ran, correctly masked the original
+    parameter but had no idea flatten's new reference to the same name
+    existed, leaving a bare identifier with nothing left to bind to.
+    `obfuscate.zig` now calls `parser.semantic.analyze(&tree)` fresh,
+    immediately before _each_ semantic-consuming transform, not once for
+    the whole group — more `analyze` calls, but every transform sees
+    exactly what every prior one actually did, which the shared-snapshot
+    version couldn't guarantee. The per-node bounds guard is still needed
+    _within_ a single transform's own pass (a transform can still visit
+    nodes it just created itself, mid-traversal), just no longer across
+    transforms.
 
-   Also surfaced by `flatten`, worth generalizing: a `string_literal` used
-   as a **non-computed** key/name (an object property key written
-   `{ get x() {} }`, not `{ get [x]() {} }`) will get corrupted if
-   `array_extraction`/`duplicate_literals_removal` later rewrite that same
-   literal into an array-lookup expression — a non-computed slot can't
-   hold an expression. Fixed in `flatten.zig` by marking its own generated
-   getter/setter/method keys `computed = true` (valid ES6+, and accepts
-   whatever ends up there); worth checking for in any future transform
-   that writes a property/method name as a literal.
+    Also surfaced by `flatten`, worth generalizing: a `string_literal` used
+    as a **non-computed** key/name (an object property key written
+    `{ get x() {} }`, not `{ get [x]() {} }`) will get corrupted if
+    `array_extraction`/`duplicate_literals_removal` later rewrite that same
+    literal into an array-lookup expression — a non-computed slot can't
+    hold an expression. Fixed in `flatten.zig` by marking its own generated
+    getter/setter/method keys `computed = true` (valid ES6+, and accepts
+    whatever ends up there); worth checking for in any future transform
+    that writes a property/method name as a literal.
 
-   Four transforms now use this pattern (`objectExtraction`, `flatten`,
-   `globalConcealing`, `variableMasking`); `renameVariables` uses a
-   variant of it (one fresh snapshot at the very end, over the fully
-   mutated tree — see its own file). `astScrambler`, `deadCode`, and
-   `opaquePredicates` are proof a structural, scope-free transform can
-   just run alongside the others without touching any of this at all. If
-   `controlFlowFlattening` is ever attempted (see "Deliberately not
-   ported"), it would need this same fresh-snapshot pattern too.
+    Four transforms now use this pattern (`objectExtraction`, `flatten`,
+    `globalConcealing`, `variableMasking`); `renameVariables` uses a
+    variant of it (one fresh snapshot at the very end, over the fully
+    mutated tree — see its own file). `astScrambler`, `deadCode`, and
+    `opaquePredicates` are proof a structural, scope-free transform can
+    just run alongside the others without touching any of this at all. If
+    `controlFlowFlattening` is ever attempted (see "Deliberately not
+    ported"), it would need this same fresh-snapshot pattern too.
+
 4. **Filter-evasion tuning.** This session's `misc/filterProbe` work found
    real, concrete signatures filters key on — most notably GoGuardian's
    downloaded proxy-keyword model containing literal Ultraviolet artifact
    names (`uv.bundle.js`, `uv.config.js`, `uv.handler.js`) and phrases like
    `"bypass goguardian"`/`"evade school censorship"`. Once more transforms
    exist, that's the concrete list to design against — not generic
-   obfuscation strength, but *this proxy's* actual exposure.
+   obfuscation strength, but _this proxy's_ actual exposure.
 5. **Cross-platform NAPI builds.** Still explicitly out of scope until the
    above is solid: `build.zig` targets the host only by design (`b.standardTargetOptions`
    with no `-Dtarget` override) — the ask was "at build time only generate

@@ -1,4 +1,5 @@
 import { createGlobalThemeContract } from "@vanilla-extract/css";
+
 import { PALETTE } from "./palette";
 
 export const vars = createGlobalThemeContract(

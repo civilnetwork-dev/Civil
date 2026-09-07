@@ -104,4 +104,4 @@ export const VENDOR_PRIMARY_FOLDER: Record<string, string> = {
 /** Every distinct vendor, sorted. */
 export const VENDORS: string[] = [
     ...new Set(Object.values(FOLDER_TO_VENDOR)),
-].sort();
+].toSorted();

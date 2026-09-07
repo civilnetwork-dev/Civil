@@ -1,13 +1,15 @@
 import { Portal } from "@solidjs/web";
 import { createSignal, For, onSettled, Show } from "solid-js";
+
 import { buildExtensionPageSrcDoc } from "~/api/extensionRuntime";
 import {
     extensionsGetAll,
     extensionsResolveIcon,
     extensionsResolvePopup,
 } from "~/api/extensions";
-import * as s from "~/styles/ExtensionIconBar.css";
 import type { ChromeManifest, CivilExtension } from "~/types";
+
+import * as s from "~/styles/ExtensionIconBar.css";
 
 interface ExtIconState {
     ext: Omit<CivilExtension, "files">;
@@ -132,7 +134,7 @@ export default function ExtensionIconBar() {
             <Show when={popup()}>
                 {p => (
                     <Portal>
-                        {/** biome-ignore lint/a11y/noStaticElementInteractions: biome being dumb au */}
+                        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
                         <div
                             style={{
                                 position: "fixed",

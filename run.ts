@@ -1,12 +1,14 @@
 import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
+
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
 import { start as startChii } from "chii";
 import compression from "compression";
 import express from "express";
 import { toNodeHandler } from "h3/node";
+
 import { usePosthogProxy } from "./misc/analytics/posthogProxy";
 import {
     createDatabaseMiddleware,
@@ -59,6 +61,7 @@ const { epoxyPath, libcurlPath, bareTransportPath, scramjetControllerPath } = {
 
 import type { IncomingMessage as Request } from "node:http";
 import type { Socket } from "node:net";
+
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 import { createBareServer } from "@tomphttp/bare-server-node";
 import { XMLParser } from "fast-xml-parser";
@@ -67,6 +70,7 @@ import sirv from "sirv";
 import { build } from "vite";
 import { WebSocketServer } from "ws";
 import xior from "xior";
+
 import { useBlocksiMiddleware } from "./misc/filters/blocksi/middleware";
 import { useFilterBlockerMiddleware } from "./misc/filters/filterBlockerMiddleware";
 import { useFortiGuardMiddleware } from "./misc/filters/fortiguard/middleware";
@@ -469,9 +473,12 @@ app.use((req, res, next) => {
     }
 });
 
-const { default: ssrHandler } = await import(
-    "dist/nitro/vite/services/ssr/index.js"
-);
+// Nitro names each Vite service entry after the file the environment built.
+// The SSR environment's entry is @solidjs/vite-plugin's `virtual:solid-ssr-handler`,
+// which emits as `server`; its default export is the Fetchable
+// `{ fetch(request) }` that toNodeHandler wants below.
+const { default: ssrHandler } =
+    await import("dist/nitro/vite/services/ssr/server.js");
 
 app.use(sirv(resolve(import.meta.dirname, "dist/client")));
 app.use(sirv(resolve(import.meta.dirname, "dist/client/_build")));

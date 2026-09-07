@@ -1,9 +1,10 @@
 import { lsSetJSON, lsSetRaw } from "~/lib/reactiveStorage";
 import type { CivilHistoryEntry, HistoryStorageMethod } from "~/types";
+
 import { idbClear, idbDelete, idbGetAll, idbPut, openCivilDB } from "./storage";
 
 export const HISTORY_LS_KEY = "civil-history";
-export const HISTORY_METHOD_LS_KEY = "civil-history-method";
+const HISTORY_METHOD_LS_KEY = "civil-history-method";
 const LS_KEY = HISTORY_LS_KEY;
 const DB_NAME = "civil-history-db";
 const STORE = "history";
@@ -51,7 +52,7 @@ export async function historyGetAll(): Promise<CivilHistoryEntry[]> {
     }
     const db = await getDB();
     const all = await idbGetAll<CivilHistoryEntry>(db, STORE);
-    return all.sort((a, b) => b.visitedAt - a.visitedAt);
+    return all.toSorted((a, b) => b.visitedAt - a.visitedAt);
 }
 
 export async function historyDelete(id: string): Promise<void> {

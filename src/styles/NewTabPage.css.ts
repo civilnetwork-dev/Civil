@@ -1,4 +1,5 @@
 import { style, styleVariants } from "@vanilla-extract/css";
+
 import { FONT_MONO, RULE, SHEET_VPAD_VAR } from "./schematic.css";
 import { vars } from "./theme.css";
 

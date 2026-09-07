@@ -56,7 +56,7 @@ export type FilterConfig = {
     };
 };
 
-export const SECURLY_EXTENSION_ID = "ckecmkbnoanpgplccmnoikfmpcdladkc";
+const SECURLY_EXTENSION_ID = "ckecmkbnoanpgplccmnoikfmpcdladkc";
 
 export const FILTER_CONFIGS: Record<string, FilterConfig> = {
     securly: {

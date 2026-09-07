@@ -1,8 +1,8 @@
 import { globalStyle } from "@vanilla-extract/css";
-import { vars } from "./theme.css";
 
-import "./themes/twilight.css";
 import { FONT_SANS } from "./schematic.css";
+import "./themes/twilight.css";
+import { vars } from "./theme.css";
 
 globalStyle("*, *::before, *::after", {
     margin: 0,
@@ -79,6 +79,6 @@ globalStyle("*::-webkit-scrollbar-corner", {
 });
 
 globalStyle("*", {
-    scrollbarWidth: "thin" as "thin",
+    scrollbarWidth: "thin" as const,
     scrollbarColor: `${vars.color.talus} transparent`,
 });

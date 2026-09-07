@@ -24,7 +24,7 @@ export function buildActionAPI() {
 
     function _getState(tabId?: number): BadgeState {
         if (tabId != null) {
-            return { ..._state, ...(_tabStates.get(tabId) ?? {}) };
+            return { ..._state, ..._tabStates.get(tabId) };
         }
         return { ..._state };
     }

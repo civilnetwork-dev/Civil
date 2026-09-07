@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
-import solid from "vite-plugin-solid";
+
+import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vitest/config";
 
 // vm.SourceTextModule (misc/extensionHost/host.ts's dynamic-import resolver,
@@ -21,10 +22,10 @@ if (!(process.env.NODE_OPTIONS ?? "").includes(experimentalFlag)) {
 /**
  * Deliberately does NOT reuse vite.config.ts.
  *
- * That config runs the TanStack Router codegen, SolidStart, Nitro, and Biome
- * with `failOnError`, none of which a unit test run needs — and Nitro would try
- * to build a server bundle. Only vite-plugin-solid is shared, because compiling
- * Solid JSX is the one thing component tests genuinely require.
+ * That config runs the TanStack Router codegen, @solidjs/vite-plugin's start
+ * mode, and Nitro, none of which a unit test run needs — and Nitro would try to
+ * build a server bundle. Only the bare Solid JSX transform is shared, because
+ * compiling Solid JSX is the one thing component tests genuinely require.
  */
 export default defineConfig({
     plugins: [solid()],

@@ -1,4 +1,5 @@
 import { style, styleVariants } from "@vanilla-extract/css";
+
 import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
@@ -189,7 +190,7 @@ export const thNum = style([
     { textAlign: "right", paddingRight: 0, paddingLeft: "20px" },
 ]);
 
-export const td = style({
+const td = style({
     padding: "9px 12px 9px 0",
     borderBottom: RULE.hair,
     color: vars.color.firn,

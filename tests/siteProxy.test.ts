@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { normalizeHostname } from "../misc/database/models/siteProxy";
 
 describe("normalizeHostname", () => {

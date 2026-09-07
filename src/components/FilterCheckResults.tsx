@@ -1,5 +1,6 @@
 import { Dynamic } from "@solidjs/web";
 import { For, Show } from "solid-js";
+
 import {
     IconAlert,
     IconBan,
@@ -10,6 +11,7 @@ import {
 import Anno from "~/components/schematic/Anno";
 import Unfold from "~/components/schematic/Unfold";
 import type { FilterResult, FilterStatus } from "~/lib/filterCheckVendors";
+
 import * as s from "~/styles/FilterCheckPage.css";
 
 /**

@@ -1,7 +1,8 @@
 import { err, ok, ResultAsync } from "neverthrow";
-import WebSocket from "ws";
+import { WebSocket } from "ws";
 import xior, { type XiorError } from "xior";
 import { z } from "zod";
+
 import { matchBannedDomain } from "../../database/bannedDomains";
 
 export type LightspeedVerdict = "BLOCKED" | "ALLOWED" | "UNKNOWN";
@@ -109,7 +110,7 @@ function toNetworkError(error: unknown): LightspeedError {
     };
 }
 
-export function fetchLightspeedTaxonomy(
+function fetchLightspeedTaxonomy(
     options: LightspeedCheckerOptions = {},
 ): ResultAsync<Record<string, string>, LightspeedError> {
     const now = Date.now();

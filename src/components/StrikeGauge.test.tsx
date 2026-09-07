@@ -1,8 +1,10 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
-import * as s from "~/styles/StrikeGauge.css";
+
 import StrikeGauge from "./StrikeGauge";
+
+import * as s from "~/styles/StrikeGauge.css";
 
 /**
  * The gauge is the only place in the app that renders account standing, and it

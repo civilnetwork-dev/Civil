@@ -53,6 +53,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
 import { filterVendorDomains } from "../filters/filterBlockerMiddleware";
 import { FOLDER_TO_VENDOR, VENDOR_DISPLAY_NAMES, VENDORS } from "./vendors";
 
@@ -161,7 +162,7 @@ function markersFromFolder(dir: string): string[] {
     }
     // Shorter markers first: they are the stable core of a phrase, less likely
     // to carry a page-specific tail that changes between releases.
-    return [...markers].sort((a, b) => a.length - b.length).slice(0, 24);
+    return [...markers].toSorted((a, b) => a.length - b.length).slice(0, 24);
 }
 
 function main(): void {

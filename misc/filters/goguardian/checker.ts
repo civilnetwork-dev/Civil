@@ -2,6 +2,7 @@ import { err, ok, ResultAsync } from "neverthrow";
 import { getDomain } from "tldts";
 import xior, { type XiorError } from "xior";
 import { z } from "zod";
+
 import { generateGoGuardianAuthToken } from "./generateAuthToken";
 
 export type GoGuardianVerdict = "ALLOW" | "BLOCK" | "UNKNOWN";

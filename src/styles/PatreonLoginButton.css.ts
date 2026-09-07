@@ -1,9 +1,10 @@
 import { style } from "@vanilla-extract/css";
+
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
-export const PATREON = "#FF424D";
-export const T = "0.12s ease";
+const PATREON = "#FF424D";
+const T = "0.12s ease";
 
 // Tinted-accent recipe: a solid brand-red block would clash against the muted
 // alpine palette everywhere else, so Patreon's red is toned into a background

@@ -5,8 +5,10 @@
  */
 
 import { Readable } from "node:stream";
+
 import type { Request, Response } from "express";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { createPosthogProxy } from "./posthogProxy";
 
 function makeReq(opts: {

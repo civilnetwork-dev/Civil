@@ -1,8 +1,10 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
-import * as s from "~/styles/schematic.css";
+
 import Sheet from "./Sheet";
+
+import * as s from "~/styles/schematic.css";
 
 describe("Sheet", () => {
     it("renders its children", () => {

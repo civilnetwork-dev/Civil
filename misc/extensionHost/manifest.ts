@@ -4,6 +4,7 @@
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
 import type { ChromeManifest } from "../browserApiEmulators/extensions/chrome/types";
 
 export class ManifestError extends Error {}

@@ -1,8 +1,10 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import { create as createCache } from "flat-cache";
 import { describe, expect, it, vi } from "vitest";
+
 import type { Classification } from "../filters/domainReputation";
 import type { Registry, RegistryDomain } from "./freedns";
 import { pickTunnelDomain } from "./pickDomain";
@@ -29,13 +31,11 @@ function fakeClient(domains: RegistryDomain[], perPage = 2) {
         pages.push(domains.slice(i, i + perPage));
     }
     const totalPages = Math.max(1, pages.length);
-    const getRegistry = vi.fn(
-        async (page = 1): Promise<Registry> => ({
-            domainsInfo: { pageStart: 0, pageEnd: 0, total: domains.length },
-            pagesInfo: { currentPage: page, totalPages },
-            domains: pages[page - 1] ?? [],
-        }),
-    );
+    const getRegistry = vi.fn(async (page = 1): Promise<Registry> => ({
+        domainsInfo: { pageStart: 0, pageEnd: 0, total: domains.length },
+        pagesInfo: { currentPage: page, totalPages },
+        domains: pages[page - 1] ?? [],
+    }));
     return { getRegistry };
 }
 
@@ -57,11 +57,10 @@ describe("pickTunnelDomain", () => {
             dom("clean.com", 2),
             dom("also-clean.com", 3),
         ]);
-        const classify = vi.fn(
-            async (d: string): Promise<Classification> =>
-                d === "blocked.com"
-                    ? { domain: d, blocked: true, by: ["blocksi"] }
-                    : { domain: d, blocked: false, by: [] },
+        const classify = vi.fn(async (d: string): Promise<Classification> =>
+            d === "blocked.com"
+                ? { domain: d, blocked: true, by: ["blocksi"] }
+                : { domain: d, blocked: false, by: [] },
         );
 
         const picked = await pickTunnelDomain({

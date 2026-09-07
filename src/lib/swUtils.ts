@@ -1,5 +1,5 @@
-import * as BareMux from "@mercuryworkshop/bare-mux";
 import { getFilters } from "$config/service/filterDetect";
+import * as BareMux from "@mercuryworkshop/bare-mux";
 
 type FilterCheckResult =
     | {
@@ -139,4 +139,4 @@ async function setupBareMux(): Promise<void> {
     });
 }
 
-export { checkFiltersNow, hasSharedWorker, registerSw, setupBareMux };
+export { checkFiltersNow, registerSw, setupBareMux };

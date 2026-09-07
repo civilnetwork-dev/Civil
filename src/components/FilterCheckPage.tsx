@@ -1,4 +1,8 @@
 import {
+    detectIbossGateway,
+    raceIbossGateways,
+} from "$config/service/ibossGatewayDetect";
+import {
     createMemo,
     createSignal,
     createTrackedEffect,
@@ -6,10 +10,7 @@ import {
     onSettled,
     Show,
 } from "solid-js";
-import {
-    detectIbossGateway,
-    raceIbossGateways,
-} from "$config/service/ibossGatewayDetect";
+
 import { IconLoaderDots } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
@@ -24,13 +25,15 @@ import {
     prettifyFilterName,
 } from "~/lib/filterCheckVendors";
 import { checkFiltersNow } from "~/lib/swUtils";
-import * as s from "~/styles/FilterCheckPage.css";
-import * as schematic from "~/styles/schematic.css";
+
 import FilterCheckForm from "./FilterCheckForm";
 import FilterCheckResults from "./FilterCheckResults";
 import GoGuardianManifestToast from "./GoGuardianManifestToast";
 import IbossGatewayToast from "./IbossGatewayToast";
 import PatreonLoginButton from "./ui/PatreonLoginButton";
+
+import * as s from "~/styles/FilterCheckPage.css";
+import * as schematic from "~/styles/schematic.css";
 
 /**
  * The middleware sends both `Retry-After` and a JSON `retryAfterSeconds`. Read
@@ -284,7 +287,7 @@ export default function FilterCheckPage() {
 
         const isProd = window.location.host === "civil.quartinal.me";
 
-        isProd &&
+        if (isProd)
             window.posthog?.capture("filter_check_submitted", {
                 url_hostname: urlHostname,
                 email_domain: emailDomain,

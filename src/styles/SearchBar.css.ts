@@ -1,4 +1,5 @@
 import { globalStyle, keyframes, style } from "@vanilla-extract/css";
+
 import { DUR, EASE } from "./material.css";
 import { ANNO, FONT_MONO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
@@ -72,12 +73,6 @@ export const sbDropdown = style({
  * A near-opaque `night` ground separates the menu from the page underneath just
  * as well, costs nothing, and is what the rest of the drawing language does.
  */
-export const sbDropdownBlur = style({
-    background: `color-mix(in srgb, ${vars.color.basalt} 96%, transparent)`,
-    borderColor: vars.color.talus,
-    borderTop: "none",
-});
-
 export const sbRow = style({
     position: "relative",
     cursor: "pointer",

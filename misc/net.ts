@@ -23,12 +23,12 @@ export function isPrivateHost(hostname: string): boolean {
         return true;
     }
     return (
-        /^10\./.test(h) ||
-        /^192\.168\./.test(h) ||
+        h.startsWith("10.") ||
+        h.startsWith("192.168.") ||
         /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
-        /^169\.254\./.test(h) ||
-        /^127\./.test(h) ||
-        /^0\./.test(h) ||
+        h.startsWith("169.254.") ||
+        h.startsWith("127.") ||
+        h.startsWith("0.") ||
         /^fc00:/i.test(h) ||
         /^fd[0-9a-f]{2}:/i.test(h) ||
         /^fe80:/i.test(h)

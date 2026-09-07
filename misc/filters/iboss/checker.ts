@@ -1,5 +1,6 @@
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
+
 import {
     DEFAULT_CLOUD_CATEGORIZATION_SSL_PORT,
     DIRECT_FILTER_INTRINSIC_BYPASS_LIST,
@@ -501,7 +502,9 @@ class IbossFilterChecker {
 }
 
 function errResult<T>(error: IbossError): ResultAsync<T, IbossError> {
+    // neverthrow's second argument is an error mapper, not an async callback.
     return ResultAsync.fromPromise(
+        // oxlint-disable-next-line promise/no-promise-in-callback
         Promise.reject(error),
         cause => cause as IbossError,
     );
@@ -530,5 +533,3 @@ export function checkIbossUrl(
 ): ResultAsync<IbossDecision, IbossError> {
     return createIbossFilterChecker(options).checkUrl(url);
 }
-
-export { IbossFilterChecker };

@@ -1,9 +1,11 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
+
+import NewTabPage from "./NewTabPage";
+
 import * as page from "~/styles/NewTabPage.css";
 import * as s from "~/styles/schematic.css";
-import NewTabPage from "./NewTabPage";
 
 describe("NewTabPage", () => {
     /**

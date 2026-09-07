@@ -198,9 +198,9 @@ export const devtools = {
             cb?: (result: unknown, exceptionInfo?: unknown) => void,
         ) => {
             try {
-                // eslint-disable-next-line no-eval
-                // biome-ignore lint/complexity/noCommaOperator: bro biome what is wrong with you
-                // biome-ignore lint/security/noGlobalEval: bro biome what is wrong with you
+                // Indirect eval is the only way to evaluate in the page's
+                // global scope, which is what the emulated chrome API does.
+                // oxlint-disable-next-line no-eval
                 const result = (0, eval)(expression);
                 if (cb) cb(result, undefined);
                 return Promise.resolve(result);

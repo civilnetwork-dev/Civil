@@ -1,6 +1,7 @@
 import { toNodeHandler } from "better-auth/node";
 import type { Request, Response } from "express";
 import { Router } from "express";
+
 import { auth } from "./auth";
 import { yoga } from "./graphql";
 import { getUser, isUserBanned } from "./models/user";

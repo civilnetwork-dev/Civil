@@ -1,12 +1,14 @@
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: tab search */
-/** biome-ignore-all lint/a11y/useKeyWithClickEvents: tab search */
+// oxlint-disable jsx-a11y/no-static-element-interactions
+// oxlint-disable jsx-a11y/click-events-have-key-events
 import uFuzzy from "@leeoniya/ufuzzy";
 import type { JSX } from "@solidjs/web";
 import { Portal } from "@solidjs/web";
 import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
+
 import { IconSearch, IconWorld } from "~/components/icons";
 import type { Tab } from "~/lib/TabManager";
 import { isNewtabUrl } from "~/lib/TabManager";
+
 import * as s from "~/styles/TabSearch.css";
 
 const uf = new uFuzzy({ intraMode: 1, intraIns: 1 });
@@ -52,8 +54,8 @@ export default function TabSearch(props: TabSearchProps) {
     >(() => {
         const q = query().trim();
         if (!q) {
-            return [...props.tabs]
-                .sort((a, b) =>
+            return props.tabs
+                .toSorted((a, b) =>
                     a.id === props.activeId
                         ? -1
                         : b.id === props.activeId

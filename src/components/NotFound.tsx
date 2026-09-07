@@ -1,4 +1,5 @@
 import { createSignal, onSettled, Show } from "solid-js";
+
 import * as s from "~/styles/NotFound.css";
 
 const PROXY_PREFIXES = ["/~/scramjet/", "/~/uv/"];

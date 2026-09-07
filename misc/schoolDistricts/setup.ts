@@ -1,7 +1,9 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { unzipSync } from "fflate";
 import { open as openShapefile } from "shapefile";
+
 import { districtDb } from "./db";
 
 const NCES_ZIP_URL =

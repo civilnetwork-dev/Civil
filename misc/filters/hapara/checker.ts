@@ -1,5 +1,5 @@
 import { err, ok, ResultAsync } from "neverthrow";
-import WebSocket from "ws";
+import { WebSocket } from "ws";
 import xior, { type XiorError } from "xior";
 import { z } from "zod";
 
@@ -261,7 +261,7 @@ const HAPARA_API_BASE = "https://api.hapara.com";
 
 const RESTRICTING_SESSION_TYPES = new Set(["filter", "focus", "lock"] as const);
 
-export function lookupHaparaStudentConfig(
+function lookupHaparaStudentConfig(
     email: string,
     options: HaparaCheckerOptions = {},
 ): ResultAsync<HaparaStudentConfig, HaparaError> {

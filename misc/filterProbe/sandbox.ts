@@ -29,8 +29,10 @@
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type * as vm from "node:vm";
+
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { Window } from "happy-dom";
+
 import {
     buildFetch,
     buildFreshConsole,
@@ -410,5 +412,3 @@ async function readManifest(
         return {};
     }
 }
-
-export { matchesPattern };

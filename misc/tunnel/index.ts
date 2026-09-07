@@ -39,6 +39,7 @@
 
 import { customAlphabet } from "nanoid";
 import { startTunnel } from "untun";
+
 import { FreeDnsClient, FreeDnsError } from "./freedns";
 
 /** DNS labels are case-insensitive and limited to letters, digits and

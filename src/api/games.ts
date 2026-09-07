@@ -1,12 +1,13 @@
 import { createReactiveJSON, lsSetJSON } from "~/lib/reactiveStorage";
 import type { CivilGame } from "~/types";
+
 import { getTFS } from "./fs";
 
 const GAMES_API = "https://games.civil.quartinal.me";
 const LS_KEY = "civil-games";
 
 /** Live, reactive list of installed games. Updates on any install/uninstall. */
-export const games = createReactiveJSON<CivilGame[]>(LS_KEY, []);
+const games = createReactiveJSON<CivilGame[]>(LS_KEY, []);
 
 function load(): CivilGame[] {
     return games();

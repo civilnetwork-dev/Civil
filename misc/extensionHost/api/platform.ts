@@ -38,8 +38,10 @@
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import UserAgent from "user-agents";
+
 import type { ExtensionTarget } from "../types";
 
 export interface PlatformOptions {

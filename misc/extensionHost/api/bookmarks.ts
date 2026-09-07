@@ -10,7 +10,7 @@
  * the other harmless bookmark mutations no bundle here depends on.
  */
 
-export interface SeedBookmark {
+interface SeedBookmark {
     id: string;
     title: string;
     url: string;

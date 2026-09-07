@@ -1,1 +1,1 @@
-*This* is the actual monorepo part of this repository, completely independent from everything except ../config; it doesn't use a build system like Nx or TurboRepo
+_This_ is the actual monorepo part of this repository, completely independent from everything except ../config; it doesn't use a build system like Nx or TurboRepo

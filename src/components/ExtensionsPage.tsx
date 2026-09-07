@@ -1,4 +1,5 @@
 import { createSignal, For, Show } from "solid-js";
+
 import {
     type ExtensionUpdateResult,
     extensionsCheckForUpdates,
@@ -20,9 +21,10 @@ import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
+import type { CivilExtension } from "~/types";
+
 import * as s from "~/styles/ExtensionsPage.css";
 import * as schematic from "~/styles/schematic.css";
-import type { CivilExtension } from "~/types";
 
 type ExtensionListItem = Omit<CivilExtension, "files"> & {
     files?: Map<string, Uint8Array>;
@@ -177,9 +179,8 @@ export default function ExtensionsPage() {
         setError(null);
         try {
             const ext = await extensionsInstallFromUrl(url);
-            const { launchExtensionBackground } = await import(
-                "~/api/extensionRuntime"
-            );
+            const { launchExtensionBackground } =
+                await import("~/api/extensionRuntime");
             await launchExtensionBackground(ext);
             setUrlInput("");
         } catch (e) {
@@ -198,22 +199,18 @@ export default function ExtensionsPage() {
         try {
             const bytes = new Uint8Array(await file.arrayBuffer());
             if (file.name.endsWith(".crx")) {
-                const { extensionsInstallCrx } = await import(
-                    "~/api/extensions"
-                );
+                const { extensionsInstallCrx } =
+                    await import("~/api/extensions");
                 const ext = await extensionsInstallCrx(bytes);
-                const { launchExtensionBackground } = await import(
-                    "~/api/extensionRuntime"
-                );
+                const { launchExtensionBackground } =
+                    await import("~/api/extensionRuntime");
                 await launchExtensionBackground(ext);
             } else if (file.name.endsWith(".xpi")) {
-                const { extensionsInstallXpi } = await import(
-                    "~/api/extensions"
-                );
+                const { extensionsInstallXpi } =
+                    await import("~/api/extensions");
                 const ext = await extensionsInstallXpi(bytes);
-                const { launchExtensionBackground } = await import(
-                    "~/api/extensionRuntime"
-                );
+                const { launchExtensionBackground } =
+                    await import("~/api/extensionRuntime");
                 await launchExtensionBackground(ext);
             } else {
                 setError("Only .crx and .xpi files are supported");
@@ -236,9 +233,8 @@ export default function ExtensionsPage() {
 
             const updated = results.filter(r => r.status === "updated");
             if (updated.length) {
-                const { launchExtensionBackground } = await import(
-                    "~/api/extensionRuntime"
-                );
+                const { launchExtensionBackground } =
+                    await import("~/api/extensionRuntime");
                 for (const r of updated) {
                     const ext = extensionsGetAll().find(e => e.id === r.id);
                     if (ext) await launchExtensionBackground(ext);

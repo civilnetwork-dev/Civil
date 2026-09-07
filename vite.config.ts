@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { globSync as glob, statSync as stat } from "node:fs";
 import { basename, resolve } from "node:path";
+
 import devtoolsJson from "@silvenon/vite-plugin-devtools-json";
-import { solidStart } from "@solidjs/start/config";
+import solid from "@solidjs/vite-plugin";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { vanillaExtractPlugin as vanillaExtract } from "@vanilla-extract/vite-plugin";
 import browserslist from "browserslist";
@@ -11,10 +12,9 @@ import { nitro } from "nitro/vite";
 import { rolldown } from "rolldown";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
-import biome from "vite-plugin-biome";
 import { BLOCK_AI_ALLOW_REST, robots } from "vite-plugin-robots-ts";
 import { sitemap } from "vite-plugin-sitemap-ts";
-import solid from "vite-plugin-solid";
+
 import { obfuscateAssets } from "./misc/vite/obfuscateAssets";
 
 const cssTargets = browserslistToTargets(
@@ -123,6 +123,10 @@ export default defineConfig(() => {
             },
         },
         build: {
+            // run.ts serves dist/client/_build and 404s a bare /_build, and
+            // misc/vite/obfuscateAssets walks dist/client/_build/assets - the
+            // three have to agree on this path.
+            assetsDir: "_build/assets",
             cssMinify: "lightningcss" as const,
             rolldownOptions: {
                 output: {
@@ -153,10 +157,7 @@ export default defineConfig(() => {
         plugins: [
             civilExtShimPlugin(),
             tanstackRouter({ target: "solid", autoCodeSplitting: true }),
-            solid({ ssr: true }),
-            solidStart({
-                middleware: "./src/middleware.ts",
-            }),
+            solid({ ssr: true, start: true }),
             nitro({
                 preset: "node",
                 exportConditions: ["solid"],
@@ -171,13 +172,6 @@ export default defineConfig(() => {
                 },
             }),
             vanillaExtract(),
-            biome({
-                mode: "check",
-                files: ".",
-                applyFixes: true,
-                failOnError: true,
-                unsafe: false,
-            }),
             sitemap({
                 hostname: "https://civil.quartinal.me",
                 routes: routeFiles.map((file, i) => {

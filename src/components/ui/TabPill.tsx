@@ -1,10 +1,13 @@
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: it's just a tab pill lil bro */
+// oxlint-disable jsx-a11y/no-static-element-interactions
+// oxlint-disable jsx-a11y/no-noninteractive-tabindex -- the pill is the tab's own focusable control
 
 import { onSettled, Show } from "solid-js";
+
 import { IconClose, IconSpinner, IconWorld } from "~/components/icons";
 import type { Tab } from "~/lib/TabManager";
 import { tabManager } from "~/lib/TabManager";
 import { registerTabDraggable, registerTabDropTarget } from "~/lib/useTabDrag";
+
 import * as s from "~/styles/BrowserChrome.css";
 
 interface TabPillProps {

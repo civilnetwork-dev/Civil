@@ -1,4 +1,5 @@
 import { createSignal, For, flush, Show } from "solid-js";
+
 import { apps, appsAdd, appsRemove } from "~/api/apps";
 import { IconClose, IconWorld } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
@@ -7,9 +8,10 @@ import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import { tabManager } from "~/lib/TabManager";
+import type { CivilApp } from "~/types";
+
 import * as s from "~/styles/AppsPage.css";
 import * as schematic from "~/styles/schematic.css";
-import type { CivilApp } from "~/types";
 
 function AppIcon(props: { icon: string | null; name: string }) {
     const [failed, setFailed] = createSignal(false);

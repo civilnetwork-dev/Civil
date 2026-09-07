@@ -19,7 +19,9 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
+
 import { filterVendorDomains } from "../filters/filterBlockerMiddleware";
 import { detectFlagging, type PageObservation, PROBE_DATA } from "./detect";
 import { predictFix } from "./predict";
@@ -43,7 +45,7 @@ function observe(partial: Partial<PageObservation>): PageObservation {
 
 describe("probe data", () => {
     it("covers exactly the vendors the folder map defines", () => {
-        expect(Object.keys(PROBE_DATA).sort()).toEqual([...VENDORS].sort());
+        expect(Object.keys(PROBE_DATA).toSorted()).toEqual(VENDORS.toSorted());
     });
 
     it("carries the same domains as the middleware blocklist, per vendor", () => {

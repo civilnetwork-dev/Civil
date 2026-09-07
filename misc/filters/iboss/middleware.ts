@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import type { Express } from "express";
+
 import { db } from "../../database/db";
 import { ibossGateways } from "../../database/schema";
 import { posthog } from "../posthog";

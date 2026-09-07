@@ -9,7 +9,7 @@ import type { Express, Request, Response } from "express";
  *
  * This value must match `api_host` in `src/entry-client.tsx`.
  */
-export const POSTHOG_PROXY_PREFIX = "/api/relay";
+const POSTHOG_PROXY_PREFIX = "/api/relay";
 
 /** PostHog capture, flags, session recording, and remote config. */
 const INGESTION_HOST = "https://us.i.posthog.com";

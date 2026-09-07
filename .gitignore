@@ -90,3 +90,6 @@ zig-pkg/
 
 # Excess Data
 misc/schoolDistricts/data/tmp/*
+
+# Fallow Output
+.fallow-report.json

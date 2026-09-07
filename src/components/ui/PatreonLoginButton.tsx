@@ -1,7 +1,9 @@
 import { createAuthClient } from "better-auth/client";
 import { genericOAuthClient } from "better-auth/client/plugins";
 import { createSignal, onSettled, Show } from "solid-js";
+
 import { IconPatreon } from "~/components/icons";
+
 import * as s from "~/styles/PatreonLoginButton.css";
 
 type SessionUser = {

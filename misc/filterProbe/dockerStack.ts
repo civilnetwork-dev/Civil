@@ -30,6 +30,7 @@
 import { spawn } from "node:child_process";
 import { platform } from "node:os";
 import { join } from "node:path";
+
 import Dockerode from "dockerode";
 
 const CIVIL_DIR = join(import.meta.dirname, "..", "..");

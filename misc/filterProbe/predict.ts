@@ -26,6 +26,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { filterVendorDomains } from "../filters/filterBlockerMiddleware";
 import type { Verdict } from "./detect";
 
@@ -169,5 +170,5 @@ export function predictFix(verdict: Verdict, civilDir: string): Suggestion[] {
         }
     }
 
-    return out.sort((a, b) => b.rank - a.rank);
+    return out.toSorted((a, b) => b.rank - a.rank);
 }

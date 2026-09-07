@@ -1,11 +1,13 @@
 import { createSignal, onSettled } from "solid-js";
+
 import { WS_URL } from "~/lib/browserHelpers";
 import genBCKey from "~/lib/genBCKey";
+
 import * as s from "~/styles/SearchBar.css";
 
 const isProbablyUrl = (value: string) => {
     try {
-        new URL(value);
+        void new URL(value);
         return true;
     } catch {}
     return /^[\w-]+\.[a-z]{2,}/i.test(value);

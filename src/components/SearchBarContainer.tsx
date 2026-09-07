@@ -1,6 +1,8 @@
 import { createSignal, For, Show } from "solid-js";
+
 import SearchBarInput from "~/components/SearchBarInput";
 import searchBar from "~/lib/SearchBar";
+
 import * as s from "~/styles/SearchBar.css";
 
 export default function SearchBarContainer(props: { inline?: boolean }) {
@@ -44,11 +46,13 @@ export default function SearchBarContainer(props: { inline?: boolean }) {
                 />
 
                 <Show when={suggestions().length > 0}>
-                    <ul class={s.sbDropdown}>
+                    <ul class={s.sbDropdown} role="listbox">
                         <For each={suggestions()} keyed={false}>
                             {item => (
                                 <li
                                     class={s.sbRow}
+                                    role="option"
+                                    aria-selected={false}
                                     onClick={() => handleSubmit(item())}
                                     onKeyDown={e =>
                                         e.key === "Enter" &&

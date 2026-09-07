@@ -1,4 +1,5 @@
 import { For, Show } from "solid-js";
+
 import type { SegmentTone } from "~/styles/StrikeGauge.css";
 import * as s from "~/styles/StrikeGauge.css";
 

@@ -21,7 +21,7 @@ function decodeProxyUrl(href: string): string {
     try {
         const url = new URL(href);
         if (url.pathname.startsWith("/~/scramjet/")) {
-            const encoded = url.pathname.split("/").filter(Boolean).at(-1);
+            const encoded = url.pathname.split("/").findLast(Boolean);
             if (encoded && window.scramjet?.decodeUrl) {
                 return window.scramjet.decodeUrl(encoded);
             }

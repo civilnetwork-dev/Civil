@@ -94,7 +94,7 @@ async function fetchTitle(pageUrl: string): Promise<string> {
 export async function appsAdd(url: string): Promise<CivilApp> {
     let normalized = url;
     try {
-        new URL(url);
+        void new URL(url);
     } catch {
         normalized = `https://${url}`;
     }

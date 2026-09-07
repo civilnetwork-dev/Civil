@@ -60,7 +60,7 @@ export type CiscoDnsResponse = {
     Answer: CiscoDnsAnswer[];
 };
 
-export type CiscoCheckResult = {
+type CiscoCheckResult = {
     url: string;
     normalizedUrl: string;
     hostname: string;
@@ -84,7 +84,7 @@ export type CiscoCheckResult = {
     };
 };
 
-export type CiscoCheckerError =
+type CiscoCheckerError =
     | { type: "INVALID_URL"; message: string; input: string }
     | { type: "NETWORK_ERROR"; message: string; cause: unknown }
     | { type: "PARSE_ERROR"; message: string; cause: unknown; raw?: unknown }

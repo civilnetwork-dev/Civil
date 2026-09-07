@@ -1,7 +1,9 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 import { addFunctionSerializer } from "@vanilla-extract/css/functionSerializer";
-import { DUR, EASE, hairline } from "./material.css";
+
 import { createField } from "./schematicField";
+
+import { DUR, EASE, hairline } from "./material.css";
 import { vars } from "./theme.css";
 
 /**

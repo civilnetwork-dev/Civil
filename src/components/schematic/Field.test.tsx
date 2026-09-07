@@ -1,8 +1,10 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
-import * as s from "~/styles/schematic.css";
+
 import Field from "./Field";
+
+import * as s from "~/styles/schematic.css";
 
 describe("Field", () => {
     it("associates its label with its input", () => {

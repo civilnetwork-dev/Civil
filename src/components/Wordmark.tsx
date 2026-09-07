@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+
 import { vars } from "~/styles/theme.css";
 
 /**

@@ -39,7 +39,7 @@ empty-but-real `history`/`downloads`/`bookmarks`/`cookies`/`sessions`/
 
 Anything else — `webRequest`, `idle`, `proxy`, `enterprise`, ... — falls back
 to a universal stub (`api/stub.ts`) that absorbs calls and property access
-instead of throwing. The stub answers `undefined` to questions *about* the
+instead of throwing. The stub answers `undefined` to questions _about_ the
 object (`__esModule`, `default`); claiming otherwise made webpack-bundled
 extensions read `chrome.default` and fail unrecognisably far downstream.
 
@@ -65,7 +65,7 @@ Chrome does it:
 - **MV3 `service_worker`** — a ServiceWorkerGlobalScope: `self`, `clients`,
   `caches`, no `window`, no `document`. A bundle touching `document` there is
   broken in real Chrome too.
-- **MV2 `scripts`/`page`** — a background *page*, so a real DOM (happy-dom),
+- **MV2 `scripts`/`page`** — a background _page_, so a real DOM (happy-dom),
   with `window` aliased to the global exactly as a browser does it, and the
   `<script>` tags Chrome's generated page would contain.
 
@@ -97,7 +97,7 @@ CIVIL_FILTER_BUNDLES=/path/to/unpacked bun misc/extensionHost/fixtures/buildFilt
 
 - **Rendering and navigation.** There is a DOM for MV2 backgrounds, but no
   layout, no painting, no page loads. `scripting.executeScript` records the
-  call and runs nothing: content-script *behavior* against a real page belongs
+  call and runs nothing: content-script _behavior_ against a real page belongs
   to the `window.open` emulation, not here.
 - **IndexedDB.** No implementation; a bundle using it for its own caching
   logs an error and carries on.

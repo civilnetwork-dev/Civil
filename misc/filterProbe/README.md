@@ -4,7 +4,7 @@ Tests every Civil route against every school filter Civil has to survive, one
 filter at a time, and — when a filter catches the proxy — points at the Civil
 source that has to change.
 
-One filter *vendor* at a time, not one extension id: several vendors ship two
+One filter _vendor_ at a time, not one extension id: several vendors ship two
 or three extensions against the same backend (Cisco, Lightspeed, Securly,
 LanSchool, Aristotle, GoGuardian), so the eighteen vendors are what actually
 differ. `vendors.ts` is where that id→vendor collapse lives.
@@ -64,13 +64,13 @@ kept warm in the cache: the same "download on the first run, cache thereafter"
 shape [Filter-Sources](https://github.com/civilnetwork-dev/Filter-Sources) uses
 for them, and this repo's `.gitignore` keeps `/extensions/` out.
 
-Filter-Sources' own cache can't be reused here: it keeps *deobfuscated `.js`*
+Filter-Sources' own cache can't be reused here: it keeps _deobfuscated `.js`_
 snapshots for diffing, without the `manifest.json` or assets the sandbox needs
 to actually run a filter. So `downloadBundles.ts` fetches raw copies — using
 Filter-Sources' `extensions.json` as the folder → id → update-URL list, then
 Chrome's Omaha protocol and CRX unpacking (the same steps as that repo's
 `omaha.zig`/`crx.zig`, in TypeScript, because that Zig tool isn't callable from
-here). What it does *not* do is regenerate `probeData.json`: that stays
+here). What it does _not_ do is regenerate `probeData.json`: that stays
 committed, small, and the offline suite's only input, exactly like the
 extension host's `filterApiSurface.json`. Rerun `buildProbeData.ts` by hand
 after a vendor ships a release.
@@ -96,18 +96,18 @@ Attribution is never in doubt: exactly one filter is installed per run, so
 
 ## The files
 
-| File | Job |
-|---|---|
-| `vendors.ts` | The id→vendor map, display names, and each vendor's primary extension |
-| `buildProbeData.ts` | Scans the bundles → `probeData.json` (domains + block markers per vendor) |
-| `probeData.json` | The committed answer; the bundles stay out of the repo |
-| `downloadBundles.ts` | Fetches the raw bundles off Filter-Sources' `extensions.json` (Omaha + CRX) |
-| `detect.ts` | Pure verdict: did vendor V flag this observation? |
-| `predict.ts` | Pure traversal: which Civil source to change to stop it |
-| `routes.ts` | The Civil routes exercised, incl. the proxy path |
-| `sandbox.ts` | The window.open emulation — one filter + a proxied page, headless, on the extension host and happy-dom |
-| `harness.ts` | The live runner: server → tunnel → matrix → teardown |
-| `filterProbe.test.ts` | The offline proof + a real-bundle sandbox block |
+| File                  | Job                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| `vendors.ts`          | The id→vendor map, display names, and each vendor's primary extension                                  |
+| `buildProbeData.ts`   | Scans the bundles → `probeData.json` (domains + block markers per vendor)                              |
+| `probeData.json`      | The committed answer; the bundles stay out of the repo                                                 |
+| `downloadBundles.ts`  | Fetches the raw bundles off Filter-Sources' `extensions.json` (Omaha + CRX)                            |
+| `detect.ts`           | Pure verdict: did vendor V flag this observation?                                                      |
+| `predict.ts`          | Pure traversal: which Civil source to change to stop it                                                |
+| `routes.ts`           | The Civil routes exercised, incl. the proxy path                                                       |
+| `sandbox.ts`          | The window.open emulation — one filter + a proxied page, headless, on the extension host and happy-dom |
+| `harness.ts`          | The live runner: server → tunnel → matrix → teardown                                                   |
+| `filterProbe.test.ts` | The offline proof + a real-bundle sandbox block                                                        |
 
 ## The ceiling, stated
 

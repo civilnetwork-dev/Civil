@@ -178,7 +178,7 @@ export function buildDNRAPI(extId?: string) {
         let isSupported = true;
         let reason: string | undefined;
         try {
-            new RegExp(
+            void new RegExp(
                 regexOptions.regex,
                 regexOptions.isCaseSensitive ? undefined : "i",
             );

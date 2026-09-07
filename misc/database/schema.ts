@@ -13,7 +13,9 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
     name: text("name"),
     email: text("email").unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
@@ -32,7 +34,9 @@ export const users = pgTable("users", {
 });
 
 export const sessions = pgTable("sessions", {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     token: text("token").notNull().unique(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -49,7 +53,9 @@ export const sessions = pgTable("sessions", {
 });
 
 export const accounts = pgTable("accounts", {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
     userId: uuid("user_id")
@@ -74,7 +80,9 @@ export const accounts = pgTable("accounts", {
 });
 
 export const verifications = pgTable("verifications", {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -89,7 +97,9 @@ export const verifications = pgTable("verifications", {
 export const visits = pgTable(
     "visits",
     {
-        id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+        id: uuid("id")
+            .primaryKey()
+            .default(sql`gen_random_uuid()`),
         userId: uuid("user_id")
             .notNull()
             .references(() => users.id, { onDelete: "cascade" }),
@@ -163,7 +173,9 @@ export const ibossGateways = pgTable(
 export const siteProxyConfigs = pgTable(
     "site_proxy_configs",
     {
-        id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+        id: uuid("id")
+            .primaryKey()
+            .default(sql`gen_random_uuid()`),
         hostname: text("hostname").notNull(),
         proxy: text("proxy").notNull(),
         transport: text("transport").notNull().default("epoxy"),

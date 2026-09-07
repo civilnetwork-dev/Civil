@@ -1,4 +1,5 @@
 import { style, styleVariants } from "@vanilla-extract/css";
+
 import { DUR, EASE, hitArea } from "./material.css";
 import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
@@ -60,25 +61,6 @@ export const textBtn = style([
         },
     },
 ]);
-
-export const textBtnDanger = style([
-    textBtnBase,
-    {
-        color: vars.color.wine,
-        selectors: {
-            "&:not(:disabled):hover": { borderBottomColor: vars.color.wine },
-        },
-    },
-]);
-
-// Armed state for a destructive second click. The label already says what the
-// next click does; the ground is the redundant channel, not the only one.
-export const textBtnArmed = style({
-    color: vars.color.firn,
-    borderBottomColor: vars.color.wine,
-    background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
-    padding: "2px 6px",
-});
 
 /* -------------------------------------------------------------------- */
 /* Intake                                                                */
@@ -234,7 +216,7 @@ export const row = style({
  * — the switch beside it carries the same state, and the row's own accessible
  * name does too — but it is the one that reads at a glance down the gutter.
  */
-export const nodeBase = style({
+const nodeBase = style({
     width: "11px",
     height: "11px",
     borderRadius: "50%",

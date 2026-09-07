@@ -227,7 +227,8 @@ const ACTIVE_CHECKERS: Record<
 };
 
 /** The filters that can gate base-domain selection. */
-export const APPLICABLE_VENDORS: string[] = Object.keys(ACTIVE_CHECKERS).sort();
+export const APPLICABLE_VENDORS: string[] =
+    Object.keys(ACTIVE_CHECKERS).toSorted();
 
 /** One entry per reputation-capable filter. */
 export const DOMAIN_CHECKERS: VendorDomainChecker[] = Object.entries(

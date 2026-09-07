@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import * as icons from "./index";
 
 const EXPECTED = [
@@ -37,7 +38,7 @@ const EXPECTED = [
 
 /**
  * The barrel is a `.tsx` module now that the icons are drawn here rather than
- * re-exported from `solid-icons`, and `vite-plugin-solid` injects a
+ * re-exported from `solid-icons`, and `@solidjs/vite-plugin` injects a
  * `$$moduleUrl` constant into every module it transforms. That is build-tool
  * metadata, not one of our exports, so the checks below look at what we
  * actually declare.

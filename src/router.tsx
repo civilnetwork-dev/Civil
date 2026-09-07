@@ -1,5 +1,6 @@
+import { clientOnly } from "@solidjs/web";
 import { createRouter as createTanstackSolidRouter } from "@tanstack/solid-router";
-import { clientOnly } from "~/lib/clientOnly";
+
 import { routeTree } from "./routeTree.gen";
 
 export const router = createTanstackSolidRouter({

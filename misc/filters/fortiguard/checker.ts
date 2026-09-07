@@ -1,6 +1,7 @@
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorInstance } from "xior";
 import { z } from "zod";
+
 import { getCachedClientKey } from "./generateClientKey";
 
 export type Verdict = "ALLOW" | "BLOCK" | "WARN" | "UNKNOWN";
@@ -21,7 +22,7 @@ export type FortiGuardCheckerConfig = {
     http?: XiorInstance;
 };
 
-export type FortiGuardCheckResult = {
+type FortiGuardCheckResult = {
     url: string;
     normalizedUrl: string;
     hostname: string;
@@ -49,7 +50,7 @@ export type ResolvedFortiGuardConfig = {
     warnCategories: readonly number[];
 };
 
-export type FortiGuardCheckerError =
+type FortiGuardCheckerError =
     | { type: "INVALID_CONFIG"; message: string }
     | { type: "INVALID_URL"; message: string; input: string }
     | { type: "DISCOVERY_FAILED"; message: string; cause?: unknown }

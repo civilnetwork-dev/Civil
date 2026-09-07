@@ -1,6 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior from "xior";
+
 import { type clusterStatuses, getCluster } from "./cluster";
 
 export type Email = `${string}@${string}.${string}`;
@@ -24,7 +25,7 @@ export interface BrokerRequestInput {
     url?: string;
 }
 
-export interface BrokerParams {
+interface BrokerParams {
     useremail: Email;
     reason: "crextn";
     host: Hostname;
@@ -303,13 +304,11 @@ export function checkStatus(
     input: BrokerRequestInput,
 ): ResultAsync<BrokerResponse, BrokerError> {
     return getCluster(input.useremail)
-        .mapErr(
-            (cause): BrokerError => ({
-                type: "CLUSTER_ERROR",
-                message: "Failed to resolve cluster.",
-                cause,
-            }),
-        )
+        .mapErr((cause): BrokerError => ({
+            type: "CLUSTER_ERROR",
+            message: "Failed to resolve cluster.",
+            cause,
+        }))
         .andThen(clusterUrl =>
             getExtensionVersion(input.extensionId).andThen(extensionVersion => {
                 const params = buildBrokerParams(

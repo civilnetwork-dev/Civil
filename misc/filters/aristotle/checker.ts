@@ -35,7 +35,9 @@
  */
 
 import { randomUUID } from "node:crypto";
-import WebSocket from "ws";
+
+import { WebSocket } from "ws";
+
 import type { DomainVerdict } from "../domainReputation";
 
 const CMD = { AUTHENTICATE: 0, CHECK_URL: 2 } as const;

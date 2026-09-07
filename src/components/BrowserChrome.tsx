@@ -7,6 +7,7 @@ import {
     onSettled,
     Show,
 } from "solid-js";
+
 import { extensionCivilTabIdFromChromeId } from "~/api/extensionRuntime";
 import BookmarksBar from "~/components/BookmarksBar";
 import { ChiiPanel } from "~/components/ChiiPanel";
@@ -88,15 +89,15 @@ export default function BrowserChrome() {
     const persist = () => saveSession(tabManager.tabs, tabManager.activeId);
 
     const onTabAdded = (tab: Tab) => {
-        setTabStore(s => {
-            s.tabs = [...s.tabs, tab];
+        setTabStore(store => {
+            store.tabs = [...store.tabs, tab];
         });
         setIframeIds(ids => [...ids, tab.id]);
         persist();
     };
     const onTabRemoved = (id: string) => {
-        setTabStore(s => {
-            s.tabs = s.tabs.filter(t => t.id !== id);
+        setTabStore(store => {
+            store.tabs = store.tabs.filter(t => t.id !== id);
         });
         setIframeIds(ids => ids.filter(i => i !== id));
         setActiveId(tabManager.activeId);
@@ -109,8 +110,8 @@ export default function BrowserChrome() {
         persist();
     };
     const onTabUpdated = (upd: Tab) => {
-        setTabStore(s => {
-            s.tabs = s.tabs.map(t =>
+        setTabStore(store => {
+            store.tabs = store.tabs.map(t =>
                 t.id === upd.id
                     ? {
                           ...t,
@@ -125,13 +126,13 @@ export default function BrowserChrome() {
         persist();
     };
     const onTabMoved = (id: string, toIndex: number) => {
-        setTabStore(s => {
-            const arr = [...s.tabs];
+        setTabStore(store => {
+            const arr = [...store.tabs];
             const from = arr.findIndex(t => t.id === id);
             if (from === -1 || from === toIndex) return;
             const [tab] = arr.splice(from, 1);
             arr.splice(toIndex, 0, tab);
-            s.tabs = arr;
+            store.tabs = arr;
         });
         persist();
     };
@@ -253,9 +254,8 @@ export default function BrowserChrome() {
                             : null;
                         if (scriptUrl && /\.user\.(js|ts)/.test(scriptUrl)) {
                             // Find the enabled TM extension
-                            const { extensionsGetAll } = await import(
-                                "~/api/extensions"
-                            );
+                            const { extensionsGetAll } =
+                                await import("~/api/extensions");
                             const TM_IDS = new Set([
                                 "dhdgffkkebhmkfjojejmpbldmpobfkfo",
                                 "lcmhijbkigalmkeommnijlpobloojgfn",
@@ -264,7 +264,7 @@ export default function BrowserChrome() {
                                 "clngdbkpkpeebahjckkjfobafhncgmne",
                             ]);
                             const tmExt = extensionsGetAll().find(
-                                e => e.enabled && TM_IDS.has(e.id),
+                                ext => ext.enabled && TM_IDS.has(ext.id),
                             );
                             if (tmExt) {
                                 extId = tmExt.id;
@@ -427,7 +427,6 @@ export default function BrowserChrome() {
     };
 
     return (
-        // biome-ignore lint/a11y/noStaticElementInteractions: biome breaking my project lmao
         <div
             class={s.browser}
             ref={browserRootRef}

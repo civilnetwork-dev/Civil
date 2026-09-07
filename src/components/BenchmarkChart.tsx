@@ -16,6 +16,7 @@ import {
     gridBase,
     tooltipBase,
 } from "~/lib/benchmarkConfig";
+
 import * as s from "~/styles/BenchmarksPage.css";
 import { FONT_MONO } from "~/styles/schematic.css";
 

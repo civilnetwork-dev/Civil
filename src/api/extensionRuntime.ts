@@ -1,6 +1,5 @@
-// biome-ignore-all lint: chrome apis
-
 import type { ChromeManifest } from "~/types";
+
 import {
     buildBackgroundShim,
     buildChromeShim,
@@ -15,8 +14,6 @@ import {
     normalizeExtensionPath,
 } from "./extensions";
 
-export { buildChromeShim };
-
 function patchBgScript(code: string): string {
     return code.replace(
         'runtime_content_mode:"userscripts"',
@@ -28,7 +25,7 @@ function patchBgScript(code: string): string {
  * Matches a URL against a Chrome extension match pattern.
  * https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns
  */
-export function matchesUrlPattern(pattern: string, url: string): boolean {
+function matchesUrlPattern(pattern: string, url: string): boolean {
     if (pattern === "<all_urls>") return true;
     try {
         const u = new URL(url);
@@ -71,7 +68,7 @@ export function matchesUrlPattern(pattern: string, url: string): boolean {
     }
 }
 
-export function matchesUrlPatterns(
+function matchesUrlPatterns(
     patterns: string[] | undefined,
     url: string,
 ): boolean {

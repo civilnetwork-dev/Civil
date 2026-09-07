@@ -6,6 +6,7 @@
 
 import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
+
 import {
     createFilterBlockerMiddleware,
     filterVendorDomains,

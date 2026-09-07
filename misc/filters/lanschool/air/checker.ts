@@ -1,3 +1,6 @@
+// fallow-ignore-file unused-file -- LanSchool Air is a maintained vendor
+// countermeasure whose wiring is commented out in run.ts (useLanSchoolMiddleware).
+// Reachable again the moment that line is uncommented; see PRODUCT.md.
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorInstance } from "xior";
 import { z } from "zod";

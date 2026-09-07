@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import * as vm from "node:vm";
+
 import type { SyntheticTab } from "../browserApiEmulators/extensions/chrome/types";
 import { buildAction } from "./api/action";
 import { buildAlarms } from "./api/alarms";
@@ -315,9 +316,9 @@ export async function loadExtension(
             ),
         ),
         ...Object.fromEntries(
-            Object.entries(buildEmptyCollections()).map(([name, api]) => [
+            Object.entries(buildEmptyCollections()).map(([name, empty]) => [
                 name,
-                withFallback(withCallbacks(api)),
+                withFallback(withCallbacks(empty)),
             ]),
         ),
         declarativeNetRequest: withFallback(

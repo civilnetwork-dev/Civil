@@ -1,4 +1,5 @@
 import { inflateSync } from "fflate";
+
 import {
     createReactiveJSON,
     lsRemove,
@@ -6,13 +7,14 @@ import {
     lsSetRaw,
 } from "~/lib/reactiveStorage";
 import type { ChromeManifest, CivilExtension, FirefoxManifest } from "~/types";
+
 import { getTFS } from "./fs";
 
 const LS_KEY = "civil-extensions";
 const EXTERNAL_LS_KEY = "civil-ext-external-keys";
 
 /** Live, reactive extension index. Updates on install/uninstall/enable/update. */
-export const extensions = createReactiveJSON<Omit<CivilExtension, "files">[]>(
+const extensions = createReactiveJSON<Omit<CivilExtension, "files">[]>(
     LS_KEY,
     [],
 );
@@ -895,29 +897,6 @@ export async function extensionsUninstall(id: string): Promise<void> {
 }
 
 /**
- * Read an extension file from TFS as a Uint8Array.
- */
-export function extensionsReadFile(
-    extId: string,
-    filePath: string,
-): Promise<Uint8Array> {
-    const normalizedPath = normalizeExtensionPath(filePath);
-    return getTFS().then(
-        tfs =>
-            new Promise<Uint8Array>((resolve, reject) => {
-                tfs.fs.readFile(
-                    `/extensions/${extId}/${normalizedPath}`,
-                    "arraybuffer",
-                    (err: Error | null, data: ArrayBuffer) => {
-                        if (err) reject(err);
-                        else resolve(new Uint8Array(data));
-                    },
-                );
-            }),
-    );
-}
-
-/**
  * Read an extension file from TFS as a UTF-8 string.
  */
 export function extensionsReadText(
@@ -992,7 +971,7 @@ export function extensionsResolveIcon(
     const sizes = Object.keys(iconsMap)
         .map(Number)
         .filter(n => !Number.isNaN(n))
-        .sort((a, b) => a - b);
+        .toSorted((a, b) => a - b);
     if (sizes.length === 0) return null;
     const best = (
         sizes.find(s => s >= preferredSize) ?? sizes[sizes.length - 1]

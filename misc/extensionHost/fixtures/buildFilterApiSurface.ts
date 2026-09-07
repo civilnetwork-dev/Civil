@@ -48,6 +48,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+
 import { resolveBackground } from "../manifest";
 
 /**

@@ -678,7 +678,6 @@ ${CIVIL_EXT_DETECT_STUB}
 
         const text = await response.text();
 
-        // biome-ignore lint/correctness/noInnerDeclarations: bruh do I even need to explain at this point lmao
         var injection =
             CIVIL_CHII_PREAMBLE + CIVIL_ERROR_COUNTER + CIVIL_EXT_DETECT_STUB;
         let modified: string;

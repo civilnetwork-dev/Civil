@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { Router } from "express";
+
 import { db } from "../database/db";
 import { goguardianManifestKeys } from "../database/schema";
 import { computeExtensionIdFromKey } from "../filters/goguardian/generateAuthToken";

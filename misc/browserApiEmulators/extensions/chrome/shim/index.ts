@@ -169,7 +169,6 @@ async function _buildNetworkInterfaces(): Promise<unknown[]> {
             const ipRegex = /(?:host|srflx|prflx) [\d.]+ ([\d.]+)/g;
             let m: RegExpExecArray | null;
             const seen = new Set<string>();
-            // biome-ignore lint/suspicious/noAssignInExpressions: doesn't really matter anymore biome
             while ((m = ipRegex.exec(sdp)) !== null) {
                 const ip = m[1];
                 if (ip && !seen.has(ip)) {
@@ -950,7 +949,7 @@ function patchUserScriptLocation(code: string): string {
             window.open = (
                 url?: string | URL,
                 target?: string,
-                features?: string,
+                windowFeatures?: string,
             ) => {
                 const urlStr = url ? String(url) : "";
                 if (
@@ -960,9 +959,9 @@ function patchUserScriptLocation(code: string): string {
                     dispatchBrowserEvent(bib.newTabEvent, { url: urlStr });
                     return null;
                 }
-                return _nativeOpen(url as string, target, features);
+                return _nativeOpen(url as string, target, windowFeatures);
             };
-        } catch (_) {}
+        } catch {}
 
         try {
             document.addEventListener(
@@ -982,7 +981,7 @@ function patchUserScriptLocation(code: string): string {
                 },
                 true, // capture phase: fires before page handlers
             );
-        } catch (_) {}
+        } catch {}
     }
 
     // Content context: listen for userScript registrations broadcast by the
@@ -1182,10 +1181,10 @@ try {
                                 try {
                                     // Assign to variable = indirect eval →
                                     // global scope (not handler's scope).
-                                    // biome-ignore lint/security/noGlobalEval: wow biome so cool lmao
+                                    // oxlint-disable-next-line no-eval -- global-scope evaluation is the emulated API's contract
                                     const _ieval = eval;
                                     _ieval(_preamble + ";" + _injectCode);
-                                } catch (_) {
+                                } catch {
                                     // eslint-disable-next-line no-new-func
                                     new Function(
                                         _preamble + ";" + _injectCode,
@@ -1251,8 +1250,7 @@ try {
                             const patched = patchUserScriptLocation(code);
                             try {
                                 if (_nativeEval2) _nativeEval2(patched);
-                                // biome-ignore lint/security/noGlobalEval: you broke my build dude wth
-                                // biome-ignore lint/complexity/noCommaOperator: you broke my build dude wth
+                                // oxlint-disable-next-line no-eval -- global-scope evaluation is the emulated API's contract
                                 else (0, eval)(patched);
                                 _reported[uuid] =
                                     rec?.entry?.script?.name ?? uuid;
@@ -1300,7 +1298,7 @@ try {
                     };
                     setTimeout(_poll, 200);
                 }
-            } catch (_) {}
+            } catch {}
         });
         // Announce this content page is ready. Background replays any
         // userScripts registered before this shim was injected.

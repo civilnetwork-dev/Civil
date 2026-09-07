@@ -1,5 +1,7 @@
 import { createSignal, onSettled, Show } from "solid-js";
+
 import StrikeGauge from "~/components/StrikeGauge";
+
 import * as s from "~/styles/BanPage.css";
 
 type ViolationsData = {

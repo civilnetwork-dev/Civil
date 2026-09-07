@@ -1,6 +1,7 @@
+import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { renderSolid } from "$tests/helpers/renderSolid";
+
 import * as icons from "./index";
 
 /**
@@ -178,7 +179,7 @@ describe("icon geometry", () => {
         const key = (pts: Point[]) =>
             pts
                 .map(p => `${p.x.toFixed(3)},${p.y.toFixed(3)}`)
-                .sort()
+                .toSorted()
                 .join(" ");
 
         expect(key(left)).toBe(key(right.map(p => ({ x: BOX - p.x, y: p.y }))));

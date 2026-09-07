@@ -102,7 +102,7 @@ export function resolveExtIcon(
     const sizes = Object.keys(icons)
         .map(Number)
         .filter(n => !Number.isNaN(n))
-        .sort((a, b) => a - b);
+        .toSorted((a, b) => a - b);
     if (sizes.length === 0) return null;
 
     const best =

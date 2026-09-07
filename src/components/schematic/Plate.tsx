@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { Dynamic } from "@solidjs/web";
 import { Show } from "solid-js";
+
 import * as s from "~/styles/schematic.css";
 
 /**

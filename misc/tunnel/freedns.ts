@@ -450,6 +450,7 @@ export class FreeDnsClient {
 
     /** Update one or more fields of an existing subdomain. Unspecified fields
      *  keep their current values (read back via `getSubdomainDetails`). */
+    // fallow-ignore-next-line unused-class-member
     async updateSubdomain(
         subdomainId: string,
         captchaCode: string,

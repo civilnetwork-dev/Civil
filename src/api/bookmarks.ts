@@ -12,10 +12,6 @@ const bookmarks = createReactiveJSON<CivilBookmark[]>(LS_KEY, []);
 
 export { bookmarks };
 
-export function bookmarksGetAll(): CivilBookmark[] {
-    return bookmarks();
-}
-
 export function bookmarksAdd(
     url: string,
     title: string,
@@ -38,8 +34,4 @@ export function bookmarksRemove(id: string): void {
 
 export function bookmarksIsBookmarked(url: string): boolean {
     return bookmarks().some(b => b.url === url);
-}
-
-export function bookmarksGetByUrl(url: string): CivilBookmark | null {
-    return bookmarks().find(b => b.url === url) ?? null;
 }

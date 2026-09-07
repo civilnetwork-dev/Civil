@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { performance } from "node:perf_hooks";
+
 import XOREncoder from "../config/encoder/xor_encoder";
 
 const args = Object.fromEntries(

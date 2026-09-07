@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import {
     APPLICABLE_VENDORS,
     classifyDomain,
@@ -17,7 +18,7 @@ const EXPECTED_VENDORS = [
     "lightspeed",
     "linewize",
     "securly",
-].sort();
+].toSorted();
 
 const stub = (vendor: string, verdict: DomainVerdict): VendorDomainChecker => ({
     vendor,
@@ -59,7 +60,7 @@ describe("classifyDomain", () => {
 
 describe("DOMAIN_CHECKERS registry", () => {
     it("has one reputation checker per gate-capable filter", () => {
-        expect(DOMAIN_CHECKERS.map(c => c.vendor).sort()).toEqual(
+        expect(DOMAIN_CHECKERS.map(c => c.vendor).toSorted()).toEqual(
             EXPECTED_VENDORS,
         );
         for (const c of DOMAIN_CHECKERS)

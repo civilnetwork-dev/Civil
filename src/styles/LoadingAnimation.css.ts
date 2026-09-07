@@ -1,4 +1,5 @@
 import { keyframes, style } from "@vanilla-extract/css";
+
 import { EASE } from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
@@ -18,11 +19,6 @@ export const loadingContainer = style({
     opacity: 1,
     transition: "opacity 600ms cubic-bezier(0.86, 0, 0.07, 1)",
     transitionDuration: "600ms",
-});
-
-export const loadingContainerHidden = style({
-    opacity: 0,
-    pointerEvents: "none",
 });
 
 /* -------------------------------------------------------------------- */
