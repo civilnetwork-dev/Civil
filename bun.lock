@@ -119,6 +119,7 @@
   "patchedDependencies": {
     "@stacksjs/ts-cache@0.1.5": "patches/@stacksjs%2Fts-cache@0.1.5.patch",
     "untun@0.2.2": "patches/untun@0.2.2.patch",
+    "@terbiumos/tfs@1.1.0-dev.1": "patches/@terbiumos%2Ftfs@1.1.0-dev.1.patch",
     "chii@1.15.5": "patches/chii@1.15.5.patch",
   },
   "overrides": {
