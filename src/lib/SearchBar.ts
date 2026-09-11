@@ -136,21 +136,33 @@ class SearchBar
         return false;
     }
 
+    // A proxy is usable only once its controller global is set: uv exposes
+    // self.__uv$config and scramjet exposes window.scramjet. The scramjet
+    // global lands late (see submitFrame), so an entry can exist by name yet
+    // have no value getter result.
+    private isReady(entry: ProxyEntry): boolean {
+        return Boolean(entry.value);
+    }
+
     private getSelectedProxy(): ProxyEntry {
         // localStorage can hold a stale value from an older build (e.g. the
         // removed "rammerhead" engine), so match against proxyObjMap rather
         // than trusting the stored string.
         const storedProxy = localStorage.getItem("proxy");
-        return (
+        const preferred =
             this.proxyObjMap.find(p => p.name === storedProxy) ??
-            this.proxyObjMap.find(p => p.name === "scramjet")!
-        );
+            this.proxyObjMap.find(p => p.name === "scramjet")!;
+        // Fall back to any ready proxy when the preferred one is not set up
+        // yet, so callers never receive an entry with no controller.
+        if (this.isReady(preferred)) return preferred;
+        return this.proxyObjMap.find(p => this.isReady(p)) ?? preferred;
     }
 
     private pickProxy(cfg: BestProxy | null): ProxyEntry {
         const name = cfg?.proxy;
         const entry = name && this.proxyObjMap.find(p => p.name === name);
-        return entry || this.getSelectedProxy();
+        if (entry && this.isReady(entry)) return entry;
+        return this.getSelectedProxy();
     }
 
     private normalizeTerm(term: string, proxy: ProxyEntry) {
@@ -218,10 +230,22 @@ class SearchBar
     async submitFrame(frame: HTMLIFrameElement, term: string) {
         await this.ready;
         const cfg = await fetchBestProxy(term);
-        const proxy = this.pickProxy(cfg);
+        let proxy = this.pickProxy(cfg);
 
-        if (proxy.name === "scramjet") {
-            const controller = window.scramjet;
+        // window.scramjet is assigned only at the very end of initScramjet().
+        // SearchBar.ready can resolve before that when its scramjetReady global
+        // is still unset, leaving the scramjet entry with no controller. Wait on
+        // the real readiness promise (a no-op if it never loaded), then pick
+        // again so an unavailable scramjet falls back to uv instead of throwing.
+        if (!this.isReady(proxy)) {
+            await Promise.resolve((window as any).scramjetReady).catch(
+                () => {},
+            );
+            proxy = this.pickProxy(cfg);
+        }
+
+        if (proxy.name === "scramjet" && this.isReady(proxy)) {
+            const controller = proxy.value as any;
             const existing = controller.frames?.find(
                 (f: any) => f.element === frame,
             );
