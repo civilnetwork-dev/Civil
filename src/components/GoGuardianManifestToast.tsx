@@ -40,6 +40,9 @@ export default function GoGuardianManifestToast(props: Props) {
                 setError('No "key" field found in manifest.json');
             }
         };
+        reader.onerror = () => {
+            setError("Couldn't read that file. Try again.");
+        };
         reader.readAsText(file);
     };
 

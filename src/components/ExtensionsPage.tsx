@@ -143,6 +143,18 @@ function describeInstallError(e: unknown): string {
     if (e instanceof TypeError) {
         return "Couldn't download that file. Check the link, or download it and use Upload file.";
     }
+    // A storage read or write failure surfaces as a DOMException such as
+    // NotReadableError, whose message names a browser API rather than anything
+    // the reader can act on. Map the known storage errors to a clear message.
+    if (
+        e instanceof DOMException &&
+        (e.name === "NotReadableError" ||
+            e.name === "NotFoundError" ||
+            e.name === "QuotaExceededError" ||
+            e.name === "SecurityError")
+    ) {
+        return "Couldn't save that extension to browser storage. Reload the page and try again.";
+    }
     return e instanceof Error && e.message
         ? e.message
         : "Couldn't install that extension.";
