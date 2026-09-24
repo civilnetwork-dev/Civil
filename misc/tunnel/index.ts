@@ -40,7 +40,7 @@
 import { customAlphabet } from "nanoid";
 import { startTunnel } from "untun";
 
-import { FreeDnsClient, FreeDnsError } from "./freedns";
+import { FreeDnsClient, FreeDnsError, type Subdomain } from "./freedns";
 
 /** DNS labels are case-insensitive and limited to letters, digits and
  *  hyphens. Leading with a letter keeps the label valid everywhere (a
@@ -53,6 +53,29 @@ const restChars = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 11);
  *  guessable, short enough to stay well under the 63-char label limit. */
 function randomSubdomain(): string {
     return firstChar() + restChars();
+}
+
+/** Finds `hostname` in the account's subdomain list, retrying a few times —
+ *  a record `createSubdomain` just reported success for can still be absent
+ *  from this same list moments later (confirmed live: FreeDNS's own
+ *  backend read lags its own writes, the same replication lag that delays
+ *  public DNS). A single un-retried lookup would read that as "already
+ *  gone" and skip the delete entirely. */
+export async function findSubdomainWithRetry(
+    client: FreeDnsClient,
+    hostname: string,
+    attempts = 4,
+    delayMs = 1_500,
+): Promise<Subdomain | undefined> {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        const record = (await client.getSubdomains()).find(
+            s => s.subdomain === hostname,
+        );
+        if (record) return record;
+        if (attempt < attempts)
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    return undefined;
 }
 
 export interface OpenTunnelOptions {
@@ -149,8 +172,19 @@ export async function openTunnel(options: OpenTunnelOptions): Promise<Tunnel> {
                 // stop cloudflared regardless of whether that succeeded — a
                 // failed delete must not strand the tunnel process.
                 try {
-                    const record = (await client.getSubdomains()).find(
-                        s => s.subdomain === hostname,
+                    // Live runs show FreeDNS's own subdomain list can still
+                    // be missing a record moments after `createSubdomain`
+                    // redirected success — the same backend-replication lag
+                    // that delays public DNS also delays this read, so a
+                    // single un-retried lookup right after creation can find
+                    // nothing and silently skip the delete. `sweepTunnelOrphans`
+                    // (misc/filterProbe/harness.ts) catches anything that still
+                    // gets through this at the next run's startup, but retrying
+                    // here first is what makes close() itself reliable, not
+                    // just eventually self-healing on someone else's next run.
+                    const record = await findSubdomainWithRetry(
+                        client,
+                        hostname,
                     );
                     if (record) await client.deleteSubdomain(record.id);
                 } finally {
@@ -208,6 +242,48 @@ export async function createSubdomainWithCaptcha(
             }
         }
     }
+}
+
+/**
+ * Delete leftover tunnel subdomains from crashed or interrupted prior runs.
+ *
+ * A CNAME pointing at a `*.trycloudflare.com` origin, under a label in
+ * `randomSubdomain`'s format, is only ever a record `openTunnel` created — and
+ * if one still exists, its cloudflared process is long gone, so the record is
+ * dead. Each counts against FreeDNS's small subdomain quota, and a run killed
+ * before `close()` leaks one; left alone they accumulate until creation fails
+ * with "no more subdomain capacity". This reclaims them at the next startup.
+ * Returns how many it deleted. Nothing else on the account is touched: an `A`
+ * record, or any name not matching that exact tunnel signature, is left alone.
+ *
+ * The destination is confirmed via `getSubdomainDetails`, not read off the
+ * list page: that page truncates a long destination to 43 characters with a
+ * literal "..." in the HTML, and the cut lands wherever the tunnel's random
+ * name happens to put it — mid-word, inside `trycloudflare` itself (confirmed
+ * live: `"guitar-usgs-bangkok-planets.trycloudflar..."` went unswept, then
+ * wedged the next run at "no more subdomain capacity", because it does not
+ * contain the string `trycloudflare`). No substring of the truncated value is
+ * safe to match on, since a long enough name pushes the origin out of the
+ * window entirely; the details page carries the real, whole destination.
+ * Nothing is deleted on the strength of the label alone.
+ */
+export async function sweepTunnelOrphans(
+    client: FreeDnsClient,
+): Promise<number> {
+    const isTunnelLabel = /^[a-z][a-z0-9]{11}$/;
+    const candidates = (await client.getSubdomains()).filter(
+        s =>
+            s.type.toUpperCase() === "CNAME" &&
+            isTunnelLabel.test(s.subdomain.split(".")[0] ?? ""),
+    );
+    let deleted = 0;
+    for (const candidate of candidates) {
+        const { destination } = await client.getSubdomainDetails(candidate.id);
+        if (!destination.toLowerCase().includes(".trycloudflare.com")) continue;
+        await client.deleteSubdomain(candidate.id);
+        deleted++;
+    }
+    return deleted;
 }
 
 export {

@@ -158,10 +158,19 @@ export default function BrowserChrome() {
     onSettled(() => {
         if (tabStripRef) ro.observe(tabStripRef);
 
-        registerTabMonitor({ setDraggingId });
+        const releaseTabMonitor = registerTabMonitor({ setDraggingId });
 
-        const session = loadSession();
-        if (session) {
+        // `tabManager` is a module singleton, so a remount (HMR, or the route
+        // re-entering the browser) finds it already holding tabs. Adopt them;
+        // restoring the saved session on top doubled the strip every time.
+        const session = tabManager.tabs.length ? null : loadSession();
+        if (tabManager.tabs.length) {
+            setTabStore(store => {
+                store.tabs = [...tabManager.tabs];
+            });
+            setIframeIds(tabManager.tabs.map(t => t.id));
+            setActiveId(tabManager.activeId);
+        } else if (session) {
             for (const saved of session.tabs) {
                 const t = tabManager.createTab(saved.url);
                 tabManager.updateTab(t.id, {
@@ -405,6 +414,7 @@ export default function BrowserChrome() {
         window.addEventListener("keydown", onGlobalKey);
 
         return () => {
+            releaseTabMonitor();
             document.removeEventListener("browser:navigate", onBrowserNavigate);
             document.removeEventListener("browser:newtab", onBrowserNewTab);
             document.removeEventListener("browser:closetab", onBrowserCloseTab);
@@ -576,7 +586,12 @@ export default function BrowserChrome() {
             }}
         >
             <div class={s.browserChrome}>
-                <div class={s.browserTabstrip} ref={tabStripRef}>
+                <div
+                    class={s.browserTabstrip}
+                    ref={tabStripRef}
+                    role="tablist"
+                    aria-label="Browser tabs"
+                >
                     <For each={tabStore.tabs} keyed={false}>
                         {tab => (
                             <TabPill

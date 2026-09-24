@@ -63,6 +63,7 @@ export const dismissBtn = style({
     cursor: "pointer",
     color: vars.color.ash,
     padding: "2px",
+    borderRadius: "6px",
     fontSize: "16px",
     lineHeight: 1,
     flexShrink: 0,

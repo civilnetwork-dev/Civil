@@ -451,7 +451,7 @@ function _buildInitWithHeaders(
 export function installNetworkInterceptor(
     events: WebRequestEventSet,
     getDNRRules: () => DNRRule[],
-    proxyExternalRequests = false,
+    _proxyExternalRequests = false,
 ): void {
     const w = window as unknown as Record<string, unknown>;
     if (w.__civil_net_intercepted) return;
@@ -460,22 +460,16 @@ export function installNetworkInterceptor(
     const _origFetch = window.fetch.bind(window);
     const _OrigXHR = window.XMLHttpRequest;
 
-    const toNetworkUrl = (url: string): string => {
-        if (!proxyExternalRequests || !/^https?:/i.test(url)) return url;
-        try {
-            const topWindow = window.top as Window & {
-                __uv$config?: {
-                    prefix?: string;
-                    encodeUrl?: (value: string) => string;
-                };
-            };
-            const uv = topWindow.__uv$config;
-            if (!uv?.prefix || !uv.encodeUrl) return url;
-            return `${window.location.origin}${uv.prefix}${uv.encodeUrl(url)}`;
-        } catch {
-            return url;
-        }
-    };
+    // This used to read `window.top.__uv$config` (UV's page-side prefix and
+    // encoder) and rewrite the URL through it when the caller (a background
+    // context, via installNetworkInterceptor's now-unused third parameter)
+    // opted in. That was already a no-op in practice before UV was removed:
+    // UV only ever set `__uv$config` on the *service worker's* own `self`
+    // (misc/config/service/sw.ts), a different global than `window` -- a
+    // page-context `window.top.__uv$config` read was never going to find
+    // anything there. Passes the URL through unchanged, same outcome as
+    // that dead lookup always produced.
+    const toNetworkUrl = (url: string): string => url;
 
     const fetchViaXHR = (
         url: string,

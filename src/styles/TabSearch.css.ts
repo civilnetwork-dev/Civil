@@ -4,13 +4,9 @@ import { ANNO, FONT_MONO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
- * The overlay sheet.
- *
- * Same drawing language as everything behind it: square corners, hairline
- * rules between rows, mono for addresses. What it drops is the depth kit — a
- * 16px radius, a 64px drop shadow and a spring scale-in that together read as
- * a card floating above the app. A sheet laid over the board is separated by
- * its border and by the dimmed ground, not by simulated elevation.
+ * The tab switcher. A 12px sheet over a dimmed page, separated by its border
+ * and the scrim rather than by a drop shadow; rows are ruled apart and
+ * addresses stay in the annotation tier.
  */
 
 const T_SPRING = "0.2s cubic-bezier(0.22, 1, 0.36, 1)";
@@ -67,6 +63,7 @@ export const panel = style({
     width: "min(580px, 92vw)",
     background: vars.color.basalt,
     border: `1px solid ${vars.color.talus}`,
+    borderRadius: "12px",
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
@@ -105,6 +102,9 @@ export const input = style({
     fontWeight: 400,
     caretColor: vars.color.cobalt,
     selectors: {
+        // The panel is the focused control; a second ring inside its header
+        // row reads as a box within a box.
+        "&:focus-visible": { outline: "none" },
         "&::placeholder": { color: vars.color.ash },
         "&::selection": {
             background: `color-mix(in srgb, ${vars.color.cobalt} 28%, transparent)`,
@@ -113,7 +113,7 @@ export const input = style({
 });
 
 export const hint = style({
-    fontSize: "11px",
+    fontSize: "12px",
     color: vars.color.ash,
     flexShrink: 0,
     fontFamily: FONT_SANS,
@@ -220,12 +220,11 @@ export const matchMark = style({
 
 export const tabBadge = style({
     ...ANNO,
-    fontSize: "11px",
-    padding: "1px 6px",
+    padding: "1px 7px",
     flexShrink: 0,
     border: `0.5px solid color-mix(in srgb, ${vars.color.cobalt} 45%, transparent)`,
+    borderRadius: "999px",
     color: vars.color.cobalt,
-    textTransform: "uppercase",
 });
 
 export const emptyState = style({
@@ -249,7 +248,7 @@ export const footerKey = style({
     display: "inline-flex",
     alignItems: "center",
     gap: "4px",
-    fontSize: "11px",
+    fontSize: "12px",
     color: vars.color.ash,
     fontFamily: FONT_SANS,
 });
@@ -260,8 +259,9 @@ export const kbd = style({
     justifyContent: "center",
     background: "transparent",
     border: `0.5px solid ${vars.color.talus}`,
+    borderRadius: "4px",
     padding: "1px 5px",
-    fontSize: "11px",
+    fontSize: "12px",
     fontFamily: FONT_MONO,
     color: vars.color.firn,
     lineHeight: 1.6,

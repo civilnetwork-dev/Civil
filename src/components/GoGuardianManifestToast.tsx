@@ -143,7 +143,7 @@ export default function GoGuardianManifestToast(props: Props) {
                 placeholder="Paste the base64 public key from manifest.json here…"
                 value={manifestKey()}
                 onInput={e => setManifestKey(e.currentTarget.value)}
-                spellcheck={false}
+                spellcheck="false"
             />
 
             <Show when={error()}>

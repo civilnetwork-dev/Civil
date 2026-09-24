@@ -30,7 +30,7 @@ export default function FilterCheckForm(props: {
         >
             <Show when={props.needsEmail}>
                 <Field
-                    label="school email"
+                    label="School email"
                     type="email"
                     value={props.email}
                     onInput={props.onEmail}
@@ -42,7 +42,7 @@ export default function FilterCheckForm(props: {
                 not the reader's. The page asks one question — is this site
                 blocked — so the field and the button say that. */}
             <Field
-                label="website"
+                label="Website"
                 type="url"
                 value={props.url}
                 onInput={props.onUrl}
@@ -50,8 +50,8 @@ export default function FilterCheckForm(props: {
                 required
             />
             <button class={s.submit} type="submit" disabled={props.loading}>
-                <Show when={props.loading} fallback="check this site">
-                    <IconLoaderDots size={14} class={s.spinner} /> checking…
+                <Show when={props.loading} fallback="Check this site">
+                    <IconLoaderDots size={14} class={s.spinner} /> Checking…
                 </Show>
             </button>
         </form>

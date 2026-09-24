@@ -85,7 +85,7 @@ export default function IbossGatewayToast(props: Props) {
                 placeholder="cn…-vnsg….ibosscloud.com"
                 value={gatewayHost()}
                 onInput={e => setGatewayHost(e.currentTarget.value)}
-                spellcheck={false}
+                spellcheck="false"
             />
 
             <span class={s.orDivider}>security key (optional)</span>
@@ -95,7 +95,7 @@ export default function IbossGatewayToast(props: Props) {
                 placeholder="Account web security key - enables live categorization"
                 value={securityKey()}
                 onInput={e => setSecurityKey(e.currentTarget.value)}
-                spellcheck={false}
+                spellcheck="false"
             />
 
             <Show when={error()}>

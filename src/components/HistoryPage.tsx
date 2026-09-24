@@ -206,8 +206,8 @@ export default function HistoryPage() {
                                     "clear" alone reads as "clear these" when
                                     it actually deletes the whole record. */}
                                 {confirmingClear()
-                                    ? `click again to delete ${String(entries().length)}`
-                                    : "clear all"}
+                                    ? `Click again to delete ${String(entries().length)}`
+                                    : "Clear all"}
                             </button>
                         </Show>
                     </div>
@@ -216,9 +216,8 @@ export default function HistoryPage() {
 
             <Show when={entries().length > 0}>
                 <p class={schematic.lede}>
-                    Kept on this device. Both storage backends are local —
-                    nothing here is uploaded, and no console anywhere holds a
-                    second copy.
+                    Find a page you visited earlier. Your history is stored on
+                    this device.
                 </p>
 
                 <div class={s.scopeRow}>
@@ -271,7 +270,7 @@ export default function HistoryPage() {
                 <Rule weight="hair" />
                 <div class={s.empty}>
                     <Anno class={s.emptyText}>
-                        no history yet — and no copy of it anywhere else
+                        No history yet. Pages you visit will show up here.
                     </Anno>
                 </div>
             </Show>
@@ -280,7 +279,7 @@ export default function HistoryPage() {
                 <Rule weight="hair" />
                 <div class={s.empty}>
                     <Anno class={s.emptyText}>
-                        nothing recorded matches “{query().trim()}”
+                        No pages match “{query().trim()}”.
                     </Anno>
                     <button
                         type="button"
@@ -290,7 +289,7 @@ export default function HistoryPage() {
                             filterInput?.focus();
                         }}
                     >
-                        clear filter
+                        Clear filter
                     </button>
                 </div>
             </Show>

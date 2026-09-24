@@ -1,48 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1077" height="288" viewBox="0 0 359 96" role="img" aria-labelledby="civil-title civil-desc">
-  <title id="civil-title">CIVIL</title>
-  <desc id="civil-desc">CIVIL in five custom-drawn letters, each carrying a proxy icon inside its own form: a ring opened by a widening wedge, a keyhole, a funnel, a broadcast cone, and a port. No typeface is used.</desc>
-
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Civil_Proxy" data-name="Civil Proxy" xmlns="http://www.w3.org/2000/svg" width="1504" height="368" viewBox="0 0 1504.23 368" role="img" aria-labelledby="civil-title civil-desc">
+  <title id="civil-title">Civil Proxy</title>
+  <desc id="civil-desc">CIVIL steps down into PROXY: the foot of the L is the roof of the P, one shared stroke.</desc>
   <defs>
-    <!-- Only Strata palette values, running one warm-to-cool sweep across the word. -->
-    <linearGradient id="civil-c" x1="14" y1="14" x2="81" y2="82" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F2E0C7"/><stop offset="1" stop-color="#E29B69"/>
-    </linearGradient>
-    <linearGradient id="civil-i1" x1="97" y1="14" x2="131" y2="82" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E29B69"/><stop offset="1" stop-color="#C8789B"/>
-    </linearGradient>
-    <linearGradient id="civil-v" x1="147" y1="14" x2="213" y2="82" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#C8789B"/><stop offset="1" stop-color="#4295E4"/>
-    </linearGradient>
-    <linearGradient id="civil-i2" x1="229" y1="14" x2="263" y2="82" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4295E4"/><stop offset="1" stop-color="#93CAFF"/>
-    </linearGradient>
-    <linearGradient id="civil-l" x1="279" y1="14" x2="345" y2="82" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#93CAFF"/><stop offset="1" stop-color="#C3CAA4"/>
-    </linearGradient>
+    <style>
+      .cls-1 {
+        fill: #4295e4;
+      }
+    </style>
   </defs>
-
-  <!-- C — the way through. An even-weight ring with a wedge cut from its right
-       side; the aperture widens outward, so the counter is the opening. -->
-  <path d="M80.53 38.12 A34 34 0 1 0 80.53 57.88 L64.93 51.56 A17 17 0 1 1 64.93 46.44 Z" fill="url(#civil-c)"/>
-
-  <!-- I — privacy. A keyhole punched clean through the stem. The bow and the
-       flared slot are ONE closed contour: two overlapping punches would cancel
-       under even-odd and the icon would vanish. -->
-  <path fill-rule="evenodd" fill="url(#civil-i1)"
-        d="M97 14 H131 V27 H124 V69 H131 V82 H97 V69 H104 V27 H97 Z
-           M116.75 44.51 A8 8 0 1 0 111.25 44.51 L109.5 64 H118.5 Z"/>
-
-  <!-- V — the filter. The counter repeats the C's widening wedge, and the arms
-       converge into a neck that carries to the baseline. -->
-  <path d="M147 14 H167 L180 52 L193 14 H213 L189 70 L187 82 H173 L171 70 Z" fill="url(#civil-v)"/>
-
-  <!-- I — the relay. Three bars widening downward, punched through the stem. -->
-  <path fill-rule="evenodd" fill="url(#civil-i2)"
-        d="M229 14 H263 V27 H256 V69 H263 V82 H229 V69 H236 V27 H229 Z
-           M243 32 H249 V37 H243 Z
-           M240.5 44 H251.5 V49 H240.5 Z
-           M238 56 H254 V61 H238 Z"/>
-
-  <!-- L — the port. A socket cut into the foot's outer edge. -->
-  <path d="M279 14 H299 V68 H345 V71 H329 V79 H345 V82 H279 Z" fill="url(#civil-l)"/>
+  <g id="Civil_Proxy_mono" data-name="Civil Proxy — mono">
+    <g id="PROXY">
+      <path id="P_its_roof_is_the_foot_of_L" data-name="P — its roof is the foot of L" class="cls-1" d="M572.23,202.5h141.27c.04.17.08.33.12.5,1.78,7.42,2.61,16.06,2.61,26,0,46.08-17.92,64-64,64h-36v72h-44v-162.5ZM616.23,203v52h36c11.22,0,17-8.84,17-26s-5.78-26-17-26h-36Z"/>
+      <path id="R" class="cls-1" d="M746.23,165h80c46.08,0,64,17.92,64,64,0,27.71-6.48,45.24-21.67,54.81l33.67,81.19h-44.39l-29.86-72.01c-.58.01-1.16.01-1.75.01h-36v72h-44v-200ZM790.23,203v52h36c11.22,0,17-8.84,17-26s-5.78-26-17-26h-36Z"/>
+      <path id="O" class="cls-1" d="M1128.23,265c0,74.16-28.84,103-103,103s-103-28.84-103-103,28.84-103,103-103,103,28.84,103,103ZM1081.23,265c0-42.9-19.04-65-56-65s-56,22.1-56,65,19.04,65,56,65,56-22.1,56-65Z"/>
+      <path id="X" class="cls-1" d="M1146.23,165h48.22l37.78,61.05,37.78-61.05h48.22l-61.89,100,61.89,100h-48.22l-37.78-61.05-37.78,61.05h-48.22l61.89-100-61.89-100Z"/>
+      <path id="Y" class="cls-1" d="M1328.23,165h48.05l39.95,65.37,39.95-65.37h48.05l-66,108v92h-44v-92l-66-108Z"/>
+    </g>
+    <g id="CIVIL">
+      <path id="C" class="cls-1" d="M202.23,63h-51.51c-8.89-16.56-24.89-25-47.72-25-36.96,0-56,22.1-56,65s19.04,65,56,65c22.83,0,38.83-8.44,47.72-25h51.51c-9.94,44.76-40.26,63-99.23,63C28.84,206,0,177.16,0,103S28.84,0,103,0c58.97,0,89.29,18.24,99.23,63Z"/>
+      <path id="I" class="cls-1" d="M228.23,3h44v200h-44V3Z"/>
+      <path id="V" class="cls-1" d="M288.23,3h44.24l49.76,122.88L432,3h44.23l-81,200h-26L288.23,3Z"/>
+      <path id="I-2" data-name="I" class="cls-1" d="M492.23,3h44v200h-44V3Z"/>
+      <path id="L_its_foot_is_the_roof_of_P" data-name="L — its foot is the roof of P" class="cls-1" d="M572.23,3h44v162h36c36.14,0,54.95,11.02,61.39,38h-141.39V3Z"/>
+    </g>
+  </g>
 </svg>

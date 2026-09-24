@@ -4,11 +4,9 @@ import { FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
- * A menu is a small sheet laid over the board: square, bounded by a major
- * rule, entering by opacity and a short translate. It previously carried a
- * 10px radius, a two-layer drop shadow and a scale pop-in — the floating-card
- * language TabSearch and the omnibox suggestions already dropped — and was the
- * last overlay still speaking it.
+ * A small menu laid over the page: a 12px sheet with 6px inset rows, entering
+ * by opacity and a short translate. Rows are left-aligned on a fixed icon
+ * gutter so labels line up whether or not a row carries a glyph.
  */
 
 const T_FAST = "0.1s ease";
@@ -26,31 +24,34 @@ export const iframeCover = style({
     pointerEvents: "all",
 });
 
-export const menu = style({
-    position: "fixed",
-    zIndex: 9999,
-    width: "220px",
+const sheet = {
     background: vars.color.basalt,
     border: RULE.major,
-    overflow: "hidden",
+    borderRadius: "12px",
+    padding: "6px",
     fontFamily: FONT_SANS,
     fontSize: "13px",
     color: vars.color.firn,
     userSelect: "none",
+} as const;
+
+export const menu = style({
+    ...sheet,
+    position: "fixed",
+    zIndex: 9999,
+    width: "220px",
     animation: `${menuIn} 0.12s cubic-bezier(0.22, 1, 0.36, 1) both`,
     animationDuration: "0.12s",
-    padding: 0,
 });
 
 export const menuItem = style({
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
+    gap: "10px",
     width: "100%",
     boxSizing: "border-box",
-    padding: "8px 16px",
-    borderRadius: 0,
+    padding: "7px 10px",
+    borderRadius: "8px",
     border: "none",
     background: "transparent",
     color: vars.color.firn,
@@ -58,13 +59,8 @@ export const menuItem = style({
     transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
-        "&:hover": {
-            background: vars.color.scree,
-            color: vars.color.firn,
-        },
-        "&:active": {
-            background: vars.color.talus,
-        },
+        "&:hover": { background: vars.color.scree },
+        "&:active": { background: vars.color.talus },
     },
 });
 
@@ -73,7 +69,6 @@ export const menuItemDanger = style({
     selectors: {
         "&:hover": {
             background: `color-mix(in srgb, ${vars.color.wine} 14%, transparent)`,
-            color: vars.color.wine,
         },
         "&:active": {
             background: `color-mix(in srgb, ${vars.color.wine} 22%, transparent)`,
@@ -81,6 +76,7 @@ export const menuItemDanger = style({
     },
 });
 
+// Always rendered, so a row without a glyph keeps its label on the gutter.
 export const menuItemIcon = style({
     display: "flex",
     alignItems: "center",
@@ -88,11 +84,16 @@ export const menuItemIcon = style({
     width: "16px",
     height: "16px",
     flexShrink: 0,
-    color: "inherit",
+    color: vars.color.ash,
+    selectors: {
+        [`.${menuItem}:hover &`]: { color: "inherit" },
+        [`.${menuItemDanger} &`]: { color: "inherit" },
+    },
 });
 
 export const menuItemLabel = style({
-    fontSize: "13px",
+    flex: 1,
+    minWidth: 0,
     color: "inherit",
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -100,7 +101,7 @@ export const menuItemLabel = style({
 });
 
 export const menuItemShortcut = style({
-    fontSize: "11px",
+    fontSize: "12px",
     color: vars.color.ash,
     marginLeft: "auto",
     paddingLeft: "16px",
@@ -108,8 +109,8 @@ export const menuItemShortcut = style({
 });
 
 export const separator = style({
-    width: "100%",
     height: "1px",
+    margin: "5px 4px",
     background: vars.color.scree,
     pointerEvents: "none",
     flexShrink: 0,
@@ -125,16 +126,13 @@ export const subMenuArrow = style({
 });
 
 export const subMenu = style({
+    ...sheet,
     display: "none",
     position: "absolute",
-    top: "-1px",
+    top: "-7px",
     left: "100%",
     marginLeft: "4px",
     width: "200px",
-    background: vars.color.basalt,
-    border: RULE.major,
-    overflow: "hidden",
-    padding: 0,
     zIndex: 10000,
 });
 

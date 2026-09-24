@@ -195,54 +195,50 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
     let refLatency!: HTMLDivElement;
     let refSpeedup!: HTMLDivElement;
 
-    onSettled(() => {
-        const maybeInit = (el: HTMLDivElement, opt: EChartsOption | object) => {
-            if (!Object.keys(opt).length) return null;
-            const c = init(el, null, { renderer: "canvas" });
-            c.setOption(opt as EChartsOption);
-            return c;
-        };
+    // The charts are created once the divs exist (onSettled); the effects that
+    // keep them in sync with the option memos live at component scope, because
+    // Solid 2 forbids creating reactive primitives inside onSettled
+    // (PRIMITIVE_IN_FORBIDDEN_SCOPE - this page rendered as a stack trace).
+    const panels = [
+        { el: () => refThroughput, option: throughputOption },
+        { el: () => refLatency, option: latencyOption },
+        { el: () => refSpeedup, option: speedupOption },
+    ].map(panel => ({
+        ...panel,
+        chart: null as ReturnType<typeof init> | null,
+    }));
 
-        const cThroughput = maybeInit(refThroughput, throughputOption());
-        const cLatency = maybeInit(refLatency, latencyOption());
-        const cSpeedup = maybeInit(refSpeedup, speedupOption());
-
-        if (cThroughput) {
-            createEffect(throughputOption, opt => {
-                if (Object.keys(opt).length)
-                    cThroughput.setOption(opt as EChartsOption, true);
-            });
-        }
-        if (cLatency) {
-            createEffect(latencyOption, opt => {
-                if (Object.keys(opt).length)
-                    cLatency.setOption(opt as EChartsOption, true);
-            });
-        }
-        if (cSpeedup) {
-            createEffect(speedupOption, opt => {
-                if (Object.keys(opt).length)
-                    cSpeedup.setOption(opt as EChartsOption, true);
-            });
-        }
-
-        const charts = [cThroughput, cLatency, cSpeedup].filter(
-            Boolean,
-        ) as NonNullable<typeof cThroughput>[];
-        const ro = new ResizeObserver(() => {
-            for (const c of charts) c.resize();
+    for (const panel of panels) {
+        createEffect(panel.option, opt => {
+            if (panel.chart && Object.keys(opt).length)
+                panel.chart.setOption(opt as EChartsOption, true);
         });
-        for (const el of [refThroughput, refLatency, refSpeedup])
-            ro.observe(el);
+    }
+
+    onSettled(() => {
+        for (const panel of panels) {
+            const opt = panel.option();
+            if (!Object.keys(opt).length) continue;
+            panel.chart = init(panel.el(), null, { renderer: "canvas" });
+            panel.chart.setOption(opt as EChartsOption);
+        }
+
+        const ro = new ResizeObserver(() => {
+            for (const panel of panels) panel.chart?.resize();
+        });
+        for (const panel of panels) ro.observe(panel.el());
 
         return () => {
             ro.disconnect();
-            for (const c of charts) c.dispose();
+            for (const panel of panels) {
+                panel.chart?.dispose();
+                panel.chart = null;
+            }
         };
     });
 
     return (
-        <Sheet density="fine">
+        <Sheet>
             <TitleBlock
                 title="XOR encoder benchmark"
                 meta={`${iterations().toLocaleString()} iterations · ${String(runs().length)} implementations`}
@@ -293,14 +289,14 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
 
             <div class={s.chartPair}>
                 <div class={s.chartBlock}>
-                    <Rule label="throughput" weight="major" />
+                    <Rule label="Throughput" weight="major" />
                     <Anno muted class={s.chartCaption}>
                         millions of operations per second — higher is better
                     </Anno>
                     <div ref={refThroughput} class={s.chartBox} />
                 </div>
                 <div class={s.chartBlock}>
-                    <Rule label="latency" weight="major" />
+                    <Rule label="Latency" weight="major" />
                     <Anno muted class={s.chartCaption}>
                         nanoseconds per operation — lower is better
                     </Anno>
@@ -315,7 +311,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 }
             >
                 <div class={s.chartBlock}>
-                    <Rule label="speedup factor" weight="major" />
+                    <Rule label="Speedup factor" weight="major" />
                     <Anno muted class={s.chartCaption}>
                         wasm ÷ js — the marked line is parity
                     </Anno>
@@ -323,7 +319,7 @@ export default function BenchmarkChart(props: BenchmarkChartProps) {
                 </div>
             </Show>
 
-            <Rule label="raw results" weight="major" />
+            <Rule label="Raw results" weight="major" />
             <div class={s.tableScroll}>
                 <table class={s.table}>
                     <thead>

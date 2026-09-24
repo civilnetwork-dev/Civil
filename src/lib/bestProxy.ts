@@ -1,7 +1,7 @@
 import { isProbablyUrl } from "~/lib/browserHelpers";
 
 export interface BestProxy {
-    proxy: "uv" | "scramjet";
+    proxy: "scramjet";
     transport: "epoxy" | "libcurl" | "bare";
     wispVersion: 1 | 2;
     score?: number;
@@ -52,7 +52,11 @@ export async function fetchBestProxy(
         );
         if (!res.ok) return null;
         const data = (await res.json()) as BestProxy;
-        if (data.proxy !== "uv" && data.proxy !== "scramjet") return null;
+        // A pre-removal cache/DB row can still say "uv" (misc/database/
+        // models/siteProxy.ts's proxy column has no DB-level enum); the
+        // server already self-heals that case instead of serving it, but
+        // guard here too rather than trust that unconditionally.
+        if (data.proxy !== "scramjet") return null;
         return data;
     } catch {
         return null;
@@ -83,7 +87,6 @@ function waitFrameLoad(
 export async function measureAndReportCompat(
     frame: HTMLIFrameElement,
     term: string,
-    proxy: "uv" | "scramjet",
     transport: string | undefined,
 ): Promise<void> {
     const probeUrl = toProbeUrl(term);
@@ -195,7 +198,7 @@ export async function measureAndReportCompat(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 url: probeUrl,
-                proxy,
+                proxy: "scramjet",
                 transport,
                 compat,
                 consoleErrors,

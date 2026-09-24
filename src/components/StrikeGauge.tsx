@@ -31,7 +31,7 @@ export default function StrikeGauge(props: {
     return (
         <div>
             <div class={s.head}>
-                <span class={s.label}>strikes</span>
+                <span class={s.label}>Strikes</span>
                 {/* String(), because Solid renders the number 0 as nothing at
                     all — and zero strikes is the single most common state this
                     component is asked to display. */}

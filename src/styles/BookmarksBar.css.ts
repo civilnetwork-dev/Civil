@@ -5,12 +5,9 @@ import { ANNO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
- * The shelf.
- *
- * A single ruled strip under the identification row, holding square chips.
- * Rounded chips read as buttons floating on a toolbar; square ones ruled apart
- * read as labelled positions on a shelf, which is what the chrome's language
- * asks for.
+ * The bookmarks shelf: the bottom band of the toolbar surface, holding soft
+ * chips. It shares the address row's scree plane and closes the chrome with
+ * the one rule that separates toolbar from page.
  */
 
 const T_FAST = "0.1s ease";
@@ -19,10 +16,10 @@ export const bar = style({
     display: "flex",
     alignItems: "center",
     gap: "2px",
-    height: "28px",
-    padding: "0 10px",
-    background: vars.color.basalt,
-    borderBottom: RULE.hair,
+    height: "30px",
+    padding: "0 8px 2px",
+    background: vars.color.scree,
+    borderBottom: RULE.major,
     overflowX: "auto",
     overflowY: "hidden",
     flexShrink: 0,
@@ -36,29 +33,26 @@ export const bookmark = style({
     alignItems: "center",
     gap: "6px",
     padding: "0 8px",
-    height: "22px",
+    height: "24px",
+    borderRadius: "6px",
     cursor: "pointer",
     color: vars.color.firn,
     background: "transparent",
-    border: "1px solid transparent",
+    border: "none",
     fontSize: "12px",
     fontFamily: FONT_SANS,
     fontWeight: 400,
     whiteSpace: "nowrap",
     flexShrink: 0,
     maxWidth: "170px",
-    transition: `background ${T_FAST}, color ${T_FAST}, border-color ${T_FAST}`,
+    transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     position: "relative",
     selectors: {
-        // 22px tall by design - the whole bar is only 28px - so the pointer
-        // target is expanded to 24 without changing how the chip looks.
+        // The chip is shorter than a comfortable target, so the pointer
+        // target is expanded without changing how the chip looks.
         "&::after": hitArea(),
-        "&:hover": {
-            background: vars.color.basalt,
-            color: vars.color.firn,
-            borderColor: vars.color.scree,
-        },
+        "&:hover": { background: vars.color.talus },
         "&:focus-visible": {
             outline: `1px solid ${vars.color.cobalt}`,
             outlineOffset: "-1px",
@@ -153,20 +147,21 @@ export const addBookmarkBtn = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "22px",
-    height: "22px",
-    border: `0.5px solid ${vars.color.scree}`,
+    width: "24px",
+    height: "24px",
+    border: "none",
+    borderRadius: "6px",
     background: "transparent",
-    color: vars.color.ash,
+    color: vars.color.snowmelt,
     cursor: "pointer",
     padding: 0,
     flexShrink: 0,
-    transition: `background ${T_FAST}, color ${T_FAST}, border-color ${T_FAST}`,
+    transition: `background ${T_FAST}, color ${T_FAST}`,
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": {
-            color: vars.color.cobalt,
-            borderColor: vars.color.cobalt,
+            background: vars.color.talus,
+            color: vars.color.firn,
         },
         "&:focus-visible": {
             outline: `1px solid ${vars.color.cobalt}`,
@@ -177,7 +172,8 @@ export const addBookmarkBtn = style({
 
 export const emptyHint = style({
     ...ANNO,
-    color: vars.color.snowmelt,
-    paddingLeft: "4px",
+    fontWeight: 400,
+    color: vars.color.ash,
+    paddingLeft: "6px",
     userSelect: "none",
 });

@@ -11,9 +11,6 @@ import { router } from "./router";
 const proxyScripts = [
     "/wasm_dencode.js",
     "/baremux/index.js",
-    "/uv/uv.bundle.js",
-    "/uv_config.js",
-    "/uv/uv.sw.js",
     "/scramjet/scramjet.js",
     "/scramjetController/controller.api.js",
     "/scramjet_init.js",

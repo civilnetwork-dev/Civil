@@ -5,7 +5,7 @@ import searchBar from "~/lib/SearchBar";
 
 import * as s from "~/styles/SearchBar.css";
 
-export default function SearchBarContainer(props: { inline?: boolean }) {
+export default function SearchBarContainer() {
     const bar = searchBar();
 
     const [suggestions, setSuggestions] = createSignal<string[]>([]);
@@ -37,35 +37,29 @@ export default function SearchBarContainer(props: { inline?: boolean }) {
     };
 
     return (
-        <div class={props.inline ? s.sbHostInline : s.sbHost}>
-            <div class={s.sbRoot}>
-                <SearchBarInput
-                    onSubmit={handleSubmit}
-                    onSuggestions={setSuggestions}
-                    showBlur={false}
-                />
+        <div class={s.sbRoot}>
+            <SearchBarInput
+                onSubmit={handleSubmit}
+                onSuggestions={setSuggestions}
+            />
 
-                <Show when={suggestions().length > 0}>
-                    <ul class={s.sbDropdown} role="listbox">
-                        <For each={suggestions()} keyed={false}>
-                            {item => (
-                                <li
+            <Show when={suggestions().length > 0}>
+                <ul class={s.sbDropdown} aria-label="Search suggestions">
+                    <For each={suggestions()} keyed={false}>
+                        {item => (
+                            <li>
+                                <button
+                                    type="button"
                                     class={s.sbRow}
-                                    role="option"
-                                    aria-selected={false}
                                     onClick={() => handleSubmit(item())}
-                                    onKeyDown={e =>
-                                        e.key === "Enter" &&
-                                        handleSubmit(item())
-                                    }
                                 >
                                     {item()}
-                                </li>
-                            )}
-                        </For>
-                    </ul>
-                </Show>
-            </div>
+                                </button>
+                            </li>
+                        )}
+                    </For>
+                </ul>
+            </Show>
         </div>
     );
 }

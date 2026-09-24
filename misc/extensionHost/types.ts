@@ -128,6 +128,14 @@ export interface ExtensionHandle {
         area?: "local" | "sync" | "session" | "managed",
     ): Record<string, unknown>;
 
+    /** The background's live `chrome.storage`, for a content script to share
+     *  — the same object, as Chrome shares one store across an extension's
+     *  contexts. A content script handed a do-nothing stub instead gets
+     *  `undefined` back from `storage.local.get()`, where Chrome gives `{}`,
+     *  and dies destructuring it (blocksi, in a 400ms retry loop for the
+     *  whole observation). */
+    readonly storage: unknown;
+
     /** Delivers a message to the extension's runtime.onMessage listeners and
      *  returns what (if anything) they responded with. */
     sendMessage(message: unknown): Promise<CapturedMessage>;

@@ -1,7 +1,7 @@
 import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/web";
 import { createFileRoute } from "@tanstack/solid-router";
-import { onCleanup, onSettled } from "solid-js";
+import { onSettled } from "solid-js";
 
 const Browser = clientOnly(() => import("~/components/BrowserChrome.tsx"));
 
@@ -11,6 +11,8 @@ export const Route = createFileRoute("/")({
 
 function RouteComponent() {
     onSettled(() => {
+        // Preview the app without loading production advertising in development.
+        if (import.meta.env.DEV) return;
         const ippScript = document.createElement("script");
         const nativeScript = document.createElement("script");
 
@@ -23,9 +25,10 @@ function RouteComponent() {
         nativeScript.async = true;
         nativeScript.src = "https://ss.mrmnd.com/native.js";
 
-        onCleanup(() => {
+        return () => {
             ippScript.remove();
-        });
+            nativeScript.remove();
+        };
     });
 
     return (

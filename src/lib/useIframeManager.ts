@@ -26,12 +26,6 @@ function decodeProxyUrl(href: string): string {
                 return window.scramjet.decodeUrl(encoded);
             }
         }
-
-        const uv = window.__uv$config;
-        const uvPrefix = uv?.prefix as string | undefined;
-        if (uvPrefix && url.pathname.startsWith(uvPrefix) && uv.decodeUrl) {
-            return uv.decodeUrl(url.pathname.slice(uvPrefix.length));
-        }
     } catch {}
     return href;
 }

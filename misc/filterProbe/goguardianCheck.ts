@@ -51,18 +51,45 @@ function extractText(html: string): string {
         .replace(/<[^>]+>/g, " ");
 }
 
+/** The diagnostic page fetch, retried a couple of times before giving up. A
+ *  transient tunnel hiccup must not be laundered into a false "not flagged"
+ *  verdict by matching the keyword model against empty title/text — that was
+ *  the previous behavior, and it's indistinguishable from a real clean read
+ *  in the report. Exhausting retries throws instead, which the harness's
+ *  existing per-combo try/catch already turns into a reported error rather
+ *  than a fabricated verdict. */
+async function fetchPageWithRetry(
+    url: string,
+    doFetch: typeof fetch,
+    attempts = 3,
+): Promise<string> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            return await (await doFetch(url)).text();
+        } catch (error) {
+            lastError = error;
+            if (attempt < attempts)
+                await new Promise(resolve =>
+                    setTimeout(resolve, 300 * attempt),
+                );
+        }
+    }
+    throw new Error(
+        `could not fetch ${url} after ${attempts} attempts: ${
+            lastError instanceof Error ? lastError.message : String(lastError)
+        }`,
+    );
+}
+
 export async function checkGoGuardianRoute(
     url: string,
     route: string,
+    /** Defaults to global `fetch`; a test or caller injects a stub/wrapper —
+     *  see sandbox.ts's identical `fetchImpl` for why. */
+    fetchImpl: typeof fetch = fetch,
 ): Promise<Verdict> {
-    let html = "";
-    try {
-        html = await (await fetch(url)).text();
-    } catch {
-        // Civil/tunnel hiccup, not a GoGuardian result — same convention as
-        // sandbox.ts's observeRoute: an empty page reads as "not flagged"
-        // rather than a false positive.
-    }
+    const html = await fetchPageWithRetry(url, fetchImpl);
 
     const result = await checkGoGuardianFilterAuthenticated(
         { url, title: extractTitle(html), text: extractText(html) },

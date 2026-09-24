@@ -6,11 +6,12 @@ import * as s from "~/styles/LoadingAnimation.css";
  * The mark's C, on its own 16-unit grid — the same path the favicon draws.
  *
  * A literal rather than a shared export: `Wordmark` draws the full lockup on a
- * 248-unit canvas, and this screen needs the C alone with its node animated.
+ * 376-unit canvas, and this screen needs the C alone with its node animated.
  * Two consumers, two shapes — the only thing they share is the path string, and
  * a constant exported for one caller is not reuse.
  */
-const MARK_C = "M2.5 1H13.5V6.6H10.57V3.8H5.43V12.2H10.57V9.4H13.5V15H2.5Z";
+const MARK_C =
+    "M14.74 5.28H11.24C10.64 4.16 9.55 3.58 8 3.58C5.49 3.58 4.19 5.08 4.19 8C4.19 10.92 5.49 12.42 8 12.42C9.55 12.42 10.64 11.84 11.24 10.72H14.74C14.07 13.76 12.01 15 8 15C2.96 15 1 13.04 1 8C1 2.96 2.96 1 8 1C12.01 1 14.07 2.24 14.74 5.28Z";
 
 /**
  * Nodes arriving along the route. Three is enough to read as a stream and few
@@ -70,11 +71,15 @@ export default function LoadingAnimation() {
         let liveTimer: ReturnType<typeof setTimeout> | undefined;
 
         const pushLive = (text: string) => {
-            if (aborted) return;
-            setLiveStatus(text);
-            setVisible(true);
-            clearTimeout(liveTimer);
-            liveTimer = setTimeout(() => setLiveStatus(null), 1600);
+            // Registration may start during component creation in Solid 2.
+            // Report it after that owned scope, without interrupting setup.
+            queueMicrotask(() => {
+                if (aborted) return;
+                setLiveStatus(text);
+                setVisible(true);
+                clearTimeout(liveTimer);
+                liveTimer = setTimeout(() => setLiveStatus(null), 1600);
+            });
         };
 
         const tracked = new Set([
@@ -168,9 +173,9 @@ export default function LoadingAnimation() {
                     {i => (
                         <rect
                             class={s.loadingMarkNode}
-                            x="10.9"
+                            x="11.24"
                             y="6.8"
-                            width="2.6"
+                            width="3.5"
                             height="2.4"
                             style={{
                                 "animation-delay": `${

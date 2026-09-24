@@ -5,17 +5,13 @@ import { ANNO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
- * The stop plate.
+ * The stop card.
  *
  * This is the one page a reader does not choose to visit, so it does the
- * opposite of every other page in the app: it holds a single centred block and
- * refuses to fill the viewport with structure. No ruled field, no ledger, no
- * controls beyond the one link out. The registration marks and the rule
- * weights are what tie it to the rest of the system.
- *
- * The severity band across the top is the only place in the app where colour
- * spans the full width, which is the point — it is the page saying "stop"
- * before any word is read.
+ * opposite of every other page in the app: it holds a single centred card and
+ * refuses to fill the viewport with structure. The severity band across its
+ * top is the only place in the app where colour spans a whole edge, which is
+ * the point: the page says "stop" before any word is read.
  */
 
 export const root = style({
@@ -31,7 +27,9 @@ export const plate = style({
     width: "100%",
     maxWidth: "580px",
     padding: "34px 32px 30px",
-    border: `0.5px solid ${vars.color.scree}`,
+    border: `1px solid ${vars.color.talus}`,
+    borderRadius: "16px",
+    overflow: "hidden",
     background: vars.color.basalt,
 });
 
@@ -40,12 +38,12 @@ export const plate = style({
 export const band = styleVariants({
     restricted: {
         height: "3px",
-        margin: "-34px -32px 26px",
+        margin: "-35px -33px 27px",
         background: vars.color.sandstone,
     },
     banned: {
         height: "3px",
-        margin: "-34px -32px 26px",
+        margin: "-35px -33px 27px",
         background: vars.color.wine,
     },
 });
@@ -55,7 +53,6 @@ export const eyebrow = style({
     display: "flex",
     alignItems: "center",
     gap: "9px",
-    textTransform: "uppercase",
 });
 
 export const eyebrowMark = styleVariants({
@@ -69,9 +66,9 @@ export const eyebrowMark = styleVariants({
 
 export const title = style({
     margin: "10px 0 0",
-    fontSize: "clamp(25px, 4vw, 33px)",
+    fontSize: "32px",
     fontWeight: 600,
-    lineHeight: 1.05,
+    lineHeight: 1.2,
     letterSpacing: "-0.015em",
     color: vars.color.firn,
 });
@@ -114,7 +111,6 @@ export const link = style({
     textDecoration: "none",
     borderBottom: `0.5px solid ${vars.color.cobalt}`,
     paddingBottom: "2px",
-    textTransform: "uppercase",
     transitionProperty: "color, border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,

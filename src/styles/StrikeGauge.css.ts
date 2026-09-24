@@ -68,10 +68,7 @@ export const head = style({
     gap: "16px",
 });
 
-export const label = style({
-    ...ANNO,
-    textTransform: "uppercase",
-});
+export const label = style({ ...ANNO });
 
 export const count = style({
     fontFamily: FONT_MONO,

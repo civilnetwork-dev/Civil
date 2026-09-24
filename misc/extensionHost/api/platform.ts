@@ -354,7 +354,15 @@ export function buildOfflineWebSocket(): unknown {
                 const error = new Event("error");
                 this.onerror?.(error);
                 this.dispatchEvent(error);
-                const close = new Event("close");
+                // 1006 (abnormal closure, not clean) is what a browser
+                // reports for a connection that never opened; a bare Event
+                // has no `code`, and securly's socket wrapper logs and
+                // branches on it.
+                const close = Object.assign(new Event("close"), {
+                    code: 1006,
+                    reason: "",
+                    wasClean: false,
+                });
                 this.onclose?.(close);
                 this.dispatchEvent(close);
             });
@@ -428,7 +436,7 @@ function pickUserAgent(target: ExtensionTarget): UserAgent {
  * and securlyClassroom calls `navigator.connection.addEventListener(...)`
  * during startup, and an absent property is a TypeError in both.
  */
-function buildNavigator(target: ExtensionTarget) {
+export function buildNavigator(target: ExtensionTarget) {
     // Real device data rather than a hand-written string, from the same
     // `user-agents` package and the same `/CrOS/` filter that
     // misc/filters/securly/cluster.ts uses to talk to Securly. A hardcoded
@@ -463,8 +471,17 @@ function buildNavigator(target: ExtensionTarget) {
         data.connection ?? {},
     );
 
-    const chromeMajor = /Chrome\/(\d+)/.exec(userAgent)?.[1];
+    const chromeFull = /Chrome\/([\d.]+)/.exec(userAgent)?.[1];
+    const chromeMajor = chromeFull?.split(".")[0];
+    // "CrOS x86_64 16093.57.0" — the OS build, which is what Chrome reports
+    // as platformVersion on a Chromebook.
+    const crosVersion = /CrOS \S+ ([\d.]+)/.exec(userAgent)?.[1];
     const primaryLanguage = data.language.split("-")[0] ?? data.language;
+    const userAgentData = {
+        platform: target === "safari" ? "macOS" : "Chrome OS",
+        mobile: data.deviceCategory === "mobile",
+        brands: chromeMajor ? [{ brand: "Chromium", version: chromeMajor }] : [],
+    };
 
     return {
         userAgent,
@@ -484,12 +501,25 @@ function buildNavigator(target: ExtensionTarget) {
         maxTouchPoints: 0,
         connection,
         userAgentData: {
-            platform: target === "safari" ? "macOS" : "Chrome OS",
-            mobile: data.deviceCategory === "mobile",
-            brands: chromeMajor
-                ? [{ brand: "Chromium", version: chromeMajor }]
-                : [],
-            getHighEntropyValues: async () => ({}),
+            ...userAgentData,
+            // Chrome answers with the low-entropy fields plus whichever
+            // high-entropy hints were asked for; answering `{}` left
+            // gopherbuddy calling `.split` on an `uaFullVersion` it never
+            // got. All of it comes from the same UA string, so the set
+            // stays consistent with what `userAgent` itself claims.
+            getHighEntropyValues: async () => ({
+                ...userAgentData,
+                architecture: "x86",
+                bitness: "64",
+                model: "",
+                uaFullVersion: chromeFull ?? "",
+                fullVersionList: userAgentData.brands.map(b => ({
+                    brand: b.brand,
+                    version: chromeFull ?? b.version,
+                })),
+                platformVersion: crosVersion ?? "",
+                wow64: false,
+            }),
         },
         storage: {
             estimate: async () => ({ quota: 2 ** 31, usage: 0 }),
@@ -530,7 +560,22 @@ function buildNavigator(target: ExtensionTarget) {
  *  objects rather than stubs, so `addEventListener("install", ...)` and
  *  `clients.matchAll()` behave like a worker nobody has woken. */
 function buildServiceWorkerScope() {
+    // Libraries detect a worker by `typeof WorkerGlobalScope` (TensorFlow.js
+    // picks its platform this way: with neither this nor `window` present it
+    // registers none, and securly's image classifier then dies on
+    // `env().platform.isTypedArray`) or by `self instanceof WorkerGlobalScope`.
+    // The sandbox global can't be a real instance of anything, so the class
+    // answers `instanceof` itself; in a worker scope that question is only
+    // ever asked of `self`.
+    class WorkerGlobalScope {
+        static [Symbol.hasInstance]() {
+            return true;
+        }
+    }
+    class ServiceWorkerGlobalScope extends WorkerGlobalScope {}
     return {
+        WorkerGlobalScope,
+        ServiceWorkerGlobalScope,
         clients: {
             claim: async () => {},
             get: async () => undefined,
@@ -640,9 +685,23 @@ const REAL_CONSOLE_METHODS: Record<string, (...args: unknown[]) => unknown> =
  * `RangeError: Maximum call stack size exceeded` with no apparent connection
  * to either vendor. `misc/filterProbe/sandbox.ts`'s content-script window
  * shares this same fix, from here rather than a second copy.
+ *
+ * Silent unless `CIVIL_VENDOR_CONSOLE` is set. What a vendor bundle logs is
+ * its own startup narration against an offline, freshly-installed device —
+ * "Failed to register to Cloud", storage keys read back empty, a websocket
+ * that never opens — and a full sweep produces over two thousand such lines,
+ * burying the few dozen the harness itself writes. None of it feeds a
+ * verdict (detect.ts reads the page, not the console). Set the variable to
+ * see it when chasing one vendor's behavior; that is how the gaps this host
+ * fills were found.
  */
 export function buildFreshConsole(): Console {
-    return { ...REAL_CONSOLE_METHODS } as unknown as Console;
+    const methods = process.env.CIVIL_VENDOR_CONSOLE
+        ? REAL_CONSOLE_METHODS
+        : Object.fromEntries(
+              Object.keys(REAL_CONSOLE_METHODS).map(key => [key, () => {}]),
+          );
+    return { ...methods } as unknown as Console;
 }
 
 export async function buildPlatform(
@@ -660,7 +719,11 @@ export async function buildPlatform(
     // synchronous startup has finished is routine, not exceptional (that's
     // the whole reason `setInterval` needs tracking below), so an error from
     // it must not take down the whole host process — logged instead, the
-    // same as happy-dom's own default handles a caught timer error.
+    // same as happy-dom's own default handles a caught timer error. Logged
+    // to the vendor's own console, not the process's: the error is the
+    // vendor's (imtlazarus reads a `BLOCK_RULE_ID` its bundle never
+    // declares), so it belongs with the rest of that vendor's output.
+    const vendorConsole = buildFreshConsole();
     const runTimerCallback = (
         fn: (...args: unknown[]) => void,
         args: unknown[],
@@ -668,13 +731,13 @@ export async function buildPlatform(
         try {
             fn(...args);
         } catch (error) {
-            console.error(error);
+            vendorConsole.error(error);
         }
     };
 
     const globals: Record<string, unknown> = {
         ...nodeWebGlobals(),
-        console: buildFreshConsole(),
+        console: vendorConsole,
         // Real timers, tracked. `chrome.alarms` is virtual (see api/alarms.ts)
         // but `setInterval` is not, and vendor bundles install polling
         // intervals at startup as a matter of course. An untracked one keeps

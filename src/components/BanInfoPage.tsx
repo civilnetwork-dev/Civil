@@ -50,12 +50,12 @@ function StatusSection() {
                             </span>
                             <Show when={status()!.banReason}>
                                 <span class={s.bannedDetail}>
-                                    reason: {status()!.banReason}
+                                    Reason: {status()!.banReason}
                                 </span>
                             </Show>
                             <Show when={status()!.bannedAt}>
                                 <span class={s.bannedDetail}>
-                                    banned on:{" "}
+                                    Banned on:{" "}
                                     {new Date(
                                         status()!.bannedAt!,
                                     ).toLocaleString()}
@@ -137,12 +137,12 @@ export default function BanInfoPage() {
     });
 
     return (
-        <Sheet density="fine">
+        <Sheet>
             <TitleBlock
                 title="Restricted domains"
                 meta={
                     loading()
-                        ? "loading"
+                        ? "Loading…"
                         : `${domains().length.toLocaleString()} on file`
                 }
             />
@@ -153,7 +153,7 @@ export default function BanInfoPage() {
                 count. */}
             <p class={schematic.lede}>
                 The whole list, in the open. Every filter vendor keeps theirs
-                behind an administrator login — this one has a count at the top
+                behind an administrator login. This one has a count at the top
                 and a last line you can scroll to.
             </p>
 
@@ -162,7 +162,7 @@ export default function BanInfoPage() {
             <div class={s.controls}>
                 {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control -- Solid spells the attribute "for", not "htmlFor"; it points at #baninfo-max below */}
                 <label class={s.controlLabel} for="baninfo-max">
-                    max entries shown
+                    Show up to
                 </label>
                 <input
                     class={s.controlInput}
@@ -186,12 +186,12 @@ export default function BanInfoPage() {
                     was never watching. */}
                 <span class={s.stats} aria-live="polite">
                     <Show when={!loading() && !loadError()}>
-                        {`showing ${visibleDomains().length.toLocaleString()} of ${cappedDomains().length.toLocaleString()}`}
+                        {`Showing ${visibleDomains().length.toLocaleString()} of ${cappedDomains().length.toLocaleString()}`}
                     </Show>
                 </span>
             </div>
 
-            <Rule label="roll" weight="major" />
+            <Rule label="Domains" weight="major" />
 
             <Show when={loadError()}>
                 <span class={s.note.error}>{loadError()}</span>
@@ -200,7 +200,7 @@ export default function BanInfoPage() {
             <Show when={loading()}>
                 <span class={s.note.loading}>
                     <IconLoader size={14} class={s.spin} />
-                    loading blocklist
+                    Loading the list…
                 </span>
             </Show>
 
@@ -213,7 +213,7 @@ export default function BanInfoPage() {
 
                 <Show
                     when={hasMore()}
-                    fallback={<span class={s.note.end}>end of list</span>}
+                    fallback={<span class={s.note.end}>End of list</span>}
                 >
                     <div ref={sentinelRef} class={s.sentinel} />
                 </Show>

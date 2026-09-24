@@ -121,12 +121,12 @@ export default function AppsPage() {
                 administrator curates, with a request queue for anything not on
                 it. This one is just a list the reader edits. */}
             <p class={schematic.lede}>
-                Pinned by you, not approved for you. Add anything that loads —
-                there is no catalogue and no request queue.
+                Keep your favorite websites together. Add a web address to get
+                started.
             </p>
 
             <Field
-                label="add a site"
+                label="Add a site"
                 value={input()}
                 onInput={setInput}
                 onEnter={handleAdd}
@@ -135,7 +135,7 @@ export default function AppsPage() {
             />
             <Show when={adding()}>
                 <Anno muted class={s.addingNote}>
-                    adding…
+                    Adding…
                 </Anno>
             </Show>
 
@@ -145,7 +145,7 @@ export default function AppsPage() {
                 when={apps().length > 0}
                 fallback={
                     <Anno muted class={s.empty}>
-                        Nothing pinned yet — add a site above.
+                        Nothing pinned yet. Add a site above to get started.
                     </Anno>
                 }
             >

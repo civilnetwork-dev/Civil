@@ -87,6 +87,19 @@ export function predictFix(verdict: Verdict, civilDir: string): Suggestion[] {
     const { vendor, route, signal } = verdict;
     const out: Suggestion[] = [];
 
+    // Nothing in a route, a handler or the rewrite layer changes a cloud
+    // rating of the hostname itself; the only fix is a different domain, and
+    // the picker is what should have supplied one.
+    if (signal.kind === "domain-rating") {
+        return [
+            {
+                file: "misc/tunnel/pickDomain.ts",
+                reason: `${vendor} rates ${signal.hostname} itself as blocked, so every route on it is — no route-level change helps. This domain should never have been picked; check its ${vendor} checker in misc/filters/domainReputation.ts.`,
+                rank: 100,
+            },
+        ];
+    }
+
     const handlerDir = VENDOR_HANDLER_DIR[vendor];
     if (handlerDir && existsSync(join(civilDir, handlerDir))) {
         const middleware = `${handlerDir}/middleware.ts`;
@@ -139,6 +152,30 @@ export function predictFix(verdict: Verdict, civilDir: string): Suggestion[] {
                 reason: `GoGuardian's keyword model matched this route's content (${signal.keywords.join(", ")}). This route's markup is what it matched against.`,
                 rank: 70,
             });
+        }
+    } else if (signal.kind === "dnr-block") {
+        // The vendor's own declarativeNetRequest rules matched this exact
+        // URL before any page even rendered. Those rules ship inside the
+        // (static) extension bundle, so they cannot be keyed on this run's
+        // randomly generated FreeDNS hostname — the match is almost
+        // certainly on the URL's path/query shape, which is Civil's own
+        // route/proxy structure, not a domain to add to a blocklist.
+        const source = routeSource(civilDir, route);
+        if (source) {
+            out.push({
+                file: source,
+                reason: `${vendor}'s declarativeNetRequest rules matched this URL directly (rule ${signal.matchedRuleId}), before the page even loaded. The rule ships in the bundle and can't target this run's random hostname, so it matched on the URL's path/query shape — this route's own URL structure is what to change.`,
+                rank: 90,
+            });
+        }
+        if (route.startsWith("/~/")) {
+            const rewrite = "src/lib/useIframeManager.ts";
+            if (existsSync(join(civilDir, rewrite)))
+                out.push({
+                    file: rewrite,
+                    reason: `The matched rule fired on the proxy route's URL shape; the rewrite layer controls what that URL looks like.`,
+                    rank: 85,
+                });
         }
     } else {
         // In-place block: the content script rewrote the page before any

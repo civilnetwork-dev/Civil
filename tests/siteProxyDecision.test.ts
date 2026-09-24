@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * These two functions decide which proxy engine and transport every site gets.
- * They're pure branching over scores and headers, they have no UI, and when they
- * are wrong the symptom is "this site is broken on Civil" — attributed to the
- * proxy engine rather than to the picker. That combination is exactly what unit
- * tests are for.
+ * These two functions decide the transport (and, historically, the proxy
+ * engine) every site gets. Scramjet is now the only proxy engine Civil
+ * ships, so `proxy` is always "scramjet" here -- these tests cover what
+ * still varies: the transport pick and the score/reason a decision is
+ * recorded with. They're pure branching over scores and headers, they have
+ * no UI, and when they are wrong the symptom is "this site is broken on
+ * Civil" — attributed to the proxy engine rather than to the picker. That
+ * combination is exactly what unit tests are for.
  */
 
 // --- db stub -------------------------------------------------------------
@@ -79,146 +82,79 @@ describe("recordCompatFeedback", () => {
     it("returns null for a hostname with no stored config", async () => {
         existingRow = null;
         await expect(
-            recordCompatFeedback("example.com", "scramjet", "epoxy", 90),
+            recordCompatFeedback("example.com", "epoxy", 90),
         ).resolves.toBeNull();
         expect(updateSet).not.toHaveBeenCalled();
     });
 
-    describe("once both engines have been measured, it picks the better one", () => {
-        it("prefers scramjet when its score is higher", async () => {
-            existingRow = row({ scoreUv: 40, proxy: "uv" });
-            const picked = await recordCompatFeedback(
-                "example.com",
-                "scramjet",
-                "epoxy",
-                90,
-            );
-            expect(picked).toBe("scramjet");
-            expect(updateSet).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    proxy: "scramjet",
-                    reason: "sj=90,uv=40",
-                }),
-            );
-        });
-
-        it("prefers uv when its score is higher", async () => {
-            existingRow = row({ scoreScramjet: 30, proxy: "scramjet" });
-            const picked = await recordCompatFeedback(
-                "example.com",
-                "uv",
-                "epoxy",
-                85,
-            );
-            expect(picked).toBe("uv");
-            expect(updateSet).toHaveBeenCalledWith(
-                expect.objectContaining({ proxy: "uv", reason: "sj=30,uv=85" }),
-            );
-        });
-
-        it("breaks a tie in favour of scramjet", async () => {
-            // `>=` in the comparison — scramjet is the intended default engine.
-            existingRow = row({ scoreUv: 70, proxy: "uv" });
-            await expect(
-                recordCompatFeedback("example.com", "scramjet", "epoxy", 70),
-            ).resolves.toBe("scramjet");
-        });
-    });
-
-    describe("with only one engine measured, it explores", () => {
-        it("switches to the other engine when this one scored poorly", async () => {
-            existingRow = row({ scoreScramjet: null, scoreUv: null });
-            const picked = await recordCompatFeedback(
-                "example.com",
-                "scramjet",
-                "epoxy",
-                50, // < 70 → weak
-            );
-            expect(picked).toBe("uv");
-            expect(updateSet).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    reason: "explore-uv(from scramjet@50,err=0)",
-                }),
-            );
-        });
-
-        it("treats any rewriter error as weak even at a high score", async () => {
-            existingRow = row();
-            await expect(
-                recordCompatFeedback(
-                    "example.com",
-                    "scramjet",
-                    "epoxy",
-                    100,
-                    3,
-                ),
-            ).resolves.toBe("uv");
-        });
-
-        it("stays put when the score is good", async () => {
-            existingRow = row();
-            const picked = await recordCompatFeedback(
-                "example.com",
-                "scramjet",
-                "epoxy",
-                95,
-            );
-            expect(picked).toBe("scramjet");
-            expect(updateSet).toHaveBeenCalledWith(
-                expect.objectContaining({ reason: "scramjet@95,err=0" }),
-            );
-        });
-
-        it("does not explore back to an engine already measured", async () => {
-            // uv already has a score, so a weak scramjet result must not bounce
-            // to uv on the explore path — the comparison branch handles it.
-            existingRow = row({ scoreUv: 20 });
-            const picked = await recordCompatFeedback(
-                "example.com",
-                "scramjet",
-                "epoxy",
-                50,
-            );
-            expect(picked).toBe("scramjet");
-            expect(updateSet).toHaveBeenCalledWith(
-                expect.objectContaining({ reason: "sj=50,uv=20" }),
-            );
-        });
-
-        it("uses 70 as the weakness threshold, inclusive of 70 as 'good'", async () => {
-            existingRow = row();
-            await expect(
-                recordCompatFeedback("example.com", "scramjet", "epoxy", 70),
-            ).resolves.toBe("scramjet");
-
-            vi.clearAllMocks();
-            existingRow = row();
-            await expect(
-                recordCompatFeedback("example.com", "scramjet", "epoxy", 69),
-            ).resolves.toBe("uv");
-        });
-    });
-
-    it("records the reported score against the right engine column", async () => {
-        existingRow = row();
-        await recordCompatFeedback("example.com", "uv", "epoxy", 77);
+    it("always records scramjet, even for a row stored before uv was removed", async () => {
+        // A pre-removal row can still say proxy: "uv" -- there's no DB-level
+        // enum on the column -- but every new feedback call must self-heal
+        // it forward rather than perpetuate it.
+        existingRow = row({ proxy: "uv", scoreUv: 80 });
+        const picked = await recordCompatFeedback("example.com", "epoxy", 90);
+        expect(picked).toBe("scramjet");
         expect(updateSet).toHaveBeenCalledWith(
-            expect.objectContaining({ scoreUv: 77, scoreScramjet: null }),
+            expect.objectContaining({ proxy: "scramjet" }),
         );
+    });
+
+    it("records the score into both score and scoreScramjet", async () => {
+        existingRow = row();
+        await recordCompatFeedback("example.com", "epoxy", 77);
+        expect(updateSet).toHaveBeenCalledWith(
+            expect.objectContaining({ score: 77, scoreScramjet: 77 }),
+        );
+    });
+
+    it("leaves scoreUv untouched -- it's frozen history, not migrated away", async () => {
+        existingRow = row({ scoreUv: 42 });
+        await recordCompatFeedback("example.com", "epoxy", 90);
+        const values = updateSet.mock.calls[0]![0] as Record<string, unknown>;
+        expect(values).not.toHaveProperty("scoreUv");
     });
 
     it("keeps the stored transport when none is reported", async () => {
         existingRow = row({ transport: "libcurl" });
-        await recordCompatFeedback("example.com", "scramjet", undefined, 90);
+        await recordCompatFeedback("example.com", undefined, 90);
         expect(updateSet).toHaveBeenCalledWith(
             expect.objectContaining({ transport: "libcurl" }),
         );
     });
 
+    it("uses the reported transport over the stored one", async () => {
+        existingRow = row({ transport: "libcurl" });
+        await recordCompatFeedback("example.com", "bare", 90);
+        expect(updateSet).toHaveBeenCalledWith(
+            expect.objectContaining({ transport: "bare" }),
+        );
+    });
+
+    it("formats the reason as scramjet@<compat>,err=<rewriterErrors>", async () => {
+        existingRow = row();
+        await recordCompatFeedback("example.com", "epoxy", 95, 2);
+        expect(updateSet).toHaveBeenCalledWith(
+            expect.objectContaining({ reason: "scramjet@95,err=2" }),
+        );
+    });
+
+    it("defaults rewriterErrors to 0 when omitted", async () => {
+        existingRow = row();
+        await recordCompatFeedback("example.com", "epoxy", 95);
+        expect(updateSet).toHaveBeenCalledWith(
+            expect.objectContaining({ reason: "scramjet@95,err=0" }),
+        );
+    });
+
     it("truncates the reason to the column width", async () => {
-        existingRow = row({ reason: "x".repeat(500), scoreUv: 10 });
-        await recordCompatFeedback("example.com", "scramjet", "epoxy", 90);
-        const values = updateSet.mock.calls[0][0] as { reason: string };
+        existingRow = row({ reason: "x".repeat(500) });
+        // The reason this function writes is always short
+        // (scramjet@N,err=N), so the truncation only matters if the
+        // computed string itself grows past 240 -- pin the guard with a
+        // pathologically large compat value to prove it still clamps rather
+        // than just happening to fit today.
+        await recordCompatFeedback("example.com", "epoxy", 9e300);
+        const values = updateSet.mock.calls[0]![0] as { reason: string };
         expect(values.reason.length).toBeLessThanOrEqual(240);
     });
 });
@@ -234,15 +170,24 @@ describe("probeSite", () => {
         );
     }
 
-    it("chooses uv for a plain, unprotected response", async () => {
+    it("always resolves to scramjet -- the only proxy engine Civil ships", async () => {
+        stubFetch(fakeResponse({ "x-frame-options": "DENY" }));
+        const strict = await probeSite("https://example.com/");
+        expect(strict.proxy).toBe("scramjet");
+
+        stubFetch(fakeResponse({}));
+        const plain = await probeSite("https://example.com/");
+        expect(plain.proxy).toBe("scramjet");
+    });
+
+    it("still tags a plain, unprotected response as simple>bare", async () => {
         stubFetch(fakeResponse({}));
         const d = await probeSite("https://example.com/");
-        expect(d.proxy).toBe("uv");
+        expect(d.transport).toBe("bare");
         expect(d.reason).toContain("simple>bare");
     });
 
-    it("chooses scramjet when the site blocks framing", async () => {
-        // x-frame-options + strict CSP = 2 + 3 points, over the threshold of 3.
+    it("still tags strict framing/CSP defenses in the reason", async () => {
         stubFetch(
             fakeResponse({
                 "x-frame-options": "DENY",
@@ -251,12 +196,11 @@ describe("probeSite", () => {
             }),
         );
         const d = await probeSite("https://example.com/");
-        expect(d.proxy).toBe("scramjet");
         expect(d.reason).toContain("x-frame-options");
         expect(d.reason).toContain("strict-csp");
     });
 
-    it("counts COOP and COEP toward scramjet", async () => {
+    it("counts COOP and COEP toward the reason", async () => {
         stubFetch(
             fakeResponse({
                 "cross-origin-opener-policy": "same-origin",
@@ -264,7 +208,6 @@ describe("probeSite", () => {
             }),
         );
         const d = await probeSite("https://example.com/");
-        expect(d.proxy).toBe("scramjet");
         expect(d.reason).toContain("coop");
         expect(d.reason).toContain("coep");
     });
@@ -279,7 +222,6 @@ describe("probeSite", () => {
         const d = await probeSite("https://example.com/");
         expect(d.reason).not.toContain("coop");
         expect(d.reason).not.toContain("coep");
-        expect(d.proxy).toBe("uv");
     });
 
     it("picks epoxy for a Cloudflare-fronted site", async () => {
@@ -293,7 +235,7 @@ describe("probeSite", () => {
         stubFetch(null);
         const d = await probeSite("https://example.com/");
         // No headers to score, so it must fall back rather than throw.
-        expect(d.proxy).toBe("uv");
+        expect(d.proxy).toBe("scramjet");
         expect(d.transport).toBe("bare");
         expect(d.latencyMs).toBeTypeOf("number");
     });
@@ -321,7 +263,8 @@ describe("probeSite", () => {
      * Consequence: a site whose probe timed out is recorded with exactly the
      * same reason as a genuinely simple site. Since `reason` is the only stored
      * record of why an engine was chosen, that makes a failed probe invisible
-     * when debugging a bad decision.
+     * when debugging a bad decision. Unrelated to the proxy-engine removal —
+     * this gap predates it and still exists in the transport-only picker.
      */
     it("cannot currently distinguish a failed probe from a simple site", async () => {
         stubFetch(null);

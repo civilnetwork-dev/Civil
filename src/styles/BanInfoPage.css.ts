@@ -80,16 +80,19 @@ export const controls = style({
 export const controlLabel = style({
     ...ANNO,
     flexShrink: 0,
-    textTransform: "uppercase",
     whiteSpace: "nowrap",
 });
 
 export const controlInput = style({
-    width: "8ch",
-    border: "none",
-    background: "transparent",
+    width: "10ch",
+    padding: "6px 10px",
+    border: RULE.major,
+    borderRadius: "8px",
+    background: vars.color.basalt,
     outline: "none",
     color: vars.color.firn,
+    transition: `border-color ${DUR.base} ${EASE.standard}`,
+    selectors: { "&:focus": { borderColor: vars.color.cobalt } },
     fontFamily: FONT_MONO,
     fontSize: "13px",
     fontVariantNumeric: "tabular-nums",
@@ -148,7 +151,6 @@ export const note = styleVariants({
         paddingTop: "10px",
         borderTop: RULE.hair,
         color: vars.color.snowmelt,
-        textTransform: "uppercase",
     },
     error: {
         ...ANNO,

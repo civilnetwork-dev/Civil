@@ -415,7 +415,7 @@ export default function FilterCheckPage() {
                 />
             </Show>
 
-            <Sheet marks={["tl", "tr", "br"]}>
+            <Sheet>
                 <TitleBlock
                     title="Filter check"
                     actions={
@@ -433,12 +433,12 @@ export default function FilterCheckPage() {
                                 onClick={handleRescan}
                                 disabled={rescanning()}
                             >
-                                <Show when={rescanning()} fallback="re-scan">
+                                <Show when={rescanning()} fallback="Scan again">
                                     <IconLoaderDots
                                         size={13}
                                         class={s.spinner}
                                     />{" "}
-                                    scanning…
+                                    Scanning…
                                 </Show>
                             </button>
                         </div>
@@ -452,16 +452,15 @@ export default function FilterCheckPage() {
                     own classifiers the same question from the other side, and
                     prints whatever comes back. */}
                 <p class={schematic.lede}>
-                    Every vendor below calls this visibility. Here is the same
-                    question, asked from your side of the glass — and their own
-                    answer, unedited.
+                    See how content filters categorize a website. Enter its
+                    address to check.
                 </p>
 
-                <Rule label="filters on this network" />
+                <Rule label="Filters on this network" />
                 <div class={s.specimenRow}>
                     <Show
                         when={detectedFilters().length > 0}
-                        fallback={<Anno muted>none detected</Anno>}
+                        fallback={<Anno muted>None detected</Anno>}
                     >
                         <For each={detectedFilters()} keyed={false}>
                             {f => <span class={s.specimenChip}>{f()}</span>}
@@ -474,7 +473,7 @@ export default function FilterCheckPage() {
                         <For each={unsupportedFilters()} keyed={false}>
                             {f => (
                                 <Anno muted>
-                                    can't check {prettifyFilterName(f())} yet
+                                    Can't check {prettifyFilterName(f())} yet
                                 </Anno>
                             )}
                         </For>
@@ -494,16 +493,16 @@ export default function FilterCheckPage() {
                 <Show when={retryAfter() !== null}>
                     <div class={s.rateLimit}>
                         <Anno>
-                            Daily check limit reached — you can check again{" "}
+                            Daily check limit reached. You can check again{" "}
                             {formatRetryAfter(retryAfter()!)}. Signing in with
-                            Patreon above raises the limit.
+                            Patreon raises the limit.
                         </Anno>
                     </div>
                 </Show>
 
                 <Show when={checked()}>
                     <Rule
-                        label="results"
+                        label="Results"
                         weight="major"
                         class={s.resultsRule}
                     />

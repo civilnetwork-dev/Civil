@@ -1,22 +1,7 @@
-import type { UVConfig } from "@titaniumnetwork-dev/ultraviolet";
 import { EventEmitter } from "tseep";
 
-import {
-    type BestProxy,
-    fetchBestProxy,
-    measureAndReportCompat,
-} from "./bestProxy";
+import { fetchBestProxy, measureAndReportCompat } from "./bestProxy";
 import { registerSw, setupBareMux } from "./swUtils";
-
-interface ScramjetLike {
-    encodeUrl: (s: string) => string;
-    decodeUrl: (s: string) => string;
-}
-
-interface ProxyEntry {
-    name: "uv" | "scramjet";
-    value: UVConfig | ScramjetLike;
-}
 
 interface ISearchBar {
     lastUrlSearched: string | URL;
@@ -25,9 +10,7 @@ interface ISearchBar {
         currentTransport: `/${string}/index.mjs`;
         currentTechnology: "bare" | "wisp";
         currentTechnologyPath: `/${string}/`;
-        currentProxy: "uv" | "scramjet";
     }>;
-    proxyObjMap: ProxyEntry[];
     searchEngineMap: {
         name: string;
         value: `${string}?q=%s`;
@@ -52,7 +35,6 @@ class SearchBar
     lastUrlSearched!: string | URL;
     url!: string;
     debugInfo!: ISearchBar["debugInfo"];
-    proxyObjMap: ISearchBar["proxyObjMap"];
     searchEngineMap: ISearchBar["searchEngineMap"];
     ready: Promise<void>;
 
@@ -96,21 +78,6 @@ class SearchBar
             this[key] = isJson(value) ? JSON.parse(value) : value;
         }
 
-        this.proxyObjMap = [
-            {
-                name: "uv",
-                get value() {
-                    return self.__uv$config;
-                },
-            },
-            {
-                name: "scramjet",
-                get value() {
-                    return window.scramjet;
-                },
-            },
-        ];
-
         this.searchEngineMap = [
             { name: "google", value: "https://www.google.com/search?q=%s" },
             { name: "ddg", value: "https://duckduckgo.com/?q=%s" },
@@ -136,40 +103,17 @@ class SearchBar
         return false;
     }
 
-    // A proxy is usable only once its controller global is set: uv exposes
-    // self.__uv$config and scramjet exposes window.scramjet. The scramjet
-    // global lands late (see submitFrame), so an entry can exist by name yet
-    // have no value getter result.
-    private isReady(entry: ProxyEntry): boolean {
-        return Boolean(entry.value);
+    // window.scramjet is assigned only at the very end of initScramjet(), the
+    // last statement before that async function's own promise resolves. It's
+    // read directly rather than cached because SearchBar.ready can resolve
+    // before it's set: if window.scramjetReady itself was still unset when
+    // runSetup() awaited it, that await resolved immediately instead of
+    // actually waiting (see submitFrame).
+    private isScramjetReady(): boolean {
+        return Boolean(window.scramjet);
     }
 
-    private getSelectedProxy(): ProxyEntry {
-        // localStorage can hold a stale value from an older build (e.g. the
-        // removed "rammerhead" engine), so match against proxyObjMap rather
-        // than trusting the stored string.
-        const storedProxy = localStorage.getItem("proxy");
-        const preferred =
-            this.proxyObjMap.find(p => p.name === storedProxy) ??
-            this.proxyObjMap.find(p => p.name === "scramjet")!;
-        // Fall back to any ready proxy when the preferred one is not set up
-        // yet, so callers never receive an entry with no controller.
-        if (this.isReady(preferred)) return preferred;
-        return this.proxyObjMap.find(p => this.isReady(p)) ?? preferred;
-    }
-
-    private pickProxy(cfg: BestProxy | null): ProxyEntry {
-        const name = cfg?.proxy;
-        const entry = name && this.proxyObjMap.find(p => p.name === name);
-        if (entry && this.isReady(entry)) return entry;
-        return this.getSelectedProxy();
-    }
-
-    private normalizeTerm(term: string, proxy: ProxyEntry) {
-        if (proxy.name === "uv") {
-            return term;
-        }
-
+    private normalizeTerm(term: string) {
         if (isNavigableUrl(term)) {
             return this.isAbsoluteUrl(term) ? term : `https://${term}`;
         }
@@ -183,16 +127,7 @@ class SearchBar
         );
     }
 
-    private createProxyUrl(term: string, proxy: ProxyEntry) {
-        if (!proxy.value?.encodeUrl)
-            throw new Error(`Proxy "${proxy.name}" not ready`);
-        return (
-            (proxy.name === "uv" ? "/~/uv/" : "") +
-            proxy.value.encodeUrl(this.normalizeTerm(term, proxy))
-        );
-    }
-
-    private trackInternalVisit(term: string, proxy: ProxyEntry) {
+    private trackInternalVisit(term: string) {
         if (window.location.host !== "civil.quartinal.me") {
             return;
         }
@@ -200,7 +135,7 @@ class SearchBar
         window.posthog?.capture(
             "Internal site visit",
             this.isAbsoluteUrl(term)
-                ? { url: proxy.value.decodeUrl!(term) }
+                ? { url: window.scramjet.decodeUrl(term) }
                 : { term },
         );
     }
@@ -230,42 +165,26 @@ class SearchBar
     async submitFrame(frame: HTMLIFrameElement, term: string) {
         await this.ready;
         const cfg = await fetchBestProxy(term);
-        let proxy = this.pickProxy(cfg);
 
-        // window.scramjet is assigned only at the very end of initScramjet().
-        // SearchBar.ready can resolve before that when its scramjetReady global
-        // is still unset, leaving the scramjet entry with no controller. Wait on
-        // the real readiness promise (a no-op if it never loaded), then pick
-        // again so an unavailable scramjet falls back to uv instead of throwing.
-        if (!this.isReady(proxy)) {
+        // Re-await the real scramjetReady promise (a no-op once it's already
+        // resolved) before touching window.scramjet — see isScramjetReady.
+        if (!this.isScramjetReady()) {
             await Promise.resolve((window as any).scramjetReady).catch(
                 () => {},
             );
-            proxy = this.pickProxy(cfg);
         }
 
-        if (proxy.name === "scramjet" && this.isReady(proxy)) {
-            const controller = proxy.value as any;
-            const existing = controller.frames?.find(
-                (f: any) => f.element === frame,
-            );
-            const sframe = existing ?? controller.createFrame(frame);
-            await this.applyFrameTransport(sframe, cfg?.transport);
-            sframe.go(this.normalizeTerm(term, proxy));
-        } else {
-            frame.contentWindow?.location.replace(
-                this.createProxyUrl(term, proxy),
-            );
-        }
-        this.trackInternalVisit(term, proxy);
-        if (proxy.name === "scramjet" || proxy.name === "uv") {
-            void measureAndReportCompat(
-                frame,
-                term,
-                proxy.name,
-                cfg?.transport,
-            );
-        }
+        const controller = window.scramjet;
+        if (!controller) throw new Error("scramjet not ready");
+        const existing = controller.frames?.find(
+            (f: any) => f.element === frame,
+        );
+        const sframe = existing ?? controller.createFrame(frame);
+        await this.applyFrameTransport(sframe, cfg?.transport);
+        sframe.go(this.normalizeTerm(term));
+
+        this.trackInternalVisit(term);
+        void measureAndReportCompat(frame, term, cfg?.transport);
     }
 }
 

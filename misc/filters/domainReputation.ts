@@ -25,11 +25,12 @@
  *     cluster-resolution + broker flow, called with this project's own real
  *     Securly extension id (computed from the installed extension's manifest
  *     key via `computeExtensionIdFromKey`, the same helper goguardian uses —
- *     not copied from any third party). The probing email is a non-institution
- *     placeholder (`CIVIL_REP_SECURLY_EMAIL`): cluster resolution already falls
- *     back to the dominant US cluster for an email it doesn't recognise
- *     (`normalizeClusterUrl`), so nothing about the query needs to resemble a
- *     real district or person.
+ *     not copied from any third party). The probing email
+ *     (`CIVIL_REP_SECURLY_EMAIL`) has to be at a domain Securly recognises as a
+ *     customer: cluster resolution falls back for any email, but the broker
+ *     answers `UNKNOWN_SCHOOL` — no decision and no category — for one it
+ *     can't map to a policy, which is an abstention on every domain. The
+ *     default is the district `securly/example.ts` already probes as.
  *   - linewize — `misc/filters/linewize/checker.ts`'s existing client, pointed
  *     at a real regional verdict server with a real device id captured from the
  *     wayback index (`otorohanga.college.nz`, the most-recaptured — override via
@@ -100,6 +101,7 @@ import { checkLanSchoolNetsweeperDomain } from "./lanschool/netsweeperChecker";
 import { checkLightspeedFilter } from "./lightspeed/checker";
 import { createLinewizeFilterChecker } from "./linewize/checker";
 import { checkStatus } from "./securly/broker";
+import { decodeSecurlyCategoryId } from "./securly/categories";
 
 export type DomainVerdict = "BLOCK" | "ALLOW" | "UNKNOWN";
 
@@ -153,6 +155,29 @@ let ibossChecker: ReturnType<typeof createIbossFilterChecker> | undefined;
  */
 const SECURLY_EXTENSION_ID = "iheobagjkfklnlikgihanlhcddjoihkg";
 
+/**
+ * A rating is a vendor's *category*; whether that category is blocked is a
+ * per-school policy, and the identity each checker probes with belongs to
+ * one specific deployment. That gap is how `meatballmanor.com` got picked
+ * (misc/tunnel/pickDomain) for a live sweep: Securly rates it
+ * "Anonymizers / Proxy / VPN" (category bit 8), and the district this checker
+ * happens to ask as allows that category — yet the school it was then tried
+ * against blocks it, as nearly every school does. So a rating in a category
+ * schools block as a matter of course is a BLOCK here regardless of the one
+ * policy that answered. Selection only ever removes a candidate, so the cost
+ * of being wrong this way is one skipped domain; the cost of the other way
+ * was a whole run against a domain every filter would refuse.
+ *
+ * Matched against each vendor's own category *names*, which is what every
+ * checker below exposes (blocksi/fortiguard `categoryName`, lightspeed and
+ * linewize `categories[]`, Securly via its bit names).
+ */
+const SCHOOL_BLOCKED_CATEGORY =
+    /prox|anonymi|vpn|porn|adult|nudit|sex|malware|phish|gambl|drug|weapon|violen|hate|terror|self-harm|suicide|illegal|peer-to-peer|p2p|bully|alcohol|tobacco|child safety/i;
+
+const inSchoolBlockedCategory = (names: readonly (string | undefined)[]) =>
+    names.some(name => name && SCHOOL_BLOCKED_CATEGORY.test(name));
+
 /** vendor → its domain-reputation lookup. */
 const ACTIVE_CHECKERS: Record<
     string,
@@ -160,25 +185,36 @@ const ACTIVE_CHECKERS: Record<
 > = {
     async blocksi(domain) {
         const r = await checkBlocksiUrl(domain);
-        return r.isOk() ? (r.value.blocked ? "BLOCK" : "ALLOW") : "UNKNOWN";
+        if (r.isErr()) return "UNKNOWN";
+        const { blocked, categoryName, categoryGroup } = r.value;
+        return blocked || inSchoolBlockedCategory([categoryName, categoryGroup])
+            ? "BLOCK"
+            : "ALLOW";
     },
     async fortiguard(domain) {
         fortiChecker ??= createFortiGuardChecker();
         const r = await fortiChecker.checkUrl(domain);
-        return r.isOk() ? (r.value.blocked ? "BLOCK" : "ALLOW") : "UNKNOWN";
+        if (r.isErr()) return "UNKNOWN";
+        const { blocked, categoryName, categoryGroup } = r.value;
+        return blocked || inSchoolBlockedCategory([categoryName, categoryGroup])
+            ? "BLOCK"
+            : "ALLOW";
     },
     async cisco(domain) {
         ciscoChecker ??= createCiscoSecurityChecker();
         const r = await ciscoChecker.checkUrl(domain);
-        return r.isOk()
-            ? r.value.verdict === "POLICY_BLOCK"
-                ? "BLOCK"
-                : "ALLOW"
-            : "UNKNOWN";
+        // Without an authenticated Umbrella identity the checker only sees
+        // DoH resolve the name, which it reports as non-authoritative; that
+        // was being read as ALLOW — for pornhub.com included.
+        if (r.isErr() || !r.value.authoritative) return "UNKNOWN";
+        return r.value.blocked ? "BLOCK" : "ALLOW";
     },
     async lightspeed(domain) {
         const r = await checkLightspeedFilter({ url: domain });
-        return r.isOk() ? (r.value.blocked ? "BLOCK" : "ALLOW") : "UNKNOWN";
+        if (r.isErr() || r.value.verdict === "UNKNOWN") return "UNKNOWN";
+        return r.value.blocked || inSchoolBlockedCategory(r.value.categories)
+            ? "BLOCK"
+            : "ALLOW";
     },
     async iboss(domain) {
         const securityKey = process.env.IBOSS_SECURITY_KEY;
@@ -195,17 +231,27 @@ const ACTIVE_CHECKERS: Record<
         return r.isOk() ? (r.value.blocked ? "BLOCK" : "ALLOW") : "UNKNOWN";
     },
     async securly(domain) {
+        // The broker answers `UNKNOWN_SCHOOL` — no decision, no category —
+        // for an email at a domain that isn't a Securly customer, so the
+        // former `probe@civil.invalid` placeholder made this checker abstain
+        // on every domain. The identity below is the one this project's own
+        // securly/example.ts already probes with; only the rating is read.
         const r = await checkStatus({
             useremail: env(
                 "CIVIL_REP_SECURLY_EMAIL",
-                "probe@civil.invalid",
+                "spstudent1@d11.org",
             ) as `${string}@${string}.${string}`,
             host: toHost(domain) as `${string}.${string}`,
             extensionId: SECURLY_EXTENSION_ID,
         });
         if (r.isErr()) return "UNKNOWN";
-        if (r.value.decision === "DENY") return "BLOCK";
-        if (r.value.decision === "ALLOW") return "ALLOW";
+        const { decision, categoryId } = r.value;
+        if (decision === "DENY") return "BLOCK";
+        const labels = categoryId
+            ? decodeSecurlyCategoryId(categoryId).labels
+            : [];
+        if (inSchoolBlockedCategory(labels)) return "BLOCK";
+        if (decision === "ALLOW") return "ALLOW";
         return "UNKNOWN";
     },
     async linewize(domain) {
@@ -220,7 +266,12 @@ const ACTIVE_CHECKERS: Record<
             deviceId,
         });
         const r = await checker.checkUrl({ url: `https://${toHost(domain)}` });
-        return r.isOk() ? (r.value.blocked ? "BLOCK" : "ALLOW") : "UNKNOWN";
+        // `method: "fallback"` is the verdict server declining to classify
+        // (no signatures, allow-by-default), not an allow it stands behind.
+        if (r.isErr() || r.value.method === "fallback") return "UNKNOWN";
+        return r.value.blocked || inSchoolBlockedCategory(r.value.categories)
+            ? "BLOCK"
+            : "ALLOW";
     },
     lanschool: checkLanSchoolNetsweeperDomain,
     aristotle: checkAristotleDomain,

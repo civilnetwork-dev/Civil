@@ -26,6 +26,23 @@
  * are unaffected.
  */
 
+import { buildFreshConsole } from "./platform";
+
+// A callback that throws is the vendor's error, reported the way Chrome does
+// — to the extension's own console, never past the API call that invoked it.
+// Let it propagate and it surfaces as an unhandled rejection in whatever
+// process hosts this (mobileguardian's storage callback, calling a
+// `runtime.getManifest` its content script didn't have yet).
+const vendorConsole = buildFreshConsole();
+
+function invoke(callback: (value: unknown) => void, value: unknown): void {
+    try {
+        callback(value);
+    } catch (error) {
+        vendorConsole.error(error);
+    }
+}
+
 /** An object is an event registry, not a namespace of methods, if it has an
  *  `addListener`. The distinction matters because the two are told apart by
  *  the same signal otherwise: `chrome.storage.local.clear(cb)` passes a lone
@@ -56,13 +73,13 @@ function wrapMethod(
         // handles a method that returned a plain value rather than a promise.
         const settled = Promise.resolve(result);
         void settled.then(
-            value => callback(value),
+            value => invoke(callback, value),
             // Chrome reports a failed call by leaving `runtime.lastError` set
             // and calling the callback with no result — it does not throw at
             // the call site, and it does not skip the callback. Skipping it
             // here would reintroduce exactly the silent hang this file
             // exists to prevent.
-            () => callback(undefined),
+            () => invoke(callback, undefined),
         );
         return settled;
     };

@@ -4,6 +4,7 @@ import * as icons from "./index";
 
 const EXPECTED = [
     "IconAlert",
+    "IconApps",
     "IconArrowLeft",
     "IconArrowRight",
     "IconArrowUpRight",

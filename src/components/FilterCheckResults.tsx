@@ -62,9 +62,9 @@ export default function FilterCheckResults(props: { results: FilterResult[] }) {
     return (
         <div class={s.ledger}>
             <div class={s.ledgerHead} aria-hidden="true">
-                <span>vendor</span>
-                <span>verdict</span>
-                <span>cat</span>
+                <span>Filter</span>
+                <span>Verdict</span>
+                <span>Categories</span>
             </div>
             <ul class={s.ledgerBody}>
                 <For each={props.results} keyed={false}>

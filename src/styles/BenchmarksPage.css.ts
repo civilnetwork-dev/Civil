@@ -169,7 +169,6 @@ export const th = style({
     ...ANNO,
     padding: "8px 12px 8px 0",
     textAlign: "left",
-    textTransform: "uppercase",
     whiteSpace: "nowrap",
     borderBottom: RULE.hair,
     color: vars.color.snowmelt,

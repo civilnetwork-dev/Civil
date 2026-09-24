@@ -1,7 +1,7 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 
 import { DUR, EASE, hitArea } from "./material.css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -38,7 +38,10 @@ export const titleActions = style({
 export const scopeSwitch = style({
     display: "flex",
     alignItems: "stretch",
-    border: `0.5px solid ${vars.color.scree}`,
+    gap: "2px",
+    padding: "2px",
+    borderRadius: "10px",
+    border: `1px solid ${vars.color.scree}`,
 });
 
 const scopeBtnBase = style({
@@ -46,16 +49,16 @@ const scopeBtnBase = style({
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    padding: "5px 10px",
+    padding: "8px 12px",
     background: "none",
     border: "none",
+    borderRadius: "8px",
     cursor: "pointer",
-    textTransform: "uppercase",
     transitionProperty: "color, background-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
-        "&:not(:first-child)": { borderLeft: RULE.hair },
+        "&:hover": { color: vars.color.firn },
     },
 });
 
@@ -88,7 +91,6 @@ export const clearBtn = style({
     padding: "2px",
     cursor: "pointer",
     color: vars.color.wine,
-    textTransform: "uppercase",
     transitionProperty: "color, border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
@@ -118,8 +120,10 @@ export const lookup = style({
     alignItems: "center",
     gap: "12px",
     margin: "22px 0 10px",
-    paddingBottom: "8px",
-    borderBottom: RULE.hair,
+    padding: "12px 16px",
+    border: RULE.major,
+    borderRadius: "10px",
+    background: vars.color.basalt,
     transitionProperty: "border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
@@ -146,11 +150,12 @@ export const lookupInput = style({
     background: "transparent",
     outline: "none",
     color: vars.color.firn,
-    fontFamily: FONT_MONO,
+    fontFamily: FONT_SANS,
     fontSize: "14px",
     caretColor: vars.color.cobalt,
     selectors: {
         "&::placeholder": { color: vars.color.ash },
+        "&:focus-visible": { outline: "none" },
     },
 });
 
@@ -163,6 +168,7 @@ export const lookupClear = style({
     height: "20px",
     padding: 0,
     border: "none",
+    borderRadius: "6px",
     background: "none",
     color: vars.color.snowmelt,
     cursor: "pointer",
@@ -230,6 +236,7 @@ export const openBtn = style({
     padding: "11px 0",
     background: "none",
     border: "none",
+    borderRadius: "8px",
     textAlign: "left",
     cursor: "pointer",
     outline: "none",
@@ -304,6 +311,7 @@ export const removeBtn = style({
     height: "24px",
     padding: 0,
     border: "none",
+    borderRadius: "6px",
     background: "none",
     color: vars.color.ash,
     cursor: "pointer",
@@ -352,5 +360,4 @@ export const emptyAction = style({
     padding: "2px",
     cursor: "pointer",
     color: vars.color.cobalt,
-    textTransform: "uppercase",
 });

@@ -15,15 +15,20 @@
  *
  * After a wait — the task's fifteen seconds, so a content script that polls or
  * defers has run — it reports back what `detect.ts` needs: the final
- * `location.href` and the page text.
+ * `location.href`, the page text (enriched with alt/aria/title attribute text,
+ * so an image-only overlay isn't invisible to a marker search), and the
+ * filter's own declarativeNetRequest verdict for the page URL — a fourth,
+ * independent channel alongside redirect/marker/vendor-name that needs no
+ * rendering at all, just the ruleset the background already registered.
  *
  * What it is not: a browser. There is no layout, no navigation engine, no
  * cross-origin fetch. A content script that blocks by *redirecting* real
  * navigation is observed through the `location` assignment it makes (captured
  * below); one that blocks by *rewriting the DOM* is observed through the text
- * it leaves. A filter that blocks by some mechanism needing a real renderer is
- * beyond this and beyond what runs without a browser at all — the honest
- * ceiling, the same one the extension host draws.
+ * it leaves; one that blocks via a registered DNR rule is observed by asking
+ * the ruleset directly. A filter that blocks by some mechanism needing a real
+ * renderer is beyond this and beyond what runs without a browser at all — the
+ * honest ceiling, the same one the extension host draws.
  */
 
 import { readFile } from "node:fs/promises";
@@ -36,6 +41,7 @@ import { Window } from "happy-dom";
 import {
     buildFetch,
     buildFreshConsole,
+    buildNavigator,
     buildOfflineWebSocket,
     buildXMLHttpRequest,
     compileScript,
@@ -76,6 +82,56 @@ interface ContentScript {
     matches: string[];
     js?: string[];
     runAt?: string;
+}
+
+/** The page fetch, retried a couple of times with a short backoff before
+ *  giving up — a bare transient tunnel blip must not be laundered into a
+ *  false "clean" read the way a silently-swallowed empty page would be
+ *  (detect.ts's fetchError/status check is what actually acts on this; this
+ *  is just making sure a real hiccup gets a second chance first). */
+async function fetchPageWithRetry(
+    doFetch: typeof fetch,
+    url: string,
+    attempts = 3,
+): Promise<{ html: string; status: number; fetchError?: string }> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            const res = await doFetch(url);
+            return { html: await res.text(), status: res.status };
+        } catch (error) {
+            lastError = error;
+            if (attempt < attempts)
+                await new Promise(resolve =>
+                    setTimeout(resolve, 300 * attempt),
+                );
+        }
+    }
+    return {
+        html: "",
+        status: 0,
+        fetchError:
+            lastError instanceof Error ? lastError.message : String(lastError),
+    };
+}
+
+/** `body.textContent` alone misses an image-only block overlay — a shield
+ *  icon with `alt="Blocked by Securly"` and no visible text run leaves
+ *  nothing in plain text content. Folding in `alt`/`aria-label`/`title`
+ *  attribute text and the document title catches that without needing a
+ *  real renderer. */
+function extractRichText(window: Window): string {
+    const doc = window.document;
+    const bodyText = doc.body?.textContent ?? "";
+    const attrText = [...doc.querySelectorAll("[alt], [aria-label], [title]")]
+        .flatMap(el => [
+            el.getAttribute("alt"),
+            el.getAttribute("aria-label"),
+            el.getAttribute("title"),
+        ])
+        .filter((v): v is string => Boolean(v))
+        .join(" ");
+    return [doc.title, bodyText, attrText].filter(Boolean).join(" ");
 }
 
 /** Chrome match-pattern → predicate. Enough of the grammar for the real
@@ -129,10 +185,21 @@ function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
         onMessage: noopEvent,
         onDisconnect: noopEvent,
     };
-    const runtime = {
+    // Anything not listed answers as the universal stub, same as the outer
+    // surface below: a missing method is "does nothing", never a TypeError
+    // that kills the content script at whatever point it first reaches it.
+    const stubbed = (target: Record<string, unknown>) =>
+        new Proxy(target, {
+            get: (t, prop) =>
+                typeof prop === "string" && prop in t ? t[prop] : stub,
+        });
+    const runtime = stubbed({
         id: extensionId,
         getURL: (path: string) =>
             `chrome-extension://${extensionId}/${path.replace(/^\//, "")}`,
+        // Read for its result, so a stub's `undefined` won't do — bundles
+        // pull `version` and `name` off it during startup (mobileguardian).
+        getManifest: () => handle.manifest,
         sendMessage: (...args: unknown[]) => {
             const message =
                 typeof args[0] === "string" && args.length > 1
@@ -157,15 +224,11 @@ function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
         onMessage: noopEvent,
         connect: () => port,
         lastError: undefined,
-    };
-    const surface: Record<string, unknown> = {
+    });
+    return stubbed({
         runtime,
-        storage: stub,
+        storage: handle.storage,
         i18n: { getMessage: () => "" },
-    };
-    return new Proxy(surface, {
-        get: (target, prop) =>
-            typeof prop === "string" && prop in target ? target[prop] : stub,
     });
 }
 
@@ -259,17 +322,10 @@ export async function observeRoute(
     }
     extId = handle?.id ?? extId;
 
-    let html = "";
-    let status = 0;
-    try {
-        const res = await doFetch(pageUrl);
-        status = res.status;
-        html = await res.text();
-    } catch {
-        // Network/tunnel failure surfaces as an empty page, which detects as
-        // "not flagged" rather than a false positive.
-        html = "";
-    }
+    const { html, status, fetchError } = await fetchPageWithRetry(
+        doFetch,
+        pageUrl,
+    );
 
     // A real `console`, not happy-dom's VirtualConsole (a content script
     // that logs from a deferred timer would otherwise reach the virtual
@@ -325,8 +381,29 @@ export async function observeRoute(
     // into the next observation would be its own false-positive risk.
     win.indexedDB = new IDBFactory();
     win.IDBKeyRange = IDBKeyRange;
+    // happy-dom's navigator is missing members content scripts read unguarded,
+    // so a startup TypeError could kill a filter's script before it ever got
+    // to block anything -- and this harness would have read that crash as
+    // "not flagged". Seen live: `navigator.getBattery is not a function`
+    // (imtlazarus, lanschoolStudent). Background scripts already get these
+    // from api/platform.ts's buildNavigator; fill in only what happy-dom
+    // lacks, rather than replacing a navigator its own internals use.
+    const emulatedNavigator = buildNavigator("chrome");
+    const navigator = window.navigator as unknown as Record<string, unknown>;
+    for (const [key, value] of Object.entries(emulatedNavigator)) {
+        if (key in navigator) continue;
+        Object.defineProperty(navigator, key, {
+            value,
+            configurable: true,
+            enumerable: true,
+        });
+    }
     try {
         window.document.write(html);
+        // The served page's own rendered-text length, before any content
+        // script has had a chance to touch it — the dom-replaced heuristic's
+        // baseline (detect.ts).
+        const originalLength = window.document.body?.textContent?.length ?? 0;
 
         // The content scripts that match this URL, in manifest order.
         const manifest = handle?.manifest ?? (await readManifest(extensionDir));
@@ -379,10 +456,23 @@ export async function observeRoute(
                 ? handle.tabUrl
                 : String(window.location.href);
 
+        // The filter's own configured block rules, asked directly whether
+        // they'd block this exact page URL — a real, deterministic check
+        // that needed none of the rendering above. Only meaningful when the
+        // background actually loaded far enough to register rules.
+        const dnrMatch = handle?.matchRequest(pageUrl, {
+            resourceType: "main_frame",
+            method: "GET",
+        });
+
         return {
             route,
             finalUrl,
-            pageText: `${status} ${window.document.body?.textContent ?? ""}`,
+            pageText: extractRichText(window),
+            originalLength,
+            status,
+            fetchError,
+            dnrMatch,
         };
     } finally {
         // Cancel happy-dom's pending timers/microtasks before closing, so a

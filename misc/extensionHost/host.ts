@@ -421,6 +421,8 @@ export async function loadExtension(
             return state.snapshotStorage(area);
         },
 
+        storage: api.storage,
+
         async sendMessage(message) {
             const result = await dispatchMessage(state, message);
             const captured = {

@@ -5,7 +5,6 @@ import {
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview";
 import { preventUnhandled } from "@atlaskit/pragmatic-drag-and-drop/prevent-unhandled";
-import { onCleanup } from "solid-js";
 
 import type { Tab } from "~/lib/TabManager";
 
@@ -154,7 +153,7 @@ export function registerTabDraggable(
             opts.setDraggingId(null);
         },
     });
-    onCleanup(cleanup);
+    return cleanup;
 }
 
 /**
@@ -186,7 +185,7 @@ export function registerTabDropTarget(
         },
         getData: () => getTabData(tabId),
     });
-    onCleanup(cleanup);
+    return cleanup;
 }
 
 /**
@@ -208,5 +207,9 @@ export function registerTabMonitor(
             opts.setDraggingId(null);
         },
     });
-    onCleanup(cleanup);
+    return () => {
+        cleanup();
+        preventUnhandled.stop();
+        destroyFloatingClone();
+    };
 }

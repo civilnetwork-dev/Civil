@@ -51,15 +51,15 @@ export const loadingContainer = style({
  */
 const arrive = keyframes({
     // Outside the glyph entirely, and invisible while it is.
-    "0%": { transform: "translateX(2.8px)", opacity: 0 },
-    // At rest the node fills the mouth exactly, 10.9 → 13.5. Sized to the
-    // opening rather than to a round number: a smaller node reads as a dot
-    // passing a gap instead of the route filling it.
+    "0%": { transform: "translateX(3.6px)", opacity: 0 },
+    // At rest the node spans the mouth exactly, 11.24 → 14.74, the depth of the
+    // C's cut terminals. Sized to the opening rather than to a round number: a
+    // shorter node reads as a dot passing a gap instead of the route filling it.
     "20%": { transform: "translateX(0)", opacity: 1 },
     // Crossing the counter.
-    "70%": { transform: "translateX(-4.6px)", opacity: 1 },
-    // Absorbed into the stem, whose inner edge is at 5.43.
-    "88%, 100%": { transform: "translateX(-5.5px)", opacity: 0 },
+    "70%": { transform: "translateX(-6.1px)", opacity: 1 },
+    // Absorbed into the stem, whose inner edge is at 4.19.
+    "88%, 100%": { transform: "translateX(-7.05px)", opacity: 0 },
 });
 
 /** The mark's own 16-unit grid, blown up. */

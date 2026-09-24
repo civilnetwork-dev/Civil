@@ -141,7 +141,7 @@ export default function BookmarksPage() {
                                 onClick={() => setScope("all")}
                             >
                                 <IconBookmark size={13} />
-                                all
+                                All
                             </button>
                             <button
                                 type="button"
@@ -156,7 +156,7 @@ export default function BookmarksPage() {
                                 onClick={() => setScope("recent")}
                             >
                                 <IconClock size={13} />
-                                recent
+                                Recent
                             </button>
                         </div>
                         <Show when={listed().length > 0}>
@@ -167,8 +167,8 @@ export default function BookmarksPage() {
                             >
                                 <IconTrash size={13} />
                                 {confirmingClear()
-                                    ? "click again to delete"
-                                    : "clear"}
+                                    ? "Click again to delete"
+                                    : "Clear"}
                             </button>
                         </Show>
                     </div>
@@ -176,8 +176,7 @@ export default function BookmarksPage() {
             />
 
             <p class={schematic.lede}>
-                Saved to this device, not to a district console. Yours to keep,
-                rename, or delete — no approval, no sync you did not ask for.
+                Your saved pages, all in one place. Search to find a favorite.
             </p>
 
             <div class={s.lookup}>
@@ -216,7 +215,7 @@ export default function BookmarksPage() {
             </div>
 
             <Rule
-                label={scope() === "recent" ? "last 7 days" : undefined}
+                label={scope() === "recent" ? "Last 7 days" : undefined}
                 weight="major"
             />
 
@@ -224,10 +223,10 @@ export default function BookmarksPage() {
                 <div class={s.empty}>
                     <Anno muted>
                         {search()
-                            ? `nothing matches “${search()}”`
+                            ? `No bookmarks match “${search()}”.`
                             : scope() === "recent"
-                              ? "nothing bookmarked in the last week"
-                              : "no bookmarks yet — saved to this device, not to a console"}
+                              ? "Nothing bookmarked in the last week."
+                              : "No bookmarks yet. Save a page from the bookmarks bar and it will show up here."}
                     </Anno>
                     {/* A dead end otherwise: the list is empty and the only way
                         back is to find the lookup again. */}
@@ -240,7 +239,7 @@ export default function BookmarksPage() {
                                 lookupInput?.focus();
                             }}
                         >
-                            clear search
+                            Clear search
                         </button>
                     </Show>
                 </div>

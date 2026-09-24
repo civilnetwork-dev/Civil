@@ -93,3 +93,13 @@ misc/schoolDistricts/data/tmp/*
 
 # Fallow Output
 .fallow-report.json
+
+# WHAT!!!?????
+.serena/
+
+# Unnecessary Impeccable Folders
+.impeccable/briefs/
+.impeccable/review/
+
+# Original Brand Assets
+docs/brand/

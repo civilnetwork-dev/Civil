@@ -1,7 +1,7 @@
 import { style } from "@vanilla-extract/css";
 
 import { DUR, EASE, hitArea } from "./material.css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -31,7 +31,6 @@ export const clearBtn = style({
     padding: "2px 2px",
     cursor: "pointer",
     color: vars.color.wine,
-    textTransform: "uppercase",
     transitionProperty: "color, border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
@@ -69,8 +68,10 @@ export const filterField = style({
     gap: "8px",
     flex: "1 1 260px",
     maxWidth: "420px",
-    paddingBottom: "6px",
-    borderBottom: RULE.hair,
+    padding: "12px 16px",
+    border: RULE.major,
+    borderRadius: "10px",
+    background: vars.color.basalt,
     transitionProperty: "border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
@@ -97,11 +98,12 @@ export const filterInput = style({
     background: "transparent",
     outline: "none",
     color: vars.color.firn,
-    fontFamily: FONT_MONO,
-    fontSize: "13px",
+    fontFamily: FONT_SANS,
+    fontSize: "14px",
     caretColor: vars.color.cobalt,
     selectors: {
         "&::placeholder": { color: vars.color.ash },
+        "&:focus-visible": { outline: "none" },
     },
 });
 
@@ -115,7 +117,7 @@ export const filterHint = style({
     width: "16px",
     height: "16px",
     border: `0.5px solid ${vars.color.talus}`,
-    fontSize: "11px",
+    fontSize: "12px",
     transition: `opacity ${DUR.base} ${EASE.standard}`,
     selectors: {
         [`${filterField}:focus-within &`]: { opacity: 0 },
@@ -131,6 +133,7 @@ export const filterClear = style({
     height: "20px",
     padding: 0,
     border: "none",
+    borderRadius: "6px",
     background: "none",
     color: vars.color.snowmelt,
     cursor: "pointer",
@@ -389,6 +392,7 @@ export const deleteBtn = style({
     padding: 0,
     background: "none",
     border: "none",
+    borderRadius: "6px",
     cursor: "pointer",
     color: vars.color.ash,
     opacity: 0,
@@ -430,7 +434,6 @@ export const emptyAction = style({
     padding: "2px 0",
     cursor: "pointer",
     color: vars.color.cobalt,
-    textTransform: "uppercase",
     selectors: {
         "&:hover": { color: vars.color.cobalt },
     },

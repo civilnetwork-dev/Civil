@@ -22,32 +22,44 @@ beforeEach(() => {
     localStorage.clear();
     delete (window as any).scramjet;
     delete (window as any).scramjetReady;
-    delete (self as any).__uv$config;
 });
 
 /**
- * submitFrame picks a proxy and navigates the frame. When it dereferences a
- * proxy controller that is not set up yet the whole search bar dies with an
- * uncaught TypeError, so the failure mode these tests guard is "typed a term,
- * got nothing".
+ * submitFrame dereferences window.scramjet to navigate the frame. If it does
+ * that before scramjet's bootstrap has actually assigned the global, the
+ * whole search bar dies with an uncaught TypeError, so the failure mode these
+ * tests guard is "typed a term, got nothing".
  */
 describe("SearchBar.submitFrame proxy readiness", () => {
-    it("falls back to uv when the scramjet controller is not set yet", async () => {
-        // Safari case: the scramjet bootstrap lands late, so window.scramjet and
-        // window.scramjetReady are both unset when the user submits. uv is ready.
-        (self as any).__uv$config = {
-            encodeUrl: (s: string) => `enc:${s}`,
-            decodeUrl: (s: string) => s,
-        };
-
-        const replace = vi.fn();
-        const frame = { contentWindow: { location: { replace } } } as any;
-
+    it("waits for the real scramjetReady promise if window.scramjet is not set yet", async () => {
+        // window.scramjetReady can still be unset when SearchBar's own
+        // runSetup() reads it (the scramjet bootstrap script hasn't run yet),
+        // so that await resolves immediately and `ready` resolving is no
+        // guarantee scramjet is up. submitFrame must re-check and wait on the
+        // real promise once it exists, instead of dereferencing an undefined
+        // controller.
+        const sframe = { go: vi.fn() };
         const bar = searchBar();
-        await expect(bar.submitFrame(frame, "example.com")).resolves.toBe(
-            undefined,
-        );
-        expect(replace).toHaveBeenCalledWith("/~/uv/enc:example.com");
+        await bar.ready; // resolves immediately: scramjetReady was still unset
+
+        let resolveReady!: () => void;
+        (window as any).scramjetReady = new Promise<void>(resolve => {
+            resolveReady = resolve;
+        });
+
+        const submitted = bar.submitFrame({} as any, "example.com");
+        // Flush microtasks so submitFrame reaches its readiness re-check and
+        // starts awaiting the (now real) promise before we resolve it.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        (window as any).scramjet = {
+            frames: [],
+            createFrame: vi.fn(() => sframe),
+        };
+        resolveReady();
+
+        await submitted;
+        expect((window as any).scramjet.createFrame).toHaveBeenCalledTimes(1);
+        expect(sframe.go).toHaveBeenCalledWith("https://example.com");
     });
 
     it("uses the scramjet controller once it is ready", async () => {

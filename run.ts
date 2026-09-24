@@ -3,7 +3,6 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
-import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
 import { start as startChii } from "chii";
 import compression from "compression";
 import express from "express";
@@ -197,36 +196,55 @@ app.use("/health", (_req, res) => res.json({ ok: true }));
 app.get("/api/ext-proxy", async (req, res) => {
     const target = req.query.url as string | undefined;
     if (!target) return void res.status(400).json({ error: "url required" });
-    let parsed: URL;
+
+    let current: URL;
     try {
-        parsed = new URL(target);
+        current = new URL(target);
     } catch {
         return void res.status(400).json({ error: "invalid url" });
     }
-    if (parsed.protocol !== "https:") {
-        return void res.status(400).json({ error: "https only" });
-    }
-    if (isPrivateHost(parsed.hostname)) {
-        return void res.status(403).json({ error: "host not allowed" });
-    }
-    try {
-        const { data, status, headers } = await xior.get<ArrayBuffer>(target, {
-            responseType: "arraybuffer",
+
+    // Follow redirects by hand so the SSRF guard is re-applied to every hop:
+    // a redirect can downgrade `https:` to `http:` and point at a private host
+    // that the initial URL never named. `fetch` would follow it blind.
+    const MAX_REDIRECTS = 5;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+        if (current.protocol !== "https:") {
+            return void res.status(400).json({ error: "https only" });
+        }
+        if (isPrivateHost(current.hostname)) {
+            return void res.status(403).json({ error: "host not allowed" });
+        }
+
+        const response = await fetch(current, {
+            redirect: "manual",
             headers: {
                 "User-Agent": "Mozilla/5.0 (compatible; CivilProxy/1.0)",
             },
-            validateStatus: () => true,
-        });
-        res.status(status);
-        const contentType = (headers as unknown as Record<string, string>)?.[
-            "content-type"
-        ];
+        }).catch(() => null);
+
+        if (!response) {
+            return void res.status(502).json({ error: "fetch failed" });
+        }
+
+        const location = response.headers.get("location");
+        if (response.status >= 300 && response.status < 400 && location) {
+            try {
+                current = new URL(location, current);
+            } catch {
+                return void res.status(502).json({ error: "bad redirect" });
+            }
+            continue;
+        }
+
+        const contentType = response.headers.get("content-type");
         if (contentType) res.set("Content-Type", contentType);
         res.set("Cache-Control", "no-store");
-        res.end(Buffer.from(data));
-    } catch {
-        res.status(502).json({ error: "fetch failed" });
+        res.status(response.status);
+        return void res.end(Buffer.from(await response.arrayBuffer()));
     }
+
+    return void res.status(502).json({ error: "too many redirects" });
 });
 
 app.get("/api/favicon", async (req, res) => {
@@ -303,7 +321,13 @@ app.get("/api/best-proxy", async (req, res) => {
         }
 
         const stored = await getSiteProxyConfig(hostname);
-        if (stored) {
+        // A row from before UV was removed can still say proxy: "uv" (the
+        // proxy column has no DB-level enum, just text) -- treat that the
+        // same as no stored decision at all, so it falls through to a fresh
+        // probeSite() below and self-heals to "scramjet" via
+        // upsertSiteProxyConfig, rather than serving a recommendation for a
+        // proxy backend that no longer exists.
+        if (stored && stored.proxy === "scramjet") {
             const payload = {
                 proxy: stored.proxy,
                 transport: stored.transport,
@@ -366,11 +390,7 @@ app.post("/api/best-proxy", async (req, res) => {
     const rewriterErrors = Number.isFinite(Number(body?.rewriterErrors))
         ? Math.max(0, Number(body.rewriterErrors))
         : 0;
-    if (
-        !hostname ||
-        (proxy !== "scramjet" && proxy !== "uv") ||
-        !Number.isFinite(compat)
-    ) {
+    if (!hostname || proxy !== "scramjet" || !Number.isFinite(compat)) {
         return void res.status(400).json({ error: "bad feedback" });
     }
     if (isPrivateHost(hostname)) return void res.status(204).end();
@@ -384,7 +404,6 @@ app.post("/api/best-proxy", async (req, res) => {
                 : undefined;
         await recordCompatFeedback(
             hostname,
-            proxy,
             transport,
             Math.max(0, Math.min(100, compat)),
             rewriterErrors,
@@ -444,7 +463,6 @@ app.use("/api/violations", async (req, res) => {
 });
 
 const servicePathMaps: Record<string, string> = {
-    "/uv": uvPath,
     "/scramjet": scramjetPath,
     "/scramjetController": scramjetControllerPath,
     "/epoxy": epoxyPath,
@@ -460,8 +478,6 @@ const servicePathMaps: Record<string, string> = {
 Object.entries(servicePathMaps).forEach(([route, path]) => {
     app.use(route, sirv(path));
 });
-
-process.removeAllListeners("uncaughtException");
 
 const bare = createBareServer("/bare/");
 

@@ -89,9 +89,9 @@ function RenderItem(props: { item: ContextMenuItem }) {
                             : {}
                     }
                 >
-                    <Show when={props.item.icon}>
-                        <span class={s.menuItemIcon}>{props.item.icon}</span>
-                    </Show>
+                    <span class={s.menuItemIcon} aria-hidden="true">
+                        {props.item.icon}
+                    </span>
                     <span class={s.menuItemLabel}>{props.item.label}</span>
                     <span class={s.subMenuArrow}>›</span>
                 </div>
@@ -119,9 +119,9 @@ function RenderItem(props: { item: ContextMenuItem }) {
                 ctx.close();
             }}
         >
-            <Show when={props.item.icon}>
-                <span class={s.menuItemIcon}>{props.item.icon}</span>
-            </Show>
+            <span class={s.menuItemIcon} aria-hidden="true">
+                {props.item.icon}
+            </span>
             <span class={s.menuItemLabel}>{props.item.label}</span>
             <Show when={props.item.shortcut}>
                 <span class={s.menuItemShortcut}>{props.item.shortcut}</span>

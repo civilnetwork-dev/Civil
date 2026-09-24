@@ -167,7 +167,7 @@ export default function TabSearch(props: TabSearchProps) {
                                 setQuery(e.currentTarget.value);
                                 setCursor(0);
                             }}
-                            spellcheck={false}
+                            spellcheck="false"
                             autocomplete="off"
                         />
                         <span class={s.hint}>
@@ -238,7 +238,7 @@ export default function TabSearch(props: TabSearchProps) {
 
                                         <Show when={isActive()}>
                                             <span class={s.tabBadge}>
-                                                current
+                                                Current
                                             </span>
                                         </Show>
                                     </div>

@@ -32,8 +32,20 @@ globalStyle("html, body", {
     overflowX: "hidden",
 });
 
+// The app is dark-only; native controls (number spinners, checkboxes, date
+// pickers, autofill) follow suit instead of painting light-theme chrome.
+globalStyle(":root", { colorScheme: "dark" });
+
 globalStyle("body", {
     fontFamily: FONT_SANS,
+    color: vars.color.firn,
+    lineHeight: 1.5,
+    WebkitFontSmoothing: "antialiased",
+});
+
+globalStyle("::selection", {
+    background: vars.color.cobalt,
+    color: vars.color.basalt,
 });
 
 globalStyle("button, input, textarea, select", {
@@ -42,12 +54,17 @@ globalStyle("button, input, textarea, select", {
 
 // One keyboard focus ring for the whole app. `:focus-visible` keeps it off
 // pointer interactions, so this costs nothing visually for mouse users and
-// makes every control reachable without one. Components that need a
-// different offset override it locally.
-globalStyle("*:focus-visible", {
+// makes every control reachable without one.
+//
+// `:where()` drops the specificity to zero, so a component that draws its
+// own focus state (a field whose box turns cobalt, a row with its own ring)
+// wins regardless of stylesheet order. No border-radius here: an outline
+// already follows the element's own corners, and forcing one reshapes the
+// element itself (a focused input took its wrapper's pill shape and clipped
+// its caret).
+globalStyle(":where(*:focus-visible)", {
     outline: `2px solid ${vars.color.cobalt}`,
     outlineOffset: 2,
-    borderRadius: "inherit",
 });
 
 // A slim themed scrollbar rather than no scrollbar at all: long lists (the

@@ -2,6 +2,7 @@ export { compileUrlFilter } from "./api/declarativeNetRequest";
 export {
     buildFetch,
     buildFreshConsole,
+    buildNavigator,
     buildOfflineWebSocket,
     buildXMLHttpRequest,
 } from "./api/platform";

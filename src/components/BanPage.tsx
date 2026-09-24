@@ -38,7 +38,7 @@ export default function BanPage({ banReason }: { banReason: string }) {
                                     class={s.eyebrowMark.restricted}
                                     aria-hidden="true"
                                 />
-                                blocked by civil
+                                Blocked by Civil
                             </span>
                             <h1 class={s.title}>Site restricted</h1>
                             <p class={s.reason}>
@@ -60,13 +60,13 @@ export default function BanPage({ banReason }: { banReason: string }) {
                             </Show>
                             <div class={s.actions}>
                                 <a class={s.link} href="/baninfo">
-                                    view your proxy status
+                                    View your proxy status
                                 </a>
                                 {/* A filter's block page tells you to contact
                                     an administrator. Civil's says which list
                                     this came from and lets you read it. */}
                                 <span class={s.note}>
-                                    civil publishes its whole list
+                                    Civil publishes its whole list
                                 </span>
                             </div>
                         </>
@@ -74,7 +74,7 @@ export default function BanPage({ banReason }: { banReason: string }) {
                 >
                     <span class={s.eyebrow}>
                         <span class={s.eyebrowMark.banned} aria-hidden="true" />
-                        account suspended
+                        Account suspended
                     </span>
                     <h1 class={s.title}>Banned</h1>
                     <p class={s.reason}>
@@ -83,7 +83,7 @@ export default function BanPage({ banReason }: { banReason: string }) {
                     </p>
                     <div class={s.actions}>
                         <a class={s.link} href="/baninfo">
-                            view ban details
+                            View ban details
                         </a>
                     </div>
                 </Show>

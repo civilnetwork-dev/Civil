@@ -7,53 +7,22 @@ import Sheet from "./Sheet";
 import * as s from "~/styles/schematic.css";
 
 describe("Sheet", () => {
-    it("renders its children", () => {
+    it("renders its children on the sheet plane", () => {
         const { container, unmount } = renderSolid(() => (
-            <Sheet>
+            <Sheet class="extra">
                 <p>body</p>
             </Sheet>
         ));
+        const root = container.firstElementChild!;
+        expect(root.className).toContain(s.sheet);
+        expect(root.className).toContain("extra");
         expect(container.textContent).toContain("body");
         unmount();
     });
 
-    it("marks the ruled field decorative", () => {
+    it("draws no decoration around the content", () => {
         const { container, unmount } = renderSolid(() => <Sheet>x</Sheet>);
-        const fieldEl = container.querySelector(`.${s.sheetField}`);
-        expect(fieldEl?.getAttribute("aria-hidden")).toBe("true");
-        unmount();
-    });
-
-    it("defaults to three registration marks, leaving bottom-left for the title block", () => {
-        const { container, unmount } = renderSolid(() => <Sheet>x</Sheet>);
-        expect(container.querySelectorAll(`.${s.mark}`)).toHaveLength(3);
-        expect(container.querySelector(`.${s.markCorner.bl}`)).toBeNull();
-        unmount();
-    });
-
-    it("renders only the requested marks", () => {
-        const { container, unmount } = renderSolid(() => (
-            <Sheet marks={["tl"]}>x</Sheet>
-        ));
-        expect(container.querySelectorAll(`.${s.mark}`)).toHaveLength(1);
-        expect(container.querySelector(`.${s.markCorner.tl}`)).not.toBeNull();
-        unmount();
-    });
-
-    it("marks registration marks decorative", () => {
-        const { container, unmount } = renderSolid(() => <Sheet>x</Sheet>);
-        for (const m of container.querySelectorAll(`.${s.mark}`)) {
-            expect(m.getAttribute("aria-hidden")).toBe("true");
-        }
-        unmount();
-    });
-
-    it("applies the requested field density", () => {
-        const { container, unmount } = renderSolid(() => (
-            <Sheet density="coarse">x</Sheet>
-        ));
-        const fieldEl = container.querySelector(`.${s.sheetField}`);
-        expect(fieldEl?.className).toContain(s.sheetFieldDensity.coarse);
+        expect(container.querySelectorAll("[aria-hidden]")).toHaveLength(0);
         unmount();
     });
 });

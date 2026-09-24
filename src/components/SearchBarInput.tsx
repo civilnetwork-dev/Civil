@@ -1,5 +1,6 @@
 import { createSignal, onSettled } from "solid-js";
 
+import { IconArrowRight, IconSearch } from "~/components/icons";
 import { WS_URL } from "~/lib/browserHelpers";
 import genBCKey from "~/lib/genBCKey";
 
@@ -16,7 +17,6 @@ const isProbablyUrl = (value: string) => {
 interface Props {
     onSubmit: (value: string) => void;
     onSuggestions: (suggestions: string[]) => void;
-    showBlur: boolean;
 }
 
 export default function SearchBarInput(props: Props) {
@@ -45,6 +45,7 @@ export default function SearchBarInput(props: Props) {
     };
 
     const handleSubmit = (value = query()) => {
+        value = value.trim();
         if (!value) return;
         broadcast(value);
         props.onSubmit(value);
@@ -74,28 +75,27 @@ export default function SearchBarInput(props: Props) {
 
     return (
         <form
-            class={[
-                s.sbInputWrapper,
-                { [s.sbInputWrapperBlur]: props.showBlur },
-            ]}
+            class={s.sbInputWrapper}
             onSubmit={e => {
                 e.preventDefault();
                 handleSubmit();
             }}
         >
+            <IconSearch size={20} class={s.sbSearchIcon} />
             <input
                 ref={inputRef}
                 class={s.sbInput}
                 value={query()}
                 onInput={e => handleInput(e.currentTarget.value)}
-                placeholder="Search or enter a URL"
-                autofocus
-                spellcheck={false}
+                placeholder="Search or enter a web address"
+                aria-label="Search or enter a web address"
+                spellcheck="false"
                 autocomplete="off"
                 data-enable-grammarly="false"
             />
-            <button type="submit" class={s.sbButton}>
-                Unblock
+            <button type="submit" class={s.sbButton} aria-label="Browse">
+                <span class={s.sbButtonLabel}>Browse</span>
+                <IconArrowRight size={18} />
             </button>
         </form>
     );

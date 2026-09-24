@@ -34,7 +34,9 @@ function observe(partial: Partial<PageObservation>): PageObservation {
     return {
         route: "/newtab",
         finalUrl: "https://abc123.mooo.com/newtab",
-        pageText: "200 Civil — new tab",
+        pageText: "Civil — new tab",
+        originalLength: 20,
+        status: 200,
         ...partial,
     };
 }
@@ -135,6 +137,105 @@ describe("detectFlagging", () => {
     it("treats an unknown vendor as no-data rather than throwing", () => {
         expect(detectFlagging(observe({}), "not-a-vendor").flagged).toBe(false);
     });
+
+    it("never lets a broken probe (fetch failure) read as clean", () => {
+        // Marker-shaped text, but the fetch itself never succeeded -- this
+        // text proves nothing and must not flag.
+        const verdict = detectFlagging(
+            observe({
+                fetchError: "fetch failed: ECONNRESET",
+                pageText: "blocked by school policy",
+            }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(false);
+    });
+
+    it("never lets a 5xx from Civil itself read as clean", () => {
+        expect(
+            detectFlagging(observe({ status: 502 }), "securly").flagged,
+        ).toBe(false);
+    });
+
+    it("flags a declarativeNetRequest block rule directly, no page needed", () => {
+        const verdict = detectFlagging(
+            observe({ dnrMatch: { action: "block", matchedRuleId: 7 } }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(true);
+        expect(verdict.signal).toEqual({
+            kind: "dnr-block",
+            matchedRuleId: 7,
+        });
+    });
+
+    it("flags a declarativeNetRequest redirect rule onto a known vendor domain", () => {
+        const verdict = detectFlagging(
+            observe({
+                dnrMatch: {
+                    action: "redirect",
+                    matchedRuleId: 3,
+                    redirectUrl: "https://deviceconsole.securly.com/blocked",
+                },
+            }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(true);
+        expect(verdict.signal).toEqual({
+            kind: "redirect",
+            domain: "securly.com",
+            finalHost: "deviceconsole.securly.com",
+        });
+    });
+
+    it("still flags a declarativeNetRequest redirect to a domain nobody's curated yet", () => {
+        const verdict = detectFlagging(
+            observe({
+                dnrMatch: {
+                    action: "redirect",
+                    matchedRuleId: 3,
+                    redirectUrl: "https://new-block-host.example/blocked",
+                },
+            }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(true);
+        expect(verdict.signal).toEqual({
+            kind: "redirect",
+            domain: "new-block-host.example",
+            finalHost: "new-block-host.example",
+        });
+    });
+
+    it("flags a page that collapsed to a short fraction of what was served, even with no known marker", () => {
+        const pageText = "Access is not permitted here.";
+        const verdict = detectFlagging(
+            observe({ pageText, originalLength: 5000 }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(true);
+        expect(verdict.signal).toEqual({
+            kind: "dom-replaced",
+            originalLength: 5000,
+            finalLength: pageText.length,
+        });
+    });
+
+    it("does not flag a route that was always short as dom-replaced", () => {
+        const verdict = detectFlagging(
+            observe({ pageText: "Civil — new tab", originalLength: 20 }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(false);
+    });
+
+    it("does not flag ordinary shrinkage that stays a real page", () => {
+        const verdict = detectFlagging(
+            observe({ pageText: "A".repeat(1000), originalLength: 2000 }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(false);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -190,6 +291,21 @@ describe("predictFix", () => {
             suggestions.some(s => s.reason.includes("no dedicated handler")),
         ).toBe(true);
     });
+
+    it("points a declarativeNetRequest block at the route's own URL structure, not the domain blocklist", () => {
+        const verdict = detectFlagging(
+            observe({
+                route: "/~/scramjet/",
+                dnrMatch: { action: "block", matchedRuleId: 9 },
+            }),
+            "securly",
+        );
+        const files = predictFix(verdict, CIVIL_DIR).map(s => s.file);
+        expect(files.some(f => f.includes("useIframeManager"))).toBe(true);
+        expect(
+            files.some(f => f === "misc/filters/filterBlockerMiddleware.ts"),
+        ).toBe(false);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -213,6 +329,64 @@ describe("sandbox observeRoute", () => {
         });
         expect(observation.route).toBe("/newtab");
         expect(observation.pageText).toContain("Civil new tab");
+        expect(detectFlagging(observation, "securly").flagged).toBe(false);
+    });
+
+    it("catches an image-only block overlay through alt/aria/title text, not just innerText", async () => {
+        const dir = join(import.meta.dirname, "fixtures", "noop-extension");
+        const observation = await observeRoute({
+            extensionDir: dir,
+            baseUrl: "https://abc.mooo.com",
+            route: "/newtab",
+            waitMs: 0,
+            fetchImpl: (async () =>
+                new Response(
+                    '<body><img src="shield.png" alt="This site has been blocked by a teacher"></body>',
+                    { status: 200 },
+                )) as unknown as typeof fetch,
+        });
+        // No visible text run at all -- textContent alone would be empty.
+        expect(observation.pageText).toContain(
+            "This site has been blocked by a teacher",
+        );
+        expect(detectFlagging(observation, "securly").flagged).toBe(true);
+    });
+
+    it("reports the loaded filter's own declarativeNetRequest verdict for the page URL", async () => {
+        const dir = join(import.meta.dirname, "fixtures", "dnr-extension");
+        const observation = await observeRoute({
+            extensionDir: dir,
+            baseUrl: "https://dnr-blocked.example",
+            route: "/newtab",
+            waitMs: 0,
+            fetchImpl: (async () =>
+                new Response("<body>irrelevant</body>", {
+                    status: 200,
+                })) as unknown as typeof fetch,
+        });
+        expect(observation.dnrMatch?.action).toBe("block");
+        expect(observation.dnrMatch?.matchedRuleId).toBe(1);
+
+        const verdict = detectFlagging(observation, "securly");
+        expect(verdict.flagged).toBe(true);
+        expect(verdict.signal).toEqual({
+            kind: "dnr-block",
+            matchedRuleId: 1,
+        });
+    });
+
+    it("reports a fetch failure structurally instead of silently reading as clean", async () => {
+        const dir = join(import.meta.dirname, "fixtures", "noop-extension");
+        const observation = await observeRoute({
+            extensionDir: dir,
+            baseUrl: "https://abc.mooo.com",
+            route: "/newtab",
+            waitMs: 0,
+            fetchImpl: (async () => {
+                throw new Error("ECONNRESET");
+            }) as unknown as typeof fetch,
+        });
+        expect(observation.fetchError).toContain("ECONNRESET");
         expect(detectFlagging(observation, "securly").flagged).toBe(false);
     });
 });

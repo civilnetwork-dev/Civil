@@ -182,6 +182,7 @@ export function UrlBar(props: UrlBarProps) {
                         ref={inputRef}
                         class={s.urlbarInput}
                         type="text"
+                        aria-label="Address bar"
                         value={display()}
                         placeholder={
                             props.isNewtab || editing()
@@ -214,7 +215,7 @@ export function UrlBar(props: UrlBarProps) {
                                 props.onTabSearch();
                             }
                         }}
-                        spellcheck={false}
+                        spellcheck="false"
                         autocomplete="off"
                     />
                     <button
@@ -240,7 +241,7 @@ export function UrlBar(props: UrlBarProps) {
                                 <li
                                     class={s.urlbarHistoryRow}
                                     role="option"
-                                    aria-selected={false}
+                                    aria-selected="false"
                                     aria-label={entry().title || entry().url}
                                     onMouseDown={armSuppressBlur}
                                     onClick={() => {
@@ -300,7 +301,7 @@ export function UrlBar(props: UrlBarProps) {
                                 <li
                                     class={s.urlbarSuggestionRow}
                                     role="option"
-                                    aria-selected={false}
+                                    aria-selected="false"
                                     onMouseDown={armSuppressBlur}
                                     onClick={() => {
                                         suppressBlur = false;

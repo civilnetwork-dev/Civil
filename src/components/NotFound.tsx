@@ -2,7 +2,7 @@ import { createSignal, onSettled, Show } from "solid-js";
 
 import * as s from "~/styles/NotFound.css";
 
-const PROXY_PREFIXES = ["/~/scramjet/", "/~/uv/"];
+const PROXY_PREFIXES = ["/~/scramjet/"];
 
 const RETRY_KEY = "__civil_proxy_retry";
 const RETRY_TIME_KEY = "__civil_proxy_retry_t";
@@ -65,7 +65,6 @@ export default function NotFound() {
             when={!healing()}
             fallback={
                 <div class={s.notFoundRoot}>
-                    <div class={s.notFoundBackground} />
                     <main class={s.notFoundContent}>
                         <p class={s.notFoundSubtitle}>Reconnecting…</p>
                     </main>
@@ -73,7 +72,6 @@ export default function NotFound() {
             }
         >
             <div class={s.notFoundRoot}>
-                <div class={s.notFoundBackground} />
                 <main class={s.notFoundContent}>
                     <h1 class={s.notFoundTitle}>404</h1>
                     <p class={s.notFoundSubtitle}>Page not found.</p>

@@ -231,6 +231,16 @@ function parseBrokerResponse(input: string | null | undefined): BrokerResponse {
     };
 }
 
+function compareSemver(a: Semver, b: Semver): number {
+    const pa = a.split(".").map(Number);
+    const pb = b.split(".").map(Number);
+    for (let i = 0; i < 3; i++) {
+        const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+        if (d !== 0) return d;
+    }
+    return 0;
+}
+
 function getExtensionVersion(
     extensionId: string,
 ): ResultAsync<Semver, BrokerError> {
@@ -249,11 +259,25 @@ function getExtensionVersion(
                 response.data,
             ) as SecurlyExtensionManifest;
 
-            const app = parsed.gupdate.app.find(
+            const apps = [parsed.gupdate.app].flat();
+            const app = apps.find(
                 extension => extension.appid === extensionId,
             );
 
-            const version = app?.updatecheck?.version;
+            // The broker only ever sees the version (`ver`), never the id.
+            // This subscriber manifest lists Securly's enterprise-distributed
+            // builds, not the Web Store one whose id the installed bundle's
+            // key derives to, so an exact match fails for the very extension
+            // this project ships — and failing here made every reputation
+            // check UNKNOWN, i.e. Securly never vetoed a domain. Any current
+            // version from the same manifest is what a real deployment sends.
+            const version =
+                app?.updatecheck?.version ??
+                apps
+                    .map(extension => extension.updatecheck?.version)
+                    .filter((v): v is Semver => Boolean(v))
+                    .toSorted(compareSemver)
+                    .at(-1);
 
             if (!version) {
                 return err({

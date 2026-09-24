@@ -1,20 +1,7 @@
-import type { UVConfig } from "@titaniumnetwork-dev/ultraviolet";
 import mime from "mime/lite";
-import genProxyPath from "$config/shared/genProxyPath";
-import { decode, encode, init } from "$config/shared/wasmDencode";
+import { encode } from "$config/shared/wasmDencode";
 
-declare global {
-    interface Window {
-        __uv$config: Partial<UVConfig>;
-        UVServiceWorker: any;
-    }
-}
-
-importScripts("/uv/uv.bundle.js");
-importScripts("/uv/uv.sw.js");
 importScripts("/scramjetController/controller.sw.js");
-
-const UV_PREFIX = genProxyPath("/~/", "uv");
 
 if (navigator.userAgent.includes("Firefox")) {
     Object.defineProperty(globalThis, "crossOriginIsolated", {
@@ -22,30 +9,6 @@ if (navigator.userAgent.includes("Firefox")) {
         writable: true,
     });
 }
-
-const ready = init().then(() => {
-    const spf = genProxyPath("/", "uv");
-
-    const files = ["uv.handler.js", "uv.client.js", "uv.bundle.js", "uv.sw.js"];
-    const fileProps = Object.fromEntries(
-        files.map(file => {
-            const propName = file.split(".")[1];
-            return [propName, `${spf}${file}`];
-        }),
-    );
-
-    self.__uv$config = {
-        prefix: UV_PREFIX,
-        encodeUrl: encode,
-        decodeUrl: decode,
-        ...fileProps,
-        config: "/uv_config.js",
-    };
-
-    return {
-        uv: new self.UVServiceWorker(),
-    };
-});
 
 const CIVIL_EXT_RE = /^\/civil-ext\/([^/]+)\/(.+)$/;
 
@@ -225,11 +188,7 @@ async function checkDNRNavRedirect(
 
 function proxyRedirectUrl(requestUrl: string, targetUrl: string): string {
     const origin = self.location.origin;
-    const uvPrefix = self.__uv$config.prefix as string;
 
-    if (requestUrl.startsWith(origin + uvPrefix)) {
-        return `${origin}${uvPrefix}${self.__uv$config.encodeUrl!(targetUrl)}`;
-    }
     if (requestUrl.startsWith(origin + SCRAMJET_PREFIX)) {
         const requestPath = new URL(requestUrl).pathname;
         const framePrefix = requestPath.slice(
@@ -530,7 +489,7 @@ const CIVIL_ERROR_COUNTER = `<script>
     W.__civilErrCounterInstalled = true;
     W.__civilConsoleErrors = 0;
     W.__civilRewriterErrors = 0;
-    var RX = new RegExp(["scramjet","ultraviolet","rewrit","__uv","unrewrite","oxc","proxy"].join("|"), "i");
+    var RX = new RegExp(["scramjet","rewrit","unrewrite","oxc","proxy"].join("|"), "i");
     function argsToStr(a){
       try {
         return Array.prototype.map.call(a, function(x){
@@ -736,12 +695,8 @@ function unwrapCivilExt(originalUrl: string): Request | null {
 function decodeProxiedUrl(encodedUrl: string): string | null {
     try {
         const origin = self.location.origin;
-        const uvPrefix = self.__uv$config.prefix as string;
 
-        if (encodedUrl.startsWith(origin + uvPrefix)) {
-            const encoded = encodedUrl.slice((origin + uvPrefix).length);
-            return self.__uv$config.decodeUrl!(encoded.split("?")[0]);
-        } else if (encodedUrl.startsWith(origin + SCRAMJET_PREFIX)) {
+        if (encodedUrl.startsWith(origin + SCRAMJET_PREFIX)) {
             const afterPrefix = encodedUrl
                 .slice((origin + SCRAMJET_PREFIX).length)
                 .split("?")[0];
@@ -910,21 +865,9 @@ async function swResponse(event: FetchEvent) {
         }
     }
 
-    const isUvRequest = url.pathname.startsWith(UV_PREFIX);
     const isScramjetRequest = url.pathname.startsWith(SCRAMJET_PREFIX);
-    if (!isUvRequest && !isScramjetRequest) {
+    if (!isScramjetRequest) {
         return fetch(request);
-    }
-
-    let uv: InstanceType<typeof self.UVServiceWorker>;
-    try {
-        ({ uv } = await ready);
-    } catch (error) {
-        console.error("[civil-sw] Proxy runtime initialization failed:", error);
-        return new Response("Proxy runtime initialization failed", {
-            status: 503,
-            headers: { "Content-Type": "text/plain; charset=utf-8" },
-        });
     }
 
     const originalUrl = decodeProxiedUrl(request.url);
@@ -964,16 +907,7 @@ async function swResponse(event: FetchEvent) {
         return bannedBlockResponse(originalUrl, request);
     }
 
-    if (isUvRequest) {
-        const response = await uv.fetch(event);
-        const blocked = await guardBannedRedirect(response, request);
-        if (blocked) return blocked;
-        return injectChiiPreamble(
-            response,
-            originalUrl ?? undefined,
-            request.mode,
-        );
-    } else if (
+    if (
         isScramjetRequest &&
         ($scramjetController as any).shouldRoute(event)
     ) {

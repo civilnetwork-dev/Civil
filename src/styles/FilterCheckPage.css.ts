@@ -1,5 +1,6 @@
 import { keyframes, style, styleVariants } from "@vanilla-extract/css";
 
+import { DUR, EASE } from "./material.css";
 import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
@@ -35,6 +36,7 @@ export const specimenRow = style({
 });
 
 export const specimenChip = style({
+    borderRadius: "6px",
     ...ANNO,
     padding: "2px 8px",
     border: RULE.hair,
@@ -54,7 +56,7 @@ export const unsupported = style({
  * sheet has no other filled surfaces to sit beside.
  */
 export const rateLimit = style({
-    borderLeft: `2px solid ${vars.color.sandstone}`,
+    borderLeft: `1px solid ${vars.color.sandstone}`,
     paddingLeft: "10px",
     margin: "18px 0 0",
     maxWidth: "520px",
@@ -68,16 +70,24 @@ export const form = style({
 });
 
 export const submit = style({
-    ...ANNO,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
     alignSelf: "flex-start",
     marginTop: "4px",
-    padding: "7px 18px",
+    padding: "11px 20px",
     background: vars.color.cobalt,
     color: vars.color.basalt,
     border: "none",
+    borderRadius: "8px",
+    fontSize: "13px",
+    fontWeight: 600,
     cursor: "pointer",
-    textTransform: "uppercase",
+    transition: `background ${DUR.fast} ${EASE.standard}`,
     selectors: {
+        "&:hover:not(:disabled)": {
+            background: `color-mix(in srgb, ${vars.color.cobalt} 85%, ${vars.color.firn})`,
+        },
         "&:disabled": { opacity: 0.6, cursor: "default" },
     },
 });
@@ -93,7 +103,6 @@ export const ledgerHead = style({
     gap: "10px",
     paddingBottom: "6px",
     color: vars.color.snowmelt,
-    textTransform: "uppercase",
 });
 
 export const ledgerBody = style({ listStyle: "none", margin: 0, padding: 0 });
@@ -119,7 +128,7 @@ export const rowVendor = style({
 
 export const rowVerdict = styleVariants(STATUS_COLOR, color => ({
     fontFamily: FONT_MONO,
-    fontSize: "11px",
+    fontSize: "12px",
     letterSpacing: "0.02em",
     color,
 }));
@@ -150,8 +159,8 @@ export const spinner = style({
 // Category chip on a ledger row detail (Badges/Chips tier in DESIGN.md).
 export const catChip = style({
     padding: "2px 8px",
-    borderRadius: "20px",
-    fontSize: "11px",
+    borderRadius: "999px",
+    fontSize: "12px",
     fontWeight: 500,
     background: vars.color.scree,
     color: vars.color.firn,

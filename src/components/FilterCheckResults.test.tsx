@@ -98,8 +98,8 @@ describe("FilterCheckResults", () => {
     it("renders a column header row naming vendor and verdict", () => {
         const { container, unmount } = mount(RESULTS);
         const head = container.querySelector(`.${s.ledgerHead}`) as HTMLElement;
-        expect(head.textContent).toContain("vendor");
-        expect(head.textContent).toContain("verdict");
+        expect(head.textContent).toContain("Filter");
+        expect(head.textContent).toContain("Verdict");
         unmount();
     });
 

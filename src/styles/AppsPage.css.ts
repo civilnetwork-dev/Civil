@@ -14,7 +14,7 @@ export const grid = style({
     padding: 0,
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
-    gap: "10px",
+    gap: "16px",
 });
 
 /**
@@ -22,6 +22,7 @@ export const grid = style({
  * button; remove is a small corner control revealed on hover and focus.
  */
 export const position = style({
+    borderRadius: "16px",
     position: "relative",
     transition: `background ${DUR.fast} ${EASE.standard}`,
     selectors: {
@@ -37,9 +38,10 @@ export const openBtn = style({
     alignItems: "center",
     gap: "6px",
     width: "100%",
-    padding: "12px 8px",
+    padding: "20px 12px",
     background: "none",
     border: "none",
+    borderRadius: "16px",
     cursor: "pointer",
     color: "inherit",
     font: "inherit",
@@ -62,6 +64,7 @@ export const removeBtn = style({
     padding: 0,
     background: "none",
     border: "none",
+    borderRadius: "6px",
     cursor: "pointer",
     color: vars.color.ash,
     opacity: 0,
@@ -108,7 +111,7 @@ export const iconFallback = style({
 });
 
 export const name = style({
-    fontSize: "12.5px",
+    fontSize: "14px",
     fontWeight: 500,
     color: vars.color.firn,
     textAlign: "center",

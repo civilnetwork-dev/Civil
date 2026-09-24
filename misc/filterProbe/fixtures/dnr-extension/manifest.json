@@ -1,0 +1,7 @@
+{
+    "manifest_version": 3,
+    "name": "DNR probe fixture",
+    "version": "1.0.0",
+    "permissions": ["declarativeNetRequest"],
+    "background": { "service_worker": "background.js" }
+}

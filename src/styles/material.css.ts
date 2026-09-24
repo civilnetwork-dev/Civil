@@ -19,7 +19,6 @@
  *     0.2/0.3s and four different easings scattered across twenty files with
  *     no rule; unevenness at that scale reads as sloppiness even when no
  *     single value is wrong.
- *   - `microLabel` — a small uppercase label recipe.
  *   - `hairline()` — a rule that fades at both ends.
  *   - `hitArea()` — WCAG 2.5.8 target expansion without changing the visuals.
  */
@@ -51,25 +50,6 @@ export const DUR = {
     fast: "0.11s",
     base: "0.18s",
     slow: "0.28s",
-} as const;
-
-/* -------------------------------------------------------------------- */
-/* Type recipe                                                           */
-/* -------------------------------------------------------------------- */
-
-/**
- * A small uppercase label.
- *
- * `moonlight`, not one of the dim tiers: at 11px this is small text and needs
- * 4.5:1. It reads as quiet because it is small, tracked and uppercase, not
- * because it is dim.
- */
-export const microLabel = {
-    fontSize: "11px",
-    fontWeight: 600,
-    letterSpacing: "0.09em",
-    textTransform: "uppercase",
-    color: vars.color.snowmelt,
 } as const;
 
 /* -------------------------------------------------------------------- */

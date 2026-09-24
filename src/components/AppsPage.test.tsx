@@ -53,7 +53,7 @@ describe("AppsPage", () => {
 
     it("sits on a sheet", () => {
         const { container, unmount } = renderSolid(() => <AppsPage />);
-        expect(container.querySelector(`.${s.sheetField}`)).not.toBeNull();
+        expect(container.querySelector(`.${s.sheet}`)).not.toBeNull();
         unmount();
     });
 

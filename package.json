@@ -44,7 +44,6 @@
         "@tanstack/solid-router": "^2.0.0-beta.28",
         "@tanstack/solid-router-devtools": "^2.0.0-beta.23",
         "@terbiumos/tfs": "^1.1.0-dev.1",
-        "@titaniumnetwork-dev/ultraviolet": "^3.2.10",
         "@tomphttp/bare-server-node": "^2.0.6",
         "@types/ws": "^8.18.1",
         "@vanilla-extract/css": "^1.21.2",

@@ -93,7 +93,7 @@ function ExtensionRow(props: {
                 </span>
             </span>
             <span class={s.stamp[props.ext.type === "crx" ? "crx" : "xpi"]}>
-                {props.ext.type}
+                {props.ext.type.toUpperCase()}
             </span>
             {/* The switch is the only thing stating enabled/disabled to a
                 screen reader — the spine node beside it is decorative — so it
@@ -128,7 +128,7 @@ function ExtensionRow(props: {
                     class={s.removeArmed}
                     onClick={props.onUninstall}
                 >
-                    confirm uninstall
+                    Confirm uninstall
                 </button>
             </Show>
         </li>
@@ -294,12 +294,12 @@ export default function ExtensionsPage() {
                                 when={checking()}
                                 fallback={
                                     <>
-                                        <IconRefresh size={13} /> check for
+                                        <IconRefresh size={13} /> Check for
                                         updates
                                     </>
                                 }
                             >
-                                <IconLoader size={13} /> checking
+                                <IconLoader size={13} /> Checking…
                             </Show>
                         </button>
                     </div>
@@ -307,19 +307,18 @@ export default function ExtensionsPage() {
             />
 
             <p class={schematic.lede}>
-                Extensions you chose and can remove. Nothing here was pushed to
-                your device by a policy, and nothing needs an administrator to
-                approve it.
+                Add tools to your browser. Turn them on or off whenever you
+                like.
             </p>
 
             <div class={s.intake}>
                 <span class={s.intakeLabel} id="ext-intake-label">
-                    source
+                    Source
                 </span>
                 <input
                     class={s.intakeInput}
                     type="text"
-                    placeholder="https://… .crx or .xpi"
+                    placeholder="https://… (.crx or .xpi)"
                     value={urlInput()}
                     aria-labelledby="ext-intake-label"
                     onInput={e => setUrlInput(e.currentTarget.value)}
@@ -337,15 +336,15 @@ export default function ExtensionsPage() {
                         when={installing()}
                         fallback={
                             <>
-                                <IconLink size={13} /> install
+                                <IconLink size={13} /> Install
                             </>
                         }
                     >
-                        <IconLoader size={13} /> installing
+                        <IconLoader size={13} /> Installing…
                     </Show>
                 </button>
                 <label class={s.uploadLabel}>
-                    <IconUpload size={13} /> upload file
+                    <IconUpload size={13} /> Upload file
                     <input
                         type="file"
                         accept=".crx,.xpi"
@@ -377,14 +376,15 @@ export default function ExtensionsPage() {
                 <Rule weight="major" />
                 <div class={s.empty}>
                     <Anno muted>
-                        no extensions yet — yours to add, never pushed to you
+                        No extensions yet. Install one from a link or upload a
+                        file.
                     </Anno>
                 </div>
             </Show>
 
             <Show when={crxExts().length > 0}>
                 <div class={s.section}>
-                    <Rule label="chrome · crx" weight="major" />
+                    <Rule label="Chrome extensions" weight="major" />
                     <ul class={s.list}>
                         <For each={crxExts()} keyed={false}>
                             {ext => (
@@ -407,7 +407,7 @@ export default function ExtensionsPage() {
 
             <Show when={xpiExts().length > 0}>
                 <div class={s.section}>
-                    <Rule label="firefox · xpi" weight="major" />
+                    <Rule label="Firefox extensions" weight="major" />
                     <ul class={s.list}>
                         <For each={xpiExts()} keyed={false}>
                             {ext => (

@@ -16,9 +16,14 @@ import {
 import { ContextMenuProvider } from "~/components/ContextMenu";
 import LoadingAnimation from "~/components/LoadingAnimation";
 
-const Devtools = import.meta.env.DEV
-    ? clientOnly(() => import("~/components/Devtools"))
-    : () => null;
+// Opt-in (VITE_ROUTER_DEVTOOLS=1) rather than on for every dev session: the
+// devtools bundle ships its own copy of Solid's DOM runtime, whose delegated
+// document listener re-runs every `$$click` handler in this app. One click on
+// "New tab" opened two tabs, and nothing in production ever would.
+const Devtools =
+    import.meta.env.DEV && import.meta.env.VITE_ROUTER_DEVTOOLS
+        ? clientOnly(() => import("~/components/Devtools"))
+        : () => null;
 
 export const Route = createRootRoute({
     component: RootComponent,

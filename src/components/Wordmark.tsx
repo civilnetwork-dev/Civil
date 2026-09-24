@@ -2,183 +2,42 @@ import type { JSX } from "@solidjs/web";
 
 import { vars } from "~/styles/theme.css";
 
-/**
- * The Civil wordmark — five custom-drawn letters, each carrying a proxy icon
- * inside its own form rather than beside it.
- *
- * | letter | icon | reading |
- * |---|---|---|
- * | C | a ring opened by a wedge that widens outward | the way through |
- * | I | a keyhole punched through the stem | privacy |
- * | V | a funnel: converging arms and a neck | filtering |
- * | I | three bars widening downward | the relay |
- * | L | a port cut into the foot's outer edge | the connection |
- *
- * ## No typeface, and no relatives
- *
- * Nothing here is set in a font. The letters are drawn on one skeleton —
- * even-weight 20-unit slabs, cap 14→82 — and every icon is **subtractive**: a
- * wedge, a keyhole, a counter, a slot, a port. That is the whole grammar, and
- * it is deliberately the inverse of the UI icon set in `components/icons`,
- * which is additive hairline outline on a 16px grid at 45° only. The wordmark
- * uses curves, solid mass, and negative space; the icon set uses none of them.
- *
- * ## What the earlier versions got wrong, so it is not repeated
- *
- * Six treatments were rendered and compared before this one:
- *
- * - **Tapered stems** (wide at the cap, narrow at the base) made both I's read
- *   as chess pawns, and the second one as a control tower.
- * - **Protruding icons** — key teeth, plug prongs, antenna arcs bolted to a
- *   serif — rendered as thin tapering shards that read as glitches, not
- *   objects, and one of them collided with the next letter.
- * - **Small square notches** cut into serif ends read as castle crenellation.
- * - **Changing an I's silhouette breaks the letter.** A round bow on top reads
- *   as lowercase "i"; a broad beam on top reads as "T". Both were tried; both
- *   spelled something other than CIVIL. The I's therefore keep plain slab
- *   silhouettes and carry their icons entirely in punched negative space.
- * - **A detached drop** below the V's neck read as an exclamation mark:
- *   "CI!IL".
- *
- * The icons are sized to survive the New Tab's 196px, where they read as
- * texture, and to resolve fully above roughly 320px. That is a deliberate
- * trade: legible small, rewarding large.
- *
- * ## Colour
- *
- * One warm-to-cool sweep across the word — calcite → sandstone → wine →
- * cobalt → a lighter cobalt tone → juniper — with each letter carrying the
- * segment between its neighbours' hues, so the five gradients read as a single
- * blend rather than five separate fills. Palette values only.
- */
-
-/**
- * Gradient ids are module-level constants rather than generated per render.
- * The mark appears once per page; two instances would share these defs, which
- * is harmless because both want identical gradients.
- */
-const G = {
-    c: "civilWordmarkC",
-    i1: "civilWordmarkI1",
-    v: "civilWordmarkV",
-    i2: "civilWordmarkI2",
-    l: "civilWordmarkL",
-} as const;
-
 export type WordmarkProps = {
-    /** Rendered width in px. Height follows the 359 × 96 ratio. */
+    /** Rendered width in px. Height follows the 376 × 92 ratio. */
     width?: number;
     class?: string;
 };
 
+/**
+ * Civil Proxy's lockup: CIVIL steps down into PROXY, and the foot of the L is
+ * the roof of the P. One stroke serves both letters, and its colour turns from
+ * firn to cobalt at CIVIL's baseline, where the handoff happens.
+ *
+ * PROXY is painted first and the P runs a few units up under the L, so the two
+ * colours overlap rather than abut and no anti-aliased seam shows at the
+ * handoff. Keep the geometry in sync with public/assets/civil-wordmark.svg and
+ * docs/brand/civil-proxy-logo.ai.
+ */
 export function Wordmark(props: WordmarkProps): JSX.Element {
-    const w = () => props.width ?? 359;
+    const w = () => props.width ?? 376;
 
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 359 96"
+            viewBox="0 0 376.06 92"
             width={w()}
-            height={(w() * 96) / 359}
+            height={(w() * 92) / 376.06}
             class={props.class}
             role="img"
-            aria-label="Civil"
+            aria-label="Civil Proxy"
         >
-            <defs>
-                <linearGradient
-                    id={G.c}
-                    x1="14"
-                    y1="14"
-                    x2="81"
-                    y2="82"
-                    gradientUnits="userSpaceOnUse"
-                >
-                    <stop stop-color={vars.color.calcite} />
-                    <stop offset="1" stop-color={vars.color.sandstone} />
-                </linearGradient>
-                <linearGradient
-                    id={G.i1}
-                    x1="97"
-                    y1="14"
-                    x2="131"
-                    y2="82"
-                    gradientUnits="userSpaceOnUse"
-                >
-                    <stop stop-color={vars.color.sandstone} />
-                    <stop offset="1" stop-color={vars.color.wine} />
-                </linearGradient>
-                <linearGradient
-                    id={G.v}
-                    x1="147"
-                    y1="14"
-                    x2="213"
-                    y2="82"
-                    gradientUnits="userSpaceOnUse"
-                >
-                    <stop stop-color={vars.color.wine} />
-                    <stop offset="1" stop-color={vars.color.cobalt} />
-                </linearGradient>
-                {/*
-                    The lighter cobalt tone is the same one the devtools theme
-                    uses for `--color-accent-teal`. A tone of a palette colour
-                    is not a thirteenth colour.
-                */}
-                <linearGradient
-                    id={G.i2}
-                    x1="229"
-                    y1="14"
-                    x2="263"
-                    y2="82"
-                    gradientUnits="userSpaceOnUse"
-                >
-                    <stop stop-color={vars.color.cobalt} />
-                    <stop offset="1" stop-color="#93CAFF" />
-                </linearGradient>
-                <linearGradient
-                    id={G.l}
-                    x1="279"
-                    y1="14"
-                    x2="345"
-                    y2="82"
-                    gradientUnits="userSpaceOnUse"
-                >
-                    <stop stop-color="#93CAFF" />
-                    <stop offset="1" stop-color={vars.color.juniper} />
-                </linearGradient>
-            </defs>
-
-            {/* C — the way through. */}
             <path
-                d="M80.53 38.12 A34 34 0 1 0 80.53 57.88 L64.93 51.56 A17 17 0 1 1 64.93 46.44 Z"
-                fill={`url(#${G.c})`}
+                fill={vars.color.cobalt}
+                d="M282.06 66.25C282.06 84.79 274.85 92 256.31 92C237.77 92 230.56 84.79 230.56 66.25C230.56 47.71 237.77 40.5 256.31 40.5C274.85 40.5 282.06 47.71 282.06 66.25ZM186.56 41.25L206.56 41.25C218.08 41.25 222.56 45.73 222.56 57.25C222.56 64.18 220.94 68.56 217.14 70.95L225.56 91.25L214.46 91.25L207 73.25C206.85 73.25 206.7 73.25 206.56 73.25L197.56 73.25L197.56 91.25L186.56 91.25ZM143.06 44.25L174.62 44.25C176.5 45.77 177.73 47.9 178.41 50.75C178.85 52.61 179.06 54.76 179.06 57.25C179.06 68.77 174.58 73.25 163.06 73.25L154.06 73.25L154.06 91.25L143.06 91.25ZM286.56 41.25L298.61 41.25L308.06 56.51L317.5 41.25L329.56 41.25L314.08 66.25L329.56 91.25L317.5 91.25L308.06 75.99L298.61 91.25L286.56 91.25L302.03 66.25ZM332.06 41.25L344.07 41.25L354.06 57.59L364.05 41.25L376.06 41.25L359.56 68.25L359.56 91.25L348.56 91.25L348.56 68.25ZM270.31 66.25C270.31 55.53 265.55 50 256.31 50C247.07 50 242.31 55.53 242.31 66.25C242.31 76.97 247.07 82.5 256.31 82.5C265.55 82.5 270.31 76.97 270.31 66.25ZM154.06 50.75L154.06 63.75L163.06 63.75C165.86 63.75 167.31 61.54 167.31 57.25C167.31 52.96 165.86 50.75 163.06 50.75ZM197.56 50.75L197.56 63.75L206.56 63.75C209.36 63.75 210.81 61.54 210.81 57.25C210.81 52.96 209.36 50.75 206.56 50.75Z"
             />
-
-            {/* I — privacy. Bow and slot are one contour; as two overlapping
-                punches the even-odd rule fills the overlap back in and the
-                keyhole disappears. */}
             <path
-                fill-rule="evenodd"
-                fill={`url(#${G.i1})`}
-                d="M97 14 H131 V27 H124 V69 H131 V82 H97 V69 H104 V27 H97 Z M116.75 44.51 A8 8 0 1 0 111.25 44.51 L109.5 64 H118.5 Z"
-            />
-
-            {/* V — the filter. */}
-            <path
-                d="M147 14 H167 L180 52 L193 14 H213 L189 70 L187 82 H173 L171 70 Z"
-                fill={`url(#${G.v})`}
-            />
-
-            {/* I — the relay. */}
-            <path
-                fill-rule="evenodd"
-                fill={`url(#${G.i2})`}
-                d="M229 14 H263 V27 H256 V69 H263 V82 H229 V69 H236 V27 H229 Z M243 32 H249 V37 H243 Z M240.5 44 H251.5 V49 H240.5 Z M238 56 H254 V61 H238 Z"
-            />
-
-            {/* L — the port. */}
-            <path
-                d="M279 14 H299 V68 H345 V71 H329 V79 H345 V82 H279 Z"
-                fill={`url(#${G.l})`}
+                fill={vars.color.firn}
+                d="M50.56 15.75L37.68 15.75C35.46 11.61 31.46 9.5 25.75 9.5C16.51 9.5 11.75 15.02 11.75 25.75C11.75 36.47 16.51 42 25.75 42C31.46 42 35.46 39.89 37.68 35.75L50.56 35.75C48.07 46.94 40.49 51.5 25.75 51.5C7.21 51.5 0 44.29 0 25.75C0 7.21 7.21 0 25.75 0C40.49 0 48.07 4.56 50.56 15.75ZM72.06 0.75L83.12 0.75L95.56 31.47L108 0.75L119.06 0.75L98.81 50.75L92.31 50.75ZM143.06 0.75L154.06 0.75L154.06 41.25L163.06 41.25C172.09 41.25 176.8 44.01 178.41 50.75L143.06 50.75ZM57.06 0.75L68.06 0.75L68.06 50.75L57.06 50.75ZM123.06 0.75L134.06 0.75L134.06 50.75L123.06 50.75Z"
             />
         </svg>
     );

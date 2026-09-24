@@ -7,7 +7,11 @@ import { siteProxyConfigs } from "../schema";
 
 export type { SiteProxyConfig };
 
-export type ProxyName = "scramjet" | "uv";
+/** Scramjet is the only proxy engine Civil ships; kept as a named type
+ *  (rather than inlining the literal everywhere) because it's still the
+ *  contract `siteProxyConfigs.proxy` and the client's `BestProxy.proxy`
+ *  (src/lib/bestProxy.ts) are typed against. */
+export type ProxyName = "scramjet";
 export type TransportName = "epoxy" | "libcurl" | "bare";
 
 export interface ProxyDecision {
@@ -73,9 +77,18 @@ export async function upsertSiteProxyConfig(
     return rows[0];
 }
 
+/**
+ * Records a client's measured compat score for a host. Always scramjet now
+ * -- there's no second proxy to explore or compare against, so this no
+ * longer takes a `reportedProxy` (it was always going to be "scramjet") or
+ * branches on which one scored better.
+ *
+ * `scoreUv` is left untouched rather than migrated away: `proxy` has no
+ * DB-level enum (plain `text`), so a pre-removal row can still carry a
+ * historical uv score, but nothing writes a new one.
+ */
 export async function recordCompatFeedback(
     hostname: string,
-    reportedProxy: ProxyName,
     transport: TransportName | undefined,
     compat: number,
     rewriterErrors = 0,
@@ -83,45 +96,19 @@ export async function recordCompatFeedback(
     const existing = await getSiteProxyConfig(hostname);
     if (!existing) return null;
 
-    const other: ProxyName = reportedProxy === "scramjet" ? "uv" : "scramjet";
-
-    // Record this proxy's measured score; keep the other's from before.
-    const scoreScramjet =
-        reportedProxy === "scramjet" ? compat : existing.scoreScramjet;
-    const scoreUv = reportedProxy === "uv" ? compat : existing.scoreUv;
-    const otherScore = reportedProxy === "scramjet" ? scoreUv : scoreScramjet;
-
-    let proxy = existing.proxy as ProxyName;
-    let reason = existing.reason ?? "";
-
-    if (scoreScramjet != null && scoreUv != null) {
-        proxy = scoreScramjet >= scoreUv ? "scramjet" : "uv";
-        reason = `sj=${Math.round(scoreScramjet)},uv=${Math.round(scoreUv)}`;
-    } else {
-        const weak = compat < 70 || rewriterErrors > 0;
-        if (weak && otherScore == null) {
-            proxy = other;
-            reason = `explore-${other}(from ${reportedProxy}@${compat},err=${rewriterErrors})`;
-        } else {
-            proxy = reportedProxy;
-            reason = `${reportedProxy}@${compat},err=${rewriterErrors}`;
-        }
-    }
-
     await db
         .update(siteProxyConfigs)
         .set({
-            proxy,
+            proxy: "scramjet",
             score: compat,
-            scoreScramjet,
-            scoreUv,
+            scoreScramjet: compat,
             transport: transport ?? existing.transport,
-            reason: reason.slice(0, 240),
+            reason: `scramjet@${compat},err=${rewriterErrors}`.slice(0, 240),
             updatedAt: new Date(),
         })
         .where(eq(siteProxyConfigs.hostname, hostname));
 
-    return proxy;
+    return "scramjet";
 }
 
 export async function probeSite(url: string): Promise<ProxyDecision> {
@@ -183,7 +170,6 @@ export async function probeSite(url: string): Promise<ProxyDecision> {
     }
 
     const slow = (latencyMs ?? 9999) > 1200;
-    const proxy: ProxyName = scramjetPoints >= 3 ? "scramjet" : "uv";
 
     const server = (h?.get("server") ?? "").toLowerCase();
     const isCloudflare =
@@ -202,20 +188,16 @@ export async function probeSite(url: string): Promise<ProxyDecision> {
         transport = "epoxy";
     }
 
-    const score = Math.max(
-        0,
-        Math.min(
-            100,
-            proxy === "scramjet"
-                ? 50 + scramjetPoints * 8
-                : 60 - scramjetPoints * 8,
-        ),
-    );
+    // scramjetPoints no longer chooses *between* proxies -- scramjet is the
+    // only one -- but it's still real signal about how defended this site
+    // is, so it still shapes the transport pick above and this score: a
+    // strict-CSP/COOP site scores higher confidence than a plain one.
+    const score = Math.max(0, Math.min(100, 50 + scramjetPoints * 8));
 
     if (reasons.length === 0) reasons.push(res ? "plain-response" : "no-probe");
 
     return {
-        proxy,
+        proxy: "scramjet",
         transport,
         wispVersion: slow ? 1 : 2,
         score,

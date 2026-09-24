@@ -26,18 +26,30 @@ export function TabPill(props: TabPillProps) {
     let el!: HTMLDivElement;
 
     onSettled(() => {
-        registerTabDraggable(el, props.tab.id, props.getStrip, {
-            setDraggingId: props.setDraggingId,
-        });
-        registerTabDropTarget(el, props.tab.id, {
+        const releaseDrag = registerTabDraggable(
+            el,
+            props.tab.id,
+            props.getStrip,
+            {
+                setDraggingId: props.setDraggingId,
+            },
+        );
+        const releaseTarget = registerTabDropTarget(el, props.tab.id, {
             getTabs: props.getTabs,
             onReorder: props.onReorder,
         });
+        return () => {
+            releaseDrag();
+            releaseTarget();
+        };
     });
 
     return (
         <div
             ref={el}
+            role="tab"
+            aria-selected={props.active ? "true" : "false"}
+            aria-label={props.tab.title}
             tabindex={0}
             class={[
                 s.tab,

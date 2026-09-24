@@ -1,7 +1,7 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 
 import { DUR, EASE, hitArea } from "./material.css";
-import { ANNO, FONT_MONO, RULE } from "./schematic.css";
+import { ANNO, FONT_SANS, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -40,7 +40,6 @@ const textBtnBase = style({
     borderBottom: RULE.hair,
     padding: "2px",
     cursor: "pointer",
-    textTransform: "uppercase",
     transitionProperty: "color, border-color, opacity",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
@@ -72,8 +71,10 @@ export const intake = style({
     gap: "12px",
     flexWrap: "wrap",
     margin: "20px 0 8px",
-    paddingBottom: "8px",
-    borderBottom: RULE.hair,
+    padding: "12px 16px",
+    border: RULE.major,
+    borderRadius: "10px",
+    background: vars.color.basalt,
     transitionProperty: "border-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
@@ -85,7 +86,6 @@ export const intake = style({
 export const intakeLabel = style({
     ...ANNO,
     flexShrink: 0,
-    textTransform: "uppercase",
     whiteSpace: "nowrap",
 });
 
@@ -96,11 +96,12 @@ export const intakeInput = style({
     background: "transparent",
     outline: "none",
     color: vars.color.firn,
-    fontFamily: FONT_MONO,
-    fontSize: "13px",
+    fontFamily: FONT_SANS,
+    fontSize: "14px",
     caretColor: vars.color.cobalt,
     selectors: {
         "&::placeholder": { color: vars.color.ash },
+        "&:focus-visible": { outline: "none" },
     },
 });
 
@@ -246,6 +247,7 @@ export const node = styleVariants({
 });
 
 export const iconPlate = style({
+    borderRadius: "8px",
     width: "26px",
     height: "26px",
     display: "grid",
@@ -294,8 +296,7 @@ const stampBase = style({
     ...ANNO,
     flexShrink: 0,
     padding: "2px 6px",
-    fontSize: "11px",
-    textTransform: "uppercase",
+    fontSize: "12px",
 });
 
 export const stamp = styleVariants({
@@ -346,6 +347,7 @@ export const toggleInput = style({
 });
 
 export const toggleTrack = style({
+    borderRadius: "20px",
     position: "absolute",
     inset: 0,
     border: `0.5px solid ${vars.color.talus}`,
@@ -368,6 +370,7 @@ export const toggleTrack = style({
 });
 
 export const toggleThumb = style({
+    borderRadius: "50%",
     position: "absolute",
     top: "3px",
     left: "3px",
@@ -398,6 +401,7 @@ export const removeBtn = style({
     height: "24px",
     padding: 0,
     border: "none",
+    borderRadius: "6px",
     background: "none",
     color: vars.color.ash,
     cursor: "pointer",
