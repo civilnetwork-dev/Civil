@@ -135,7 +135,18 @@ async function buildTransport(key: string, wispUrl: string) {
             const { default: EpoxyTransport } = await import(
                 `${location.origin}/epoxy/index.mjs`
             );
-            const t = new EpoxyTransport({ wisp: wispUrl });
+            // "epoxy@2" speaks Wisp version 2. Civil's server (run.ts) answers
+            // in version 2 only when the socket asks for a subprotocol, so the
+            // client names one; plain "epoxy" stays the version 1 client.
+            const t = new EpoxyTransport(
+                key === "epoxy@2"
+                    ? {
+                          wisp: wispUrl,
+                          wisp_v2: true,
+                          wisp_ws_protocols: ["wisp-v2"],
+                      }
+                    : { wisp: wispUrl },
+            );
             await t.init();
             return t;
         }
@@ -143,10 +154,13 @@ async function buildTransport(key: string, wispUrl: string) {
 }
 
 async function createTransport() {
-    const preferred = localStorage.getItem("transport") || "epoxy";
+    const stored = localStorage.getItem("transport") || "epoxy";
+    // Same default as `wispVersion` in src/lib/settings.ts: version 2 unless
+    // the user picked 1. "auto" has no site to ask about yet, so it's 2 too.
+    const wisp = localStorage.getItem("civil:wisp-version") || "2";
+    const preferred = stored === "epoxy" && wisp !== "1" ? "epoxy@2" : stored;
 
-    const order = ["epoxy", "libcurl", "bare"];
-    const tryOrder = [preferred, ...order.filter(k => k !== preferred)];
+    const tryOrder = [...new Set([preferred, "epoxy", "libcurl", "bare"])];
 
     let lastError: unknown;
     for (const key of tryOrder) {

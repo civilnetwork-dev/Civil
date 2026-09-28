@@ -21,6 +21,7 @@ import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
+import Specimen from "~/components/Specimen";
 import type { CivilExtension } from "~/types";
 
 import * as s from "~/styles/ExtensionsPage.css";
@@ -277,6 +278,8 @@ export default function ExtensionsPage() {
         <Sheet>
             <TitleBlock
                 title="Extensions"
+                icon={IconPuzzle}
+                tint="sandstone"
                 meta={
                     extensions().length > 0
                         ? `${enabledCount()} of ${extensions().length} enabled`
@@ -375,6 +378,7 @@ export default function ExtensionsPage() {
             <Show when={extensions().length === 0}>
                 <Rule weight="major" />
                 <div class={s.empty}>
+                    <Specimen icon={IconPuzzle} tint="stone" size={64} />
                     <Anno muted>
                         No extensions yet. Install one from a link or upload a
                         file.

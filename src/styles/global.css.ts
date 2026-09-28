@@ -14,18 +14,25 @@ globalStyle("*, *::before, *::after", {
 // transition unconditionally. Durations collapse instead of going to
 // `animation: none` so animations still reach their final frame and
 // completion handlers still fire.
+const STILL = {
+    transitionDuration: "0.01ms !important",
+    transitionDelay: "0s !important",
+    animationDuration: "0.01ms !important",
+    animationDelay: "0s !important",
+    animationIterationCount: "1 !important",
+    scrollBehavior: "auto",
+} as const;
+
 globalStyle("*, *::before, *::after", {
-    "@media": {
-        "(prefers-reduced-motion: reduce)": {
-            transitionDuration: "0.01ms !important",
-            transitionDelay: "0s !important",
-            animationDuration: "0.01ms !important",
-            animationDelay: "0s !important",
-            animationIterationCount: "1 !important",
-            scrollBehavior: "auto",
-        },
-    },
+    "@media": { "(prefers-reduced-motion: reduce)": STILL },
 });
+
+// The same, when the user asks Civil itself to reduce motion (Settings sets
+// `data-motion` on every document's root in entry-client.tsx).
+globalStyle(
+    '[data-motion="reduce"] *, [data-motion="reduce"] *::before, [data-motion="reduce"] *::after',
+    STILL,
+);
 
 globalStyle("html, body", {
     backgroundColor: vars.color.stratum,
@@ -51,6 +58,10 @@ globalStyle("::selection", {
 globalStyle("button, input, textarea, select", {
     fontFamily: "inherit",
 });
+
+// No resize grip and no dragging a textarea larger. Its own min-height is its
+// resting size, and it grows with whatever is typed or pasted past that.
+globalStyle("textarea", { resize: "none", fieldSizing: "content" });
 
 // One keyboard focus ring for the whole app. `:focus-visible` keeps it off
 // pointer interactions, so this costs nothing visually for mouse users and

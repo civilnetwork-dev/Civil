@@ -1,6 +1,6 @@
 import { RouterProvider } from "@tanstack/solid-router";
 
-import { router } from "./router";
+import type { createRouter } from "./router";
 
 /**
  * IBM Plex Sans and IBM Plex Mono, one superfamily.
@@ -21,6 +21,8 @@ import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "~/styles/global.css";
 
-export default function App() {
-    return <RouterProvider router={router} />;
+export default function App(props: {
+    router: ReturnType<typeof createRouter>;
+}) {
+    return <RouterProvider router={props.router} />;
 }

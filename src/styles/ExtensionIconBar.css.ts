@@ -1,18 +1,17 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
+import { BAND, blend, edge, KEYCAP, LIT, SHADE } from "./material.css";
 import { FONT_MONO } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
- * Extension buttons in the identification strip. Square, like every other
- * control in the chrome.
+ * Extension buttons in the identification strip: keycaps like every other
+ * control on the terrace.
  *
- * The popup keeps its border but loses the 32px drop shadow: it renders an
- * extension's own HTML on a white ground, so it is already unmistakably a
- * separate surface without simulating elevation underneath it.
+ * The popup renders an extension's own HTML on a white ground, which no
+ * palette tone should paint over, so its stone is underneath: it floats on
+ * the same sediment edge as every menu.
  */
-
-const T_FAST = "0.1s ease";
 
 const popupIn = keyframes({
     from: { opacity: 0, transform: "translateY(-4px)" },
@@ -26,31 +25,26 @@ export const bar = style({
     flexShrink: 0,
 });
 
-export const extBtn = style({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "30px",
-    height: "30px",
-    border: "none",
-    borderRadius: "8px",
-    background: "transparent",
-    cursor: "pointer",
-    padding: "2px",
-    flexShrink: 0,
-    position: "relative",
-    transition: `background ${T_FAST}`,
-    transitionDuration: "0.1s",
-    selectors: {
-        "&:hover": {
-            background: vars.color.talus,
+export const extBtn = style(
+    blend(KEYCAP, {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "30px",
+        height: "30px",
+        border: "none",
+        borderRadius: "8px",
+        cursor: "pointer",
+        padding: "2px",
+        flexShrink: 0,
+        selectors: {
+            "&:focus-visible": {
+                outline: `1px solid ${vars.color.cobalt}`,
+                outlineOffset: "1px",
+            },
         },
-        "&:focus-visible": {
-            outline: `1px solid ${vars.color.cobalt}`,
-            outlineOffset: "-1px",
-        },
-    },
-});
+    }),
+);
 
 export const extIcon = style({
     width: "18px",
@@ -66,7 +60,9 @@ export const extIconFallback = style({
     alignItems: "center",
     justifyContent: "center",
     color: vars.color.snowmelt,
-    background: vars.color.talus,
+    backgroundColor: vars.color.talus,
+    backgroundImage: LIT,
+    boxShadow: SHADE.lip,
     borderRadius: "4px",
     fontSize: "11px",
     fontWeight: 600,
@@ -80,7 +76,9 @@ export const popup = style({
     background: "#fff",
     border: `1px solid ${vars.color.talus}`,
     borderRadius: "12px",
+    boxShadow: edge(6, BAND.light, BAND.dark, SHADE.far),
     overflow: "hidden",
+
     animation: `${popupIn} 0.12s cubic-bezier(0.22,1,0.36,1) both`,
     animationDuration: "0.12s",
 });

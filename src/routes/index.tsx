@@ -3,6 +3,8 @@ import { clientOnly } from "@solidjs/web";
 import { createFileRoute } from "@tanstack/solid-router";
 import { onSettled } from "solid-js";
 
+import { getSetting } from "~/lib/settings";
+
 const Browser = clientOnly(() => import("~/components/BrowserChrome.tsx"));
 
 export const Route = createFileRoute("/")({
@@ -11,8 +13,9 @@ export const Route = createFileRoute("/")({
 
 function RouteComponent() {
     onSettled(() => {
-        // Preview the app without loading production advertising in development.
-        if (import.meta.env.DEV) return;
+        // Preview the app without loading production advertising in
+        // development, and never once the user has turned ads off in Settings.
+        if (import.meta.env.DEV || !getSetting("ads")) return;
         const ippScript = document.createElement("script");
         const nativeScript = document.createElement("script");
 

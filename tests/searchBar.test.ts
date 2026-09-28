@@ -22,6 +22,61 @@ beforeEach(() => {
     localStorage.clear();
     delete (window as any).scramjet;
     delete (window as any).scramjetReady;
+    delete (window as any).__civilGetTransport;
+});
+
+describe("SearchBar.submitFrame transport", () => {
+    // The load watchdog's failover retry depends on this: with no best-proxy
+    // pick, the frame used to keep whatever transport it had, so the retry
+    // ran on the transport that had just failed.
+    it("applies the resolved transport even without a best-proxy pick", async () => {
+        const sframe: any = { go: vi.fn(), controller: {} };
+        (window as any).scramjet = {
+            frames: [],
+            createFrame: vi.fn(() => sframe),
+        };
+        const libcurl = { name: "libcurl" };
+        (window as any).__civilGetTransport = vi.fn(async () => libcurl);
+        localStorage.setItem("transport", "libcurl");
+
+        const bar = searchBar();
+        await bar.submitFrame({} as any, "example.com");
+
+        expect((window as any).__civilGetTransport).toHaveBeenCalledWith(
+            "libcurl",
+        );
+        expect(sframe.controller.transport).toBe(libcurl);
+    });
+
+    it("asks for Epoxy on Wisp version 2 by default", async () => {
+        const sframe: any = { go: vi.fn(), controller: {} };
+        (window as any).scramjet = {
+            frames: [],
+            createFrame: vi.fn(() => sframe),
+        };
+        (window as any).__civilGetTransport = vi.fn(async () => ({}));
+
+        await searchBar().submitFrame({} as any, "example.com");
+
+        expect((window as any).__civilGetTransport).toHaveBeenCalledWith(
+            "epoxy@2",
+        );
+    });
+
+    it("searches with the chosen engine", async () => {
+        const sframe = { go: vi.fn() };
+        (window as any).scramjet = {
+            frames: [],
+            createFrame: vi.fn(() => sframe),
+        };
+        localStorage.setItem("search", "brave");
+
+        await searchBar().submitFrame({} as any, "red pandas");
+
+        expect(sframe.go).toHaveBeenCalledWith(
+            "https://search.brave.com/search?q=red%20pandas",
+        );
+    });
 });
 
 /**

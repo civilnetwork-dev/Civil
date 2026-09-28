@@ -1,32 +1,52 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
+import {
+    blend,
+    KEY_COBALT,
+    KEY_STONE,
+    KEYCAP,
+    PLATE,
+    WELL,
+} from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
+
+/**
+ * The vendor toasts (GoGuardian manifest, iboss gateway): a slab that rises
+ * into the corner, with its fields carved into it and stone keys to answer.
+ */
+
+const groove = {
+    content: '""',
+    flex: 1,
+    height: 0,
+    borderTop: `1px solid color-mix(in srgb, ${vars.color.basalt} 60%, transparent)`,
+    boxShadow: `0 1px 0 color-mix(in srgb, ${vars.color.firn} 6%, transparent)`,
+} as const;
 
 const slideUp = keyframes({
     from: { opacity: 0, transform: "translateY(24px)" },
     to: { opacity: 1, transform: "translateY(0)" },
 });
 
-export const toast = style({
-    position: "fixed",
-    bottom: "24px",
-    right: "24px",
-    zIndex: 9999,
-    width: "360px",
-    maxWidth: "calc(100vw - 48px)",
-    backgroundColor: vars.color.scree,
-    border: `1px solid ${vars.color.talus}`,
-    borderRadius: "12px",
-    padding: "20px",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
-    display: "flex",
-    flexDirection: "column",
-    gap: "12px",
-    animation: `${slideUp} 0.28s cubic-bezier(0.4, 0, 0.2, 1) both`,
-    animationDuration: "0.28s",
-    fontFamily: FONT_SANS,
-});
+export const toast = style(
+    blend(PLATE, {
+        position: "fixed",
+        bottom: "24px",
+        right: "24px",
+        zIndex: 9999,
+        width: "360px",
+        maxWidth: "calc(100vw - 48px)",
+        borderRadius: "16px",
+        padding: "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        animation: `${slideUp} 0.36s cubic-bezier(0.22, 1, 0.36, 1) both`,
+        animationDuration: "0.36s",
+        fontFamily: FONT_SANS,
+    }),
+);
 
 export const header = style({
     display: "flex",
@@ -57,23 +77,23 @@ export const districtName = style({
     maxWidth: "260px",
 });
 
-export const dismissBtn = style({
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    color: vars.color.ash,
-    padding: "2px",
-    borderRadius: "6px",
-    fontSize: "16px",
-    lineHeight: 1,
-    flexShrink: 0,
-    transitionProperty: "color",
-    transitionTimingFunction: "ease",
-    transitionDuration: "0.1s",
-    ":hover": {
-        color: vars.color.firn,
-    },
-});
+export const dismissBtn = style(
+    blend(KEYCAP, {
+        display: "grid",
+        placeItems: "center",
+        border: "none",
+        cursor: "pointer",
+        color: vars.color.ash,
+        padding: "4px",
+        borderRadius: "7px",
+        fontSize: "16px",
+        lineHeight: 1,
+        flexShrink: 0,
+        selectors: {
+            "&:hover": { color: vars.color.firn },
+        },
+    }),
+);
 
 export const description = style({
     fontSize: "12px",
@@ -82,24 +102,26 @@ export const description = style({
     margin: 0,
 });
 
-export const dropZone = style({
-    border: `1.5px dashed ${vars.color.talus}`,
-    borderRadius: "8px",
-    padding: "12px",
-    textAlign: "center",
-    fontSize: "12px",
-    color: vars.color.ash,
-    cursor: "pointer",
-    transition: "border-color 0.15s, background 0.15s",
-    transitionDuration: "0.15s",
-    selectors: {
-        "&[data-active='true']": {
-            borderColor: vars.color.cobalt,
-            backgroundColor: `color-mix(in srgb, ${vars.color.cobalt} 8%, transparent)`,
-            color: vars.color.cobalt,
+export const dropZone = style(
+    blend(WELL, {
+        border: `1.5px dashed ${vars.color.talus}`,
+        borderRadius: "10px",
+        padding: "12px",
+        textAlign: "center",
+        fontSize: "12px",
+        color: vars.color.ash,
+        cursor: "pointer",
+        transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s",
+        transitionDuration: "0.15s",
+        selectors: {
+            "&[data-active='true']": {
+                borderColor: vars.color.cobalt,
+                backgroundColor: `color-mix(in srgb, ${vars.color.cobalt} 10%, ${vars.color.basalt})`,
+                color: vars.color.cobalt,
+            },
         },
-    },
-});
+    }),
+);
 
 export const orDivider = style({
     display: "flex",
@@ -107,40 +129,27 @@ export const orDivider = style({
     gap: "8px",
     fontSize: "11px",
     color: vars.color.ash,
-    "::before": {
-        content: '""',
-        flex: 1,
-        height: "1px",
-        backgroundColor: vars.color.talus,
-    },
-    "::after": {
-        content: '""',
-        flex: 1,
-        height: "1px",
-        backgroundColor: vars.color.talus,
-    },
+    "::before": groove,
+    "::after": groove,
 });
 
-export const textarea = style({
-    width: "100%",
-    minHeight: "72px",
-    resize: "vertical",
-    backgroundColor: vars.color.stratum,
-    border: `1px solid ${vars.color.talus}`,
-    borderRadius: "6px",
-    color: vars.color.firn,
-    fontSize: "11px",
-    fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-    padding: "8px 10px",
-    boxSizing: "border-box",
-    outline: "none",
-    "::placeholder": {
-        color: vars.color.ash,
-    },
-    ":focus": {
-        borderColor: vars.color.cobalt,
-    },
-});
+export const textarea = style(
+    blend(WELL, {
+        width: "100%",
+        minHeight: "72px",
+        border: "none",
+        borderRadius: "9px",
+        color: vars.color.firn,
+        fontSize: "11px",
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        padding: "8px 10px",
+        boxSizing: "border-box",
+        outline: "none",
+        "::placeholder": {
+            color: vars.color.ash,
+        },
+    }),
+);
 
 export const actions = style({
     display: "flex",
@@ -148,44 +157,33 @@ export const actions = style({
     justifyContent: "flex-end",
 });
 
-export const cancelBtn = style({
-    padding: "7px 14px",
-    borderRadius: "6px",
-    fontSize: "13px",
-    fontWeight: 500,
-    cursor: "pointer",
-    background: "none",
-    border: `1px solid ${vars.color.talus}`,
-    color: vars.color.snowmelt,
-    transitionProperty: "border-color, color",
-    transitionTimingFunction: "ease",
-    transitionDuration: "0.1s",
-    ":hover": {
-        borderColor: vars.color.ash,
-        color: vars.color.firn,
-    },
-});
+export const cancelBtn = style(
+    blend(KEY_STONE, {
+        padding: "7px 14px",
+        borderRadius: "9px",
+        fontSize: "13px",
+        fontWeight: 500,
+        cursor: "pointer",
+        border: "none",
+        color: vars.color.snowmelt,
+        selectors: {
+            "&:hover": { color: vars.color.firn },
+        },
+    }),
+);
 
-export const submitBtn = style({
-    padding: "7px 16px",
-    borderRadius: "6px",
-    fontSize: "13px",
-    fontWeight: 600,
-    cursor: "pointer",
-    border: "none",
-    backgroundColor: vars.color.cobalt,
-    color: vars.color.stratum,
-    transitionProperty: "filter",
-    transitionTimingFunction: "ease",
-    transitionDuration: "0.1s",
-    ":disabled": {
-        opacity: 0.5,
-        cursor: "not-allowed",
-    },
-    ":hover": {
-        filter: "brightness(1.1)",
-    },
-});
+export const submitBtn = style(
+    blend(KEY_COBALT, {
+        padding: "7px 16px",
+        borderRadius: "9px",
+        fontSize: "13px",
+        cursor: "pointer",
+        border: "none",
+        selectors: {
+            "&:disabled": { opacity: 0.5, cursor: "not-allowed" },
+        },
+    }),
+);
 
 export const errorText = style({
     fontSize: "11px",

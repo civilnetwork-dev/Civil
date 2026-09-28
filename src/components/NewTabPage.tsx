@@ -6,9 +6,12 @@ import {
     IconBookmark,
     IconClock,
     IconPuzzle,
+    IconSliders,
     IconWorld,
 } from "~/components/icons";
+import Specimen, { type Tint } from "~/components/Specimen";
 import { Wordmark } from "~/components/Wordmark";
+import { useSetting } from "~/lib/settings";
 
 import SearchBarContainer from "./SearchBarContainer";
 
@@ -16,34 +19,47 @@ import * as s from "~/styles/NewTabPage.css";
 
 const HOME_URL = "/";
 
-const shortcuts = [
+// Each destination keeps one mineral everywhere it appears: here, and as the
+// emblem in its own page's title block.
+const shortcuts: {
+    title: string;
+    description: string;
+    href: string;
+    icon: typeof IconApps;
+    tint: Tint;
+}[] = [
     {
         title: "Apps",
         description: "Your favorite places",
         href: "/apps",
         icon: IconApps,
+        tint: "cobalt",
     },
     {
         title: "Bookmarks",
         description: "Keep the good stuff",
         href: "/bookmarks",
         icon: IconBookmark,
+        tint: "calcite",
     },
     {
         title: "History",
         description: "Pick up where you left off",
         href: "/history",
         icon: IconClock,
+        tint: "juniper",
     },
     {
         title: "Extensions",
         description: "Make it your own",
         href: "/extensions",
         icon: IconPuzzle,
+        tint: "sandstone",
     },
 ];
 
 export default function NewTabPage() {
+    const ads = useSetting("ads");
     const inFrame = () =>
         typeof window !== "undefined" && window.self !== window.top;
 
@@ -76,18 +92,27 @@ export default function NewTabPage() {
                 >
                     <Wordmark width={140} />
                 </a>
-                <a
-                    class={s.utilityLink}
-                    href="/checkfilters"
-                    onClick={event => openPage(event, "/checkfilters")}
-                >
-                    Filter check <IconArrowUpRight size={15} />
-                </a>
+                <div class={s.utilities}>
+                    <a
+                        class={s.utilityLink}
+                        href="/checkfilters"
+                        onClick={event => openPage(event, "/checkfilters")}
+                    >
+                        Filter check <IconArrowUpRight size={15} />
+                    </a>
+                    <a
+                        class={s.utilityLink}
+                        href="/settings"
+                        onClick={event => openPage(event, "/settings")}
+                    >
+                        <IconSliders size={15} /> Settings
+                    </a>
+                </div>
             </header>
             <section class={s.content} aria-labelledby="welcome-heading">
                 <div class={s.welcome}>
-                    <div class={s.emblem} aria-hidden="true">
-                        <IconWorld size={28} />
+                    <div class={s.emblem}>
+                        <Specimen icon={IconWorld} size={72} idle />
                     </div>
                     <h1 id="welcome-heading" class={s.heading}>
                         A little space to explore.
@@ -116,9 +141,13 @@ export default function NewTabPage() {
                                     openPage(event, shortcut.href)
                                 }
                             >
-                                <span class={s.shortcutIcon}>
-                                    <shortcut.icon size={22} />
-                                </span>
+                                <Specimen
+                                    icon={shortcut.icon}
+                                    tint={shortcut.tint}
+                                    size={56}
+                                    class={s.shortcutMark}
+                                />
+
                                 <span class={s.shortcutTitle}>
                                     {shortcut.title}
                                 </span>
@@ -131,7 +160,9 @@ export default function NewTabPage() {
                 </nav>
             </section>
             <footer class={s.footer}>
-                Ads keep Civil free and open source.
+                {ads()
+                    ? "Ads keep Civil free and open source."
+                    : "Civil is free and open source."}
             </footer>
         </main>
     );

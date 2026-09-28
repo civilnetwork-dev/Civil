@@ -1,7 +1,9 @@
 import { EventEmitter } from "tseep";
 
 import { fetchBestProxy, measureAndReportCompat } from "./bestProxy";
+import { getSetting, searchUrl } from "./settings";
 import { registerSw, setupBareMux } from "./swUtils";
+import { resolveTransport, transportKey, wantsBestProxy } from "./transport";
 
 interface ISearchBar {
     lastUrlSearched: string | URL;
@@ -11,10 +13,6 @@ interface ISearchBar {
         currentTechnology: "bare" | "wisp";
         currentTechnologyPath: `/${string}/`;
     }>;
-    searchEngineMap: {
-        name: string;
-        value: `${string}?q=%s`;
-    }[];
 }
 
 function isNavigableUrl(term: string): boolean {
@@ -35,7 +33,6 @@ class SearchBar
     lastUrlSearched!: string | URL;
     url!: string;
     debugInfo!: ISearchBar["debugInfo"];
-    searchEngineMap: ISearchBar["searchEngineMap"];
     ready: Promise<void>;
 
     private static keys = ["lastUrlSearched", "url", "debugInfo"] as const;
@@ -78,14 +75,6 @@ class SearchBar
             this[key] = isJson(value) ? JSON.parse(value) : value;
         }
 
-        this.searchEngineMap = [
-            { name: "google", value: "https://www.google.com/search?q=%s" },
-            { name: "ddg", value: "https://duckduckgo.com/?q=%s" },
-            { name: "bing", value: "https://www.bing.com/search?q=%s" },
-            { name: "brave", value: "https://search.brave.com/search?q=%s" },
-            { name: "searx", value: "https://searx.org/search?q=%s" },
-        ];
-
         this.registerHandlers();
     }
 
@@ -117,14 +106,7 @@ class SearchBar
         if (isNavigableUrl(term)) {
             return this.isAbsoluteUrl(term) ? term : `https://${term}`;
         }
-
-        const engine = this.searchEngineMap.find(
-            eng => eng.name === (localStorage.getItem("search") || "google"),
-        );
-        return (
-            engine?.value.replace("%s", encodeURIComponent(term)) ??
-            `https://www.google.com/search?q=${encodeURIComponent(term)}`
-        );
+        return searchUrl(term);
     }
 
     private trackInternalVisit(term: string) {
@@ -140,11 +122,7 @@ class SearchBar
         );
     }
 
-    private async applyFrameTransport(
-        sframe: any,
-        key: string | undefined,
-    ): Promise<void> {
-        if (!key) return;
+    private async applyFrameTransport(sframe: any, key: string): Promise<void> {
         try {
             const getT = (window as any).__civilGetTransport as
                 | ((k: string) => Promise<unknown>)
@@ -164,7 +142,9 @@ class SearchBar
 
     async submitFrame(frame: HTMLIFrameElement, term: string) {
         await this.ready;
-        const cfg = await fetchBestProxy(term);
+        // With automatic picking off (or a site rule in charge) the probe
+        // would be ignored, so the visited address is not sent for it.
+        const cfg = wantsBestProxy(term) ? await fetchBestProxy(term) : null;
 
         // Re-await the real scramjetReady promise (a no-op once it's already
         // resolved) before touching window.scramjet — see isScramjetReady.
@@ -180,11 +160,19 @@ class SearchBar
             (f: any) => f.element === frame,
         );
         const sframe = existing ?? controller.createFrame(frame);
-        await this.applyFrameTransport(sframe, cfg?.transport);
+        // Always set, never left to whatever the frame used last: a retry
+        // after a failover has to actually run on the new transport.
+        const transport = resolveTransport(frame, term, cfg?.transport);
+        await this.applyFrameTransport(
+            sframe,
+            transportKey(transport, cfg?.wispVersion),
+        );
         sframe.go(this.normalizeTerm(term));
 
         this.trackInternalVisit(term);
-        void measureAndReportCompat(frame, term, cfg?.transport);
+        if (getSetting("compatReports")) {
+            void measureAndReportCompat(frame, term, transport);
+        }
     }
 }
 

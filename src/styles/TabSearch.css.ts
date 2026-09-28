@@ -1,16 +1,26 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
-import { ANNO, FONT_MONO, FONT_SANS, RULE } from "./schematic.css";
+import {
+    blend,
+    edge,
+    KEYCAP_FACE,
+    LIT,
+    PLATE,
+    ROW_LIFT,
+    SHADE,
+    WELL,
+} from "./material.css";
+import { ANNO, FONT_MONO, FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
- * The tab switcher. A 12px sheet over a dimmed page, separated by its border
- * and the scrim rather than by a drop shadow; rows are ruled apart and
- * addresses stay in the annotation tier.
+ * The tab switcher: a slab that rises over a dimmed page, with its search
+ * carved into the top of it. Each tab is a row on the slab that lifts under
+ * the pointer; the keyboard hints in the footer are real little keycaps.
+ * Addresses stay in the annotation tier.
  */
 
 const T_SPRING = "0.2s cubic-bezier(0.22, 1, 0.36, 1)";
-const T_EASE = "0.18s cubic-bezier(0.4, 0, 0.2, 1)";
 const T_POOF = "0.22s cubic-bezier(0.55, 0, 1, 0.45)";
 
 const backdropIn = keyframes({
@@ -23,11 +33,9 @@ const backdropOut = keyframes({
     to: { opacity: 0 },
 });
 
-// Opacity and a short translate only. The spring scale this replaced made the
-// panel read as a physical object springing forward, which is the elevation
-// metaphor the rest of the system dropped.
+// The slab rises into place from just below where it settles.
 const panelIn = keyframes({
-    from: { opacity: 0, transform: "translateY(-6px)" },
+    from: { opacity: 0, transform: "translateY(10px)" },
     to: { opacity: 1, transform: "translateY(0)" },
 });
 
@@ -59,30 +67,33 @@ export const backdropLeaving = style({
     animationDuration: "0.22s",
 });
 
-export const panel = style({
-    width: "min(580px, 92vw)",
-    background: vars.color.basalt,
-    border: `1px solid ${vars.color.talus}`,
-    borderRadius: "12px",
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-    animation: `${panelIn} ${T_SPRING} both`,
-    animationDuration: "0.2s",
-});
+export const panel = style(
+    blend(PLATE, {
+        width: "min(580px, 92vw)",
+        borderRadius: "16px",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        animation: `${panelIn} ${T_SPRING} both`,
+        animationDuration: "0.2s",
+    }),
+);
 
 export const panelLeaving = style({
     animation: `${panelOut} ${T_POOF} forwards`,
     animationDuration: "0.22s",
 });
 
-export const inputRow = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    padding: "14px 16px",
-    borderBottom: RULE.hair,
-});
+export const inputRow = style(
+    blend(WELL, {
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        margin: "10px 10px 6px",
+        padding: "12px 14px",
+        borderRadius: "12px",
+    }),
+);
 
 export const searchIcon = style({
     color: vars.color.cobalt,
@@ -123,10 +134,10 @@ export const hint = style({
 export const results = style({
     overflowY: "auto",
     maxHeight: "360px",
-    padding: 0,
+    padding: "4px 8px 10px",
     display: "flex",
     flexDirection: "column",
-    gap: 0,
+    gap: "2px",
     // The list rarely ends on a row boundary, so the overflow used to slice a
     // row cleanly in half against the footer - and with the scrollbar hidden
     // there was nothing to read as "this scrolls" either. Fading the last few
@@ -141,31 +152,34 @@ export const results = style({
     },
 });
 
-export const resultItem = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    padding: "9px 10px",
-    cursor: "pointer",
-    transition: `background ${T_EASE}`,
-    transitionDuration: "0.18s",
-    selectors: {
-        "& + &": { borderTop: RULE.hair },
-        "&:hover": { background: vars.color.scree },
-    },
-});
+export const resultItem = style(
+    blend(ROW_LIFT, {
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "9px 10px",
+        cursor: "pointer",
+    }),
+);
 
+const COBALT_ROW = `color-mix(in oklab, ${vars.color.cobalt} 22%, ${vars.color.scree})`;
+
+// The keyboard's row is lifted and tinted cobalt, so the selection reads as a
+// raised chip whether or not the pointer is anywhere near it.
 export const resultItemActive = style({
-    background: `color-mix(in srgb, ${vars.color.cobalt} 14%, transparent)`,
+    backgroundColor: COBALT_ROW,
+    backgroundImage: LIT,
+    boxShadow: `${SHADE.lip}, ${edge(2)}`,
     selectors: {
         "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.cobalt} 18%, transparent)`,
+            backgroundColor: COBALT_ROW,
+            backgroundImage: LIT,
         },
     },
 });
 
 export const resultItemCurrent = style({
-    background: `color-mix(in srgb, ${vars.color.scree} 60%, transparent)`,
+    background: `color-mix(in srgb, ${vars.color.basalt} 35%, transparent)`,
 });
 
 export const favicon = style({
@@ -225,6 +239,7 @@ export const tabBadge = style({
     border: `0.5px solid color-mix(in srgb, ${vars.color.cobalt} 45%, transparent)`,
     borderRadius: "999px",
     color: vars.color.cobalt,
+    boxShadow: SHADE.lip,
 });
 
 export const emptyState = style({
@@ -240,8 +255,9 @@ export const footer = style({
     alignItems: "center",
     justifyContent: "flex-end",
     gap: "16px",
-    padding: "8px 16px",
-    borderTop: RULE.hair,
+    padding: "10px 16px 12px",
+    borderTop: `1px solid color-mix(in srgb, ${vars.color.basalt} 55%, transparent)`,
+    boxShadow: `inset 0 1px 0 color-mix(in srgb, ${vars.color.firn} 5%, transparent)`,
 });
 
 export const footerKey = style({
@@ -253,16 +269,17 @@ export const footerKey = style({
     fontFamily: FONT_SANS,
 });
 
-export const kbd = style({
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "transparent",
-    border: `0.5px solid ${vars.color.talus}`,
-    borderRadius: "4px",
-    padding: "1px 5px",
-    fontSize: "12px",
-    fontFamily: FONT_MONO,
-    color: vars.color.firn,
-    lineHeight: 1.6,
-});
+// Not pressable, but drawn as the key it names: a keycap one band high.
+export const kbd = style(
+    blend(KEYCAP_FACE, {
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: "5px",
+        padding: "0 6px 1px",
+        fontSize: "12px",
+        fontFamily: FONT_MONO,
+        color: vars.color.firn,
+        lineHeight: 1.6,
+    }),
+);

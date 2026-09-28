@@ -26,7 +26,7 @@
 //! table (`{"content-type": [...]}`-shaped code, an extremely common
 //! pattern) came out as `{j[12]+j[13]:[...]}`, a syntax error, before
 //! this existed — and a real `import results from "./x.json" with {
-//! type: "json" }` (this project's own benchmarks route) came out as
+//! type: "json" }` (this project's former benchmarks route) came out as
 //! `with { type: b[8] }`, the same failure shape, before `markAttribute`
 //! did.
 

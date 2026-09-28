@@ -3,6 +3,7 @@ import { createSignal, onSettled } from "solid-js";
 import { IconArrowRight, IconSearch } from "~/components/icons";
 import { WS_URL } from "~/lib/browserHelpers";
 import genBCKey from "~/lib/genBCKey";
+import { getSetting } from "~/lib/settings";
 
 import * as s from "~/styles/SearchBar.css";
 
@@ -52,14 +53,16 @@ export default function SearchBarInput(props: Props) {
     };
 
     onSettled(() => {
-        ws = new WebSocket(WS_URL);
-        ws.onmessage = event => {
-            try {
-                const { suggestions } = JSON.parse(event.data);
-                if (suggestions && Array.isArray(suggestions))
-                    props.onSuggestions(suggestions);
-            } catch {}
-        };
+        if (getSetting("suggestLive")) {
+            ws = new WebSocket(WS_URL);
+            ws.onmessage = event => {
+                try {
+                    const { suggestions } = JSON.parse(event.data);
+                    if (suggestions && Array.isArray(suggestions))
+                        props.onSuggestions(suggestions);
+                } catch {}
+            };
+        }
         channel.onmessage = event => {
             if (event.data?.type === "input" && inputRef) {
                 inputRef.value = event.data.value;

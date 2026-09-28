@@ -1,25 +1,24 @@
 import { globalStyle, style } from "@vanilla-extract/css";
 
-import { hitArea } from "./material.css";
-import { ANNO, FONT_SANS, RULE } from "./schematic.css";
+import { blend, GRAIN, hitArea, KEYCAP, PEBBLE } from "./material.css";
+import { ANNO, FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
- * The bookmarks shelf: the bottom band of the toolbar surface, holding soft
- * chips. It shares the address row's scree plane and closes the chrome with
- * the one rule that separates toolbar from page.
+ * The bookmarks shelf: the last band of the terrace, holding a row of
+ * pebbles. It shares the address row's scree plane; the chrome's cliff edge
+ * below it is what separates toolbar from page, so it draws no rule of its
+ * own.
  */
-
-const T_FAST = "0.1s ease";
 
 export const bar = style({
     display: "flex",
     alignItems: "center",
-    gap: "2px",
-    height: "30px",
-    padding: "0 8px 2px",
-    background: vars.color.scree,
-    borderBottom: RULE.major,
+    gap: "4px",
+    height: "34px",
+    padding: "0 8px 4px",
+    backgroundColor: vars.color.scree,
+    backgroundImage: GRAIN,
     overflowX: "auto",
     overflowY: "hidden",
     flexShrink: 0,
@@ -28,37 +27,34 @@ export const bar = style({
     },
 });
 
-export const bookmark = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "0 8px",
-    height: "24px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    color: vars.color.firn,
-    background: "transparent",
-    border: "none",
-    fontSize: "12px",
-    fontFamily: FONT_SANS,
-    fontWeight: 400,
-    whiteSpace: "nowrap",
-    flexShrink: 0,
-    maxWidth: "170px",
-    transition: `background ${T_FAST}, color ${T_FAST}`,
-    transitionDuration: "0.1s",
-    position: "relative",
-    selectors: {
-        // The chip is shorter than a comfortable target, so the pointer
-        // target is expanded without changing how the chip looks.
-        "&::after": hitArea(),
-        "&:hover": { background: vars.color.talus },
-        "&:focus-visible": {
-            outline: `1px solid ${vars.color.cobalt}`,
-            outlineOffset: "-1px",
+export const bookmark = style(
+    blend(PEBBLE, {
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "0 9px",
+        height: "24px",
+        borderRadius: "8px",
+        cursor: "pointer",
+        color: vars.color.firn,
+        border: "none",
+        fontSize: "12px",
+        fontFamily: FONT_SANS,
+        fontWeight: 400,
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+        maxWidth: "170px",
+        selectors: {
+            // The chip is shorter than a comfortable target, so the pointer
+            // target is expanded without changing how the chip looks.
+            "&::after": hitArea(),
+            "&:focus-visible": {
+                outline: `1px solid ${vars.color.cobalt}`,
+                outlineOffset: "1px",
+            },
         },
-    },
-});
+    }),
+);
 
 export const bookmarkFavicon = style({
     width: "12px",
@@ -110,7 +106,7 @@ export const bookmarkRemove = style({
     flexShrink: 0,
     opacity: 0,
     pointerEvents: "none",
-    transition: `color ${T_FAST}, opacity ${T_FAST}`,
+    transition: "color 0.1s ease, opacity 0.1s ease",
     transitionDuration: "0.1s",
     selectors: {
         "&:hover": { color: vars.color.wine },
@@ -135,40 +131,38 @@ globalStyle(`.${bookmarkRemove}`, {
     },
 });
 
+// A groove cut into the shelf: shadowed on one side, lit on the other.
 export const separator = style({
     width: 0,
     height: "14px",
-    borderLeft: RULE.hair,
+    borderLeft: `1px solid color-mix(in srgb, ${vars.color.basalt} 60%, transparent)`,
+    boxShadow: `1px 0 0 color-mix(in srgb, ${vars.color.firn} 6%, transparent)`,
     flexShrink: 0,
     margin: "0 4px",
 });
 
-export const addBookmarkBtn = style({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "24px",
-    height: "24px",
-    border: "none",
-    borderRadius: "6px",
-    background: "transparent",
-    color: vars.color.snowmelt,
-    cursor: "pointer",
-    padding: 0,
-    flexShrink: 0,
-    transition: `background ${T_FAST}, color ${T_FAST}`,
-    transitionDuration: "0.1s",
-    selectors: {
-        "&:hover": {
-            background: vars.color.talus,
-            color: vars.color.firn,
+export const addBookmarkBtn = style(
+    blend(KEYCAP, {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "24px",
+        height: "24px",
+        border: "none",
+        borderRadius: "7px",
+        color: vars.color.snowmelt,
+        cursor: "pointer",
+        padding: 0,
+        flexShrink: 0,
+        selectors: {
+            "&:hover": { color: vars.color.firn },
+            "&:focus-visible": {
+                outline: `1px solid ${vars.color.cobalt}`,
+                outlineOffset: "1px",
+            },
         },
-        "&:focus-visible": {
-            outline: `1px solid ${vars.color.cobalt}`,
-            outlineOffset: "1px",
-        },
-    },
-});
+    }),
+);
 
 export const emptyHint = style({
     ...ANNO,

@@ -1,8 +1,25 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 
-import { DUR, EASE, hitArea } from "./material.css";
-import { ANNO, FONT_SANS, RULE } from "./schematic.css";
+import {
+    blend,
+    GLINT,
+    DUR,
+    EASE,
+    hitArea,
+    KEY_STONE,
+    LIT,
+    ROW_LIFT,
+    SHADE,
+    TABLET,
+    WELL,
+} from "./material.css";
+import { ANNO, FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
+
+const alpha = (color: string, pct: number) =>
+    `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+const mix = (a: string, pct: number, b: string) =>
+    `color-mix(in oklab, ${a} ${pct}%, ${b})`;
 
 /**
  * The state spine.
@@ -30,33 +47,29 @@ export const titleActions = style({
     flexWrap: "wrap",
 });
 
-const textBtnBase = style({
-    ...ANNO,
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    background: "none",
-    border: "none",
-    borderBottom: RULE.hair,
-    padding: "2px",
-    cursor: "pointer",
-    transitionProperty: "color, border-color, opacity",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:disabled": { opacity: 0.45, cursor: "default" },
-    },
-});
+// Every text action on the page is a stone key.
+const textBtnBase = style(
+    blend(KEY_STONE, {
+        ...ANNO,
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        border: "none",
+        borderRadius: "9px",
+        padding: "6px 11px",
+        cursor: "pointer",
+        selectors: {
+            "&:disabled": { opacity: 0.45, cursor: "default" },
+        },
+    }),
+);
 
 export const textBtn = style([
     textBtnBase,
     {
         color: vars.color.snowmelt,
         selectors: {
-            "&:not(:disabled):hover": {
-                color: vars.color.firn,
-                borderBottomColor: vars.color.cobalt,
-            },
+            "&:not(:disabled):hover": { color: vars.color.firn },
         },
     },
 ]);
@@ -65,23 +78,17 @@ export const textBtn = style([
 /* Intake                                                                */
 /* -------------------------------------------------------------------- */
 
-export const intake = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    flexWrap: "wrap",
-    margin: "20px 0 8px",
-    padding: "12px 16px",
-    border: RULE.major,
-    borderRadius: "10px",
-    background: vars.color.basalt,
-    transitionProperty: "border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
-    selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.cobalt },
-    },
-});
+export const intake = style(
+    blend(WELL, {
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        flexWrap: "wrap",
+        margin: "20px 0 8px",
+        padding: "10px 12px 10px 16px",
+        borderRadius: "14px",
+    }),
+);
 
 export const intakeLabel = style({
     ...ANNO,
@@ -117,10 +124,7 @@ export const uploadLabel = style([
         position: "relative",
         color: vars.color.snowmelt,
         selectors: {
-            "&:hover": {
-                color: vars.color.firn,
-                borderBottomColor: vars.color.cobalt,
-            },
+            "&:hover": { color: vars.color.firn },
             "&:focus-within": {
                 color: vars.color.firn,
                 outline: `1px solid ${vars.color.cobalt}`,
@@ -179,83 +183,102 @@ export const section = style({
     margin: "26px 0 0",
 });
 
+const TABLET_FACE = mix(vars.color.scree, 70, vars.color.stratum);
+
 /**
  * The spine itself. It is drawn on the list rather than on each row so it runs
  * continuously between nodes instead of breaking at every gap, and it is inset
- * to sit under the centre of the node column.
+ * to sit under the centre of the node column. The list is a tablet, so the
+ * spine is a groove cut down its face.
  */
-export const list = style({
-    position: "relative",
-    listStyle: "none",
-    margin: "4px 0 0",
-    padding: 0,
-    selectors: {
-        "&::before": {
-            content: '""',
-            position: "absolute",
-            left: "5px",
-            top: "16px",
-            bottom: "16px",
-            width: 0,
-            borderLeft: RULE.hair,
+export const list = style(
+    blend(TABLET, {
+        position: "relative",
+        listStyle: "none",
+        margin: "8px 0 0",
+        padding: "6px",
+        borderRadius: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+        selectors: {
+            "&::before": {
+                content: '""',
+                position: "absolute",
+                left: "21px",
+                top: "24px",
+                bottom: "24px",
+                width: 0,
+                borderLeft: `1px solid ${alpha(vars.color.basalt, 60)}`,
+                boxShadow: `1px 0 0 ${alpha(vars.color.firn, 6)}`,
+            },
         },
-    },
-});
+    }),
+);
 
-export const row = style({
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "11px 26px 1fr auto auto auto",
-    alignItems: "center",
-    gap: "12px",
-    padding: "12px 0",
-    borderBottom: RULE.hair,
-});
+export const row = style(
+    blend(ROW_LIFT, {
+        display: "grid",
+        gridTemplateColumns: "11px 26px 1fr auto auto auto",
+        alignItems: "center",
+        gap: "12px",
+        padding: "12px 10px",
+    }),
+);
 
 /**
  * The node on the spine. Filled means enabled. The fill is not the only signal
  * — the switch beside it carries the same state, and the row's own accessible
  * name does too — but it is the one that reads at a glance down the gutter.
+ *
+ * A live extension is a polished cobalt gem set in the groove; a disabled one
+ * is the empty socket it would sit in.
  */
 const nodeBase = style({
     width: "11px",
     height: "11px",
     borderRadius: "50%",
-    // Punches the spine out from behind the node so the line appears to pass
-    // between nodes rather than through them.
-    boxShadow: `0 0 0 3px ${vars.color.stratum}`,
-    transitionProperty: "background-color, border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
+    backgroundImage: GLINT,
+    transitionProperty: "background-color, box-shadow",
+    transitionTimingFunction: EASE.enter,
+    transitionDuration: DUR.lift,
 });
+
+// Punches the spine out from behind the node so the line appears to pass
+// between nodes rather than through them. Both states carry the same four
+// layers (punch, drop, socket shade, socket rim) so the change fades.
+const PUNCH = `0 0 0 3px ${TABLET_FACE}`;
+const nodeShadow = (drop: number, socket: number) =>
+    [
+        PUNCH,
+        `0 2px 3px ${alpha(vars.color.basalt, drop)}`,
+        `inset 0 1px 2px color-mix(in srgb, black ${socket * 0.6}%, transparent)`,
+        `inset 0 0 0 1px ${alpha(vars.color.talus, socket * 0.7)}`,
+    ].join(", ");
 
 export const node = styleVariants({
     on: [
         nodeBase,
-        {
-            background: vars.color.cobalt,
-            border: `1px solid ${vars.color.cobalt}`,
-        },
+        { backgroundColor: vars.color.cobalt, boxShadow: nodeShadow(80, 0) },
     ],
     off: [
         nodeBase,
-        {
-            background: vars.color.stratum,
-            border: `1px solid ${vars.color.talus}`,
-        },
+        { backgroundColor: vars.color.basalt, boxShadow: nodeShadow(0, 100) },
     ],
 });
 
-export const iconPlate = style({
-    borderRadius: "8px",
-    width: "26px",
-    height: "26px",
-    display: "grid",
-    placeItems: "center",
-    border: `0.5px solid ${vars.color.scree}`,
-    color: vars.color.ash,
-    overflow: "hidden",
-});
+// The extension's icon sits in a small carved socket.
+export const iconPlate = style(
+    blend(WELL, {
+        borderRadius: "8px",
+        width: "26px",
+        height: "26px",
+        display: "grid",
+        placeItems: "center",
+        color: vars.color.ash,
+        overflow: "hidden",
+    }),
+);
 
 export const iconImg = style({
     width: "18px",
@@ -295,8 +318,10 @@ export const meta = style({
 const stampBase = style({
     ...ANNO,
     flexShrink: 0,
-    padding: "2px 6px",
+    padding: "2px 7px",
     fontSize: "12px",
+    borderRadius: "6px",
+    boxShadow: SHADE.lip,
 });
 
 export const stamp = styleVariants({
@@ -316,77 +341,9 @@ export const stamp = styleVariants({
     ],
 });
 
-/* -------------------------------------------------------------------- */
-/* Switch                                                                */
-/* -------------------------------------------------------------------- */
-
-/**
- * A native checkbox drives this, kept in the tab order and merely made
- * transparent. The visible track and thumb are siblings that read its state
- * through `:checked`, so keyboard, assistive tech and forms all behave without
- * any of it being reimplemented in script.
- */
-export const toggle = style({
-    position: "relative",
-    flexShrink: 0,
-    display: "inline-grid",
-    alignItems: "center",
-    width: "34px",
-    height: "18px",
-    cursor: "pointer",
-});
-
-export const toggleInput = style({
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-    margin: 0,
-    opacity: 0,
-    cursor: "pointer",
-});
-
-export const toggleTrack = style({
-    borderRadius: "20px",
-    position: "absolute",
-    inset: 0,
-    border: `0.5px solid ${vars.color.talus}`,
-    background: "transparent",
-    transitionProperty: "border-color, background-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
-    selectors: {
-        [`${toggleInput}:checked ~ &`]: {
-            borderColor: vars.color.cobalt,
-            background: `color-mix(in srgb, ${vars.color.cobalt} 18%, transparent)`,
-        },
-        // The ring has to live on the track: the input it belongs to is
-        // transparent, so its own outline would be invisible.
-        [`${toggleInput}:focus-visible ~ &`]: {
-            outline: `1px solid ${vars.color.cobalt}`,
-            outlineOffset: "2px",
-        },
-    },
-});
-
-export const toggleThumb = style({
-    borderRadius: "50%",
-    position: "absolute",
-    top: "3px",
-    left: "3px",
-    width: "12px",
-    height: "12px",
-    background: vars.color.talus,
-    transitionProperty: "transform, background-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
-    selectors: {
-        [`${toggleInput}:checked ~ &`]: {
-            transform: "translateX(16px)",
-            background: vars.color.cobalt,
-        },
-    },
-});
+// The switch moved to the shared kit (schematic.css.ts) once Settings
+// needed it too; these names stay so the page's markup is unchanged.
+export { toggle, toggleInput, toggleThumb, toggleTrack } from "./schematic.css";
 
 /* -------------------------------------------------------------------- */
 /* Uninstall                                                             */
@@ -405,14 +362,19 @@ export const removeBtn = style({
     background: "none",
     color: vars.color.ash,
     cursor: "pointer",
-    transitionProperty: "color",
+    transitionProperty: "color, background-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
         "&::after": hitArea(),
-        "&:hover, &:focus-visible": { color: vars.color.wine },
+        "&:hover, &:focus-visible": {
+            color: vars.color.wine,
+            background: alpha(vars.color.wine, 16),
+        },
     },
 });
+
+const ARMED = mix(vars.color.wine, 30, vars.color.scree);
 
 // The armed state is a word, not a colour on an X. Uninstalling deletes the
 // extension's stored files, and an icon cannot say "click again".
@@ -420,9 +382,8 @@ export const removeArmed = style([
     textBtnBase,
     {
         color: vars.color.firn,
-        borderBottomColor: vars.color.wine,
-        background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
-        padding: "2px 6px",
+        backgroundColor: ARMED,
+        backgroundImage: LIT,
         whiteSpace: "nowrap",
     },
 ]);

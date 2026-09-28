@@ -11,7 +11,7 @@ import {
     Show,
 } from "solid-js";
 
-import { IconLoaderDots } from "~/components/icons";
+import { IconLoaderDots, IconSearch } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
@@ -418,6 +418,8 @@ export default function FilterCheckPage() {
             <Sheet>
                 <TitleBlock
                     title="Filter check"
+                    icon={IconSearch}
+                    tint="stone"
                     actions={
                         // PatreonLoginButton lives here because this page is
                         // its only host in the app. Patreon entitlement is what
@@ -425,7 +427,7 @@ export default function FilterCheckPage() {
                         // misc/filters/sharedMiddleware.ts), so dropping it
                         // leaves supporters silently capped at the free tier
                         // with nowhere to sign in.
-                        <div class={s.titleActions}>
+                        <div class={schematic.titleBlockActions}>
                             <PatreonLoginButton />
                             <button
                                 type="button"

@@ -1,6 +1,6 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 
-import { DUR, EASE } from "./material.css";
+import { blend, GROUND, PEBBLE, PLATE, RISE } from "./material.css";
 import { ANNO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
 
@@ -12,26 +12,33 @@ import { vars } from "./theme.css";
  * refuses to fill the viewport with structure. The severity band across its
  * top is the only place in the app where colour spans a whole edge, which is
  * the point: the page says "stop" before any word is read.
+ *
+ * The card is a thick slab that rises onto the ground, and it leads with a
+ * ban specimen in the band's own tone.
  */
 
-export const root = style({
-    minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    padding: "40px 24px",
-    background: vars.color.stratum,
-});
+export const root = style(
+    blend(GROUND, {
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: "40px 24px",
+    }),
+);
 
-export const plate = style({
-    position: "relative",
-    width: "100%",
-    maxWidth: "580px",
-    padding: "34px 32px 30px",
-    border: `1px solid ${vars.color.talus}`,
-    borderRadius: "16px",
-    overflow: "hidden",
-    background: vars.color.basalt,
-});
+export const plate = style(
+    blend(PLATE, {
+        position: "relative",
+        width: "100%",
+        maxWidth: "580px",
+        padding: "34px 32px 30px",
+        borderRadius: "18px",
+        overflow: "hidden",
+        animation: RISE,
+    }),
+);
+
+export const mark = style({ marginBottom: "18px" });
 
 // Severity as a full-width band rather than a tinted card: at 3px it is a
 // non-text mark, so the 3:1 threshold applies and both tones clear it.
@@ -71,6 +78,7 @@ export const title = style({
     lineHeight: 1.2,
     letterSpacing: "-0.015em",
     color: vars.color.firn,
+    textShadow: `0 1px 0 ${vars.color.basalt}, 0 3px 8px color-mix(in srgb, black 35%, transparent)`,
 });
 
 export const reason = style({
@@ -105,19 +113,16 @@ export const note = style({
     marginLeft: "auto",
 });
 
-export const link = style({
-    ...ANNO,
-    color: vars.color.cobalt,
-    textDecoration: "none",
-    borderBottom: `0.5px solid ${vars.color.cobalt}`,
-    paddingBottom: "2px",
-    transitionProperty: "color, border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:hover": {
-            color: vars.color.firn,
-            borderBottomColor: vars.color.firn,
+export const link = style(
+    blend(PEBBLE, {
+        ...ANNO,
+        display: "inline-flex",
+        padding: "6px 11px",
+        borderRadius: "9px",
+        color: vars.color.cobalt,
+        textDecoration: "none",
+        selectors: {
+            "&:hover": { color: vars.color.firn },
         },
-    },
-});
+    }),
+);

@@ -386,7 +386,7 @@ test "leaves an import attribute's key and value alone, real code hit this" {
     // colon -- rewriting "json" into a decoder call produces
     // `with { type: __obf_arr_get(0, 2) }`, a syntax error. This exact
     // shape (`import results from "$tests/bench_results.json" with {
-    // type: "json" }`) is real code in this repo's own benchmarks route,
+    // type: "json" }`) was real code in this repo's former benchmarks route,
     // found by comparing this transform's output against real
     // js-confuser running on all of src/.
     var tree = try parser.parse(

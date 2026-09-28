@@ -1,12 +1,13 @@
 import { createSignal, For, flush, Show } from "solid-js";
 
 import { apps, appsAdd, appsRemove } from "~/api/apps";
-import { IconClose, IconWorld } from "~/components/icons";
+import { IconApps, IconClose, IconWorld } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
 import Field from "~/components/schematic/Field";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
+import Specimen from "~/components/Specimen";
 import { tabManager } from "~/lib/TabManager";
 import type { CivilApp } from "~/types";
 
@@ -115,7 +116,12 @@ export default function AppsPage() {
 
     return (
         <Sheet>
-            <TitleBlock title="Apps" meta={`${apps().length} pinned`} />
+            <TitleBlock
+                title="Apps"
+                meta={`${apps().length} pinned`}
+                icon={IconApps}
+                tint="cobalt"
+            />
 
             {/* The equivalent screen on a managed device is a catalogue an
                 administrator curates, with a request queue for anything not on
@@ -144,9 +150,12 @@ export default function AppsPage() {
             <Show
                 when={apps().length > 0}
                 fallback={
-                    <Anno muted class={s.empty}>
-                        Nothing pinned yet. Add a site above to get started.
-                    </Anno>
+                    <div class={s.empty}>
+                        <Specimen icon={IconApps} tint="stone" size={64} />
+                        <Anno muted>
+                            Nothing pinned yet. Add a site above to get started.
+                        </Anno>
+                    </div>
                 }
             >
                 <ul class={s.grid}>

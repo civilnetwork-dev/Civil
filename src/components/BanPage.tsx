@@ -1,8 +1,13 @@
 import { createSignal, onSettled, Show } from "solid-js";
 
+import { IconBan } from "~/components/icons";
+import Specimen from "~/components/Specimen";
 import StrikeGauge from "~/components/StrikeGauge";
 
 import * as s from "~/styles/BanPage.css";
+
+/** The specimen wears the severity band's tone. */
+const SPECIMEN_TINT = { banned: "wine", restricted: "sandstone" } as const;
 
 type ViolationsData = {
     authenticated: boolean;
@@ -29,6 +34,13 @@ export default function BanPage({ banReason }: { banReason: string }) {
         <div class={s.root}>
             <div class={s.plate}>
                 <div class={s.band[tone()]} aria-hidden="true" />
+                <Specimen
+                    icon={IconBan}
+                    tint={SPECIMEN_TINT[tone()]}
+                    size={56}
+                    class={s.mark}
+                />
+
                 <Show
                     when={isPermanentlyBanned()}
                     fallback={

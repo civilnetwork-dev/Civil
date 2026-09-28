@@ -409,7 +409,7 @@ test "hoists repeated literals into a shared array and leaves one-off literals a
 
 test "leaves an import attribute's key and value alone even when duplicated elsewhere" {
     const allocator = std.testing.allocator;
-    // Same shape as this repo's own benchmarks route:
+    // Same shape as this repo's former benchmarks route:
     // `import x from "./a.json" with { type: "json" }`. Duplicate-literals
     // removal only fires on a literal appearing 2+ times -- the two
     // "json" console.log args below are a genuine duplicate pair and

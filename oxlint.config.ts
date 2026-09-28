@@ -35,7 +35,6 @@ export default defineConfig({
         "misc/obfuscatti/**/*.js",
         "misc/wisp/native/index.*",
         "src/routeTree.gen.ts",
-        "tests/benchmarks/**",
         // Fixtures are test inputs, not source: an intentionally empty
         // background script is the point of noop-extension.
         "**/fixtures/**",

@@ -1,7 +1,17 @@
 import { style } from "@vanilla-extract/css";
 
-import { DUR, EASE, hitArea } from "./material.css";
-import { ANNO, FONT_SANS, RULE } from "./schematic.css";
+import {
+    blend,
+    DUR,
+    EASE,
+    hitArea,
+    KEY_STONE,
+    KEYCAP_FACE,
+    ROW_LIFT,
+    TABLET,
+    WELL,
+} from "./material.css";
+import { ANNO } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -13,40 +23,6 @@ import { vars } from "./theme.css";
  * measured readout of what the rule spans, rather than being folded into the
  * rule itself.
  */
-
-export const titleActions = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    flexWrap: "wrap",
-});
-
-// wine is the system's "blocked"/destructive tier, reused as the clear-all
-// accent — the same colour every remove control in the app wears.
-export const clearBtn = style({
-    ...ANNO,
-    background: "none",
-    border: "none",
-    borderBottom: RULE.hair,
-    padding: "2px 2px",
-    cursor: "pointer",
-    color: vars.color.wine,
-    transitionProperty: "color, border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:hover": { borderBottomColor: vars.color.wine },
-    },
-});
-
-// Armed state for the second click — stated plainly in the label already;
-// the colour shift is the redundant, not the only, channel.
-export const clearBtnArmed = style({
-    color: vars.color.firn,
-    borderBottomColor: vars.color.wine,
-    background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
-    padding: "2px 6px",
-});
 
 /**
  * The scope row states what's currently in view. It sits directly under the
@@ -61,90 +37,37 @@ export const scopeRow = style({
     margin: "22px 0 28px",
 });
 
-export const filterField = style({
-    position: "relative",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    flex: "1 1 260px",
-    maxWidth: "420px",
-    padding: "12px 16px",
-    border: RULE.major,
-    borderRadius: "10px",
-    background: vars.color.basalt,
-    transitionProperty: "border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
-    selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.cobalt },
-    },
-});
+export const filterField = style(
+    blend(WELL, {
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        flex: "1 1 260px",
+        maxWidth: "420px",
+        padding: "12px 16px",
+        borderRadius: "12px",
+    }),
+);
 
-// ember deliberately: this colours a glyph, not text, so the non-text 3:1
-// threshold applies rather than 4.5:1.
-export const filterIcon = style({
-    flexShrink: 0,
-    color: vars.color.ash,
-    transition: `color ${DUR.base} ${EASE.standard}`,
-    selectors: {
-        [`${filterField}:focus-within &`]: { color: vars.color.cobalt },
-    },
-});
-
-export const filterInput = style({
-    flex: 1,
-    minWidth: 0,
-    border: "none",
-    background: "transparent",
-    outline: "none",
-    color: vars.color.firn,
-    fontFamily: FONT_SANS,
-    fontSize: "14px",
-    caretColor: vars.color.cobalt,
-    selectors: {
-        "&::placeholder": { color: vars.color.ash },
-        "&:focus-visible": { outline: "none" },
-    },
-});
-
-// The shortcut is advertised on the control it operates, and steps aside as
-// soon as there's a query to clear.
-export const filterHint = style({
-    ...ANNO,
-    flexShrink: 0,
-    display: "grid",
-    placeItems: "center",
-    width: "16px",
-    height: "16px",
-    border: `0.5px solid ${vars.color.talus}`,
-    fontSize: "12px",
-    transition: `opacity ${DUR.base} ${EASE.standard}`,
-    selectors: {
-        [`${filterField}:focus-within &`]: { opacity: 0 },
-    },
-});
-
-export const filterClear = style({
-    position: "relative",
-    flexShrink: 0,
-    display: "grid",
-    placeItems: "center",
-    width: "20px",
-    height: "20px",
-    padding: 0,
-    border: "none",
-    borderRadius: "6px",
-    background: "none",
-    color: vars.color.snowmelt,
-    cursor: "pointer",
-    transitionProperty: "color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&::after": hitArea(),
-        "&:hover": { color: vars.color.firn },
-    },
-});
+// The shortcut is advertised on the control it operates, drawn as the key it
+// names, and steps aside as soon as there's a query to clear.
+export const filterHint = style(
+    blend(KEYCAP_FACE, {
+        ...ANNO,
+        flexShrink: 0,
+        display: "grid",
+        placeItems: "center",
+        width: "18px",
+        height: "18px",
+        borderRadius: "5px",
+        fontSize: "12px",
+        transition: `opacity ${DUR.base} ${EASE.standard}`,
+        selectors: {
+            [`${filterField}:focus-within &`]: { opacity: 0 },
+        },
+    }),
+);
 
 /**
  * One text node, one style. The previous readout split its numbers and words
@@ -236,9 +159,13 @@ export const dayMeterBar = style({
             bottom: 0,
             height: "max(2px, var(--fill, 0%))",
             background: `color-mix(in srgb, ${vars.color.talus} 55%, transparent)`,
-            transitionProperty: "background",
+            // Each hour is a small raised column: lit along its top edge.
+            borderRadius: "2px 2px 0 0",
+            boxShadow: `inset 0 1px 0 color-mix(in srgb, ${vars.color.firn} 22%, transparent)`,
+            transitionProperty: "background, transform",
             transitionTimingFunction: EASE.standard,
             transitionDuration: DUR.fast,
+            transformOrigin: "bottom",
         },
     },
 });
@@ -248,7 +175,10 @@ export const dayMeterBar = style({
 export const dayMeterBarOn = style({
     selectors: {
         "&::after": { background: vars.color.ash },
-        "&:hover::after": { background: vars.color.cobalt },
+        "&:hover::after": {
+            background: vars.color.cobalt,
+            transform: "scaleY(1.12)",
+        },
     },
 });
 
@@ -281,11 +211,16 @@ export const dayCountUnit = style({
     color: vars.color.snowmelt,
 });
 
-export const entries = style({
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-});
+// A day's pages sit on one tablet; each row lifts out of it under the pointer.
+export const entries = style(
+    blend(TABLET, {
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+        padding: "6px",
+        borderRadius: "16px",
+    }),
+);
 
 /**
  * A ruled row, not a `Plate`.
@@ -295,18 +230,15 @@ export const entries = style({
  * empty space on the right. Bookmarks and Extensions already rule their rows
  * apart; this is the same grammar, which is the point of having one.
  */
-export const entry = style({
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "1fr 28px",
-    alignItems: "center",
-    gap: "8px",
-    borderBottom: RULE.hair,
-    transition: `background ${DUR.fast} ${EASE.standard}`,
-    selectors: {
-        "&:hover, &:focus-within": { background: vars.color.scree },
-    },
-});
+export const entry = style(
+    blend(ROW_LIFT, {
+        display: "grid",
+        gridTemplateColumns: "1fr 28px",
+        alignItems: "center",
+        gap: "8px",
+        padding: "0 6px 0 10px",
+    }),
+);
 
 /**
  * Title takes the slack; host and time are fixed columns on the right.
@@ -397,14 +329,17 @@ export const deleteBtn = style({
     color: vars.color.ash,
     opacity: 0,
     pointerEvents: "none",
-    transition: `opacity ${DUR.fast} ${EASE.standard}`,
+    transition: `opacity ${DUR.fast} ${EASE.standard}, background-color ${DUR.fast} ${EASE.standard}`,
     selectors: {
         "&::after": hitArea(),
         [`${entry}:hover &, ${entry}:focus-within &`]: {
             opacity: 1,
             pointerEvents: "auto",
         },
-        "&:hover, &:focus-visible": { color: vars.color.wine },
+        "&:hover, &:focus-visible": {
+            color: vars.color.wine,
+            background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
+        },
     },
     "@media": {
         "(hover: none)": { opacity: 1, pointerEvents: "auto" },
@@ -426,15 +361,13 @@ export const emptyText = style({
 
 // The way back out of a filter that matched nothing, offered where the user
 // is already looking.
-export const emptyAction = style({
-    ...ANNO,
-    background: "none",
-    border: "none",
-    borderBottom: RULE.hair,
-    padding: "2px 0",
-    cursor: "pointer",
-    color: vars.color.cobalt,
-    selectors: {
-        "&:hover": { color: vars.color.cobalt },
-    },
-});
+export const emptyAction = style(
+    blend(KEY_STONE, {
+        ...ANNO,
+        border: "none",
+        borderRadius: "9px",
+        padding: "6px 11px",
+        cursor: "pointer",
+        color: vars.color.cobalt,
+    }),
+);

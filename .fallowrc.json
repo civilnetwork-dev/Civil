@@ -18,8 +18,7 @@
         "misc/filterProbe/harness.ts",
         "misc/filterProbe/downloadBundles.ts",
         "misc/filters/**/example.ts",
-        "tests/**/*.test.{ts,tsx}",
-        "tests/runBenchmarks.js"
+        "tests/**/*.test.{ts,tsx}"
     ],
 
     // Build output, generated files, and the vendored/native trees.

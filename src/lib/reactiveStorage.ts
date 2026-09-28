@@ -64,7 +64,7 @@ export function onLsChange(key: string, cb: () => void): () => void {
  * consumers of the key.
  */
 export function createReactiveJSON<T>(key: string, fallback: T): Accessor<T> {
-    const read = (): T => {
+    return createReactiveKey(key, () => {
         if (typeof localStorage === "undefined") return fallback;
         try {
             const raw = localStorage.getItem(key);
@@ -72,7 +72,14 @@ export function createReactiveJSON<T>(key: string, fallback: T): Accessor<T> {
         } catch {
             return fallback;
         }
-    };
+    });
+}
+
+/**
+ * The same live accessor over any decoding of `key`: `read` runs once up front
+ * and again after every change to the key.
+ */
+export function createReactiveKey<T>(key: string, read: () => T): Accessor<T> {
     // Box the value so a `T` that is itself a function isn't mistaken for a
     // signal updater, and to sidestep createSignal's Exclude<T, Function> typing.
     return createRoot(() => {

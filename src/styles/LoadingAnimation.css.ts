@@ -1,25 +1,26 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
-import { EASE } from "./material.css";
+import { blend, EASE, GROUND } from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
-export const loadingContainer = style({
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "0.75rem",
-    backgroundColor: vars.color.stratum,
-    padding: "1.5rem 2rem",
-    position: "fixed",
-    inset: 0,
-    overflow: "hidden",
-    zIndex: 100,
-    opacity: 1,
-    transition: "opacity 600ms cubic-bezier(0.86, 0, 0.07, 1)",
-    transitionDuration: "600ms",
-});
+export const loadingContainer = style(
+    blend(GROUND, {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0.75rem",
+        padding: "1.5rem 2rem",
+        position: "fixed",
+        inset: 0,
+        overflow: "hidden",
+        zIndex: 100,
+        opacity: 1,
+        transition: "opacity 600ms cubic-bezier(0.86, 0, 0.07, 1)",
+        transitionDuration: "600ms",
+    }),
+);
 
 /* -------------------------------------------------------------------- */
 /* The mark, arriving                                                    */
@@ -72,6 +73,16 @@ export const loadingMark = style({
 
 export const loadingMarkC = style({
     fill: vars.color.cobalt,
+});
+
+/**
+ * The C is a solid like every glyph: a copy sunk toward basalt sits a
+ * fraction down and right of the face, painted after the nodes so the
+ * letter's thickness hides the route too. Static, so it costs one path.
+ */
+export const loadingMarkDepth = style({
+    fill: `color-mix(in oklab, ${vars.color.cobalt} 40%, ${vars.color.basalt})`,
+    transform: "translate(0.3px, 0.5px)",
 });
 
 /**

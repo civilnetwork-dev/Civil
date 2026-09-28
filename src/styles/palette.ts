@@ -6,10 +6,10 @@
  * serialize a narrow set of export shapes for production — plain objects,
  * arrays, strings, numbers, null/undefined, or functions tagged via
  * `addFunctionSerializer`. Keeping this as raw data in a plain `.ts` module
- * sidesteps that entirely, and lets `benchmarkConfig.ts` import the hex
- * values directly: echarts renders to canvas and cannot read CSS custom
- * properties, so it needs real strings, not vanilla-extract contract
- * references.
+ * sidesteps that entirely, and lets `Document.tsx` import the hex values
+ * directly: the specimen emboss filter's lighting and flood colours are SVG
+ * attributes, which cannot read CSS custom properties, so they need real
+ * strings, not vanilla-extract contract references.
  *
  * ## Provenance — measured, not sampled by eye
  *
@@ -93,5 +93,3 @@ export const PALETTE = {
     /** Verdict — blocked. */
     wine: "#C8789B",
 } as const;
-
-export type SlotName = keyof typeof PALETTE;

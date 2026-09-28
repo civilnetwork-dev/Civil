@@ -4,7 +4,15 @@ import * as s from "~/styles/icons.css";
 
 type IconProps = { size?: number; class?: string };
 
-// A single 16-unit grid, stroke, and motion contract across every screen.
+/**
+ * A single 16-unit grid, stroke, and motion contract across every screen.
+ *
+ * Each glyph is drawn three times from the one path source: an extrusion
+ * offset down and right in a darker tone, a lit rim offset up and left, and
+ * the face on top. Together they read as a small raised solid lit from the
+ * upper left. On hover the face and rim lift while the extrusion stays put, so
+ * the solid visibly deepens. Colour still comes only from `currentColor`.
+ */
 function icon(name: string, body: () => JSX.Element, fill = false) {
     return (props: IconProps) => (
         <svg
@@ -21,7 +29,9 @@ function icon(name: string, body: () => JSX.Element, fill = false) {
             stroke-linecap="round"
             stroke-linejoin="round"
         >
-            {body()}
+            <g class={s.depth}>{body()}</g>
+            <g class={s.rim}>{body()}</g>
+            <g class={s.face}>{body()}</g>
         </svg>
     );
 }
@@ -175,6 +185,17 @@ export const IconApps = icon("apps", () => (
         <path d="M8.5 2.5h5v5h-5z" />
         <path d="M2.5 8.5h5v5h-5z" />
         <path d="M8.5 8.5h5v5h-5z" />
+    </>
+));
+// Three faders, so Settings reads as "adjust" rather than a machine part.
+export const IconSliders = icon("sliders", () => (
+    <>
+        <path d="M2.5 3.5h11" />
+        <path d="M5 2v3" />
+        <path d="M2.5 8h11" />
+        <path d="M10.5 6.5v3" />
+        <path d="M2.5 12.5h11" />
+        <path d="M7 11v3" />
     </>
 ));
 export const IconLayoutNavbar = icon("panel-top", () => (

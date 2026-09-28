@@ -13,7 +13,13 @@ import BookmarksBar from "~/components/BookmarksBar";
 import { ChiiPanel } from "~/components/ChiiPanel";
 import { useContextMenu } from "~/components/ContextMenu";
 import ExtensionIconBar from "~/components/ExtensionIconBar";
-import { IconPlus, IconPuzzle, IconWorld } from "~/components/icons";
+import {
+    IconPlus,
+    IconPuzzle,
+    IconSliders,
+    IconWorld,
+} from "~/components/icons";
+import Specimen from "~/components/Specimen";
 import TabSearch from "~/components/TabSearch";
 import { TabPill } from "~/components/ui/TabPill";
 import { UrlBar } from "~/components/ui/UrlBar";
@@ -23,6 +29,7 @@ import {
     saveSession,
 } from "~/lib/browserHelpers";
 import searchBar from "~/lib/SearchBar";
+import { getSetting, useSetting } from "~/lib/settings";
 import {
     isInternalUrl,
     isNewtabUrl,
@@ -163,7 +170,13 @@ export default function BrowserChrome() {
         // `tabManager` is a module singleton, so a remount (HMR, or the route
         // re-entering the browser) finds it already holding tabs. Adopt them;
         // restoring the saved session on top doubled the strip every time.
-        const session = tabManager.tabs.length ? null : loadSession();
+        // The session is still saved when restoring is off, so turning it
+        // back on picks up the last tabs.
+        const startup = getSetting("startup");
+        const session =
+            tabManager.tabs.length || startup !== "restore"
+                ? null
+                : loadSession();
         if (tabManager.tabs.length) {
             setTabStore(store => {
                 store.tabs = [...tabManager.tabs];
@@ -185,7 +198,10 @@ export default function BrowserChrome() {
             );
             tabManager.activateTab(tabManager.tabs[idx].id);
         } else {
-            const t = tabManager.createTab("browser:newtab");
+            const page = getSetting("startupUrl").trim();
+            const t = tabManager.createTab(
+                startup === "page" && page ? page : "browser:newtab",
+            );
             tabManager.activateTab(t.id);
         }
 
@@ -432,6 +448,16 @@ export default function BrowserChrome() {
         if (id) navigate(id, "browser:extensions");
     };
 
+    const openSettings = () => {
+        const id = activeId();
+        if (id) navigate(id, "browser:settings");
+    };
+
+    const bookmarksBar = useSetting("bookmarksBar");
+    const showBookmarksBar = () =>
+        bookmarksBar() === "always" ||
+        (bookmarksBar() === "newtab" && activeTabIsNewtab());
+
     const handleReorder = (tabId: string, newIndex: number) => {
         tabManager.moveTab(tabId, newIndex);
     };
@@ -481,6 +507,11 @@ export default function BrowserChrome() {
                             const id = activeId();
                             if (id) navigate(id, "browser:apps");
                         },
+                    },
+                    {
+                        label: "Settings",
+                        icon: <IconSliders size={14} />,
+                        action: openSettings,
                     },
                     { type: "separator" },
                     ...(isInput
@@ -665,38 +696,56 @@ export default function BrowserChrome() {
                     >
                         <IconPuzzle size={15} />
                     </button>
+                    <button
+                        type="button"
+                        class={s.extensionsBtn}
+                        title="Settings"
+                        onClick={openSettings}
+                    >
+                        <IconSliders size={15} />
+                    </button>
                 </div>
 
-                <BookmarksBar
-                    activeUrl={activeUrl()}
-                    activeTitle={activeTab()?.title ?? ""}
-                    activeFavicon={activeTab()?.favicon}
-                    onNavigate={url => {
-                        const id = activeId();
-                        if (id) navigate(id, url);
-                    }}
-                />
+                <Show when={showBookmarksBar()}>
+                    <BookmarksBar
+                        activeUrl={activeUrl()}
+                        activeTitle={activeTab()?.title ?? ""}
+                        activeFavicon={activeTab()?.favicon}
+                        onNavigate={url => {
+                            const id = activeId();
+                            if (id) navigate(id, url);
+                        }}
+                    />
+                </Show>
             </div>
 
             <div class={s.browserViewport}>
-                <For each={iframeIds()} keyed={false}>
+                {/*
+                 * Keyed by tab id, unlike the lists around it: a frame is a
+                 * live page that has to stay with its tab. Keyed by index,
+                 * closing a tab handed its frame to the tab on its right,
+                 * which then showed the closed page.
+                 */}
+                <For each={iframeIds()}>
                     {id => (
                         <iframe
                             title="Proxied browser-in-browser webpage"
                             class={[
                                 s.browserFrame,
-                                { [s.browserFrameActive]: id() === activeId() },
+                                { [s.browserFrameActive]: id === activeId() },
                             ]}
-                            ref={el => registerIframe(id(), el)}
+                            ref={el => registerIframe(id, el)}
                         />
                     )}
                 </For>
                 <Show when={tabStore.tabs.length === 0}>
                     <div class={s.browserEmpty}>
-                        <IconWorld size={40} class={s.browserEmptyIcon} />
+                        <Specimen icon={IconWorld} size={64} />
                         <p>No tabs open</p>
                         <button
                             type="button"
+                            class={s.browserEmptyButton}
+
                             onClick={() => {
                                 const t =
                                     tabManager.createTab("browser:newtab");

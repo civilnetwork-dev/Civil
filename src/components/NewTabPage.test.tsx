@@ -2,11 +2,26 @@
 import { renderSolid } from "$tests/helpers/renderSolid";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { setSetting } from "~/lib/settings";
+
 import NewTabPage from "./NewTabPage";
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("NewTabPage", () => {
+    it("stops crediting ads once they're turned off", async () => {
+        setSetting("ads", false);
+        const { container, unmount } = renderSolid(() => <NewTabPage />);
+        await vi.waitFor(() =>
+            expect(container.textContent).toContain(
+                "Civil is free and open source.",
+            ),
+        );
+        expect(container.textContent).not.toContain("Ads keep");
+        setSetting("ads", true);
+        unmount();
+    });
+
     it("gives new users a clear start and all four browser destinations", () => {
         const { container, unmount } = renderSolid(() => <NewTabPage />);
         expect(container.querySelector("h1")?.textContent).toBe(

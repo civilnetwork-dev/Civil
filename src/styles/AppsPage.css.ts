@@ -1,7 +1,19 @@
 import { style } from "@vanilla-extract/css";
 
-import { DUR, EASE } from "./material.css";
-import { ANNO } from "./schematic.css";
+import {
+    BAND,
+    blend,
+    DUR,
+    EASE,
+    edge,
+    elevation,
+    KEYCAP,
+    LIFT,
+    SHADE,
+    skirt,
+    TABLET,
+    WELL,
+} from "./material.css";
 import { vars } from "./theme.css";
 
 export const addingNote = style({ display: "block", marginTop: "6px" });
@@ -14,23 +26,43 @@ export const grid = style({
     padding: 0,
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
-    gap: "16px",
+    gap: "18px",
 });
 
 /**
  * One tile, one primary action. The whole face of the tile is the open
  * button; remove is a small corner control revealed on hover and focus.
+ *
+ * Each tile is a slab standing on the ground. Under the pointer or keyboard
+ * focus it rises clear of it, with a skirt below covering the ground the lift
+ * uncovered. A press settles its shadow but does not move it: the open button
+ * inside must still be under the pointer when the press is released, or the
+ * click would land on the tile instead.
  */
-export const position = style({
-    borderRadius: "16px",
-    position: "relative",
-    transition: `background ${DUR.fast} ${EASE.standard}`,
-    selectors: {
-        "&:hover, &:focus-within": {
-            background: vars.color.scree,
+const TILE_LIFT = 3;
+const tileShadow = (bands: number, drop: string) =>
+    `${SHADE.lip}, ${edge(bands, BAND.light, BAND.dark, drop, 4 + TILE_LIFT)}`;
+
+export const position = style(
+    blend(TABLET, {
+        borderRadius: "16px",
+        position: "relative",
+        translate: `0 ${elevation}`,
+        boxShadow: tileShadow(4, SHADE.near),
+        transition: LIFT,
+        selectors: {
+            "&:hover, &:focus-within": {
+                vars: { [elevation]: `-${TILE_LIFT}px` },
+                boxShadow: tileShadow(4 + TILE_LIFT, SHADE.far),
+            },
+            "&:hover::before": skirt(TILE_LIFT),
+            "&:active": {
+                boxShadow: tileShadow(4 + TILE_LIFT - 2, SHADE.near),
+                transitionDuration: "90ms",
+            },
         },
-    },
-});
+    }),
+);
 
 export const openBtn = style({
     display: "flex",
@@ -52,48 +84,54 @@ export const openBtn = style({
  * no hover to trigger it. `display: none` until hover would remove it from
  * the tab order outright — the keyboard-trap failure DESIGN.md records.
  */
-export const removeBtn = style({
-    position: "absolute",
-    top: "4px",
-    right: "4px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "24px",
-    height: "24px",
-    padding: 0,
-    background: "none",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    color: vars.color.ash,
-    opacity: 0,
-    pointerEvents: "none",
-    transition: `opacity ${DUR.fast} ${EASE.standard}`,
-    selectors: {
-        [`${position}:hover &, ${position}:focus-within &`]: {
-            opacity: 1,
-            pointerEvents: "auto",
+export const removeBtn = style(
+    blend(KEYCAP, {
+        position: "absolute",
+        top: "6px",
+        right: "6px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "24px",
+        height: "24px",
+        padding: 0,
+        border: "none",
+        borderRadius: "7px",
+        cursor: "pointer",
+        color: vars.color.ash,
+        opacity: 0,
+        pointerEvents: "none",
+        transition: `${LIFT}, opacity ${DUR.fast} ${EASE.standard}`,
+        selectors: {
+            [`${position}:hover &, ${position}:focus-within &`]: {
+                opacity: 1,
+                pointerEvents: "auto",
+            },
+            "&:hover, &:focus-visible": {
+                color: vars.color.wine,
+            },
         },
-        "&:hover, &:focus-visible": {
-            color: vars.color.wine,
+        "@media": {
+            "(hover: none)": {
+                opacity: 1,
+                pointerEvents: "auto",
+            },
         },
-    },
-    "@media": {
-        "(hover: none)": {
-            opacity: 1,
-            pointerEvents: "auto",
-        },
-    },
-});
+    }),
+);
 
-export const iconStage = style({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "34px",
-    height: "34px",
-});
+// The favicon sits in a small socket carved into the tile's face.
+export const iconStage = style(
+    blend(WELL, {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "46px",
+        height: "46px",
+        marginBottom: "4px",
+        borderRadius: "13px",
+    }),
+);
 
 export const icon = style({
     width: "26px",
@@ -122,7 +160,9 @@ export const name = style({
 });
 
 export const empty = style({
-    ...ANNO,
-    display: "block",
-    margin: "14px 0 0",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: "14px",
+    margin: "18px 0 0",
 });

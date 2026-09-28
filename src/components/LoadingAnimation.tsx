@@ -185,6 +185,7 @@ export default function LoadingAnimation() {
                         />
                     )}
                 </For>
+                <path class={s.loadingMarkDepth} d={MARK_C} />
                 <path class={s.loadingMarkC} d={MARK_C} />
             </svg>
             <div class={s.loadingStatusWrapper}>

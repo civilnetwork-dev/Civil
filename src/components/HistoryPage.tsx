@@ -1,17 +1,23 @@
 import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 
 import {
-    HISTORY_LS_KEY,
     historyClear,
     historyDelete,
     historyGetAll,
+    onHistoryChange,
 } from "~/api/history";
-import { IconClose, IconSearch, IconWorld } from "~/components/icons";
+import HistoryFullNotice from "~/components/HistoryFullNotice";
+import {
+    IconClock,
+    IconClose,
+    IconSearch,
+    IconWorld,
+} from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
-import { onLsChange } from "~/lib/reactiveStorage";
+import Specimen from "~/components/Specimen";
 import { tabManager } from "~/lib/TabManager";
 import type { CivilHistoryEntry } from "~/types";
 
@@ -40,13 +46,12 @@ export default function HistoryPage() {
         void historyGetAll().then(all => setEntries(all));
     };
 
-    // Initial load + live-update the localStorage-backed history when it
-    // changes here or in another tab; the returned unsubscribe runs on unmount.
-    // (IndexedDB writes don't touch localStorage, so that path still relies on
-    // the explicit reloads in the handlers below.)
+    // Initial load, then live updates whenever history changes in any
+    // document on the origin, whichever location it is saved in; the
+    // returned unsubscribe runs on unmount.
     onSettled(() => {
         reload();
-        return onLsChange(HISTORY_LS_KEY, reload);
+        return onHistoryChange(reload);
     });
 
     // Clearing history can't be undone, so the button asks once before doing
@@ -189,16 +194,18 @@ export default function HistoryPage() {
             {/* The storage-backend Select (localStorage vs IndexedDB) that
                 used to sit here was a developer control in a user page: no
                 student can weigh that choice, and offering it suggests they
-                should. The API keeps whatever method is stored; only the
-                chooser is gone. */}
+                should. It lives in Settings now, with the rest of history's
+                storage choices, for the people who do want to weigh it. */}
             <TitleBlock
                 title="History"
+                icon={IconClock}
+                tint="juniper"
                 actions={
-                    <div class={s.titleActions}>
+                    <div class={schematic.titleBlockActions}>
                         <Show when={entries().length > 0}>
                             <button
                                 type="button"
-                                class={`${s.clearBtn}${confirmingClear() ? ` ${s.clearBtnArmed}` : ""}`}
+                                class={`${schematic.clearKey}${confirmingClear() ? ` ${schematic.clearKeyArmed}` : ""}`}
                                 onClick={handleClear}
                             >
                                 {/* The armed state names the real scope. A
@@ -214,6 +221,8 @@ export default function HistoryPage() {
                 }
             />
 
+            <HistoryFullNotice />
+
             <Show when={entries().length > 0}>
                 <p class={schematic.lede}>
                     Find a page you visited earlier. Your history is stored on
@@ -222,10 +231,10 @@ export default function HistoryPage() {
 
                 <div class={s.scopeRow}>
                     <div class={s.filterField}>
-                        <IconSearch size={15} class={s.filterIcon} />
+                        <IconSearch size={15} class={schematic.inputIcon} />
                         <input
                             ref={filterInput}
-                            class={s.filterInput}
+                            class={schematic.inputControl}
                             type="text"
                             value={query()}
                             placeholder="Filter by title or address"
@@ -241,7 +250,7 @@ export default function HistoryPage() {
                         <Show when={query()}>
                             <button
                                 type="button"
-                                class={s.filterClear}
+                                class={schematic.inputClear}
                                 title="Clear filter"
                                 onClick={() => {
                                     setQuery("");
@@ -269,6 +278,7 @@ export default function HistoryPage() {
             <Show when={entries().length === 0}>
                 <Rule weight="hair" />
                 <div class={s.empty}>
+                    <Specimen icon={IconClock} tint="stone" size={64} />
                     <Anno class={s.emptyText}>
                         No history yet. Pages you visit will show up here.
                     </Anno>

@@ -34,7 +34,6 @@ export const CIVIL_ROUTES: readonly CivilRoute[] = [
     { path: "/extensions", label: "extensions" },
     { path: "/checkfilters", label: "filter check" },
     { path: "/baninfo", label: "ban info" },
-    { path: "/benchmarks", label: "benchmarks" },
     // The proxy itself, exercising a real third-party site through Civil's
     // Scramjet path — the case a filter is likeliest to catch. `example.com`
     // is chosen because it is inoffensive and always up; the point is the

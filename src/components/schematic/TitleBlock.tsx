@@ -1,6 +1,8 @@
 import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 
+import Specimen, { type Glyph, type Tint } from "~/components/Specimen";
+
 import * as s from "~/styles/schematic.css";
 
 /**
@@ -20,27 +22,44 @@ import * as s from "~/styles/schematic.css";
  * developer files pages under, not words a user acts on. A student scanning
  * for "where do I search" reads a cryptic extra word above every title. The
  * slot stays because the *drawing* grammar allows one; the pages dropped it.
+ *
+ * `icon` sets the page's specimen beside the title, the same glyph and tint
+ * its New Tab shortcut wears, so a page is recognisable before it is read.
  */
 export default function TitleBlock(props: {
     eyebrow?: string;
     title: string;
     meta?: string;
     actions?: JSX.Element;
+    icon?: Glyph;
+    tint?: Tint;
 }) {
     return (
         <header class={s.titleBlock}>
             <div class={s.titleBlockTop}>
-                <div class={s.titleBlockIdent}>
-                    <Show when={props.eyebrow}>
-                        <span class={s.titleBlockEyebrow}>
-                            <span class={s.titleBlockMark} aria-hidden="true" />
-                            {props.eyebrow}
-                        </span>
+                <div class={s.titleBlockHead}>
+                    <Show when={props.icon}>
+                        <Specimen
+                            icon={props.icon!}
+                            tint={props.tint}
+                            size={52}
+                        />
                     </Show>
-                    <h1 class={s.titleBlockTitle}>{props.title}</h1>
-                    <Show when={props.meta}>
-                        <span class={s.titleBlockMeta}>{props.meta}</span>
-                    </Show>
+                    <div class={s.titleBlockIdent}>
+                        <Show when={props.eyebrow}>
+                            <span class={s.titleBlockEyebrow}>
+                                <span
+                                    class={s.titleBlockMark}
+                                    aria-hidden="true"
+                                />
+                                {props.eyebrow}
+                            </span>
+                        </Show>
+                        <h1 class={s.titleBlockTitle}>{props.title}</h1>
+                        <Show when={props.meta}>
+                            <span class={s.titleBlockMeta}>{props.meta}</span>
+                        </Show>
+                    </div>
                 </div>
                 {props.actions}
             </div>

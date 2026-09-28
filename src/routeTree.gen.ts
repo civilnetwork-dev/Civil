@@ -13,12 +13,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppsRouteImport } from './routes/apps'
 import { Route as BanRouteImport } from './routes/ban'
 import { Route as BaninfoRouteImport } from './routes/baninfo'
-import { Route as BenchmarksRouteImport } from './routes/benchmarks'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as CheckfiltersRouteImport } from './routes/checkfilters'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as NewtabRouteImport } from './routes/newtab'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SetupRouteImport } from './routes/setup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -38,11 +39,6 @@ const BanRoute = BanRouteImport.update({
 const BaninfoRoute = BaninfoRouteImport.update({
   id: '/baninfo',
   path: '/baninfo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BenchmarksRoute = BenchmarksRouteImport.update({
-  id: '/benchmarks',
-  path: '/benchmarks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookmarksRoute = BookmarksRouteImport.update({
@@ -70,30 +66,42 @@ const NewtabRoute = NewtabRouteImport.update({
   path: '/newtab',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
   '/baninfo': typeof BaninfoRoute
-  '/benchmarks': typeof BenchmarksRoute
   '/bookmarks': typeof BookmarksRoute
   '/checkfilters': typeof CheckfiltersRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
   '/newtab': typeof NewtabRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
   '/baninfo': typeof BaninfoRoute
-  '/benchmarks': typeof BenchmarksRoute
   '/bookmarks': typeof BookmarksRoute
   '/checkfilters': typeof CheckfiltersRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
   '/newtab': typeof NewtabRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,12 +109,13 @@ export interface FileRoutesById {
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
   '/baninfo': typeof BaninfoRoute
-  '/benchmarks': typeof BenchmarksRoute
   '/bookmarks': typeof BookmarksRoute
   '/checkfilters': typeof CheckfiltersRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
   '/newtab': typeof NewtabRoute
+  '/settings': typeof SettingsRoute
+  '/setup': typeof SetupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -115,36 +124,39 @@ export interface FileRouteTypes {
     | '/apps'
     | '/ban'
     | '/baninfo'
-    | '/benchmarks'
     | '/bookmarks'
     | '/checkfilters'
     | '/extensions'
     | '/history'
     | '/newtab'
+    | '/settings'
+    | '/setup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/apps'
     | '/ban'
     | '/baninfo'
-    | '/benchmarks'
     | '/bookmarks'
     | '/checkfilters'
     | '/extensions'
     | '/history'
     | '/newtab'
+    | '/settings'
+    | '/setup'
   id:
     | '__root__'
     | '/'
     | '/apps'
     | '/ban'
     | '/baninfo'
-    | '/benchmarks'
     | '/bookmarks'
     | '/checkfilters'
     | '/extensions'
     | '/history'
     | '/newtab'
+    | '/settings'
+    | '/setup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,12 +164,13 @@ export interface RootRouteChildren {
   AppsRoute: typeof AppsRoute
   BanRoute: typeof BanRoute
   BaninfoRoute: typeof BaninfoRoute
-  BenchmarksRoute: typeof BenchmarksRoute
   BookmarksRoute: typeof BookmarksRoute
   CheckfiltersRoute: typeof CheckfiltersRoute
   ExtensionsRoute: typeof ExtensionsRoute
   HistoryRoute: typeof HistoryRoute
   NewtabRoute: typeof NewtabRoute
+  SettingsRoute: typeof SettingsRoute
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -188,13 +201,6 @@ declare module '@tanstack/solid-router' {
       path: '/baninfo'
       fullPath: '/baninfo'
       preLoaderRoute: typeof BaninfoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/benchmarks': {
-      id: '/benchmarks'
-      path: '/benchmarks'
-      fullPath: '/benchmarks'
-      preLoaderRoute: typeof BenchmarksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookmarks': {
@@ -232,6 +238,20 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NewtabRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -240,12 +260,13 @@ const rootRouteChildren: RootRouteChildren = {
   AppsRoute: AppsRoute,
   BanRoute: BanRoute,
   BaninfoRoute: BaninfoRoute,
-  BenchmarksRoute: BenchmarksRoute,
   BookmarksRoute: BookmarksRoute,
   CheckfiltersRoute: CheckfiltersRoute,
   ExtensionsRoute: ExtensionsRoute,
   HistoryRoute: HistoryRoute,
   NewtabRoute: NewtabRoute,
+  SettingsRoute: SettingsRoute,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

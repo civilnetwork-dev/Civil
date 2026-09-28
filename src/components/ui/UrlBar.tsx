@@ -11,6 +11,7 @@ import {
     IconSearch,
 } from "~/components/icons";
 import { displayUrl, isProbablyUrl, WS_URL } from "~/lib/browserHelpers";
+import { getSetting } from "~/lib/settings";
 import { resolveUrl } from "~/lib/TabManager";
 import type { CivilHistoryEntry } from "~/types";
 
@@ -104,11 +105,12 @@ export function UrlBar(props: UrlBarProps) {
             clearSuggestions();
             return;
         }
-        // History search always runs
-        historySearch(v)
-            .then(setHistorySuggestions)
-            .catch(() => setHistorySuggestions([]));
-        if (!isProbablyUrl(v)) {
+        if (getSetting("suggestHistory")) {
+            historySearch(v)
+                .then(setHistorySuggestions)
+                .catch(() => setHistorySuggestions([]));
+        }
+        if (getSetting("suggestLive") && !isProbablyUrl(v)) {
             openWs();
             if (ws?.readyState === WebSocket.OPEN)
                 ws.send(JSON.stringify({ q: v }));

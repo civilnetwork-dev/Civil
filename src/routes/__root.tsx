@@ -15,6 +15,7 @@ import {
 
 import { ContextMenuProvider } from "~/components/ContextMenu";
 import LoadingAnimation from "~/components/LoadingAnimation";
+import { getSetting } from "~/lib/settings";
 
 // Opt-in (VITE_ROUTER_DEVTOOLS=1) rather than on for every dev session: the
 // devtools bundle ships its own copy of Solid's DOM runtime, whose delegated
@@ -73,6 +74,9 @@ function RootComponent() {
     );
 
     onSettled(() => {
+        // The district lookup exists only to feed analytics, so it goes
+        // when the user turns analytics off.
+        if (!getSetting("analytics")) return;
         void (async () => {
             try {
                 const locRes = await fetch("/api/ip-location");

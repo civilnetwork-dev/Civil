@@ -13,6 +13,7 @@ import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
+import Specimen from "~/components/Specimen";
 import { tabManager } from "~/lib/TabManager";
 import type { CivilBookmark } from "~/types";
 
@@ -121,6 +122,8 @@ export default function BookmarksPage() {
         <Sheet>
             <TitleBlock
                 title="Bookmarks"
+                icon={IconBookmark}
+                tint="calcite"
                 // The lookup row states this same count in a live region a few
                 // pixels below. Printing it twice on one screen is noise, and
                 // the lookup's copy is the one that responds to a search.
@@ -162,7 +165,7 @@ export default function BookmarksPage() {
                         <Show when={listed().length > 0}>
                             <button
                                 type="button"
-                                class={`${s.clearBtn}${confirmingClear() ? ` ${s.clearBtnArmed}` : ""}`}
+                                class={`${schematic.clearKey}${confirmingClear() ? ` ${schematic.clearKeyArmed}` : ""}`}
                                 onClick={handleClearAll}
                             >
                                 <IconTrash size={13} />
@@ -180,10 +183,10 @@ export default function BookmarksPage() {
             </p>
 
             <div class={s.lookup}>
-                <IconSearch size={15} class={s.lookupIcon} />
+                <IconSearch size={15} class={schematic.inputIcon} />
                 <input
                     ref={lookupInput}
-                    class={s.lookupInput}
+                    class={schematic.inputControl}
                     type="text"
                     value={search()}
                     placeholder="Search title or address"
@@ -199,7 +202,7 @@ export default function BookmarksPage() {
                 <Show when={search()}>
                     <button
                         type="button"
-                        class={s.lookupClear}
+                        class={schematic.inputClear}
                         title="Clear search"
                         onClick={() => {
                             setSearch("");
@@ -221,6 +224,7 @@ export default function BookmarksPage() {
 
             <Show when={listed().length === 0}>
                 <div class={s.empty}>
+                    <Specimen icon={IconBookmark} tint="stone" size={64} />
                     <Anno muted>
                         {search()
                             ? `No bookmarks match “${search()}”.`

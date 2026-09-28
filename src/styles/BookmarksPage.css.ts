@@ -1,7 +1,20 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 
-import { DUR, EASE, hitArea } from "./material.css";
-import { ANNO, FONT_SANS, RULE } from "./schematic.css";
+import {
+    blend,
+    DUR,
+    EASE,
+    edge,
+    hitArea,
+    KEY_STONE,
+    LIFT,
+    LIT,
+    ROW_LIFT,
+    SHADE,
+    TABLET,
+    WELL,
+} from "./material.css";
+import { ANNO } from "./schematic.css";
 import { vars } from "./theme.css";
 
 /**
@@ -35,37 +48,41 @@ export const titleActions = style({
  * A sidebar is a lot of structure to spend on a binary, and it was the only
  * page in the app not built from Sheet + TitleBlock.
  */
-export const scopeSwitch = style({
-    display: "flex",
-    alignItems: "stretch",
-    gap: "2px",
-    padding: "2px",
-    borderRadius: "10px",
-    border: `1px solid ${vars.color.scree}`,
-});
+// A two-way switch carved as a track, with the chosen scope standing up out
+// of it as a raised key.
+export const scopeSwitch = style(
+    blend(WELL, {
+        display: "flex",
+        alignItems: "stretch",
+        gap: "3px",
+        padding: "3px",
+        borderRadius: "12px",
+    }),
+);
 
 const scopeBtnBase = style({
     ...ANNO,
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    padding: "8px 12px",
+    padding: "7px 12px",
     background: "none",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "9px",
     cursor: "pointer",
-    transitionProperty: "color, background-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
+    transition: LIFT,
     selectors: {
         "&:hover": { color: vars.color.firn },
     },
 });
 
+const SCOPE_ON = `color-mix(in oklab, ${vars.color.cobalt} 24%, ${vars.color.scree})`;
+
 /**
  * The selected scope is carried by `aria-pressed` for assistive tech, and here
- * by both a colour shift and a filled ground — two visual channels, so the
- * state does not rest on colour alone (DESIGN.md's Redundant-Channel Rule).
+ * by a colour shift, a filled face and its height: three visual channels, so
+ * the state does not rest on colour alone (DESIGN.md's Redundant-Channel
+ * Rule).
  */
 export const scopeBtn = styleVariants({
     off: [scopeBtnBase, { color: vars.color.ash }],
@@ -73,37 +90,11 @@ export const scopeBtn = styleVariants({
         scopeBtnBase,
         {
             color: vars.color.firn,
-            background: `color-mix(in srgb, ${vars.color.cobalt} 14%, transparent)`,
+            backgroundColor: SCOPE_ON,
+            backgroundImage: LIT,
+            boxShadow: `${SHADE.lip}, ${edge(2)}`,
         },
     ],
-});
-
-// Text-button recipe shared with History's clearBtn: antares is the system's
-// destructive tier.
-export const clearBtn = style({
-    ...ANNO,
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    background: "none",
-    border: "none",
-    borderBottom: RULE.hair,
-    padding: "2px",
-    cursor: "pointer",
-    color: vars.color.wine,
-    transitionProperty: "color, border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&:hover": { borderBottomColor: vars.color.wine },
-    },
-});
-
-export const clearBtnArmed = style({
-    color: vars.color.firn,
-    borderBottomColor: vars.color.wine,
-    background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
-    padding: "2px 6px",
 });
 
 /* -------------------------------------------------------------------- */
@@ -115,71 +106,16 @@ export const clearBtnArmed = style({
  * and aligning entries is to find one — so it gets a labelled full-width row
  * rather than History's compact inline filter.
  */
-export const lookup = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    margin: "22px 0 10px",
-    padding: "12px 16px",
-    border: RULE.major,
-    borderRadius: "10px",
-    background: vars.color.basalt,
-    transitionProperty: "border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
-    selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.cobalt },
-    },
-});
-
-// ember colours a glyph, not text, so 1.4.11's non-text 3:1 applies rather
-// than 1.4.3's 4.5:1.
-export const lookupIcon = style({
-    flexShrink: 0,
-    color: vars.color.ash,
-    transition: `color ${DUR.base} ${EASE.standard}`,
-    selectors: {
-        [`${lookup}:focus-within &`]: { color: vars.color.cobalt },
-    },
-});
-
-export const lookupInput = style({
-    flex: 1,
-    minWidth: 0,
-    border: "none",
-    background: "transparent",
-    outline: "none",
-    color: vars.color.firn,
-    fontFamily: FONT_SANS,
-    fontSize: "14px",
-    caretColor: vars.color.cobalt,
-    selectors: {
-        "&::placeholder": { color: vars.color.ash },
-        "&:focus-visible": { outline: "none" },
-    },
-});
-
-export const lookupClear = style({
-    position: "relative",
-    flexShrink: 0,
-    display: "grid",
-    placeItems: "center",
-    width: "20px",
-    height: "20px",
-    padding: 0,
-    border: "none",
-    borderRadius: "6px",
-    background: "none",
-    color: vars.color.snowmelt,
-    cursor: "pointer",
-    transitionProperty: "color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.fast,
-    selectors: {
-        "&::after": hitArea(),
-        "&:hover": { color: vars.color.firn },
-    },
-});
+export const lookup = style(
+    blend(WELL, {
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        margin: "22px 0 12px",
+        padding: "12px 16px",
+        borderRadius: "12px",
+    }),
+);
 
 /**
  * The count is one text node, not a row of separately-styled number and word
@@ -198,25 +134,36 @@ export const lookupCount = style({
 /* Register                                                              */
 /* -------------------------------------------------------------------- */
 
-export const register = style({
-    listStyle: "none",
-    margin: "6px 0 0",
-    padding: 0,
-});
+// The register is a tablet the rows are cut into. The list is always in the
+// DOM, so with nothing to hold it would stand as a bare slab: it leaves the
+// page instead.
+export const register = style(
+    blend(TABLET, {
+        listStyle: "none",
+        margin: "8px 0 0",
+        padding: "6px",
+        borderRadius: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+        selectors: { "&:empty": { display: "none" } },
+    }),
+);
 
 /**
  * The `28px` end column holds the remove control; the rest is the open
  * target. The call-number column went in the minimal pass — fake catalogue
  * numbers were decoration pretending to be data.
  */
-export const row = style({
-    position: "relative",
-    display: "grid",
-    gridTemplateColumns: "1fr 28px",
-    alignItems: "center",
-    gap: "12px",
-    borderBottom: RULE.hair,
-});
+export const row = style(
+    blend(ROW_LIFT, {
+        display: "grid",
+        gridTemplateColumns: "1fr 28px",
+        alignItems: "center",
+        gap: "12px",
+        paddingRight: "6px",
+    }),
+);
 
 /**
  * The open target is a real `<button>`, and the remove control is its sibling
@@ -233,10 +180,10 @@ export const openBtn = style({
     gap: "12px",
     width: "100%",
     minWidth: 0,
-    padding: "11px 0",
+    padding: "10px 10px",
     background: "none",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "10px",
     textAlign: "left",
     cursor: "pointer",
     outline: "none",
@@ -250,14 +197,17 @@ export const openBtn = style({
     },
 });
 
-export const stamp = style({
-    width: "22px",
-    height: "22px",
-    display: "grid",
-    placeItems: "center",
-    border: `0.5px solid ${vars.color.scree}`,
-    overflow: "hidden",
-});
+// Each favicon sits in a small carved socket.
+export const stamp = style(
+    blend(WELL, {
+        width: "24px",
+        height: "24px",
+        display: "grid",
+        placeItems: "center",
+        borderRadius: "7px",
+        overflow: "hidden",
+    }),
+);
 
 export const stampImg = style({
     width: "14px",
@@ -316,7 +266,7 @@ export const removeBtn = style({
     color: vars.color.ash,
     cursor: "pointer",
     opacity: 0,
-    transitionProperty: "opacity, color",
+    transitionProperty: "opacity, color, background-color",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.fast,
     selectors: {
@@ -331,7 +281,10 @@ export const removeBtn = style({
         [`${row}:hover &, ${row}:focus-within &, &:focus-visible`]: {
             opacity: 1,
         },
-        "&:hover, &:focus-visible": { color: vars.color.wine },
+        "&:hover, &:focus-visible": {
+            color: vars.color.wine,
+            background: `color-mix(in srgb, ${vars.color.wine} 16%, transparent)`,
+        },
     },
     // Touch has no hover state to reveal the control, so it is always shown
     // there. Keyboard is covered by the :focus-visible selector above.
@@ -352,12 +305,13 @@ export const empty = style({
     padding: "34px 0 8px",
 });
 
-export const emptyAction = style({
-    ...ANNO,
-    background: "none",
-    border: "none",
-    borderBottom: `0.5px solid ${vars.color.cobalt}`,
-    padding: "2px",
-    cursor: "pointer",
-    color: vars.color.cobalt,
-});
+export const emptyAction = style(
+    blend(KEY_STONE, {
+        ...ANNO,
+        border: "none",
+        borderRadius: "9px",
+        padding: "6px 11px",
+        cursor: "pointer",
+        color: vars.color.cobalt,
+    }),
+);

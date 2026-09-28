@@ -30,6 +30,7 @@ const EXPECTED = [
     "IconPuzzle",
     "IconRefresh",
     "IconSearch",
+    "IconSliders",
     "IconSpinner",
     "IconSpinnerFilled",
     "IconTrash",

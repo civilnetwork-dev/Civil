@@ -1,71 +1,62 @@
 import { style } from "@vanilla-extract/css";
 
+import { blend, edge, KEY_STONE, KEYCAP, LIT, SHADE } from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
 const PATREON = "#FF424D";
-const T = "0.12s ease";
+
+const FACE = `color-mix(in oklab, ${PATREON} 14%, ${vars.color.scree})`;
+const FACE_HOVER = `color-mix(in oklab, ${PATREON} 22%, ${vars.color.scree})`;
 
 // Tinted-accent recipe: a solid brand-red block would clash against the muted
-// alpine palette everywhere else, so Patreon's red is toned into a background
-// tint plus accent text and icon rather than a full-saturation fill.
-//
-// Square, like every other control. This was the one rounded element left in an
-// app with no border radius anywhere, which made a third-party button read as
-// pasted on rather than as part of the page. The mark and the wordmark carry
-// the brand recognition; the corner radius was never doing that work.
-export const button = style({
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "7px",
-    padding: "7px 14px",
-    borderRadius: "8px",
-    border: `1px solid color-mix(in srgb, ${PATREON} 35%, transparent)`,
-    background: `color-mix(in srgb, ${PATREON} 12%, ${vars.color.scree})`,
-    color: `color-mix(in srgb, ${PATREON} 75%, ${vars.color.firn})`,
-    fontFamily: FONT_SANS,
-    fontSize: "13px",
-    fontWeight: 500,
-    lineHeight: 1,
-    cursor: "pointer",
-    userSelect: "none",
-    transition: `background ${T}, border-color ${T}, box-shadow ${T}`,
-    transitionDuration: "0.12s",
-    selectors: {
-        "&:hover": {
-            background: `color-mix(in srgb, ${PATREON} 20%, ${vars.color.scree})`,
-            borderColor: `color-mix(in srgb, ${PATREON} 55%, transparent)`,
-            boxShadow: `0 0 0 3px color-mix(in srgb, ${PATREON} 18%, transparent)`,
+// alpine palette everywhere else, so Patreon's red is toned into the key's
+// stone face plus accent text and icon rather than a full-saturation fill. The
+// key itself is cut and pressed like every other key in the app; the mark and
+// the wordmark carry the brand recognition, not a shape of its own.
+export const button = style(
+    blend(KEY_STONE, {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "7px",
+        padding: "7px 14px",
+        borderRadius: "9px",
+        border: "none",
+        backgroundColor: FACE,
+        backgroundImage: LIT,
+        color: `color-mix(in srgb, ${PATREON} 75%, ${vars.color.firn})`,
+        fontFamily: FONT_SANS,
+        fontSize: "13px",
+        fontWeight: 500,
+        lineHeight: 1,
+        cursor: "pointer",
+        userSelect: "none",
+        selectors: {
+            "&:hover:not(:disabled)": {
+                backgroundColor: FACE_HOVER,
+                backgroundImage: LIT,
+            },
+            "&:disabled": {
+                opacity: 0.45,
+                cursor: "not-allowed",
+            },
         },
-        "&:active": {
-            opacity: 0.85,
-        },
-        "&:disabled": {
-            opacity: 0.45,
-            cursor: "not-allowed",
-            boxShadow: "none",
-        },
-    },
-});
+    }),
+);
 
 export const loggedIn = style({
     display: "inline-flex",
     alignItems: "center",
     gap: "8px",
-    padding: "5px 10px",
-    border: `1px solid ${vars.color.talus}`,
-    background: vars.color.scree,
+    padding: "5px 6px 5px 10px",
+    borderRadius: "10px",
+    backgroundColor: vars.color.scree,
+    backgroundImage: LIT,
+    boxShadow: `${SHADE.lip}, ${edge(2)}`,
     color: vars.color.firn,
     fontFamily: FONT_SANS,
     fontSize: "13px",
     userSelect: "none",
-    transition: `border-color ${T}`,
-    transitionDuration: "0.12s",
-    selectors: {
-        "&:hover": {
-            borderColor: vars.color.talus,
-        },
-    },
 });
 
 export const avatar = style({
@@ -107,30 +98,24 @@ export const userName = style({
 });
 
 export const divider = style({
-    width: "1px",
+    width: 0,
     height: "14px",
-    background: vars.color.talus,
+    borderLeft: `1px solid color-mix(in srgb, ${vars.color.basalt} 60%, transparent)`,
+    boxShadow: `1px 0 0 color-mix(in srgb, ${vars.color.firn} 6%, transparent)`,
     flexShrink: 0,
 });
 
-export const signOutBtn = style({
-    padding: "2px 6px",
-    border: "none",
-    borderRadius: "6px",
-    background: "transparent",
-    color: vars.color.ash,
-    fontFamily: FONT_SANS,
-    fontSize: "12px",
-    cursor: "pointer",
-    transition: `color ${T}, background ${T}`,
-    transitionDuration: "0.12s",
-    selectors: {
-        "&:hover": {
-            background: vars.color.talus,
-            color: vars.color.firn,
+export const signOutBtn = style(
+    blend(KEYCAP, {
+        padding: "3px 8px",
+        border: "none",
+        borderRadius: "7px",
+        color: vars.color.ash,
+        fontFamily: FONT_SANS,
+        fontSize: "12px",
+        cursor: "pointer",
+        selectors: {
+            "&:hover": { color: vars.color.firn },
         },
-        "&:active": {
-            opacity: 0.7,
-        },
-    },
-});
+    }),
+);

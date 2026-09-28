@@ -40,8 +40,7 @@ RUN if [ "$OBFUSCATE_ENGINE" = "obfuscatti" ]; then \
 
 RUN bun run build:wisp-native
 
-# tests/ is safe to delete: bench_results.json is imported at build time by
-# src/routes/benchmarks.tsx, so the data is already baked into dist/.
+# tests/ is safe to delete: nothing in the image runs the test suite.
 RUN ./build.sh && rm -rf tests node_modules/.cache misc/wisp/native/target
 
 # Drop devDependencies now that the build is done. Done in the builder (which

@@ -1,5 +1,15 @@
-import { style } from "@vanilla-extract/css";
+import { globalStyle, style } from "@vanilla-extract/css";
 
+import {
+    BAND,
+    blend,
+    elevation,
+    GROUND,
+    KEY_COBALT,
+    LIFT,
+    PEBBLE,
+    RISE,
+} from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
@@ -7,44 +17,78 @@ import { vars } from "./theme.css";
  * The start page. Header and footer take their own height; everything else
  * centres in what is left, with paddings small enough that a 768px laptop
  * inside the browser chrome shows the whole page without scrolling.
+ *
+ * It stands on the same drifting ground as every page. What it adds is the
+ * cast: a cobalt globe specimen that catches the light now and then, and one
+ * mineral per destination below the search well.
  */
 
-export const page = style({
-    minHeight: "100svh",
-    display: "flex",
-    flexDirection: "column",
-    padding: "24px 40px 18px",
-    background: vars.color.stratum,
-    color: vars.color.firn,
-    fontFamily: FONT_SANS,
-    "@media": { "(max-width: 600px)": { padding: "20px 20px 16px" } },
-});
+export const page = style(
+    blend(GROUND, {
+        minHeight: "100svh",
+        display: "flex",
+        flexDirection: "column",
+        padding: "24px 40px 18px",
+        color: vars.color.firn,
+        fontFamily: FONT_SANS,
+        "@media": { "(max-width: 600px)": { padding: "20px 20px 16px" } },
+    }),
+);
 
 export const header = style({
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "16px",
+    animation: RISE,
 });
 
-export const brand = style({ display: "inline-flex", borderRadius: "6px" });
-
-export const utilityLink = style({
+export const brand = style({
     display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    minHeight: "36px",
-    padding: "0 10px",
-    marginRight: "-10px",
-    color: vars.color.snowmelt,
-    textDecoration: "none",
-    fontSize: "13px",
-    borderRadius: "8px",
-    transition: "background 180ms ease-out, color 180ms ease-out",
-    selectors: {
-        "&:hover": { background: vars.color.scree, color: vars.color.firn },
-    },
+    borderRadius: "6px",
 });
+
+export const utilities = style({
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: "10px",
+});
+
+// The lockup is cut from the same stone: two bands of sediment under the
+// letters and a contact shadow. drop-shadow follows the letter shapes, and
+// the mark is static, so the filter paints once. On hover the mark rises
+// inside the link; the link itself stays put, so its hit box cannot slide
+// out from under the pointer.
+globalStyle(`.${brand} svg`, {
+    filter: [
+        `drop-shadow(0 1px 0 ${BAND.light})`,
+        `drop-shadow(0 1px 0 ${BAND.dark})`,
+        "drop-shadow(0 6px 6px color-mix(in srgb, black 40%, transparent))",
+    ].join(" "),
+    translate: `0 ${elevation}`,
+    transition: LIFT,
+});
+globalStyle(`.${brand}:is(:hover, :focus-visible) svg`, {
+    vars: { [elevation]: "-2px" },
+});
+
+export const utilityLink = style(
+    blend(PEBBLE, {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        minHeight: "34px",
+        padding: "0 12px",
+        color: vars.color.snowmelt,
+        textDecoration: "none",
+        fontSize: "13px",
+        borderRadius: "10px",
+        selectors: {
+            "&:hover": { color: vars.color.firn },
+        },
+    }),
+);
 
 export const content = style({
     flex: 1,
@@ -58,33 +102,23 @@ export const content = style({
     padding: "24px 0",
 });
 
-export const welcome = style({ textAlign: "center" });
+export const welcome = style({ textAlign: "center", animation: RISE });
 
 export const emblem = style({
-    display: "grid",
-    placeItems: "center",
-    width: "56px",
-    height: "56px",
-    margin: "0 auto 20px",
-    border: `1px solid ${vars.color.talus}`,
-    borderRadius: "16px",
-    color: vars.color.snowmelt,
-    "@media": {
-        "(max-width: 600px)": {
-            width: "48px",
-            height: "48px",
-            marginBottom: "16px",
-            borderRadius: "16px",
-        },
-    },
+    display: "flex",
+    justifyContent: "center",
+    marginBottom: "24px",
+    "@media": { "(max-width: 600px)": { marginBottom: "18px" } },
 });
 
+// Raised lettering, lit from the same side as every slab.
 export const heading = style({
     fontSize: "40px",
     lineHeight: 1.15,
     fontWeight: 450,
     letterSpacing: "-0.035em",
     textWrap: "balance",
+    textShadow: `0 1px 0 ${vars.color.basalt}, 0 4px 12px color-mix(in srgb, black 40%, transparent)`,
     "@media": { "(max-width: 600px)": { fontSize: "30px" } },
 });
 
@@ -107,35 +141,32 @@ export const description = style({
 export const searchSeat = style({
     width: "100%",
     maxWidth: "600px",
-    marginTop: "28px",
+    marginTop: "30px",
+    animation: RISE,
+    animationDelay: "80ms",
     "@media": { "(max-width: 600px)": { marginTop: "24px" } },
 });
 
-export const openBrowser = style({
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "10px",
-    marginTop: "28px",
-    padding: "14px 20px",
-    borderRadius: "10px",
-    color: vars.color.basalt,
-    background: vars.color.cobalt,
-    textDecoration: "none",
-    fontWeight: 600,
-    transition: "background 180ms ease-out",
-    selectors: {
-        "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.cobalt} 85%, ${vars.color.firn})`,
-        },
-    },
-});
+export const openBrowser = style(
+    blend(KEY_COBALT, {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "10px",
+        marginTop: "30px",
+        padding: "14px 20px",
+        borderRadius: "12px",
+        textDecoration: "none",
+    }),
+);
 
 export const shortcuts = style({
     display: "grid",
     gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
     gap: "12px",
     width: "100%",
-    marginTop: "36px",
+    marginTop: "40px",
+    animation: RISE,
+    animationDelay: "160ms",
     "@media": {
         "(max-width: 600px)": {
             gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
@@ -146,6 +177,9 @@ export const shortcuts = style({
     },
 });
 
+// The destination's contents rise a little on hover while its specimen tilts
+// toward the reader, and the label brightens. The link itself stays put: it
+// is the hover target, and a target that moves can slide off the pointer.
 export const shortcut = style({
     display: "flex",
     flexDirection: "column",
@@ -155,33 +189,22 @@ export const shortcut = style({
     color: vars.color.snowmelt,
     textDecoration: "none",
     textAlign: "center",
-    transition: "background 180ms ease-out, color 180ms ease-out",
+    transition: LIFT,
     "@media": { "(max-width: 600px)": { padding: "12px 6px" } },
     selectors: {
-        "&:hover, &:focus-visible": {
-            background: vars.color.scree,
-            color: vars.color.firn,
-        },
+        "&:hover, &:focus-visible": { color: vars.color.firn },
     },
 });
 
-export const shortcutIcon = style({
-    display: "grid",
-    placeItems: "center",
-    width: "48px",
-    height: "48px",
-    marginBottom: "12px",
-    borderRadius: "16px",
-    background: vars.color.scree,
-    color: vars.color.snowmelt,
-    transition: "background 180ms ease-out, color 180ms ease-out",
-    selectors: {
-        [`.${shortcut}:hover &, .${shortcut}:focus-visible &`]: {
-            background: vars.color.talus,
-            color: vars.color.firn,
-        },
-    },
+globalStyle(`.${shortcut} > *`, {
+    translate: `0 ${elevation}`,
+    transition: LIFT,
 });
+globalStyle(`.${shortcut}:is(:hover, :focus-visible) > *`, {
+    vars: { [elevation]: "-2px" },
+});
+
+export const shortcutMark = style({ marginBottom: "14px" });
 
 export const shortcutTitle = style({ fontSize: "14px", fontWeight: 500 });
 

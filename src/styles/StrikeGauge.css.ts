@@ -22,15 +22,16 @@ import { vars } from "./theme.css";
 
 export const gauge = style({
     display: "flex",
-    gap: "4px",
+    gap: "5px",
     margin: "10px 0 0",
 });
 
 const segmentBase = style({
     flex: 1,
-    height: "8px",
+    height: "10px",
     minWidth: "10px",
-    transitionProperty: "background-color, border-color",
+    borderRadius: "3px",
+    transitionProperty: "background, box-shadow",
     transitionTimingFunction: EASE.standard,
     transitionDuration: DUR.base,
 });
@@ -41,9 +42,19 @@ const segmentBase = style({
  * the alternative — `assignInlineVars` — would mean adding
  * `@vanilla-extract/dynamic` as a dependency to colour eight small rectangles.
  */
+// A strike is a raised block of its tone, lit on top and banded underneath;
+// a strike still in hand is the empty socket it would fill.
 const used = (color: string) => [
     segmentBase,
-    { background: color, border: `1px solid ${color}` },
+    {
+        background: `linear-gradient(180deg, color-mix(in oklab, ${color} 70%, ${vars.color.firn}), ${color} 60%)`,
+        boxShadow: [
+            `inset 0 1px 0 color-mix(in srgb, ${vars.color.firn} 35%, transparent)`,
+            `0 1px 0 color-mix(in oklab, ${color} 55%, ${vars.color.basalt})`,
+            `0 2px 0 color-mix(in oklab, ${color} 35%, ${vars.color.basalt})`,
+            `0 5px 6px -3px color-mix(in srgb, ${vars.color.basalt} 85%, transparent)`,
+        ].join(", "),
+    },
 ];
 
 export const segment = styleVariants({
@@ -53,8 +64,8 @@ export const segment = styleVariants({
     free: [
         segmentBase,
         {
-            background: "transparent",
-            border: `1px solid ${vars.color.scree}`,
+            background: vars.color.basalt,
+            boxShadow: `inset 0 1px 3px color-mix(in srgb, black 60%, transparent), 0 1px 0 color-mix(in srgb, ${vars.color.firn} 6%, transparent)`,
         },
     ],
 });

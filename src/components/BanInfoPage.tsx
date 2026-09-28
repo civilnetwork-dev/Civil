@@ -140,6 +140,8 @@ export default function BanInfoPage() {
         <Sheet>
             <TitleBlock
                 title="Restricted domains"
+                icon={IconBan}
+                tint="wine"
                 meta={
                     loading()
                         ? "Loading…"

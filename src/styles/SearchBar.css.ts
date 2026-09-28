@@ -1,5 +1,6 @@
 import { style } from "@vanilla-extract/css";
 
+import { blend, KEY_COBALT, PLATE, ROW_LIFT, WELL } from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
@@ -9,27 +10,26 @@ export const sbRoot = style({
     width: "100%",
 });
 
-// The form carries the focus ring for the whole control; the input inside
-// draws none of its own.
-export const sbInputWrapper = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    minHeight: "64px",
-    padding: "8px 8px 8px 22px",
-    background: vars.color.basalt,
-    border: `1px solid ${vars.color.talus}`,
-    borderRadius: "16px",
-    transition: "border-color 180ms ease-out",
-    selectors: { "&:focus-within": { borderColor: vars.color.cobalt } },
-    "@media": {
-        "(max-width: 600px)": {
-            minHeight: "60px",
-            gap: "10px",
-            paddingLeft: "16px",
+// A deep well cut into the ground, with the Browse key seated inside it. The
+// form carries the focus rim for the whole control; the input inside draws
+// none of its own.
+export const sbInputWrapper = style(
+    blend(WELL, {
+        display: "flex",
+        alignItems: "center",
+        gap: "14px",
+        minHeight: "64px",
+        padding: "8px 10px 10px 22px",
+        borderRadius: "18px",
+        "@media": {
+            "(max-width: 600px)": {
+                minHeight: "60px",
+                gap: "10px",
+                paddingLeft: "16px",
+            },
         },
-    },
-});
+    }),
+);
 
 export const sbSearchIcon = style({ color: vars.color.ash, flexShrink: 0 });
 
@@ -50,68 +50,56 @@ export const sbInput = style({
     },
 });
 
-export const sbButton = style({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "10px",
-    minHeight: "46px",
-    minWidth: "46px",
-    padding: "0 16px",
-    flexShrink: 0,
-    border: "none",
-    borderRadius: "10px",
-    background: vars.color.cobalt,
-    color: vars.color.basalt,
-    fontSize: "14px",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "background 180ms ease-out",
-    selectors: {
-        "&:hover": {
-            background: `color-mix(in srgb, ${vars.color.cobalt} 85%, ${vars.color.firn})`,
-        },
-        "&:active": {
-            background: `color-mix(in srgb, ${vars.color.cobalt} 85%, ${vars.color.basalt})`,
-        },
-    },
-    "@media": { "(max-width: 600px)": { padding: "0 12px" } },
-});
+export const sbButton = style(
+    blend(KEY_COBALT, {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px",
+        minHeight: "44px",
+        minWidth: "46px",
+        padding: "0 16px",
+        flexShrink: 0,
+        border: "none",
+        borderRadius: "12px",
+        fontSize: "14px",
+        cursor: "pointer",
+        "@media": { "(max-width: 600px)": { padding: "0 12px" } },
+    }),
+);
 
 export const sbButtonLabel = style({
     "@media": { "(max-width: 600px)": { display: "none" } },
 });
 
-export const sbDropdown = style({
-    position: "absolute",
-    top: "calc(100% + 8px)",
-    left: 0,
-    width: "100%",
-    maxHeight: "280px",
-    overflowY: "auto",
-    zIndex: 10000,
-    background: vars.color.basalt,
-    border: `1px solid ${vars.color.talus}`,
-    borderRadius: "12px",
-    listStyle: "none",
-    padding: "6px",
-});
+export const sbDropdown = style(
+    blend(PLATE, {
+        position: "absolute",
+        top: "calc(100% + 10px)",
+        left: 0,
+        width: "100%",
+        maxHeight: "280px",
+        overflowY: "auto",
+        zIndex: 10000,
+        borderRadius: "14px",
+        listStyle: "none",
+        padding: "6px",
+    }),
+);
 
-export const sbRow = style({
-    display: "block",
-    width: "100%",
-    border: "none",
-    background: "transparent",
-    textAlign: "left",
-    borderRadius: "8px",
-    cursor: "pointer",
-    padding: "12px 14px",
-    color: vars.color.snowmelt,
-    fontSize: "14px",
-    selectors: {
-        "&:hover, &:focus-visible": {
-            background: vars.color.scree,
-            color: vars.color.firn,
+export const sbRow = style(
+    blend(ROW_LIFT, {
+        display: "block",
+        width: "100%",
+        border: "none",
+        background: "transparent",
+        textAlign: "left",
+        cursor: "pointer",
+        padding: "12px 14px",
+        color: vars.color.snowmelt,
+        fontSize: "14px",
+        selectors: {
+            "&:hover, &:focus-within": { color: vars.color.firn },
         },
-    },
-});
+    }),
+);

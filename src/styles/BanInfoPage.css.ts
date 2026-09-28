@@ -1,8 +1,10 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 
-import { DUR, EASE } from "./material.css";
+import { blend, edge, LIT, SHADE, WELL } from "./material.css";
 import { ANNO, FONT_MONO, RULE } from "./schematic.css";
 import { vars } from "./theme.css";
+
+const WINE_FACE = `color-mix(in oklab, ${vars.color.wine} 14%, ${vars.color.scree})`;
 
 /**
  * The tally and the roll.
@@ -24,14 +26,21 @@ export const statusBlock = style({
     borderTop: RULE.major,
 });
 
+// A ban is a slab of wine-stained stone, its sediment banded in wine.
 export const banned = style({
     display: "grid",
     gridTemplateColumns: "auto 1fr",
     alignItems: "start",
     gap: "14px",
     padding: "16px",
-    border: `0.5px solid color-mix(in srgb, ${vars.color.wine} 45%, transparent)`,
-    background: `color-mix(in srgb, ${vars.color.wine} 10%, transparent)`,
+    borderRadius: "14px",
+    backgroundColor: WINE_FACE,
+    backgroundImage: LIT,
+    boxShadow: `${SHADE.lip}, ${edge(
+        4,
+        `color-mix(in oklab, ${vars.color.wine} 40%, ${vars.color.basalt})`,
+        `color-mix(in oklab, ${vars.color.wine} 22%, ${vars.color.basalt})`,
+    )}`,
 });
 
 export const bannedIcon = style({
@@ -68,13 +77,6 @@ export const controls = style({
     flexWrap: "wrap",
     margin: "24px 0 0",
     paddingBottom: "8px",
-    borderBottom: RULE.hair,
-    transitionProperty: "border-color",
-    transitionTimingFunction: EASE.standard,
-    transitionDuration: DUR.base,
-    selectors: {
-        "&:focus-within": { borderBottomColor: vars.color.cobalt },
-    },
 });
 
 export const controlLabel = style({
@@ -83,21 +85,20 @@ export const controlLabel = style({
     whiteSpace: "nowrap",
 });
 
-export const controlInput = style({
-    width: "10ch",
-    padding: "6px 10px",
-    border: RULE.major,
-    borderRadius: "8px",
-    background: vars.color.basalt,
-    outline: "none",
-    color: vars.color.firn,
-    transition: `border-color ${DUR.base} ${EASE.standard}`,
-    selectors: { "&:focus": { borderColor: vars.color.cobalt } },
-    fontFamily: FONT_MONO,
-    fontSize: "13px",
-    fontVariantNumeric: "tabular-nums",
-    caretColor: vars.color.cobalt,
-});
+export const controlInput = style(
+    blend(WELL, {
+        width: "10ch",
+        padding: "7px 10px",
+        border: "none",
+        borderRadius: "9px",
+        outline: "none",
+        color: vars.color.firn,
+        fontFamily: FONT_MONO,
+        fontSize: "13px",
+        fontVariantNumeric: "tabular-nums",
+        caretColor: vars.color.cobalt,
+    }),
+);
 
 export const stats = style({
     ...ANNO,
@@ -114,11 +115,16 @@ export const stats = style({
  * measure with as many columns as fit, so the same rule serves a phone and a
  * wide monitor without a single breakpoint.
  */
-export const roll = style({
-    columnWidth: "220px",
-    columnGap: "28px",
-    margin: "14px 0 0",
-});
+// The roll is printed into a long carved well.
+export const roll = style(
+    blend(WELL, {
+        columnWidth: "220px",
+        columnGap: "28px",
+        margin: "14px 0 0",
+        padding: "16px 18px",
+        borderRadius: "14px",
+    }),
+);
 
 export const domain = style({
     fontFamily: FONT_MONO,

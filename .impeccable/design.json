@@ -1,510 +1,617 @@
 {
     "schemaVersion": 2,
-    "generatedAt": "2026-07-29T21:25:19Z",
+    "generatedAt": "2026-09-25T20:14:16Z",
     "title": "Design System: Civil Proxy",
     "extensions": {
         "colorMeta": {
-            "crust": {
+            "basalt": {
                 "role": "neutral",
-                "displayName": "Crust",
-                "canonical": "#181926",
+                "displayName": "Basalt",
+                "canonical": "#0E1119",
+                "description": "Bedrock: frames the browser as the tab strip and floors every well. Also the label on the cobalt key (6.1:1, where firn would fail AA) and the glyph inlay on light specimens.",
                 "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
+                    "#0E1119",
+                    "#22262F",
+                    "#2D3039",
+                    "#434751",
+                    "#666B76",
+                    "#8C919E",
+                    "#C2C6D2",
+                    "#EDF1FB"
                 ]
             },
-            "mantle": {
+            "stratum": {
                 "role": "neutral",
-                "displayName": "Mantle",
-                "canonical": "#1e2030",
+                "displayName": "Stratum",
+                "canonical": "#22262F",
+                "description": "The ground every page stands on, under the drifting survey contours. Every contrast figure in the palette is measured against it.",
                 "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
+                    "#0E1119",
+                    "#22262F",
+                    "#2D3039",
+                    "#434751",
+                    "#666B76",
+                    "#8C919E",
+                    "#C2C6D2",
+                    "#EDF1FB"
                 ]
             },
-            "base": {
+            "scree": {
                 "role": "neutral",
-                "displayName": "Base",
-                "canonical": "#24273a",
+                "displayName": "Scree",
+                "canonical": "#2D3039",
+                "description": "A slab's face: stone keys, plates, the open tab and the address row it runs into. Sunk toward basalt, the dark sediment band.",
                 "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
+                    "#0E1119",
+                    "#22262F",
+                    "#2D3039",
+                    "#434751",
+                    "#666B76",
+                    "#8C919E",
+                    "#C2C6D2",
+                    "#EDF1FB"
                 ]
             },
-            "surface0": {
+            "talus": {
                 "role": "neutral",
-                "displayName": "Surface 0",
-                "canonical": "#363a4f",
+                "displayName": "Talus",
+                "canonical": "#434751",
+                "description": "Lightens keycaps, pebbles and hovered rows (mixed into scree) and rims a hovered well. Sunk toward basalt, the light sediment band. The stone specimen and the scrollbar thumb.",
                 "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
+                    "#0E1119",
+                    "#22262F",
+                    "#2D3039",
+                    "#434751",
+                    "#666B76",
+                    "#8C919E",
+                    "#C2C6D2",
+                    "#EDF1FB"
                 ]
             },
-            "surface1": {
+            "ash": {
                 "role": "neutral",
-                "displayName": "Surface 1",
-                "canonical": "#494d64",
+                "displayName": "Ash",
+                "canonical": "#8C919E",
+                "description": "Muted text: placeholders, resting icons, inactive tabs, key hints. 4.80:1 on stratum, the AA floor; nothing dimmer exists.",
                 "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
+                    "#0E1119",
+                    "#22262F",
+                    "#2D3039",
+                    "#434751",
+                    "#666B76",
+                    "#8C919E",
+                    "#C2C6D2",
+                    "#EDF1FB"
                 ]
             },
-            "surface2": {
+            "snowmelt": {
                 "role": "neutral",
-                "displayName": "Surface 2",
-                "canonical": "#5b6078",
+                "displayName": "Snowmelt",
+                "canonical": "#C2C6D2",
+                "description": "Supporting text: the annotation tier, ledes, toolbar icons at rest. 8.87:1 on stratum.",
                 "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
+                    "#0E1119",
+                    "#22262F",
+                    "#2D3039",
+                    "#434751",
+                    "#666B76",
+                    "#8C919E",
+                    "#C2C6D2",
+                    "#EDF1FB"
                 ]
             },
-            "overlay0": {
+            "firn": {
                 "role": "neutral",
-                "displayName": "Overlay 0",
-                "canonical": "#6e738d",
+                "displayName": "Firn",
+                "canonical": "#EDF1FB",
+                "description": "Primary text, and the light that falls on every lip and lit face. 13.94:1 on stratum; deliberately not pure white.",
                 "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
+                    "#0E1119",
+                    "#22262F",
+                    "#2D3039",
+                    "#434751",
+                    "#666B76",
+                    "#8C919E",
+                    "#C2C6D2",
+                    "#EDF1FB"
                 ]
             },
-            "overlay1": {
-                "role": "neutral",
-                "displayName": "Overlay 1",
-                "canonical": "#8087a2",
-                "tonalRamp": [
-                    "#181926",
-                    "#1e2030",
-                    "#24273a",
-                    "#363a4f",
-                    "#494d64",
-                    "#5b6078",
-                    "#6e738d",
-                    "#8087a2"
-                ]
-            },
-            "subtext0": {
-                "role": "neutral",
-                "displayName": "Subtext 0",
-                "canonical": "#a5adcb",
-                "tonalRamp": [
-                    "#8087a2",
-                    "#939ab7",
-                    "#a5adcb",
-                    "#b8c0e0",
-                    "#cad3f5",
-                    "#dbe1f7",
-                    "#eceffa",
-                    "#f5f6fc"
-                ]
-            },
-            "subtext1": {
-                "role": "neutral",
-                "displayName": "Subtext 1",
-                "canonical": "#b8c0e0",
-                "tonalRamp": [
-                    "#8087a2",
-                    "#939ab7",
-                    "#a5adcb",
-                    "#b8c0e0",
-                    "#cad3f5",
-                    "#dbe1f7",
-                    "#eceffa",
-                    "#f5f6fc"
-                ]
-            },
-            "text": {
-                "role": "neutral",
-                "displayName": "Text",
-                "canonical": "#cad3f5",
-                "tonalRamp": [
-                    "#8087a2",
-                    "#939ab7",
-                    "#a5adcb",
-                    "#b8c0e0",
-                    "#cad3f5",
-                    "#dbe1f7",
-                    "#eceffa",
-                    "#f5f6fc"
-                ]
-            },
-            "lavender": {
+            "cobalt": {
                 "role": "primary",
-                "displayName": "Cockpit Lavender",
-                "canonical": "#b7bdf8",
+                "displayName": "Cobalt",
+                "canonical": "#4295E4",
+                "description": "Reserved for actions, focus and active state: the one cobalt key per view, a focused well's meltwater rim, a chosen scope, the focus ring. 4.80:1 on stratum. The Apps specimen.",
                 "tonalRamp": [
-                    "#2a2b52",
-                    "#3f4177",
-                    "#565a9c",
-                    "#7075c0",
-                    "#8f93da",
-                    "#b7bdf8",
-                    "#d3d6fb",
-                    "#eceefd"
+                    "#141C2A",
+                    "#1F3550",
+                    "#2A5078",
+                    "#346CA4",
+                    "#4295E4",
+                    "#67A8EA",
+                    "#9EC5F2",
+                    "#D3E3F8"
                 ]
             },
-            "mauve": {
-                "role": "secondary",
-                "displayName": "Signal Mauve",
-                "canonical": "#c6a0f6",
+            "juniper": {
+                "role": "verdict-allowed",
+                "displayName": "Juniper",
+                "canonical": "#C3CAA4",
+                "description": "Verdict: allowed, always with its text and glyph. 9.53:1 on stratum. Also the History specimen and the address bar's lock.",
                 "tonalRamp": [
-                    "#341f52",
-                    "#4d2c7a",
-                    "#6839a1",
-                    "#8749c3",
-                    "#a86fdd",
-                    "#c6a0f6",
-                    "#dcc4fa",
-                    "#efe2fd"
+                    "#191C22",
+                    "#313536",
+                    "#4A4F4A",
+                    "#666B5E",
+                    "#828874",
+                    "#A0A78A",
+                    "#C3CAA4",
+                    "#DDE3DB"
                 ]
             },
-            "blue": {
-                "role": "tertiary",
-                "displayName": "Neutral Blue",
-                "canonical": "#8aadf4",
+            "calcite": {
+                "role": "verdict-warned",
+                "displayName": "Calcite",
+                "canonical": "#F2E0C7",
+                "description": "Verdict: warned, always with its text and glyph. 12.63:1 on stratum. Also the Bookmarks specimen.",
                 "tonalRamp": [
-                    "#132247",
-                    "#1c3169",
-                    "#26428d",
-                    "#3d5cb0",
-                    "#5f7fd3",
-                    "#8aadf4",
-                    "#b9cdf8",
-                    "#e0e9fc"
+                    "#1A1C23",
+                    "#333437",
+                    "#4F4D4D",
+                    "#6D6863",
+                    "#8C847B",
+                    "#ACA193",
+                    "#CEBFAC",
+                    "#F2E0C7"
                 ]
             },
-            "sky": {
-                "role": "tertiary",
-                "displayName": "Quiet Sky",
-                "canonical": "#91d7e3",
+            "sandstone": {
+                "role": "verdict-error",
+                "displayName": "Sandstone",
+                "canonical": "#E29B69",
+                "description": "Verdict: error, always with its text and glyph. 6.58:1 on stratum. Also the Extensions specimen and the rate-limit notice's rim.",
                 "tonalRamp": [
-                    "#0f3339",
-                    "#155059",
-                    "#1c6e79",
-                    "#3a949f",
-                    "#61bac4",
-                    "#91d7e3",
-                    "#bfe9ee",
-                    "#e7f7f9"
+                    "#1D1B20",
+                    "#3D312E",
+                    "#5F473C",
+                    "#845F49",
+                    "#AB7857",
+                    "#E29B69",
+                    "#E7B696",
+                    "#ECDDD9"
                 ]
             },
-            "green": {
-                "role": "status-allowed",
-                "displayName": "Status Green",
-                "canonical": "#a6da95",
+            "wine": {
+                "role": "verdict-blocked",
+                "displayName": "Wine",
+                "canonical": "#C8789B",
+                "description": "Verdict: blocked, always with its text and glyph. 4.77:1 on stratum. Also the Restricted domains specimen, destructive menu rows and field errors.",
                 "tonalRamp": [
-                    "#1c331a",
-                    "#2b4f27",
-                    "#3c6c35",
-                    "#5e9354",
-                    "#82b975",
-                    "#a6da95",
-                    "#c9e9bd",
-                    "#e9f6e3"
-                ]
-            },
-            "yellow": {
-                "role": "status-warned",
-                "displayName": "Status Yellow",
-                "canonical": "#eed49f",
-                "tonalRamp": [
-                    "#4a3a13",
-                    "#6f571c",
-                    "#957527",
-                    "#b7943f",
-                    "#d3b56c",
-                    "#eed49f",
-                    "#f5e5c4",
-                    "#faf3e5"
-                ]
-            },
-            "red": {
-                "role": "status-blocked",
-                "displayName": "Status Red",
-                "canonical": "#ed8796",
-                "tonalRamp": [
-                    "#4a1219",
-                    "#6f1c26",
-                    "#952636",
-                    "#b73f4d",
-                    "#d36c76",
-                    "#ed8796",
-                    "#f5b8bf",
-                    "#fae0e3"
-                ]
-            },
-            "maroon": {
-                "role": "status-error",
-                "displayName": "Status Maroon",
-                "canonical": "#ee99a0",
-                "tonalRamp": [
-                    "#4a1a1e",
-                    "#6f272c",
-                    "#95343b",
-                    "#b74d54",
-                    "#d3777c",
-                    "#ee99a0",
-                    "#f5c0c4",
-                    "#fae5e7"
+                    "#1E1A24",
+                    "#3F2D3C",
+                    "#634155",
+                    "#8A5670",
+                    "#B26C8C",
+                    "#C8789B",
+                    "#DDB4C9",
+                    "#E8DCEA"
                 ]
             }
         },
         "typographyMeta": {
-            "display": {
-                "displayName": "Display",
-                "purpose": "Shared status-page headline (New Tab / Ban / Ban Info h1). Plain color, never gradient."
+            "welcome": {
+                "displayName": "Welcome",
+                "purpose": "The new-tab heading on desktop. Raised lettering: a one-pixel basalt shadow directly under the glyphs and a short soft one below, balanced wrapping, -0.035em."
             },
-            "headline": {
-                "displayName": "Headline",
-                "purpose": "Filter Checker page title only. Lavender→Mauve 135° gradient text-fill."
+            "welcome-mobile": {
+                "displayName": "Welcome, mobile",
+                "purpose": "The same heading at 600px and below."
+            },
+            "title": {
+                "displayName": "Title",
+                "purpose": "Interior page titles and the stop card title, beside the page's specimen. Weight 600, line height 1.2, -0.015em, in raised lettering."
             },
             "body": {
                 "displayName": "Body",
-                "purpose": "Standalone-page labels, form copy, dropdown options."
-            },
-            "chrome": {
-                "displayName": "Chrome",
-                "purpose": "In-browser-chrome UI text: tabs, omnibox, history, suggestions. Distinct tier from Body."
+                "purpose": "Running text: the new-tab description (1.6 line height, snowmelt) and the main search input."
             },
             "label": {
                 "displayName": "Label",
-                "purpose": "Uppercase status/category labels and captions."
+                "purpose": "Control labels and rows: the Browse key, search suggestion rows, field inputs, shortcut titles at weight 500."
+            },
+            "annotation": {
+                "displayName": "Annotation",
+                "purpose": "The annotation tier: weight 500, 0.02em tracking, tabular numerals, in snowmelt. Rule, field and ledger labels, metadata, stone-key text. Verdict tokens take the same size in IBM Plex Mono."
+            },
+            "caption": {
+                "displayName": "Caption",
+                "purpose": "Captions in ash: shortcut descriptions and the new-tab footer."
+            },
+            "chrome": {
+                "displayName": "Chrome",
+                "purpose": "Dense browser labels: tab titles (weight 500, 0.01em; 600 on the open tab), the address field, suggestion and history rows."
+            },
+            "control": {
+                "displayName": "Control",
+                "purpose": "Controls and menus: context menu rows, the chrome's base size, the cobalt key's label."
+            },
+            "lede": {
+                "displayName": "Lede",
+                "purpose": "The paragraph under a page title: 1.55 line height, 60ch measure, snowmelt. The tab switcher's search input shares the size."
+            },
+            "display": {
+                "displayName": "Display",
+                "purpose": "The 404 numeral, the one display size (fluid, up to 88px), cut as a block of strata six banded shadows deep."
+            }
+        },
+        "roundedMeta": {
+            "keycap": {
+                "displayName": "Keycap",
+                "value": "5px",
+                "purpose": "Keycaps drawn as kbd: the tab switcher's keyboard hints."
+            },
+            "chip": {
+                "displayName": "Chip",
+                "value": "8px",
+                "purpose": "Chips and menu rows, in the 7 to 9px small band: bookmark pebbles, detected-filter chips, context menu rows, the new-tab keycap."
+            },
+            "button": {
+                "displayName": "Button",
+                "value": "9px",
+                "purpose": "Small keys: stone keys and the 32px toolbar keycaps. The band runs down to 7px on 24px keycaps; rows and tabs sit a step up at 10px."
+            },
+            "field": {
+                "displayName": "Field",
+                "value": "12px",
+                "purpose": "Fields and wells: labelled fields, the tab switcher's search, the Browse key seated in the main search."
+            },
+            "menu": {
+                "displayName": "Menu",
+                "value": "14px",
+                "purpose": "Menus and pickers: context menus, search and address suggestions."
+            },
+            "tablet": {
+                "displayName": "Tablet",
+                "value": "16px",
+                "purpose": "Tablets, tiles and toasts: the filter report, new-tab shortcuts, the tab switcher."
+            },
+            "search": {
+                "displayName": "Search",
+                "value": "18px",
+                "purpose": "The main search well and the stop card."
+            },
+            "specimen": {
+                "displayName": "Specimen",
+                "value": "30%",
+                "purpose": "Mineral specimens: the corners scale with the tile."
+            },
+            "pill": {
+                "displayName": "Pill",
+                "value": "999px",
+                "purpose": "A full pill, only for status badges."
             }
         },
         "shadows": [
             {
-                "name": "floating-menu",
-                "value": "0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18)",
-                "purpose": "Context menu and submenus."
+                "name": "lip",
+                "value": "inset 0 1px 0 color-mix(in srgb, var(--civil-color-firn, #EDF1FB) 8%, transparent)",
+                "purpose": "The lit top lip of every raised face."
             },
             {
-                "name": "dropdown",
-                "value": "0 4px 12px rgba(0,0,0,0.15)",
-                "purpose": "Select component open list."
+                "name": "near",
+                "value": "0 10px 18px -10px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 85%, transparent)",
+                "purpose": "Contact shadow under a slab resting on the ground."
             },
             {
-                "name": "panel",
-                "value": "0 4px 24px rgba(0,0,0,0.18)",
-                "purpose": "Filter Checker form card."
+                "name": "far",
+                "value": "0 22px 32px -14px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 92%, transparent)",
+                "purpose": "The same slab lifted clear of it: a hovered key, a plate, the chrome's cliff."
             },
             {
-                "name": "card-hover-lift",
-                "value": "0 6px 20px rgba(0,0,0,0.2)",
-                "purpose": "Filter Checker result card hover, paired with translateY(-2px)."
+                "name": "pit",
+                "value": "inset 0 2px 5px color-mix(in srgb, black 55%, transparent)",
+                "purpose": "The shaded upper wall inside a carved well. Black appears only inside shadows, which are missing light rather than a surface colour."
             },
             {
-                "name": "drag-clone",
-                "value": "0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3)",
-                "purpose": "Dragged tab clone."
+                "name": "edge-pebble",
+                "value": "0 1px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 10px 18px -10px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 85%, transparent)",
+                "purpose": "Slab edge, one sediment band and a contact shadow: pebbles (bookmarks, chips, detected filters)."
             },
             {
-                "name": "accent-glow",
-                "value": "0 4px 16px color-mix(in srgb, {accent} 40%, transparent)",
-                "purpose": "Accent-colored CTA hover glow, not a structural shadow."
+                "name": "edge-keycap",
+                "value": "0 1px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 2px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 10px 18px -10px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 85%, transparent)",
+                "purpose": "Two bands: keycaps and kbd hints, and a row lifted as a chip."
+            },
+            {
+                "name": "edge-key",
+                "value": "0 1px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 2px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 3px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 10px 18px -10px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 85%, transparent)",
+                "purpose": "Three bands: stone keys. The cobalt key uses the same depth with its bands in cobalt sunk toward basalt."
+            },
+            {
+                "name": "edge-tablet",
+                "value": "0 1px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 2px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 3px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 4px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 10px 18px -10px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 85%, transparent)",
+                "purpose": "Four bands: tablets, the content beds that hold rows."
+            },
+            {
+                "name": "edge-plate",
+                "value": "0 1px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 2px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 3px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 4px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 5px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 6px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 22px 32px -14px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 92%, transparent)",
+                "purpose": "Six bands over the far shadow: plates (menus, pickers, toasts, the stop card)."
+            },
+            {
+                "name": "cliff",
+                "value": "0 1px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 2px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 3px 0 color-mix(in oklab, var(--civil-color-talus, #434751) 70%, var(--civil-color-basalt, #0E1119)), 0 4px 0 color-mix(in oklab, var(--civil-color-scree, #2D3039) 45%, var(--civil-color-basalt, #0E1119)), 0 22px 32px -14px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 92%, transparent)",
+                "purpose": "The end of the chrome terrace: four sediment bands along its bottom edge and a shadow that falls onto the page."
+            },
+            {
+                "name": "well",
+                "value": "inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--civil-color-basalt, #0E1119) 70%, transparent), 0 1px 0 color-mix(in srgb, var(--civil-color-firn, #EDF1FB) 7%, transparent)",
+                "purpose": "A carved well at rest: shadowed upper wall, a basalt hairline, a lit lower rim. Hover swaps the hairline for talus."
+            },
+            {
+                "name": "well-focus",
+                "value": "inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 18px color-mix(in srgb, var(--civil-color-cobalt, #4295E4) 22%, transparent), inset 0 0 0 1px var(--civil-color-cobalt, #4295E4), 0 1px 0 color-mix(in srgb, var(--civil-color-firn, #EDF1FB) 7%, transparent)",
+                "purpose": "Focus floods the well's rim with cobalt meltwater. The row carries it; the input inside draws no ring."
             }
         ],
         "motion": [
             {
-                "name": "t-fast",
-                "value": "0.1s ease",
-                "purpose": "Micro hover transitions (icon buttons, tabs)."
+                "name": "ease-standard",
+                "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+                "purpose": "State changes."
             },
             {
-                "name": "t-standard",
-                "value": "0.18s cubic-bezier(0.4, 0, 0.2, 1)",
-                "purpose": "Default state-change easing."
+                "name": "ease-spring",
+                "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+                "purpose": "Anything that should feel physically seated when it lands: a slab rising, a specimen tilting."
             },
             {
-                "name": "t-slow",
-                "value": "0.35s cubic-bezier(0.4, 0, 0.2, 1)",
-                "purpose": "Page-section fade-up reveals, staggered by 0.05-0.1s."
+                "name": "ease-enter",
+                "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+                "purpose": "Decelerate-only entrances that should not overshoot; a lifted slab's shadow follows on it without bounce."
             },
             {
-                "name": "menu-in",
-                "value": "0.12s cubic-bezier(0.22, 1, 0.36, 1)",
-                "purpose": "Context menu / submenu scale+translate pop-in."
+                "name": "dur-fast",
+                "value": "0.11s",
+                "purpose": "Hover and press feedback on a control under the cursor."
             },
             {
-                "name": "tab-enter",
-                "value": "0.16s cubic-bezier(0.22, 1, 0.36, 1)",
-                "purpose": "New tab scale+fade entrance. Interactive-feedback opt-in past the motion-kill; transform+opacity only."
+                "name": "dur-base",
+                "value": "0.18s",
+                "purpose": "A state change you are meant to notice: a well's rim, a colour change."
             },
             {
-                "name": "global-motion-kill",
-                "value": "transitionDuration/animationDuration: 0s !important on *, *::before, *::after",
-                "purpose": "Default-off ambient motion for a low visual footprint on a shared screen. Two categories re-opt-in with their own !important duration: functional (loaders) and interactive-feedback (entrance, hover, focus, active-state change), always scoped to paint/composite properties, never layout properties like width/height."
+                "name": "dur-slow",
+                "value": "0.28s",
+                "purpose": "A whole-element entrance."
+            },
+            {
+                "name": "dur-lift",
+                "value": "0.32s",
+                "purpose": "A slab rising, long enough for the spring to settle."
+            },
+            {
+                "name": "lift",
+                "value": "transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+                "purpose": "How a slab moves: hover rises 2px and deepens the edge by two bands with a far shadow. Only the element under the pointer transitions its shadow."
+            },
+            {
+                "name": "press",
+                "value": "90ms",
+                "purpose": "Press sinks the face into its bed with one band left."
+            },
+            {
+                "name": "rise",
+                "value": "560ms cubic-bezier(0.22, 1, 0.36, 1) backwards",
+                "purpose": "Entrance: sections rise 10px and fade in, staggered 50ms in reading order. Backwards fill, so hover transforms still apply once it lands."
+            },
+            {
+                "name": "ground-drift",
+                "value": "240s linear infinite alternate",
+                "purpose": "The ground's terrain layer at 7% opacity drifts translate3d(-180px, -120px, 0) over four minutes. Transform only."
+            },
+            {
+                "name": "ground-breathe",
+                "value": "18s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate",
+                "purpose": "Grain under the cobalt dawn at the top edge breathes from 0.55 to full opacity. Opacity only."
+            },
+            {
+                "name": "icon-lift",
+                "value": "transform 260ms cubic-bezier(0.16, 1, 0.3, 1)",
+                "purpose": "An icon's face and rim lift on hover or its control's keyboard focus while the extrusion stays, so the solid deepens."
+            },
+            {
+                "name": "icon-gesture",
+                "value": "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+                "purpose": "Each glyph's own gesture on all three layers: meridians narrow, hands turn, divider lines move, arrows extend."
+            },
+            {
+                "name": "specimen-tilt",
+                "value": "transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 480ms cubic-bezier(0.22, 1, 0.36, 1), background-position 900ms cubic-bezier(0.22, 1, 0.36, 1)",
+                "purpose": "A specimen tilts toward the reader, its glyph lifts on its own plane and a sheen sweeps the face."
+            },
+            {
+                "name": "specimen-sheen",
+                "value": "14s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+                "purpose": "The one occasional sheen, on the New Tab emblem: it rests for most of the cycle, then passes."
+            },
+            {
+                "name": "plate-settle",
+                "value": "0.16s cubic-bezier(0.22, 1, 0.36, 1) both",
+                "purpose": "A menu settles into place from translateY(-6px) scale(0.98)."
+            },
+            {
+                "name": "tab-rise",
+                "value": "0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards",
+                "purpose": "A new tab rises out of the bedrock from translateY(6px)."
+            },
+            {
+                "name": "reduced-motion",
+                "value": "0.01ms !important",
+                "purpose": "The global rule in global.css.ts collapses durations, so every loop stops and every state still reaches its end."
             }
         ],
-        "breakpoints": []
+        "breakpoints": [
+            {
+                "name": "mobile",
+                "value": "600px",
+                "purpose": "At 600px and below, shortcuts form two columns, the new-tab heading drops to 30px, and the Browse label yields to its arrow with an accessible name."
+            }
+        ]
     },
     "components": [
         {
-            "name": "Primary Button",
+            "name": "Cobalt key",
             "kind": "button",
-            "refersTo": "button-primary",
-            "description": "Filter Checker's single CTA. Gradient fill, lifts and glows on hover.",
-            "html": "<button class=\"ds-btn-primary\">Check Filters</button>",
-            "css": ".ds-btn-primary { padding: 10px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #c6a0f6 0%, #b7bdf8 100%); color: #181926; font-family: \"Rubik\", ui-sans-serif, sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.02em; cursor: pointer; transition: opacity 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.18s cubic-bezier(0.4,0,0.2,1), transform 0.18s cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { opacity: 0.9; box-shadow: 0 4px 16px color-mix(in srgb, #c6a0f6 40%, transparent); transform: translateY(-1px); }"
-        },
-        {
-            "name": "Ghost Icon Button",
-            "kind": "button",
-            "refersTo": "button-ghost",
-            "description": "Circular chrome control (nav, extensions, tab-new). Transparent at rest, fills on hover.",
-            "html": "<button class=\"ds-btn-ghost\" aria-label=\"Extensions\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 2a2 2 0 0 1 2 2v2h3a1 1 0 0 1 1 1v3h2a2 2 0 1 1 0 4h-2v3a1 1 0 0 1-1 1h-3v2a2 2 0 1 1-4 0v-2H7a1 1 0 0 1-1-1v-3H4a2 2 0 1 1 0-4h2V7a1 1 0 0 1 1-1h3V4a2 2 0 0 1 2-2z\"/></svg></button>",
-            "css": ".ds-btn-ghost { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; background: transparent; color: #8087a2; border-radius: 50%; cursor: pointer; padding: 0; transition: background 0.1s ease, color 0.1s ease; } .ds-btn-ghost:hover { background: #363a4f; color: #b7bdf8; } .ds-btn-ghost:focus-visible { outline: 2px solid #b7bdf8; outline-offset: 2px; }"
-        },
-        {
-            "name": "Omnibox Input",
-            "kind": "input",
-            "refersTo": "omnibox",
-            "description": "Pill-shaped URL/search bar. Lavender focus border, background steps darker on focus.",
-            "html": "<div class=\"ds-omnibox\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 12a8 8 0 1 1 16 0 8 8 0 0 1-16 0z M12 2v2 M12 20v2\"/></svg><input class=\"ds-omnibox-input\" placeholder=\"Search or enter address\" /></div>",
-            "css": ".ds-omnibox { display: flex; align-items: center; gap: 6px; height: 28px; background: #363a4f; border: 1.5px solid transparent; border-radius: 14px; padding: 0 8px 0 10px; box-sizing: border-box; transition: border-color 0.1s ease, background 0.1s ease, box-shadow 0.1s ease; color: #6e738d; } .ds-omnibox:focus-within { border-color: #b7bdf8; background: #1e2030; box-shadow: 0 0 0 3px color-mix(in srgb, #b7bdf8 18%, transparent); } .ds-omnibox-input { flex: 1; border: none; background: transparent; color: #cad3f5; font-size: 12.5px; font-family: inherit; outline: none; caret-color: #b7bdf8; } .ds-omnibox-input::placeholder { color: #6e738d; }"
-        },
-        {
-            "name": "Browser Tab",
-            "kind": "custom",
-            "refersTo": "tab",
-            "description": "Signature component. At rest a fully detached floating pill (999px radius) in Mantle, lifted off the Crust strip via transform, not margin. Active, it docks: flattens to 14px 14px 0 0, drops to translateY(0), steps to Base, and welds into the content plane. Bolder title, larger Lavender icon, and a keyboard focus ring on the active/focused tab. Entrance (opacity only) and dock/float transitions are explicit interactive-feedback opt-ins past the motion-kill; width is deliberately excluded so tab-resize stays an instant snap, not an animated reflow.",
-            "html": "<div class=\"ds-tab ds-tab--active\" tabindex=\"0\"><span class=\"ds-tab-favicon\"></span><span class=\"ds-tab-title\">Filter Checker</span><button class=\"ds-tab-close\" aria-label=\"Close tab\">&times;</button></div>",
-            "css": "@keyframes ds-tab-enter { from { opacity: 0; } to { opacity: 1; } } .ds-tab { position: relative; display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 32px; background: #1e2030; color: #6e738d; border-radius: 999px; transform: translateY(-5px); cursor: pointer; transition-property: background, color, border-radius, transform; transition-duration: 0.1s; transition-timing-function: ease; animation: ds-tab-enter 0.16s cubic-bezier(0.22, 1, 0.36, 1) both; } .ds-tab--active { background: #24273a; color: #cad3f5; border-radius: 14px 14px 0 0; transform: translateY(0); box-shadow: inset 0 1px 0 0 color-mix(in srgb, #494d64 35%, transparent), 0 -1px 0 0 #363a4f, -1px 0 0 0 #363a4f, 1px 0 0 0 #363a4f; } .ds-tab--active .ds-tab-title { font-weight: 600; } .ds-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px #24273a, 0 0 0 4px color-mix(in srgb, #b7bdf8 55%, transparent); } .ds-tab-favicon { width: 14px; height: 14px; border-radius: 3px; background: #494d64; flex-shrink: 0; } .ds-tab-title { font-size: 12.5px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-tab-close { width: 18px; height: 18px; border: none; background: transparent; color: #6e738d; border-radius: 50%; cursor: pointer; margin-left: auto; opacity: 0; transition-property: opacity, background, color; transition-duration: 0.1s; } .ds-tab--active .ds-tab-close { opacity: 0.35; } .ds-tab:hover .ds-tab-close { opacity: 1; } .ds-tab-close:hover { background: color-mix(in srgb, #ed8796 22%, transparent); color: #ed8796; }"
-        },
-        {
-            "name": "Game Cartridge Tile",
-            "kind": "custom",
             "refersTo": null,
-            "description": "Apps grid signature tile. A big icon stage over a caption bar in one 18px-radius square object, not the small-icon-plus-label stack used elsewhere. Lavender glow lift on hover (not black - an interactive launcher, not a structural card); icon scales slightly independent of the tile lift for a subtle parallax depth cue.",
-            "html": "<div class=\"ds-cartridge\"><div class=\"ds-cartridge-stage\"><img class=\"ds-cartridge-icon\" src=\"\" alt=\"\" /></div><div class=\"ds-cartridge-name\">Poki Games</div></div>",
-            "css": ".ds-cartridge { position: relative; display: flex; flex-direction: column; aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: linear-gradient(160deg, #363a4f 0%, #1e2030 100%); border: 1px solid #494d64; cursor: pointer; transition-property: transform, box-shadow, border-color; transition-duration: 0.16s; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); } .ds-cartridge:hover { transform: translateY(-3px); border-color: #6e738d; box-shadow: 0 10px 28px color-mix(in srgb, #b7bdf8 22%, transparent); } .ds-cartridge:active { transform: translateY(-1px) scale(0.97); } .ds-cartridge-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14px; } .ds-cartridge-icon { width: 52px; height: 52px; border-radius: 12px; object-fit: contain; transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-cartridge:hover .ds-cartridge-icon { transform: scale(1.06); } .ds-cartridge-name { flex-shrink: 0; padding: 8px 10px; background: color-mix(in srgb, #181926 45%, transparent); border-top: 1px solid #494d64; font-size: 12px; font-weight: 600; color: #cad3f5; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }"
+            "description": "The one cobalt key per view (KEY_COBALT): a cobalt slab on three bands of cobalt sunk toward basalt, labelled in basalt because firn on cobalt fails AA. Hover rises 2px and deepens the edge by two bands with a far shadow; press sinks the face into its bed with one band left.",
+            "html": "<button class=\"ds-key-cobalt\" type=\"button\">Check this site</button>",
+            "css": ".ds-key-cobalt { --basalt: var(--civil-color-basalt, #0E1119); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); } .ds-key-cobalt { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); --ds-face: var(--cobalt); --ds-band-light: color-mix(in oklab, var(--cobalt) 62%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--cobalt) 40%, var(--basalt)); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 38%, transparent); display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border: none; border-radius: 9px; font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; color: var(--basalt); cursor: pointer; } .ds-key-cobalt { position: relative; background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), var(--ds-near); transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-key-cobalt::before { content: \"\"; position: absolute; inset: 0 0 -4px; } .ds-key-cobalt:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), 0 5px 0 var(--ds-band-light), var(--ds-far); } .ds-key-cobalt:active:not(:disabled) { transform: translateY(2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), var(--ds-near); transition-duration: 90ms; } .ds-key-cobalt:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; } .ds-key-cobalt:disabled { opacity: 0.6; cursor: default; } @media (prefers-reduced-motion: reduce) { .ds-key-cobalt, .ds-key-cobalt * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
         },
         {
-            "name": "Status Card (Blocked)",
-            "kind": "card",
-            "refersTo": "badge-status",
-            "description": "Filter Checker result card. One recipe (8% background tint, 30% border tint, solid accent icon/label) reused for all five verdicts.",
-            "html": "<div class=\"ds-status-card ds-status-card--blocked\"><span class=\"ds-status-icon\">&#9888;</span><div class=\"ds-status-body\"><div class=\"ds-status-name\">games.example.com</div><div class=\"ds-status-detail\">Blocked by Securly</div></div><span class=\"ds-status-label\">Blocked</span></div>",
-            "css": ".ds-status-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 12px; transition: transform 0.18s cubic-bezier(0.4,0,0.2,1), box-shadow 0.18s cubic-bezier(0.4,0,0.2,1); } .ds-status-card--blocked { background: color-mix(in srgb, #ed8796 8%, #1e2030); border: 1.5px solid color-mix(in srgb, #ed8796 30%, transparent); } .ds-status-card--blocked:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); } .ds-status-icon { color: #ed8796; flex-shrink: 0; } .ds-status-name { font-size: 14px; font-weight: 600; color: #cad3f5; } .ds-status-detail { font-size: 12px; color: #a5adcb; } .ds-status-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #ed8796; margin-left: auto; }"
+            "name": "Stone key",
+            "kind": "button",
+            "refersTo": null,
+            "description": "Secondary buttons and text actions (KEY_STONE): a plain scree key three bands high, set in the annotation tier. Rises, presses and takes focus like every pressable slab.",
+            "html": "<button class=\"ds-key-stone\" type=\"button\">Scan again</button>",
+            "css": ".ds-key-stone { --basalt: var(--civil-color-basalt, #0E1119); --scree: var(--civil-color-scree, #2D3039); --talus: var(--civil-color-talus, #434751); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); } .ds-key-stone { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 8%, transparent); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); --ds-band-light: color-mix(in oklab, var(--talus) 70%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--scree) 45%, var(--basalt)); --ds-face: var(--scree); padding: 6px 11px; border: none; border-radius: 9px; font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--cobalt); cursor: pointer; } .ds-key-stone { position: relative; background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), var(--ds-near); transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-key-stone::before { content: \"\"; position: absolute; inset: 0 0 -4px; } .ds-key-stone:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), 0 5px 0 var(--ds-band-light), var(--ds-far); } .ds-key-stone:active:not(:disabled) { transform: translateY(2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), var(--ds-near); transition-duration: 90ms; } .ds-key-stone:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-key-stone, .ds-key-stone * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
         },
         {
-            "name": "Context Menu",
+            "name": "Keycaps",
+            "kind": "button",
+            "refersTo": null,
+            "description": "Low keycaps (KEYCAP) for back, forward, reload, tab search and extensions, standing on the scree terrace; a disabled one stays seated and dim. The tab switcher's keyboard hints are drawn as real keycaps: kbd in IBM Plex Mono on the same recipe at the 5px keycap radius. Every icon is one path drawn three times (extrusion, lit rim, face); on hover or focus the face and rim lift and the glyph performs its gesture.",
+            "html": "<div class=\"ds-keycaps\"><div class=\"ds-toolbar\"><button class=\"ds-keycap\" type=\"button\" aria-label=\"Back\" disabled><svg class=\"ds-icon\" data-icon=\"left\" viewBox=\"0 0 16 16\" width=\"17\" height=\"17\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M13 8H3\"/><path d=\"M7 4L3 8l4 4\"/></g><g class=\"ds-rim\"><path d=\"M13 8H3\"/><path d=\"M7 4L3 8l4 4\"/></g><g class=\"ds-face\"><path d=\"M13 8H3\"/><path d=\"M7 4L3 8l4 4\"/></g></svg></button><button class=\"ds-keycap\" type=\"button\" aria-label=\"Forward\"><svg class=\"ds-icon\" data-icon=\"right\" viewBox=\"0 0 16 16\" width=\"17\" height=\"17\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M3 8h10\"/><path d=\"M9 4l4 4-4 4\"/></g><g class=\"ds-rim\"><path d=\"M3 8h10\"/><path d=\"M9 4l4 4-4 4\"/></g><g class=\"ds-face\"><path d=\"M3 8h10\"/><path d=\"M9 4l4 4-4 4\"/></g></svg></button><button class=\"ds-keycap\" type=\"button\" aria-label=\"Reload\"><svg class=\"ds-icon\" data-icon=\"refresh\" viewBox=\"0 0 16 16\" width=\"17\" height=\"17\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M12.5 5C11.5 3 9.5 2.5 8 2.5C5 2.5 2.5 5 2.5 8M3.5 11C4.5 13 6.5 13.5 8 13.5C11 13.5 13.5 11 13.5 8\"/><path d=\"M12.5 2v3h-3M3.5 14v-3h3\"/></g><g class=\"ds-rim\"><path d=\"M12.5 5C11.5 3 9.5 2.5 8 2.5C5 2.5 2.5 5 2.5 8M3.5 11C4.5 13 6.5 13.5 8 13.5C11 13.5 13.5 11 13.5 8\"/><path d=\"M12.5 2v3h-3M3.5 14v-3h3\"/></g><g class=\"ds-face\"><path d=\"M12.5 5C11.5 3 9.5 2.5 8 2.5C5 2.5 2.5 5 2.5 8M3.5 11C4.5 13 6.5 13.5 8 13.5C11 13.5 13.5 11 13.5 8\"/><path d=\"M12.5 2v3h-3M3.5 14v-3h3\"/></g></svg></button><button class=\"ds-keycap\" type=\"button\" aria-label=\"Search tabs (Ctrl+K)\"><svg class=\"ds-icon\" data-icon=\"search\" viewBox=\"0 0 16 16\" width=\"15\" height=\"15\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M6.5 2.25C8.85 2.25 10.75 4.15 10.75 6.5C10.75 8.85 8.85 10.75 6.5 10.75C4.15 10.75 2.25 8.85 2.25 6.5C2.25 4.15 4.15 2.25 6.5 2.25Z\"/><path d=\"M9.75 9.75l4 4\"/></g><g class=\"ds-rim\"><path d=\"M6.5 2.25C8.85 2.25 10.75 4.15 10.75 6.5C10.75 8.85 8.85 10.75 6.5 10.75C4.15 10.75 2.25 8.85 2.25 6.5C2.25 4.15 4.15 2.25 6.5 2.25Z\"/><path d=\"M9.75 9.75l4 4\"/></g><g class=\"ds-face\"><path d=\"M6.5 2.25C8.85 2.25 10.75 4.15 10.75 6.5C10.75 8.85 8.85 10.75 6.5 10.75C4.15 10.75 2.25 8.85 2.25 6.5C2.25 4.15 4.15 2.25 6.5 2.25Z\"/><path d=\"M9.75 9.75l4 4\"/></g></svg></button></div><div class=\"ds-hints\"><span class=\"ds-hint\"><kbd class=\"ds-kbd\">↑</kbd> <kbd class=\"ds-kbd\">↓</kbd> navigate</span><span class=\"ds-hint\"><kbd class=\"ds-kbd\">↵</kbd> switch</span><span class=\"ds-hint\"><kbd class=\"ds-kbd\">Esc</kbd> close</span></div></div>",
+            "css": ".ds-keycaps { --basalt: var(--civil-color-basalt, #0E1119); --scree: var(--civil-color-scree, #2D3039); --talus: var(--civil-color-talus, #434751); --ash: var(--civil-color-ash, #8C919E); --snowmelt: var(--civil-color-snowmelt, #C2C6D2); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); } .ds-keycaps { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 8%, transparent); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); --ds-band-light: color-mix(in oklab, var(--talus) 70%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--scree) 45%, var(--basalt)); display: flex; flex-direction: column; align-items: center; gap: 14px; font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; } .ds-toolbar { display: flex; align-items: center; gap: 2px; padding: 5px 8px 6px; background-color: var(--scree); background-image: var(--ds-grain); } .ds-keycap { --ds-face: color-mix(in oklab, var(--talus) 40%, var(--scree)); display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 32px; height: 32px; padding: 0; border: none; border-radius: 9px; color: var(--snowmelt); cursor: pointer; } .ds-keycap { position: relative; background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), var(--ds-near); transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-keycap::before { content: \"\"; position: absolute; inset: 0 0 -4px; } .ds-keycap:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), var(--ds-far); } .ds-keycap:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), var(--ds-near); transition-duration: 90ms; } .ds-keycap:hover:not(:disabled) { color: var(--firn); } .ds-keycap:focus-visible { outline: 1px solid var(--cobalt); outline-offset: 1px; } .ds-keycap:disabled { opacity: 0.35; cursor: default; } .ds-hints { display: flex; gap: 16px; padding: 10px 16px 12px; background-color: var(--scree); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--scree) 90%, var(--firn)), var(--scree) 60%); } .ds-hint { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ash); } .ds-kbd { --ds-face: color-mix(in oklab, var(--talus) 40%, var(--scree)); display: inline-flex; align-items: center; justify-content: center; padding: 0 6px 1px; border-radius: 5px; font-family: \"IBM Plex Mono\", ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace; font-size: 12px; line-height: 1.6; color: var(--firn); background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), var(--ds-near); } .ds-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; overflow: visible; } .ds-depth { color: color-mix(in oklab, currentColor 38%, var(--basalt)); stroke-width: 2.1; transform: translate(0.45px, 0.7px); } .ds-icon[fill=\"currentColor\"] > .ds-depth { stroke: currentColor; stroke-width: 1; } .ds-rim { color: color-mix(in srgb, color-mix(in oklab, currentColor 45%, var(--firn)) 55%, transparent); transform: translate(-0.35px, -0.45px); transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-face { transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-icon > g > path { transform-origin: 8px 8px; transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); } @media (prefers-reduced-motion: no-preference) { :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } :is(button, [role=\"tab\"]):focus-visible [data-icon=\"right\"] > g > path:nth-child(1) { transform: scaleX(0.85); } :is(button, [role=\"tab\"]):focus-visible [data-icon=\"right\"] > g > path:nth-child(2) { transform: translateX(1.5px); } :is(button, [role=\"tab\"]):focus-visible [data-icon=\"refresh\"] > g > path:nth-child(1) { transform: rotate(30deg); } :is(button, [role=\"tab\"]):focus-visible [data-icon=\"refresh\"] > g > path:nth-child(2) { transform: rotate(30deg) scale(0.9); } :is(button, [role=\"tab\"]):focus-visible [data-icon=\"search\"] > g > path:nth-child(1) { transform: scale(1.08); } :is(button, [role=\"tab\"]):focus-visible [data-icon=\"search\"] > g > path:nth-child(2) { transform: translate(1px, 1px); } @media (hover: hover) { :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } :is(button, [role=\"tab\"]):not(:disabled):hover [data-icon=\"right\"] > g > path:nth-child(1) { transform: scaleX(0.85); } :is(button, [role=\"tab\"]):not(:disabled):hover [data-icon=\"right\"] > g > path:nth-child(2) { transform: translateX(1.5px); } :is(button, [role=\"tab\"]):not(:disabled):hover [data-icon=\"refresh\"] > g > path:nth-child(1) { transform: rotate(30deg); } :is(button, [role=\"tab\"]):not(:disabled):hover [data-icon=\"refresh\"] > g > path:nth-child(2) { transform: rotate(30deg) scale(0.9); } :is(button, [role=\"tab\"]):not(:disabled):hover [data-icon=\"search\"] > g > path:nth-child(1) { transform: scale(1.08); } :is(button, [role=\"tab\"]):not(:disabled):hover [data-icon=\"search\"] > g > path:nth-child(2) { transform: translate(1px, 1px); } } } @media (prefers-reduced-motion: reduce) { .ds-keycaps, .ds-keycaps * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+        },
+        {
+            "name": "Main search",
+            "kind": "input",
+            "refersTo": null,
+            "description": "The main search: a deep well with an explicit accessible label and a cobalt Browse key seated inside it. The well carries the focus rim, flooding it with cobalt meltwater; the input inside draws no ring. At 600px and below the Browse label yields to its arrow and keeps its accessible name.",
+            "html": "<div class=\"ds-search\" role=\"search\"><svg class=\"ds-icon\" data-icon=\"search\" viewBox=\"0 0 16 16\" width=\"20\" height=\"20\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M6.5 2.25C8.85 2.25 10.75 4.15 10.75 6.5C10.75 8.85 8.85 10.75 6.5 10.75C4.15 10.75 2.25 8.85 2.25 6.5C2.25 4.15 4.15 2.25 6.5 2.25Z\"/><path d=\"M9.75 9.75l4 4\"/></g><g class=\"ds-rim\"><path d=\"M6.5 2.25C8.85 2.25 10.75 4.15 10.75 6.5C10.75 8.85 8.85 10.75 6.5 10.75C4.15 10.75 2.25 8.85 2.25 6.5C2.25 4.15 4.15 2.25 6.5 2.25Z\"/><path d=\"M9.75 9.75l4 4\"/></g><g class=\"ds-face\"><path d=\"M6.5 2.25C8.85 2.25 10.75 4.15 10.75 6.5C10.75 8.85 8.85 10.75 6.5 10.75C4.15 10.75 2.25 8.85 2.25 6.5C2.25 4.15 4.15 2.25 6.5 2.25Z\"/><path d=\"M9.75 9.75l4 4\"/></g></svg><input class=\"ds-search-input\" type=\"text\" placeholder=\"Search or enter a web address\" aria-label=\"Search or enter a web address\"><button class=\"ds-browse\" type=\"button\" aria-label=\"Browse\"><span class=\"ds-browse-label\">Browse</span><svg class=\"ds-icon\" data-icon=\"right\" viewBox=\"0 0 16 16\" width=\"18\" height=\"18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M3 8h10\"/><path d=\"M9 4l4 4-4 4\"/></g><g class=\"ds-rim\"><path d=\"M3 8h10\"/><path d=\"M9 4l4 4-4 4\"/></g><g class=\"ds-face\"><path d=\"M3 8h10\"/><path d=\"M9 4l4 4-4 4\"/></g></svg></button></div>",
+            "css": ".ds-search { --basalt: var(--civil-color-basalt, #0E1119); --stratum: var(--civil-color-stratum, #22262F); --talus: var(--civil-color-talus, #434751); --ash: var(--civil-color-ash, #8C919E); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); } .ds-search { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); display: flex; align-items: center; gap: 14px; width: 340px; max-width: 100%; min-height: 64px; padding: 8px 10px 10px 22px; border-radius: 18px; font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; } .ds-search { background-color: var(--basalt); background-image: var(--ds-grain), linear-gradient(180deg, var(--basalt), color-mix(in oklab, var(--basalt) 72%, var(--stratum))); box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--basalt) 70%, transparent), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); transition: box-shadow 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-search:hover { box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--talus) 90%, transparent), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); } .ds-search:focus-within { box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 18px color-mix(in srgb, var(--cobalt) 22%, transparent), inset 0 0 0 1px var(--cobalt), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); } .ds-search > .ds-icon { color: var(--ash); } .ds-search-input { flex: 1; min-width: 0; width: 100%; border: none; background: transparent; color: var(--firn); font-family: inherit; font-size: 16px; outline: none; caret-color: var(--cobalt); } .ds-search-input::placeholder { color: var(--ash); } .ds-browse { --ds-face: var(--cobalt); --ds-band-light: color-mix(in oklab, var(--cobalt) 62%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--cobalt) 40%, var(--basalt)); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 38%, transparent); display: flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0; min-width: 46px; min-height: 44px; padding: 0 16px; border: none; border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--basalt); cursor: pointer; } .ds-browse { position: relative; background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), var(--ds-near); transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-browse::before { content: \"\"; position: absolute; inset: 0 0 -4px; } .ds-browse:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), 0 5px 0 var(--ds-band-light), var(--ds-far); } .ds-browse:active:not(:disabled) { transform: translateY(2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), var(--ds-near); transition-duration: 90ms; } .ds-browse:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; } @media (max-width: 600px) { .ds-search { min-height: 60px; gap: 10px; padding-left: 16px; } .ds-browse { padding: 0 12px; } .ds-browse-label { display: none; } } .ds-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; overflow: visible; } .ds-depth { color: color-mix(in oklab, currentColor 38%, var(--basalt)); stroke-width: 2.1; transform: translate(0.45px, 0.7px); } .ds-icon[fill=\"currentColor\"] > .ds-depth { stroke: currentColor; stroke-width: 1; } .ds-rim { color: color-mix(in srgb, color-mix(in oklab, currentColor 45%, var(--firn)) 55%, transparent); transform: translate(-0.35px, -0.45px); transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-face { transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } @media (prefers-reduced-motion: no-preference) { :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } @media (hover: hover) { :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } } } @media (prefers-reduced-motion: reduce) { .ds-search, .ds-search * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+        },
+        {
+            "name": "Well field",
+            "kind": "input",
+            "refersTo": null,
+            "description": "A field carved into the stone (WELL): basalt with grain, a shadowed upper wall and a lit lower rim. Hover rims it in talus; focus floods the rim with cobalt. The row carries focus and the input inside draws no ring.",
+            "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Add a site</span><input class=\"ds-field-input\" type=\"text\" placeholder=\"youtube.com\"></label>",
+            "css": ".ds-field { --basalt: var(--civil-color-basalt, #0E1119); --stratum: var(--civil-color-stratum, #22262F); --talus: var(--civil-color-talus, #434751); --ash: var(--civil-color-ash, #8C919E); --snowmelt: var(--civil-color-snowmelt, #C2C6D2); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); } .ds-field { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); display: flex; align-items: center; gap: 12px; width: 320px; max-width: 100%; min-height: 48px; padding: 12px 16px; border-radius: 12px; font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; } .ds-field { background-color: var(--basalt); background-image: var(--ds-grain), linear-gradient(180deg, var(--basalt), color-mix(in oklab, var(--basalt) 72%, var(--stratum))); box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--basalt) 70%, transparent), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); transition: box-shadow 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-field:hover { box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--talus) 90%, transparent), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); } .ds-field:focus-within { box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 18px color-mix(in srgb, var(--cobalt) 22%, transparent), inset 0 0 0 1px var(--cobalt), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); } .ds-field-label { font-size: 12px; font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--snowmelt); white-space: nowrap; min-width: 92px; } .ds-field-input { flex: 1; min-width: 0; border: none; background: none; outline: none; font-family: inherit; font-size: 14px; color: var(--firn); } .ds-field-input::placeholder { color: var(--ash); } @media (prefers-reduced-motion: reduce) { .ds-field, .ds-field * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+        },
+        {
+            "name": "Pebbles",
+            "kind": "chip",
+            "refersTo": null,
+            "description": "Bookmarks are pebbles (PEBBLE): chips one band high on the shelf, the last scree band of the terrace. Categories and detected filters use the same recipe.",
+            "html": "<div class=\"ds-shelf\"><button class=\"ds-pebble\" type=\"button\"><svg class=\"ds-icon\" data-icon=\"world\" viewBox=\"0 0 16 16\" width=\"11\" height=\"11\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-rim\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-face\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g></svg>Class notes</button><button class=\"ds-pebble\" type=\"button\"><svg class=\"ds-icon\" data-icon=\"world\" viewBox=\"0 0 16 16\" width=\"11\" height=\"11\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-rim\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-face\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g></svg>Reading list</button></div>",
+            "css": ".ds-shelf { --basalt: var(--civil-color-basalt, #0E1119); --scree: var(--civil-color-scree, #2D3039); --talus: var(--civil-color-talus, #434751); --ash: var(--civil-color-ash, #8C919E); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); } .ds-shelf { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 8%, transparent); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); --ds-band-light: color-mix(in oklab, var(--talus) 70%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--scree) 45%, var(--basalt)); display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 8px 4px; background-color: var(--scree); background-image: var(--ds-grain); font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; } .ds-pebble { --ds-face: color-mix(in oklab, var(--talus) 28%, var(--scree)); display: flex; align-items: center; gap: 6px; flex-shrink: 0; max-width: 170px; height: 24px; padding: 0 9px; border: none; border-radius: 8px; color: var(--firn); font-family: inherit; font-size: 12px; font-weight: 400; white-space: nowrap; cursor: pointer; } .ds-pebble { position: relative; background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), var(--ds-near); transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-pebble::before { content: \"\"; position: absolute; inset: 0 0 -4px; } .ds-pebble:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), var(--ds-far); } .ds-pebble:active:not(:disabled) { transform: translateY(0px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), var(--ds-near); transition-duration: 90ms; } .ds-pebble:focus-visible { outline: 1px solid var(--cobalt); outline-offset: 1px; } .ds-pebble > .ds-icon { color: var(--ash); } .ds-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; overflow: visible; } .ds-depth { color: color-mix(in oklab, currentColor 38%, var(--basalt)); stroke-width: 2.1; transform: translate(0.45px, 0.7px); } .ds-icon[fill=\"currentColor\"] > .ds-depth { stroke: currentColor; stroke-width: 1; } .ds-rim { color: color-mix(in srgb, color-mix(in oklab, currentColor 45%, var(--firn)) 55%, transparent); transform: translate(-0.35px, -0.45px); transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-face { transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } @media (prefers-reduced-motion: no-preference) { :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } @media (hover: hover) { :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } } } @media (prefers-reduced-motion: reduce) { .ds-shelf, .ds-shelf * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+        },
+        {
+            "name": "Chrome terrace",
             "kind": "nav",
             "refersTo": null,
-            "description": "Floating menu shared by right-click context menu and its submenus. Black structural shadow, spring pop-in.",
-            "html": "<div class=\"ds-menu\"><button class=\"ds-menu-item\">Reload</button><button class=\"ds-menu-item\">Duplicate Tab</button><div class=\"ds-menu-separator\"></div><button class=\"ds-menu-item ds-menu-item--danger\">Close Tab</button></div>",
-            "css": ".ds-menu { width: 220px; background: #1e2030; border: 1px solid #363a4f; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18); font-family: \"Rubik\", ui-sans-serif, sans-serif; font-size: 13px; color: #cad3f5; } .ds-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 16px; border: none; background: transparent; color: #b8c0e0; cursor: pointer; transition: background 0.1s ease, color 0.1s ease; text-align: left; } .ds-menu-item:hover { background: #363a4f; color: #cad3f5; } .ds-menu-item--danger { color: #ed8796; } .ds-menu-item--danger:hover { background: color-mix(in srgb, #ed8796 14%, transparent); } .ds-menu-separator { width: 100%; height: 1px; background: #363a4f; }"
+            "description": "Browser chrome is a terrace of stone above the page. Inactive tabs rest on basalt bedrock in ash and catch a lit lip under the pointer; a new tab rises out of the bedrock. The open tab is a lit scree face that runs without a seam into the address row, whose address field is a well. The terrace ends in a cliff: four sediment bands and a shadow falling onto the page.",
+            "html": "<div class=\"ds-chrome\"><div class=\"ds-terrace\"><div class=\"ds-tabstrip\" role=\"tablist\" aria-label=\"Browser tabs\"><div class=\"ds-tab\" role=\"tab\" aria-selected=\"false\" tabindex=\"-1\"><svg class=\"ds-icon ds-tab-icon\" data-icon=\"world\" viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-rim\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-face\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g></svg><span class=\"ds-tab-title\">New tab</span></div><div class=\"ds-tab ds-tab--active\" role=\"tab\" aria-selected=\"true\" tabindex=\"0\"><svg class=\"ds-icon ds-tab-icon\" data-icon=\"world\" viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-rim\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-face\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M8 2.5C11.5 5 11.5 11 8 13.5C4.5 11 4.5 5 8 2.5Z\"/><path d=\"M2.5 8h11\"/></g></svg><span class=\"ds-tab-title\">Example Domain</span></div><button class=\"ds-tab-new\" type=\"button\" aria-label=\"New tab\"><svg class=\"ds-icon\" data-icon=\"plus\" viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M8 2.5v11\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-rim\"><path d=\"M8 2.5v11\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-face\"><path d=\"M8 2.5v11\"/><path d=\"M2.5 8h11\"/></g></svg></button></div><div class=\"ds-urlbar\"><div class=\"ds-omnibox\"><span class=\"ds-lock\"><svg class=\"ds-icon\" data-icon=\"lock\" viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M5 7V5C5 3 6 3 8 3C10 3 11 3 11 5v2\"/><path d=\"M3.5 7h9v6h-9z\"/><path d=\"M8 9.5v1\"/></g><g class=\"ds-rim\"><path d=\"M5 7V5C5 3 6 3 8 3C10 3 11 3 11 5v2\"/><path d=\"M3.5 7h9v6h-9z\"/><path d=\"M8 9.5v1\"/></g><g class=\"ds-face\"><path d=\"M5 7V5C5 3 6 3 8 3C10 3 11 3 11 5v2\"/><path d=\"M3.5 7h9v6h-9z\"/><path d=\"M8 9.5v1\"/></g></svg></span><input class=\"ds-omnibox-input\" type=\"text\" aria-label=\"Address bar\" value=\"example.com\"></div></div></div><div class=\"ds-page\"></div></div>",
+            "css": ".ds-chrome { --basalt: var(--civil-color-basalt, #0E1119); --stratum: var(--civil-color-stratum, #22262F); --scree: var(--civil-color-scree, #2D3039); --talus: var(--civil-color-talus, #434751); --ash: var(--civil-color-ash, #8C919E); --snowmelt: var(--civil-color-snowmelt, #C2C6D2); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); --juniper: var(--civil-color-juniper, #C3CAA4); } .ds-chrome { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 8%, transparent); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); --ds-band-light: color-mix(in oklab, var(--talus) 70%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--scree) 45%, var(--basalt)); width: 340px; max-width: 100%; background-color: var(--stratum); font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; font-size: 13px; color: var(--firn); } .ds-terrace { position: relative; z-index: 3; background-color: var(--basalt); background-image: var(--ds-grain); box-shadow: 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), var(--ds-far); } .ds-tabstrip { display: flex; align-items: stretch; gap: 6px; padding: 8px 12px 0; } .ds-tab { position: relative; display: flex; align-items: center; gap: 7px; min-width: 0; height: 36px; padding: 0 11px; border: 1px solid transparent; border-bottom: none; border-radius: 10px 10px 0 0; background: transparent; color: var(--ash); cursor: pointer; user-select: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease; animation: ds-tab-rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; } @keyframes ds-tab-rise { from { opacity: 0; transform: translateY(6px); } } .ds-tab + .ds-tab::before { content: \"\"; position: absolute; left: -1px; top: 7px; bottom: 7px; border-left: 0.5px solid var(--scree); } .ds-tab:hover { background: color-mix(in srgb, var(--scree) 55%, var(--basalt)); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); color: var(--firn); } .ds-tab--active { z-index: 4; background-color: var(--scree); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--scree) 90%, var(--firn)), var(--scree) 60%); color: var(--firn); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--firn) 11%, transparent), inset 1px 0 0 color-mix(in srgb, var(--firn) 5%, transparent), inset -1px 0 0 color-mix(in srgb, var(--basalt) 45%, transparent); } .ds-tab--active:hover { background-color: var(--scree); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--scree) 90%, var(--firn)), var(--scree) 60%); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--firn) 15%, transparent), inset 1px 0 0 color-mix(in srgb, var(--firn) 5%, transparent), inset -1px 0 0 color-mix(in srgb, var(--basalt) 45%, transparent); } .ds-tab + .ds-tab--active::before { border-left: none; } .ds-tab:focus-visible { outline: 1px solid var(--cobalt); outline-offset: -1px; } .ds-tab-icon { color: var(--ash); transition: color 0.1s ease; } .ds-tab--active .ds-tab-icon { color: var(--cobalt); } .ds-tab-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; letter-spacing: 0.01em; } .ds-tab--active .ds-tab-title { font-weight: 600; } .ds-tab-new { --ds-face: color-mix(in oklab, var(--talus) 40%, var(--scree)); display: flex; align-items: center; justify-content: center; align-self: center; flex-shrink: 0; width: 30px; height: 30px; margin: 0 0 3px 4px; padding: 0; border: none; border-radius: 8px; color: var(--snowmelt); cursor: pointer; } .ds-tab-new { position: relative; background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), var(--ds-near); transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-tab-new::before { content: \"\"; position: absolute; inset: 0 0 -4px; } .ds-tab-new:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), var(--ds-far); } .ds-tab-new:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), var(--ds-near); transition-duration: 90ms; } .ds-tab-new:hover:not(:disabled) { color: var(--firn); } .ds-tab-new:focus-visible { outline: 1px solid var(--cobalt); outline-offset: 1px; } .ds-urlbar { position: relative; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 5px 8px 6px; background-color: var(--scree); background-image: var(--ds-grain); } .ds-omnibox { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; height: 34px; margin: 0 6px; padding: 0 10px; border-radius: 10px; } .ds-omnibox { background-color: var(--basalt); background-image: var(--ds-grain), linear-gradient(180deg, var(--basalt), color-mix(in oklab, var(--basalt) 72%, var(--stratum))); box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--basalt) 70%, transparent), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); transition: box-shadow 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-omnibox:hover { box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--talus) 90%, transparent), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); } .ds-omnibox:focus-within { box-shadow: inset 0 2px 5px color-mix(in srgb, black 55%, transparent), inset 0 0 18px color-mix(in srgb, var(--cobalt) 22%, transparent), inset 0 0 0 1px var(--cobalt), 0 1px 0 color-mix(in srgb, var(--firn) 7%, transparent); } .ds-lock { display: flex; align-items: center; flex-shrink: 0; color: var(--juniper); } .ds-omnibox-input { flex: 1; min-width: 0; padding: 0 2px; border: none; background: transparent; color: var(--firn); font-family: inherit; font-size: 12.5px; outline: none; caret-color: var(--cobalt); } .ds-omnibox-input::placeholder { color: var(--ash); } .ds-page { height: 28px; } .ds-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; overflow: visible; } .ds-depth { color: color-mix(in oklab, currentColor 38%, var(--basalt)); stroke-width: 2.1; transform: translate(0.45px, 0.7px); } .ds-icon[fill=\"currentColor\"] > .ds-depth { stroke: currentColor; stroke-width: 1; } .ds-rim { color: color-mix(in srgb, color-mix(in oklab, currentColor 45%, var(--firn)) 55%, transparent); transform: translate(-0.35px, -0.45px); transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-face { transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } @media (prefers-reduced-motion: no-preference) { :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } @media (hover: hover) { :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } } } @media (prefers-reduced-motion: reduce) { .ds-chrome, .ds-chrome * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+        },
+        {
+            "name": "Plate menu",
+            "kind": "nav",
+            "refersTo": null,
+            "description": "Menus are plates (PLATE): thick floating slabs that settle into place, with 6px inset rows on a fixed icon gutter so labels line up with or without a glyph. Rows lift 1px as chips under the pointer or focus; separators are grooves; the destructive row turns wine.",
+            "html": "<div class=\"ds-menu\"><button class=\"ds-menu-item\" type=\"button\"><span class=\"ds-menu-icon\"><svg class=\"ds-icon\" data-icon=\"plus\" viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M8 2.5v11\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-rim\"><path d=\"M8 2.5v11\"/><path d=\"M2.5 8h11\"/></g><g class=\"ds-face\"><path d=\"M8 2.5v11\"/><path d=\"M2.5 8h11\"/></g></svg></span><span class=\"ds-menu-label\">New tab</span></button><button class=\"ds-menu-item\" type=\"button\"><span class=\"ds-menu-icon\"><svg class=\"ds-icon\" data-icon=\"puzzle\" viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M2.5 6h3V4C5.5 2 8.5 2 8.5 4v2h5v3h-2v2h2v2.5h-11Z\"/><path d=\"M6 10h2v3.5\"/></g><g class=\"ds-rim\"><path d=\"M2.5 6h3V4C5.5 2 8.5 2 8.5 4v2h5v3h-2v2h2v2.5h-11Z\"/><path d=\"M6 10h2v3.5\"/></g><g class=\"ds-face\"><path d=\"M2.5 6h3V4C5.5 2 8.5 2 8.5 4v2h5v3h-2v2h2v2.5h-11Z\"/><path d=\"M6 10h2v3.5\"/></g></svg></span><span class=\"ds-menu-label\">Extensions</span></button><div class=\"ds-menu-sep\"></div><button class=\"ds-menu-item\" type=\"button\"><span class=\"ds-menu-icon\"></span><span class=\"ds-menu-label\">Copy</span><span class=\"ds-menu-shortcut\">⌘C</span></button><button class=\"ds-menu-item\" type=\"button\"><span class=\"ds-menu-icon\"></span><span class=\"ds-menu-label\">Paste</span><span class=\"ds-menu-shortcut\">⌘V</span></button><div class=\"ds-menu-sep\"></div><button class=\"ds-menu-item ds-menu-item--danger\" type=\"button\"><span class=\"ds-menu-icon\"></span><span class=\"ds-menu-label\">Close tab</span></button></div>",
+            "css": ".ds-menu { --basalt: var(--civil-color-basalt, #0E1119); --scree: var(--civil-color-scree, #2D3039); --talus: var(--civil-color-talus, #434751); --ash: var(--civil-color-ash, #8C919E); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); --wine: var(--civil-color-wine, #C8789B); } .ds-menu { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 8%, transparent); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); --ds-band-light: color-mix(in oklab, var(--talus) 70%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--scree) 45%, var(--basalt)); width: 220px; padding: 6px; border-radius: 14px; background-color: var(--scree); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--scree) 90%, var(--firn)), var(--scree) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), 0 5px 0 var(--ds-band-light), 0 6px 0 var(--ds-band-dark), var(--ds-far); font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; font-size: 13px; color: var(--firn); user-select: none; transform-origin: top left; animation: ds-plate-settle 0.16s cubic-bezier(0.22, 1, 0.36, 1) both; } @keyframes ds-plate-settle { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } .ds-menu-item { --ds-row: color-mix(in oklab, var(--talus) 35%, var(--scree)); position: relative; border-radius: 8px; transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-menu-item:hover, .ds-menu-item:focus-within { background-color: var(--ds-row); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-row) 90%, var(--firn)), var(--ds-row) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), var(--ds-near); transform: translateY(-1px); } .ds-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: none; background: transparent; color: var(--firn); font: inherit; text-align: left; cursor: pointer; } .ds-menu-item:active { transform: translateY(0); transition-duration: 90ms; } .ds-menu-item:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; } .ds-menu-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 16px; height: 16px; color: var(--ash); } .ds-menu-item:hover .ds-menu-icon, .ds-menu-item--danger .ds-menu-icon { color: inherit; } .ds-menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-menu-shortcut { flex-shrink: 0; margin-left: auto; padding-left: 16px; font-size: 12px; color: var(--ash); } .ds-menu-sep { height: 0; margin: 5px 4px 6px; border-top: 1px solid color-mix(in srgb, var(--basalt) 60%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, var(--firn) 6%, transparent); pointer-events: none; } .ds-menu-item--danger { color: var(--wine); } .ds-menu-item--danger:hover, .ds-menu-item--danger:focus-within { background-color: color-mix(in oklab, var(--wine) 18%, var(--scree)); background-image: none; } .ds-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; overflow: visible; } .ds-depth { color: color-mix(in oklab, currentColor 38%, var(--basalt)); stroke-width: 2.1; transform: translate(0.45px, 0.7px); } .ds-icon[fill=\"currentColor\"] > .ds-depth { stroke: currentColor; stroke-width: 1; } .ds-rim { color: color-mix(in srgb, color-mix(in oklab, currentColor 45%, var(--firn)) 55%, transparent); transform: translate(-0.35px, -0.45px); transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-face { transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } @media (prefers-reduced-motion: no-preference) { :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } @media (hover: hover) { :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } } } @media (prefers-reduced-motion: reduce) { .ds-menu, .ds-menu * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+        },
+        {
+            "name": "Verdict ledger",
+            "kind": "card",
+            "refersTo": null,
+            "description": "The filter report: a tablet (TABLET) holding one engraved row per vendor (ROW_LIFT), flat at rest and lifting under the pointer. Each verdict carries text, a glyph and its tone: juniper allowed, calcite warned, sandstone error, wine blocked. Verdict tokens are IBM Plex Mono; everything else is the annotation tier.",
+            "html": "<div class=\"ds-ledger\"><div class=\"ds-ledger-head\" aria-hidden=\"true\"><span>Filter</span><span>Verdict</span><span>Categories</span></div><ul class=\"ds-ledger-body\"><li class=\"ds-ledger-row\"><button class=\"ds-ledger-trigger\" type=\"button\" aria-expanded=\"false\"><span class=\"ds-ledger-grid\"><span class=\"ds-ledger-vendor\"><svg class=\"ds-icon ds-v-allowed\" data-icon=\"check\" viewBox=\"0 0 16 16\" width=\"13\" height=\"13\" aria-hidden=\"true\" fill=\"currentColor\" stroke=\"none\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path fill-rule=\"evenodd\" d=\"M2 2h12v12H2z M4 8l3 3 5-5-1-1-4 4-2-2z\"/></g><g class=\"ds-rim\"><path fill-rule=\"evenodd\" d=\"M2 2h12v12H2z M4 8l3 3 5-5-1-1-4 4-2-2z\"/></g><g class=\"ds-face\"><path fill-rule=\"evenodd\" d=\"M2 2h12v12H2z M4 8l3 3 5-5-1-1-4 4-2-2z\"/></g></svg>Lightspeed Filter</span><span class=\"ds-verdict ds-v-allowed\">allowed</span><span class=\"ds-ledger-cat\">2</span></span></button></li><li class=\"ds-ledger-row\"><button class=\"ds-ledger-trigger\" type=\"button\" aria-expanded=\"false\"><span class=\"ds-ledger-grid\"><span class=\"ds-ledger-vendor\"><svg class=\"ds-icon ds-v-warned\" data-icon=\"alert\" viewBox=\"0 0 16 16\" width=\"13\" height=\"13\" aria-hidden=\"true\" fill=\"currentColor\" stroke=\"none\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path fill-rule=\"evenodd\" d=\"M8 2L14 14H2z M7.25 6h1.5v4h-1.5z M7.25 11h1.5v1.5h-1.5z\"/></g><g class=\"ds-rim\"><path fill-rule=\"evenodd\" d=\"M8 2L14 14H2z M7.25 6h1.5v4h-1.5z M7.25 11h1.5v1.5h-1.5z\"/></g><g class=\"ds-face\"><path fill-rule=\"evenodd\" d=\"M8 2L14 14H2z M7.25 6h1.5v4h-1.5z M7.25 11h1.5v1.5h-1.5z\"/></g></svg>GoGuardian</span><span class=\"ds-verdict ds-v-warned\">warned</span><span class=\"ds-ledger-cat\">1</span></span></button></li><li class=\"ds-ledger-row\"><button class=\"ds-ledger-trigger\" type=\"button\" aria-expanded=\"false\"><span class=\"ds-ledger-grid\"><span class=\"ds-ledger-vendor\"><svg class=\"ds-icon ds-v-error\" data-icon=\"close\" viewBox=\"0 0 16 16\" width=\"13\" height=\"13\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M3.5 3.5l9 9\"/><path d=\"M12.5 3.5l-9 9\"/></g><g class=\"ds-rim\"><path d=\"M3.5 3.5l9 9\"/><path d=\"M12.5 3.5l-9 9\"/></g><g class=\"ds-face\"><path d=\"M3.5 3.5l9 9\"/><path d=\"M12.5 3.5l-9 9\"/></g></svg>iboss</span><span class=\"ds-verdict ds-v-error\">error</span><span class=\"ds-ledger-cat\">0</span></span></button></li><li class=\"ds-ledger-row\"><button class=\"ds-ledger-trigger\" type=\"button\" aria-expanded=\"false\"><span class=\"ds-ledger-grid\"><span class=\"ds-ledger-vendor\"><svg class=\"ds-icon ds-v-blocked\" data-icon=\"ban\" viewBox=\"0 0 16 16\" width=\"13\" height=\"13\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-depth\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M4 12L12 4\"/></g><g class=\"ds-rim\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M4 12L12 4\"/></g><g class=\"ds-face\"><path d=\"M8 2.5C11.04 2.5 13.5 4.96 13.5 8C13.5 11.04 11.04 13.5 8 13.5C4.96 13.5 2.5 11.04 2.5 8C2.5 4.96 4.96 2.5 8 2.5Z\"/><path d=\"M4 12L12 4\"/></g></svg>Securly</span><span class=\"ds-verdict ds-v-blocked\">blocked</span><span class=\"ds-ledger-cat\">3</span></span></button></li></ul></div>",
+            "css": ".ds-ledger { --basalt: var(--civil-color-basalt, #0E1119); --stratum: var(--civil-color-stratum, #22262F); --scree: var(--civil-color-scree, #2D3039); --talus: var(--civil-color-talus, #434751); --snowmelt: var(--civil-color-snowmelt, #C2C6D2); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); --juniper: var(--civil-color-juniper, #C3CAA4); --calcite: var(--civil-color-calcite, #F2E0C7); --sandstone: var(--civil-color-sandstone, #E29B69); --wine: var(--civil-color-wine, #C8789B); } .ds-ledger { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-lip: inset 0 1px 0 color-mix(in srgb, var(--firn) 8%, transparent); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); --ds-band-light: color-mix(in oklab, var(--talus) 70%, var(--basalt)); --ds-band-dark: color-mix(in oklab, var(--scree) 45%, var(--basalt)); --ds-face: color-mix(in oklab, var(--scree) 70%, var(--stratum)); width: 340px; max-width: 100%; padding: 10px 8px 8px; border-radius: 16px; background-color: var(--ds-face); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-face) 90%, var(--firn)), var(--ds-face) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), 0 3px 0 var(--ds-band-light), 0 4px 0 var(--ds-band-dark), var(--ds-near); font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; } .ds-ledger-head { display: grid; grid-template-columns: minmax(0, 1fr) 96px 40px; gap: 10px; padding: 0 10px 8px; font-size: 12px; font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--snowmelt); } .ds-ledger-head > :last-child { justify-self: end; } .ds-ledger-body { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; } .ds-ledger-row { --ds-row: color-mix(in oklab, var(--talus) 35%, var(--scree)); position: relative; border-radius: 10px; transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-ledger-row:hover, .ds-ledger-row:focus-within { background-color: var(--ds-row); background-image: var(--ds-grain), linear-gradient(180deg, color-mix(in oklab, var(--ds-row) 90%, var(--firn)), var(--ds-row) 60%); box-shadow: var(--ds-lip), 0 1px 0 var(--ds-band-light), 0 2px 0 var(--ds-band-dark), var(--ds-near); transform: translateY(-1px); } .ds-ledger-trigger { display: block; width: 100%; padding: 0; border: none; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; } .ds-ledger-trigger:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; } .ds-ledger-grid { display: grid; grid-template-columns: minmax(0, 1fr) 96px 40px; gap: 10px; align-items: center; padding: 8px 10px; } .ds-ledger-vendor { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500; color: var(--firn); } .ds-verdict { font-family: \"IBM Plex Mono\", ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, \"Liberation Mono\", monospace; font-size: 12px; letter-spacing: 0.02em; } .ds-v-allowed { color: var(--juniper); } .ds-v-warned { color: var(--calcite); } .ds-v-error { color: var(--sandstone); } .ds-v-blocked { color: var(--wine); } .ds-ledger-cat { font-size: 12px; font-weight: 500; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--snowmelt); text-align: right; } .ds-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; overflow: visible; } .ds-depth { color: color-mix(in oklab, currentColor 38%, var(--basalt)); stroke-width: 2.1; transform: translate(0.45px, 0.7px); } .ds-icon[fill=\"currentColor\"] > .ds-depth { stroke: currentColor; stroke-width: 1; } .ds-rim { color: color-mix(in srgb, color-mix(in oklab, currentColor 45%, var(--firn)) 55%, transparent); transform: translate(-0.35px, -0.45px); transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-face { transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1); } @media (prefers-reduced-motion: no-preference) { :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):focus-visible .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } @media (hover: hover) { :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-face { transform: translate(-0.35px, -0.5px); } :is(button, [role=\"tab\"]):not(:disabled):hover .ds-icon > .ds-rim { transform: translate(-0.7px, -0.95px); } } } @media (prefers-reduced-motion: reduce) { .ds-ledger, .ds-ledger * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
+        },
+        {
+            "name": "Specimen",
+            "kind": "custom",
+            "refersTo": null,
+            "description": "Large icons are specimens: a palette-tinted tile with a strata edge in its own tone and grain, holding one glyph embossed by the civil-emboss filter (firn light, basalt drop). Hovering or focusing the control it sits in tilts it toward the reader, lifts the glyph on its own plane and sweeps a sheen across the face. Always decorative and named in text beside it; each destination keeps one mineral (Apps cobalt, Bookmarks calcite). Shown on the New Tab ground; in the app these shortcuts are links.",
+            "html": "<div class=\"ds-shortcuts\"><button class=\"ds-shortcut\" type=\"button\"><span class=\"ds-specimen ds-tint-cobalt\" aria-hidden=\"true\"><svg class=\"ds-icon ds-glyph\" data-icon=\"apps\" viewBox=\"0 0 16 16\" width=\"28\" height=\"28\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-face\"><path d=\"M2.5 2.5h5v5h-5z\"/><path d=\"M8.5 2.5h5v5h-5z\"/><path d=\"M2.5 8.5h5v5h-5z\"/><path d=\"M8.5 8.5h5v5h-5z\"/></g></svg></span><span class=\"ds-shortcut-title\">Apps</span><span class=\"ds-shortcut-desc\">Your favorite places</span></button><button class=\"ds-shortcut\" type=\"button\"><span class=\"ds-specimen ds-tint-calcite\" aria-hidden=\"true\"><svg class=\"ds-icon ds-glyph\" data-icon=\"bookmark\" viewBox=\"0 0 16 16\" width=\"28\" height=\"28\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.35\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><g class=\"ds-face\"><path d=\"M4 2.5h8v11l-4-3-4 3z\"/><path d=\"M6 5.5h4\"/></g></svg></span><span class=\"ds-shortcut-title\">Bookmarks</span><span class=\"ds-shortcut-desc\">Keep the good stuff</span></button><svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><filter id=\"ds-civil-emboss\" x=\"-30%\" y=\"-30%\" width=\"160%\" height=\"160%\" color-interpolation-filters=\"sRGB\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"1.3\" numOctaves=\"2\" seed=\"4\" result=\"grain\"/><feGaussianBlur in=\"SourceAlpha\" stdDeviation=\"0.5\" result=\"soft\"/><feComposite in=\"grain\" in2=\"soft\" operator=\"arithmetic\" k2=\"0.22\" k3=\"1\" result=\"relief\"/><feSpecularLighting in=\"relief\" surfaceScale=\"2.4\" specularConstant=\"1.05\" specularExponent=\"16\" lighting-color=\"#EDF1FB\" result=\"shine\"><feDistantLight azimuth=\"225\" elevation=\"42\"/></feSpecularLighting><feComposite in=\"shine\" in2=\"SourceAlpha\" operator=\"in\" result=\"lit\"/><feOffset in=\"SourceAlpha\" dx=\"0.35\" dy=\"0.7\" result=\"drop\"/><feFlood flood-color=\"#0E1119\" flood-opacity=\"0.75\"/><feComposite in2=\"drop\" operator=\"in\" result=\"shadow\"/><feMerge><feMergeNode in=\"shadow\"/><feMergeNode in=\"SourceGraphic\"/><feMergeNode in=\"lit\"/></feMerge></filter></svg></div>",
+            "css": ".ds-shortcuts { --basalt: var(--civil-color-basalt, #0E1119); --stratum: var(--civil-color-stratum, #22262F); --ash: var(--civil-color-ash, #8C919E); --snowmelt: var(--civil-color-snowmelt, #C2C6D2); --firn: var(--civil-color-firn, #EDF1FB); --cobalt: var(--civil-color-cobalt, #4295E4); --calcite: var(--civil-color-calcite, #F2E0C7); } .ds-shortcuts { --ds-grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\"); --ds-near: 0 10px 18px -10px color-mix(in srgb, var(--basalt) 85%, transparent); --ds-far: 0 22px 32px -14px color-mix(in srgb, var(--basalt) 92%, transparent); display: grid; grid-template-columns: repeat(2, 112px); gap: 12px; padding: 16px 20px; background-color: var(--stratum); background-image: var(--ds-grain), radial-gradient(110% 55% at 50% -8%, color-mix(in srgb, var(--cobalt) 14%, transparent), transparent 62%); font-family: \"IBM Plex Sans Variable\", \"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif; } .ds-shortcut { display: flex; flex-direction: column; align-items: center; padding: 14px 8px 16px; border: none; border-radius: 16px; background: transparent; color: var(--snowmelt); font: inherit; text-align: center; cursor: pointer; transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s cubic-bezier(0.4, 0, 0.2, 1); } .ds-shortcut:hover, .ds-shortcut:focus-visible { color: var(--firn); transform: translateY(-2px); } .ds-shortcut:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; } .ds-specimen { position: relative; display: inline-grid; place-items: center; flex-shrink: 0; width: var(--specimen-size, 56px); height: var(--specimen-size, 56px); margin-bottom: 14px; border-radius: 30%; color: var(--ds-ink); background-color: var(--ds-face); background-image: linear-gradient(115deg, transparent 38%, color-mix(in srgb, var(--firn) 32%, transparent) 50%, transparent 62%), var(--ds-grain), radial-gradient(120% 95% at 28% 12%, var(--ds-hi), var(--ds-face) 48%, var(--ds-band)); background-size: 260% 100%, auto, auto; background-position: 130% 0, 0 0, 0 0; background-repeat: no-repeat, repeat, no-repeat; box-shadow: inset 0 1.5px 0 color-mix(in srgb, var(--firn) 38%, transparent), inset 0 -2px 5px color-mix(in srgb, var(--basalt) 30%, transparent), 0 1px 0 var(--ds-band), 0 2px 0 var(--ds-deep), 0 3px 0 var(--ds-band), 0 4px 0 var(--ds-deep), 0 5px 0 var(--ds-band), var(--ds-near); transform-style: preserve-3d; transition: transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 480ms cubic-bezier(0.22, 1, 0.36, 1), background-position 900ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-glyph { display: block; overflow: visible; transition: transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1); } .ds-glyph .ds-face { filter: url(#ds-civil-emboss); } @media (hover: hover) { .ds-shortcut:hover .ds-specimen { transform: perspective(360px) translateY(-3px) rotateX(14deg) rotateY(-14deg); background-position: -30% 0, 0 0, 0 0; box-shadow: inset 0 1.5px 0 color-mix(in srgb, var(--firn) 38%, transparent), inset 0 -2px 5px color-mix(in srgb, var(--basalt) 30%, transparent), 0 1px 0 var(--ds-band), 0 2px 0 var(--ds-deep), 0 3px 0 var(--ds-band), 0 4px 0 var(--ds-deep), 0 5px 0 var(--ds-band), 0 6px 0 var(--ds-deep), 0 7px 0 var(--ds-band), var(--ds-far); } .ds-shortcut:hover .ds-glyph { transform: translateZ(12px); } } .ds-shortcut:focus-visible .ds-specimen { transform: perspective(360px) translateY(-3px) rotateX(14deg) rotateY(-14deg); background-position: -30% 0, 0 0, 0 0; box-shadow: inset 0 1.5px 0 color-mix(in srgb, var(--firn) 38%, transparent), inset 0 -2px 5px color-mix(in srgb, var(--basalt) 30%, transparent), 0 1px 0 var(--ds-band), 0 2px 0 var(--ds-deep), 0 3px 0 var(--ds-band), 0 4px 0 var(--ds-deep), 0 5px 0 var(--ds-band), 0 6px 0 var(--ds-deep), 0 7px 0 var(--ds-band), var(--ds-far); } .ds-shortcut:focus-visible .ds-glyph { transform: translateZ(12px); } .ds-tint-cobalt { --ds-hi: color-mix(in oklab, var(--cobalt) 58%, var(--firn)); --ds-face: var(--cobalt); --ds-band: color-mix(in oklab, var(--cobalt) 62%, var(--basalt)); --ds-deep: color-mix(in oklab, var(--cobalt) 36%, var(--basalt)); --ds-ink: var(--firn); } .ds-tint-calcite { --ds-hi: color-mix(in oklab, var(--calcite) 58%, var(--firn)); --ds-face: var(--calcite); --ds-band: color-mix(in oklab, var(--calcite) 62%, var(--basalt)); --ds-deep: color-mix(in oklab, var(--calcite) 36%, var(--basalt)); --ds-ink: var(--basalt); } .ds-shortcut-title { font-size: 14px; font-weight: 500; } .ds-shortcut-desc { margin-top: 4px; font-size: 11px; line-height: 1.5; color: var(--ash); } @media (prefers-reduced-motion: reduce) { .ds-shortcuts, .ds-shortcuts * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }"
         }
     ],
     "narrative": {
-        "northStar": "The Stealth Cockpit",
-        "overview": "Civil looks like an instrument panel built for someone who already knows where every control is, not a product introducing itself to a first-time visitor. The interface runs dense and precise — 30px circular icon buttons, 12.5px chrome text, exact hit targets — but it's rendered entirely in the low-saturation, cafe-warm Catppuccin Macchiato palette instead of harsh utilitarian grey, so precision reads as calm rather than clinical. Nothing about the surface performs for an onlooker: colors are muted, ambient motion is switched off by default, and the whole system is built to sit open on a shared screen without inviting a second look.\n\nThat restraint is deliberate, not an oversight: global.css.ts kills every CSS transition and animation duration to 0s !important for every element by default. Motion is earned per-component, never ambient. Two categories are allowed to opt back in, each with its own explicit !important duration: functional motion (spinners, loading states) and interactive-feedback motion (entrance, hover, focus, active-state transitions on a specific control). Anything that would animate at rest, on a timer, or without a user action behind it stays off.\n\nEvery page shares one token system but earns its own silhouette: floating tab pills in the browser chrome, game-cartridge tiles on Apps, settings-panel rows on Extensions, a timeline rail on History, ribbon-tagged rows on Bookmarks, a stripe-field atmosphere on Ban, HUD corner brackets on New Tab. Same brand, same materials, different shape for the job each page is actually doing.",
+        "northStar": "Strata",
+        "overview": "Civil is a browser workspace for people who want to reach a website without learning proxy internals. The interface gives search priority, keeps familiar browser controls visible, and offers clearly labeled destinations.\n\nIts material is Strata. The palette is geological, so the interface is cut from layered stone: anything you can press is a slab whose exposed side shows its sediment bands, anything you can type into is a well carved into the stone, large icons are mineral specimens, and every page stands on a ground of faint survey contours that drift very slowly. Height carries the meaning, which is what keeps a textured interface easy to read: flat is text, raised is pressable, carved is typeable. The palette and the wordmark remain the brand anchors.",
         "keyCharacteristics": [
-            "Dense instrument-panel component sizing (18-30px controls, 12-13px UI text) rendered in a muted pastel-dark palette, not clinical grey.",
-            "Flat tonal layering at rest; real shadows appear only on things floating above the page.",
-            "A hard global motion-kill that only functional and interactive-feedback animations are allowed to override, each with an explicit opt-in.",
-            "A consistent five-color status recipe (green/red/yellow/neutral/maroon) reused everywhere a filter or ban state is shown.",
-            "Two accent lanes: lavender for browser-chrome navigation, mauve for the standalone Filter Checker tool - never mixed within one context except as a deliberate gradient pairing.",
-            "Each page carries one signature structural motif built from the same tokens, so the system reads as one product without every screen defaulting to the same generic list-of-cards template."
+            "Cobalt is reserved for actions, focus, and active state: the one cobalt key per view, a focused well's meltwater rim, a chosen scope.",
+            "Preserve verdict semantics: juniper allowed, calcite warned, sandstone error, wine blocked. Pair every verdict with text and a glyph.",
+            "Each destination keeps one mineral everywhere it appears (Apps cobalt, Bookmarks calcite, History juniper, Extensions sandstone, Filter check stone, Restricted domains wine).",
+            "Every derived tone (bands, highlights, tinted faces) is a `color-mix()` of palette slots.",
+            "Black appears only inside shadows, which are missing light rather than a surface colour.",
+            "Every label is sentence case at its natural size: \"Add a site\", \"Filters on this network\", \"Check this site\".",
+            "Performance is still a design constraint, because the primary reader is on a low-end school Chromebook.",
+            "The only ambient animations are transform and opacity on the ground's two layers and one occasional sheen on the New Tab emblem."
         ],
         "rules": [
             {
-                "name": "The Recede-to-Advance Rule",
-                "body": "Depth is expressed by lightness, not shadow: chrome and inactive surfaces sit in the darkest tones (Crust), the active content plane and focused controls step up to Base, and anything meant to feel touchable steps up again through Surface 0 -> 1 -> 2.",
-                "section": "colors"
-            },
-            {
-                "name": "The Two-Lane Accent Rule",
-                "body": "Lavender is the browser-chrome accent; Mauve is the standalone-tool accent. They appear together only as the intentional 135 degree headline gradient on the Filter Checker page.",
-                "section": "colors"
-            },
-            {
-                "name": "The Status Triad Recipe",
-                "body": "Every filter/ban status card follows one recipe: background = color-mix(accent 8%, mantle), border = color-mix(accent 30%, transparent), icon/label = solid accent at full value.",
-                "section": "colors"
-            },
-            {
-                "name": "The One-Family Rule",
-                "body": "Rubik is the only typeface in the system. Hierarchy is built from size/weight/tracking, never a second font.",
-                "section": "typography"
-            },
-            {
-                "name": "The Colored-Glow-vs-Black-Shadow Rule",
-                "body": "Structural elevation (menus, dropdowns, cards) always uses neutral black shadows. Interactive accent feedback (button hover, focus rings) always uses a color-mix glow in the relevant accent color.",
+                "name": "Ground (GROUND)",
+                "body": "stratum; the terrain tile (public/assets/terrain.svg, generated from periodic noise so it repeats without a seam) on one fixed layer at 7% that drifts 180 by 120 pixels over four minutes; grain under a cobalt dawn at the top edge that breathes over eighteen seconds. Both layers are pseudo-elements, so the page gains no DOM.",
                 "section": "elevation"
             },
             {
-                "name": "The Interactive-Feedback-Only Rule",
-                "body": "Motion opt-ins past the global motion-kill are limited to two categories: functional (loaders) and interactive feedback (entrance, hover, focus, active-state change on a control the user just touched). Ambient motion - anything that animates at rest, on a timer, or without a user action behind it - stays off. Opt-ins must also stay scoped to paint/composite properties (background, color, opacity, transform); layout properties like width/height are deliberately excluded so a state change on one control never becomes an animated reflow across its neighbors.",
-                "section": "overview"
+                "name": "Slab edge (edge(px))",
+                "body": "`px` one-pixel hard offsets alternating two sediment tones, then a contact shadow. Levels: pebble 1, keycap 2, key 3, tablet 4, plate 6.",
+                "section": "elevation"
             },
             {
-                "name": "The Pill-to-Dock Rule",
-                "body": "A tab is never one fixed shape. At rest it's a full stadium pill (999px radius) floating above the strip via transform. Active, it flattens its bottom corners to 14px 14px 0 0 and drops to meet the content plane. The shape itself communicates state.",
-                "section": "shapes"
+                "name": "Face (litFace)",
+                "body": "grain over a gradient from 10% firn at the top edge down to the surface, plus a firn lip along the top.",
+                "section": "elevation"
             },
             {
-                "name": "The One-Signature-Per-Page Rule",
-                "body": "Every list/grid page gets one real structural motif built from the shared tokens (cartridge tiles, settings rows, timeline rail, ribbon tags, stripe atmosphere, HUD brackets) instead of the same icon+heading+text card repeated everywhere. Same brand, same materials, different shape for the job each page is doing.",
-                "section": "components"
+                "name": "Pressable (KEY_COBALT, KEY_STONE, KEYCAP, PEBBLE)",
+                "body": "hover rises 2px and deepens the edge by two bands with a far shadow; press sinks the face into its bed with one band left. A `::before` strip below keeps the pointer inside a risen slab so it cannot flicker; lifted containers use `SKIRT`, which sits behind their children.",
+                "section": "elevation"
+            },
+            {
+                "name": "Tablet (TABLET) and plate (PLATE)",
+                "body": "content beds and floating slabs (menus, pickers, toasts, the stop card). They do not move.",
+                "section": "elevation"
+            },
+            {
+                "name": "Row (ROW_LIFT)",
+                "body": "engraved and flat at rest so long lists stay calm; the row under the pointer or holding focus lifts 1px as a small chip.",
+                "section": "elevation"
+            },
+            {
+                "name": "Well (WELL)",
+                "body": "basalt with grain, a shadowed upper wall, a lit lower rim; hover rims it in talus, focus floods the rim with cobalt meltwater (`WELL_FOCUS`). The row carries focus; the input inside draws no ring.",
+                "section": "elevation"
+            },
+            {
+                "name": "Rules are grooves",
+                "body": "a shadowed line with a firn lip beneath.",
+                "section": "elevation"
+            },
+            {
+                "name": "Entrance",
+                "body": "sections rise 10px and fade in, 560ms decelerating, staggered 50ms (`RISE`, backwards fill so hover transforms still apply afterwards).",
+                "section": "elevation"
             }
         ],
         "dos": [
-            "Do keep decorative transitions off by default; only opt a component's motion back in with an explicit !important duration, and only for functional motion or direct interactive feedback (entrance, hover, focus, active-state change).",
-            "Do scope motion opt-ins to paint/composite properties (background, color, opacity, transform) and keep layout properties (width, height, top/left) out of the transition list.",
-            "Do use the Status Triad Recipe for any new filter/ban/verdict UI.",
-            "Do keep Lavender scoped to browser-chrome/navigation contexts and Mauve scoped to standalone-tool contexts.",
-            "Do size in-chrome UI text at 12.5px (Chrome tier), distinct from the 14px Body tier used on standalone pages.",
-            "Do give every interactive chrome control a visible keyboard focus state - mouse-only affordances are an accessibility gap, not a stylistic choice.",
-            "Do give each page one real structural signature built from the shared tokens rather than the same icon-plus-label card recipe on every list page."
+            "Keep the palette unchanged and semantic statuses redundant.",
+            "Preserve visible keyboard focus, accessible control names, and reduced-motion support. The global rule in global.css.ts collapses durations, so every loop stops and every state still reaches its end.",
+            "Keep technical implementation labels out of the beginner's start screen.",
+            "Spread material recipes with `blend()`; do not compose them as classes.",
+            "Give anything pressable a hover, a press and a focus state; leave static text still.",
+            "In Solid 2 onSettled callbacks, return cleanup functions; never call onCleanup inside them.",
+            "Keep interactive controls reachable by keyboard and touch when hover is unavailable."
         ],
         "donts": [
-            "Don't give the system a sketchy free-proxy-site look - no pop-up-style CTAs, no ad framing competing with the product chrome.",
-            "Don't default to generic unstyled browser chrome - a flat grey Chrome-clone look is a regression.",
-            "Don't introduce loud gamer-aesthetic treatments (neon, RGB gradients, aggressive angular shapes) anywhere in the system.",
-            "Don't add ambient motion - anything that animates at rest, on a timer, or without a user action behind it stays off; interactive feedback (entrance, hover, focus) is the one allowed category, idle/decorative motion is not.",
-            "Don't use a black structural shadow for accent-interactive feedback or a colored glow for structural elevation - the two shadow vocabularies are not interchangeable.",
-            "Don't reach for a same-size icon+heading+text card as the default page structure - every list page earned a different shape because the content is actually different."
+            "Do not add `backdrop-filter`, large blurs, animated filters, or a second ambient animation per page.",
+            "Do not add animation dependencies for CSS path transforms.",
+            "Do not export bare functions from .css.ts files that components import; vanilla-extract requires serializable exports. material.css.ts is imported only by other .css.ts files, which is why it may."
         ]
     }
 }

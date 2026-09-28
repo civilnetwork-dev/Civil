@@ -1,6 +1,8 @@
 import { getFilters } from "$config/service/filterDetect";
 import * as BareMux from "@mercuryworkshop/bare-mux";
 
+import { getSetting } from "~/lib/settings";
+
 type FilterCheckResult =
     | {
           type: "CHECK_FILTERS_RESULT";
@@ -84,8 +86,10 @@ async function registerSw(): Promise<void> {
 
         await navigator.serviceWorker.ready;
         // Detect installed filters in the page (see checkFiltersNow): the page's
-        // fetch sees extensions the already-running SW would miss.
-        await checkFiltersNow();
+        // fetch sees extensions the already-running SW would miss. Settings
+        // can turn the startup probe off; the Filter check page still runs it
+        // on request.
+        if (getSetting("filterDetect")) await checkFiltersNow();
     } catch (error) {
         console.error("Service worker registration failed:", error);
     }

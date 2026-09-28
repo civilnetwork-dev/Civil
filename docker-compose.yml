@@ -37,6 +37,9 @@ services:
       start_period: 5s
 
   app:
+    # Named so drizzle-studio can run this same image rather than building the
+    # Dockerfile a second time.
+    image: civil-app
     build:
       context: .
       dockerfile: Dockerfile
@@ -73,10 +76,14 @@ services:
       retries: 3
       start_period: 30s
 
+  # Reuses the app image, which already carries drizzle-kit. It used to build
+  # the same Dockerfile itself, in parallel with app, so every `up --build`
+  # paid for two full builds: twice the time, twice the memory in the Podman
+  # VM, and twice the layers left behind on its disk. `never` because the
+  # image only ever comes from app's build, not from a registry.
   drizzle-studio:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: civil-app
+    pull_policy: never
     restart: unless-stopped
     depends_on:
       postgres:

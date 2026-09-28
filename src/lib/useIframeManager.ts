@@ -9,7 +9,14 @@ import { iframeSetCurrentSrc } from "~/api/iframe";
 import { displayUrl, gstaticFavicon, normalizeNav } from "~/lib/browserHelpers";
 import { buildChiiInjectScript } from "~/lib/buildChiiInjectScript";
 import type searchBar from "~/lib/SearchBar";
+import {
+    getSetting,
+    isTransport,
+    TRANSPORTS,
+    type TransportName,
+} from "~/lib/settings";
 import { isInternalUrl, resolveUrl, tabManager } from "~/lib/TabManager";
+import { retryWith, rotateFrom, usedTransport } from "~/lib/transport";
 
 type BarInstance = ReturnType<typeof searchBar>;
 
@@ -431,44 +438,12 @@ export function cleanupChiiArtifacts(iframe: HTMLIFrameElement): void {
  * exactly what people do next: they hammer Reload, which re-runs the same dead
  * transport and changes nothing.
  *
- * So the timeout rotates to the next transport and retries once on its own,
- * and only shows a page when the whole ladder is spent. Fifteen seconds is
- * past a slow school link's first paint but well inside the patience that
- * produced those rage clicks.
+ * So the timeout fails over to the next transport and retries once on its own
+ * (lib/transport.ts decides which, and Settings can turn it off), and
+ * otherwise shows a page offering every method by hand. The timeout is a
+ * setting too. Its default, fifteen seconds, is past a slow school link's
+ * first paint but well inside the patience that produced those rage clicks.
  */
-const NAV_TIMEOUT_MS = 15_000;
-
-/** Mirrors the fallback ladder in `misc/config/scramjet/scramjetInit.ts`. */
-const TRANSPORT_ORDER = ["epoxy", "libcurl", "bare"] as const;
-type TransportName = (typeof TRANSPORT_ORDER)[number];
-
-function currentTransport(): TransportName {
-    const stored = localStorage.getItem("transport");
-    return TRANSPORT_ORDER.includes(stored as TransportName)
-        ? (stored as TransportName)
-        : TRANSPORT_ORDER[0];
-}
-
-/** True once the ladder is spent — kept side-effect free, unlike the rotate. */
-function isLastTransport(): boolean {
-    return (
-        TRANSPORT_ORDER.indexOf(currentTransport()) ===
-        TRANSPORT_ORDER.length - 1
-    );
-}
-
-/**
- * Move to the next transport in the ladder, or return null when the current one
- * is already the last. Persisted, so the next page load starts on the transport
- * that actually works on this network rather than rediscovering the failure.
- */
-function rotateTransport(): TransportName | null {
-    const index = TRANSPORT_ORDER.indexOf(currentTransport());
-    const next = TRANSPORT_ORDER[index + 1];
-    if (!next) return null;
-    localStorage.setItem("transport", next);
-    return next;
-}
 
 const CONNECTION_ERROR_STYLE = `
 :root{color-scheme:dark}
@@ -483,37 +458,39 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace;color:#E29B69}
 button,a.btn{font:inherit;color:#EDF1FB;background:transparent;border:1px solid #434751;
 padding:.45rem .9rem;cursor:pointer;text-decoration:none;display:inline-block}
 button:hover,a.btn:hover{border-color:#4295E4;color:#4295E4}
+a{color:#4295E4}
+.keys{display:flex;flex-wrap:wrap;gap:.5rem}
 .muted{color:#8C919E;font-size:12px}
 `;
 
 /**
  * Rendered into the frame itself rather than over it: the frame is the thing
  * that failed, and an overlay would leave a blank page underneath for anyone
- * who dismissed it.
+ * who dismissed it. Reload alone re-runs the method that just failed, so the
+ * page offers every method by name.
  */
-function connectionErrorDoc(url: string, exhausted: boolean): string {
+function connectionErrorDoc(url: string, used?: TransportName): string {
     const safeUrl = url.replace(/[<&>"]/g, c => `&#${c.charCodeAt(0)};`);
-    const action = exhausted
-        ? `<p>Every connection method Civil has — <code>epoxy</code>,
-             <code>libcurl</code> and <code>bare</code> — failed on this
-             network. That usually means the filter is blocking Civil's
-             WebSocket, not that the site is down.</p>
-           <a class="btn" href="/checkfilters" target="_top">Check this network</a>`
-        : `<p>Civil switched to <code>${currentTransport()}</code>. Try again.</p>
-           <button type="button" id="retry">Try again</button>`;
+    const keys = TRANSPORTS.map(
+        t =>
+            `<button type="button" data-transport="${t}">${t === used ? `Try ${t} again` : `Try ${t}`}</button>`,
+    ).join("");
 
     return `<!doctype html><meta charset="utf-8"><title>Can't connect</title>
 <style>${CONNECTION_ERROR_STYLE}</style>
 <main>
   <h1>Can't reach ${safeUrl}</h1>
-  <p>The connection to Civil's proxy opened but never delivered the page.</p>
+  <p>The connection to Civil's proxy opened but never delivered the page${used ? ` over <code>${used}</code>` : ""}. Reloading won't help on its own, because the connection method has to change.</p>
   <div class="rule"></div>
-  ${action}
-  <p class="muted">Reloading on its own won't help — the connection method has to change.</p>
+  <p>Try another connection method.</p>
+  <p class="keys">${keys}</p>
+  <p class="muted">If every method fails, the network's filter is probably blocking Civil, not the site. <a href="/checkfilters" target="_top">Check this network</a></p>
 </main>
 <script>
-document.getElementById("retry")?.addEventListener("click", function () {
-  parent.postMessage({ type: "civil:nav-retry" }, location.origin);
+document.querySelectorAll("button[data-transport]").forEach(function (key) {
+  key.addEventListener("click", function () {
+    parent.postMessage({ type: "civil:nav-retry", transport: key.dataset.transport }, location.origin);
+  });
 });
 </script>`;
 }
@@ -617,11 +594,13 @@ export function createIframeManager(
         lastProxiedUrl.set(id, target);
         bar.emit("submit", iframe, target);
 
+        const seconds = getSetting("navTimeout");
+        if (!seconds) return;
         navTimers.set(
             id,
             setTimeout(() => {
                 navTimers.delete(id);
-                const rotated = attempt === 0 ? rotateTransport() : null;
+                const rotated = attempt === 0 ? rotateFrom(iframe) : null;
                 if (rotated) {
                     navigateIframe(id, url, forceInternal, attempt + 1);
                     return;
@@ -631,8 +610,11 @@ export function createIframeManager(
                     title: "Can't connect",
                 });
                 iframe.removeAttribute("src");
-                iframe.srcdoc = connectionErrorDoc(target, isLastTransport());
-            }, NAV_TIMEOUT_MS),
+                iframe.srcdoc = connectionErrorDoc(
+                    target,
+                    usedTransport(iframe),
+                );
+            }, seconds * 1000),
         );
     };
 
@@ -642,12 +624,25 @@ export function createIframeManager(
     if (typeof window !== "undefined") {
         window.addEventListener("message", event => {
             if (event.origin !== window.location.origin) return;
-            const data = event.data as { type?: string; url?: string } | null;
+            const data = event.data as {
+                type?: string;
+                url?: string;
+                transport?: unknown;
+            } | null;
+            const sourceId = () =>
+                [...iframeMap].find(
+                    ([, el]) => el.contentWindow === event.source,
+                )?.[0] ?? tabManager.activeId;
 
             if (data?.type === "civil:nav-retry") {
-                const id = tabManager.activeId;
+                const id = sourceId();
                 const url = id ? lastProxiedUrl.get(id) : undefined;
-                if (id && url) navigateIframe(id, url);
+                const iframe = id ? iframeMap.get(id) : undefined;
+                if (!id || !url || !iframe) return;
+                if (isTransport(data.transport)) {
+                    retryWith(iframe, data.transport);
+                }
+                navigateIframe(id, url);
                 return;
             }
 
@@ -661,10 +656,7 @@ export function createIframeManager(
                 data?.type === "civil:navigate" &&
                 typeof data.url === "string"
             ) {
-                const id =
-                    [...iframeMap].find(
-                        ([, el]) => el.contentWindow === event.source,
-                    )?.[0] ?? tabManager.activeId;
+                const id = sourceId();
                 if (id) navigate(id, data.url);
             }
         });
