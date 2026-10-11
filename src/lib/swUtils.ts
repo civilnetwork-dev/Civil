@@ -68,8 +68,12 @@ async function checkFiltersNow(): Promise<string[]> {
     }
 }
 
+function hasServiceWorker(): boolean {
+    return typeof navigator !== "undefined" && "serviceWorker" in navigator;
+}
+
 async function registerSw(): Promise<void> {
-    if (!("serviceWorker" in navigator)) {
+    if (!hasServiceWorker()) {
         console.error(
             "Service workers are not supported, so interception proxies will not work. There is no non-service-worker fallback engine.",
         );
@@ -112,6 +116,11 @@ function hasSharedWorker(): boolean {
 }
 
 async function setupBareMux(): Promise<void> {
+    // bare-mux adds listeners to navigator.serviceWorker, so it throws a
+    // TypeError when the browser has no service worker. registerSw already
+    // reports that case.
+    if (!hasServiceWorker()) return;
+
     if (!hasSharedWorker()) {
         console.warn(
             "[civil] SharedWorker unavailable; bare transport disabled, scramjet still active.",
@@ -143,4 +152,4 @@ async function setupBareMux(): Promise<void> {
     });
 }
 
-export { checkFiltersNow, registerSw, setupBareMux };
+export { checkFiltersNow, hasServiceWorker, registerSw, setupBareMux };
