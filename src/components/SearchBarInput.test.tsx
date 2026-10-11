@@ -8,9 +8,8 @@ import SearchBarInput from "./SearchBarInput";
 
 describe("SearchBarInput without a service worker", () => {
     it("tells the user the browser is not supported instead of a dead search bar", async () => {
-        const onSubmit = vi.fn();
         const { container, unmount } = renderSolid(() => (
-            <SearchBarInput onSubmit={onSubmit} onSuggestions={() => {}} />
+            <SearchBarInput onSubmit={() => {}} onSuggestions={() => {}} />
         ));
 
         await vi.waitFor(() =>

@@ -69,7 +69,7 @@ async function checkFiltersNow(): Promise<string[]> {
 }
 
 function hasServiceWorker(): boolean {
-    return typeof navigator !== "undefined" && "serviceWorker" in navigator;
+    return "serviceWorker" in navigator;
 }
 
 async function registerSw(): Promise<void> {
