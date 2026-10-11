@@ -1,9 +1,10 @@
-import { createSignal, onSettled } from "solid-js";
+import { createSignal, onSettled, Show } from "solid-js";
 
 import { IconArrowRight, IconSearch } from "~/components/icons";
 import { WS_URL } from "~/lib/browserHelpers";
 import genBCKey from "~/lib/genBCKey";
 import { getSetting } from "~/lib/settings";
+import { hasServiceWorker } from "~/lib/swUtils";
 
 import * as s from "~/styles/SearchBar.css";
 
@@ -22,6 +23,9 @@ interface Props {
 
 export default function SearchBarInput(props: Props) {
     const [query, setQuery] = createSignal("");
+    // Read after hydration: the server has no navigator, and every proxy
+    // engine in Civil needs a service worker.
+    const [supported, setSupported] = createSignal(true);
     let ws: WebSocket | null = null;
     let inputRef: HTMLInputElement | undefined;
 
@@ -53,6 +57,7 @@ export default function SearchBarInput(props: Props) {
     };
 
     onSettled(() => {
+        setSupported(hasServiceWorker());
         if (getSetting("suggestLive")) {
             ws = new WebSocket(WS_URL);
             ws.onmessage = event => {
@@ -77,29 +82,50 @@ export default function SearchBarInput(props: Props) {
     });
 
     return (
-        <form
-            class={s.sbInputWrapper}
-            onSubmit={e => {
-                e.preventDefault();
-                handleSubmit();
-            }}
-        >
-            <IconSearch size={20} class={s.sbSearchIcon} />
-            <input
-                ref={inputRef}
-                class={s.sbInput}
-                value={query()}
-                onInput={e => handleInput(e.currentTarget.value)}
-                placeholder="Search or enter a web address"
-                aria-label="Search or enter a web address"
-                spellcheck="false"
-                autocomplete="off"
-                data-enable-grammarly="false"
-            />
-            <button type="submit" class={s.sbButton} aria-label="Browse">
-                <span class={s.sbButtonLabel}>Browse</span>
-                <IconArrowRight size={18} />
-            </button>
-        </form>
+        <>
+            <form
+                class={s.sbInputWrapper}
+                onSubmit={e => {
+                    e.preventDefault();
+                    handleSubmit();
+                }}
+            >
+                <IconSearch size={20} class={s.sbSearchIcon} />
+                <input
+                    ref={inputRef}
+                    class={s.sbInput}
+                    value={query()}
+                    onInput={e => handleInput(e.currentTarget.value)}
+                    placeholder={
+                        supported()
+                            ? "Search or enter a web address"
+                            : "Not available in this browser"
+                    }
+                    aria-label="Search or enter a web address"
+                    aria-describedby={
+                        supported() ? undefined : "sb-unsupported"
+                    }
+                    disabled={!supported()}
+                    spellcheck="false"
+                    autocomplete="off"
+                    data-enable-grammarly="false"
+                />
+                <button
+                    type="submit"
+                    class={s.sbButton}
+                    aria-label="Browse"
+                    disabled={!supported()}
+                >
+                    <span class={s.sbButtonLabel}>Browse</span>
+                    <IconArrowRight size={18} />
+                </button>
+            </form>
+            <Show when={!supported()}>
+                <p id="sb-unsupported" class={s.sbNotice} role="status">
+                    This browser does not support service workers. Civil cannot
+                    open sites without them. Use a different browser.
+                </p>
+            </Show>
+        </>
     );
 }

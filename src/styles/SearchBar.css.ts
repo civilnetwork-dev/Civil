@@ -68,6 +68,13 @@ export const sbButton = style(
     }),
 );
 
+export const sbNotice = style({
+    margin: "10px 4px 0",
+    color: vars.color.snowmelt,
+    fontSize: "14px",
+    lineHeight: 1.5,
+});
+
 export const sbButtonLabel = style({
     "@media": { "(max-width: 600px)": { display: "none" } },
 });

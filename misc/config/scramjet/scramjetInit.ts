@@ -180,6 +180,14 @@ async function createTransport() {
 }
 
 async function initScramjet() {
+    // Same check as registerSw in src/lib/swUtils.ts. Without it the first
+    // read of navigator.serviceWorker throws a TypeError.
+    if (!("serviceWorker" in navigator)) {
+        throw new Error(
+            "Service workers are not supported, so scramjet cannot start.",
+        );
+    }
+
     await init()!;
     setSearchEngine(localStorage.getItem("search")! || "google");
 
@@ -249,4 +257,6 @@ async function initScramjet() {
     (window as any).__civilGetTransport = getTransport;
 }
 
-window.scramjetReady = initScramjet();
+window.scramjetReady = initScramjet().catch(error => {
+    console.error("[civil] scramjet failed to start:", error);
+});
