@@ -90,4 +90,34 @@ describe("NewTabPage", () => {
         expect(postMessage).not.toHaveBeenCalled();
         unmount();
     });
+
+    it("hands an omnibox search to the parent", async () => {
+        vi.spyOn(window, "top", "get").mockReturnValue(null);
+        // The omnibox stays disabled without a service worker.
+        Object.defineProperty(navigator, "serviceWorker", {
+            value: {},
+            configurable: true,
+        });
+        const postMessage = vi
+            .spyOn(window.parent, "postMessage")
+            .mockImplementation(() => {});
+        const { container, unmount } = renderSolid(() => <NewTabPage />);
+        const input = container.querySelector("input")!;
+        await vi.waitFor(() => expect(input.disabled).toBe(false));
+        input.value = "example.com";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        // Solid 2 commits the typed value on the next microtask.
+        await Promise.resolve();
+        container
+            .querySelector("form")!
+            .dispatchEvent(
+                new Event("submit", { bubbles: true, cancelable: true }),
+            );
+        expect(postMessage).toHaveBeenCalledWith(
+            { type: "civil:navigate", url: "example.com" },
+            window.location.origin,
+        );
+        unmount();
+        delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    });
 });

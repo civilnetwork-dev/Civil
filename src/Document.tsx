@@ -4,9 +4,11 @@ import { For } from "solid-js";
 import { PALETTE } from "./styles/palette";
 
 /**
- * Proxy runtime scripts. Only the two routes that actually host a proxied
- * frame pay for them; every other route would download the transports and
- * never open a connection.
+ * Proxy runtime scripts. Only the browser route hosts proxied frames, so only
+ * it pays for them. /newtab opens inside a tab's same-origin frame, which
+ * shares the browser's main thread: a copy of the runtime there starts a WASM
+ * transport, a wisp socket and a scramjet controller for every tab, and never
+ * uses them. Its omnibox hands navigation to the browser instead.
  */
 const proxyScripts = [
     "/wasm_dencode.js",
@@ -31,7 +33,7 @@ export default function Document(props: {
     children?: JSX.Element;
     scripts?: JSX.Element;
 }) {
-    const isProxy = ["/", "/newtab"].includes(props.pathname);
+    const isProxy = props.pathname === "/";
 
     return (
         <html lang="en">

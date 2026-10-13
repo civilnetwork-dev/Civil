@@ -1,39 +1,25 @@
 import { createSignal, For, Show } from "solid-js";
 
 import SearchBarInput from "~/components/SearchBarInput";
-import searchBar from "~/lib/SearchBar";
 
 import * as s from "~/styles/SearchBar.css";
 
 export default function SearchBarContainer() {
-    const bar = searchBar();
-
     const [suggestions, setSuggestions] = createSignal<string[]>([]);
 
     const handleSubmit = (value: string) => {
-        bar.lastUrlSearched = value;
-        bar.url = value;
-
         localStorage.setItem("last-url-searched", value);
         localStorage.setItem("url", value);
 
         setSuggestions([]);
 
-        // Inside a tab's frame the chrome owns navigation (see the
-        // `civil:navigate` handler in useIframeManager); this document's own
-        // scramjet controller has no frame to route through.
-        if (typeof window !== "undefined" && window.self !== window.top) {
-            window.parent.postMessage(
-                { type: "civil:navigate", url: value },
-                window.location.origin,
-            );
-            return;
-        }
-
-        const iframe = window.frameElement;
-        if (iframe instanceof HTMLIFrameElement) {
-            bar.emit("submit", iframe, value);
-        }
+        // The chrome owns navigation (see the `civil:navigate` handler in
+        // useIframeManager). This document runs inside a tab's frame and
+        // loads no proxy runtime of its own (see Document.tsx).
+        window.parent.postMessage(
+            { type: "civil:navigate", url: value },
+            window.location.origin,
+        );
     };
 
     return (
