@@ -8,14 +8,10 @@ export default function SearchBarContainer() {
     const [suggestions, setSuggestions] = createSignal<string[]>([]);
 
     const handleSubmit = (value: string) => {
-        localStorage.setItem("last-url-searched", value);
-        localStorage.setItem("url", value);
-
         setSuggestions([]);
 
         // The chrome owns navigation (see the `civil:navigate` handler in
-        // useIframeManager). This document runs inside a tab's frame and
-        // loads no proxy runtime of its own (see Document.tsx).
+        // useIframeManager).
         window.parent.postMessage(
             { type: "civil:navigate", url: value },
             window.location.origin,
