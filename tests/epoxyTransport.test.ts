@@ -26,7 +26,6 @@ describe("epoxy transport after a failed Wisp handshake", () => {
             "WebSocket",
             class {
                 readyState = 0;
-                binaryType = "blob";
                 onerror: (() => void) | null = null;
                 onclose: (() => void) | null = null;
 
