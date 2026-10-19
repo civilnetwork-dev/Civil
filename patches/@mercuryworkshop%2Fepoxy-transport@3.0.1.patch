@@ -1,0 +1,14 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index c2f8e435ae7ac3c50a6f572c51bad413300a2d5a..e73cdb990aae8634e835fad799e7420ecd9d56f4 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -179,6 +179,9 @@ function isLikeNone(x) {
+ function makeClosure(arg0, arg1, dtor, f) {
+   const state = { a: arg0, b: arg1, cnt: 1, dtor };
+   const real = (...args) => {
++    // epoxy-tls frees its Wisp socket's handlers when a connect fails, but
++    // leaves them attached, so the browser's later close event lands here.
++    if (state.a === 0) return;
+     state.cnt++;
+     try {
+       return f(state.a, state.b, ...args);
