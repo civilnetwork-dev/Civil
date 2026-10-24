@@ -7,6 +7,7 @@ import {
 import { historyAdd } from "~/api/history";
 import { iframeSetCurrentSrc } from "~/api/iframe";
 import { displayUrl, gstaticFavicon, normalizeNav } from "~/lib/browserHelpers";
+import { isInternalUrl, resolveUrl } from "~/lib/browserUrls";
 import { buildChiiInjectScript } from "~/lib/buildChiiInjectScript";
 import type searchBar from "~/lib/SearchBar";
 import {
@@ -15,7 +16,7 @@ import {
     TRANSPORTS,
     type TransportName,
 } from "~/lib/settings";
-import { isInternalUrl, resolveUrl, tabManager } from "~/lib/TabManager";
+import { tabManager } from "~/lib/TabManager";
 import { retryWith, rotateFrom, usedTransport } from "~/lib/transport";
 
 type BarInstance = ReturnType<typeof searchBar>;
@@ -126,6 +127,29 @@ function hideGhostsInSingleDoc(doc: Document): void {
     } catch {}
 }
 
+/** Hides chii's ghost nodes in a node just added to a watched document, and
+ *  starts watching the document of any iframe it brings along. */
+function hideGhostsInAddedNode(node: Node): void {
+    if (!(node instanceof Element)) return;
+    if (node instanceof HTMLElement && isChiiGhost(node)) {
+        setNodeStylesToHidden(node);
+    }
+    node.querySelectorAll(CHII_GHOST_SELECTOR).forEach(ghost => {
+        if (ghost instanceof HTMLElement) {
+            setNodeStylesToHidden(ghost);
+        }
+    });
+    if (node instanceof HTMLIFrameElement) {
+        let child: Document | null = null;
+        try {
+            child = node.contentDocument;
+        } catch {
+            child = null;
+        }
+        if (child) ensureChiiGhostCleanupDoc(child);
+    }
+}
+
 function ensureChiiGhostCleanupDoc(doc: Document): void {
     hideGhostsInSingleDoc(doc);
     if (chiiGhostCleanupDocs.has(doc)) return;
@@ -140,26 +164,7 @@ function ensureChiiGhostCleanupDoc(doc: Document): void {
                 }
                 continue;
             }
-            for (const node of record.addedNodes) {
-                if (!(node instanceof Element)) continue;
-                if (node instanceof HTMLElement && isChiiGhost(node)) {
-                    setNodeStylesToHidden(node);
-                }
-                node.querySelectorAll(CHII_GHOST_SELECTOR).forEach(ghost => {
-                    if (ghost instanceof HTMLElement) {
-                        setNodeStylesToHidden(ghost);
-                    }
-                });
-                if (node instanceof HTMLIFrameElement) {
-                    let child: Document | null = null;
-                    try {
-                        child = node.contentDocument;
-                    } catch {
-                        child = null;
-                    }
-                    if (child) ensureChiiGhostCleanupDoc(child);
-                }
-            }
+            record.addedNodes.forEach(hideGhostsInAddedNode);
         }
         hideGhostsInSingleDoc(doc);
     });
@@ -190,102 +195,109 @@ function ensureChiiSocketBridgeHost(targetWindow: Window): void {
         } catch {}
     };
 
+    /** Relays a host socket's events to the child frame's stand-in. */
+    const relaySocketEvents = (id: string, ws: WebSocket): void => {
+        ws.addEventListener("open", () => {
+            emitToChild({
+                id,
+                type: "open",
+                protocol: ws.protocol,
+                extensions: ws.extensions,
+            });
+        });
+        ws.addEventListener("message", async ev => {
+            let payload = ev.data;
+            if (payload && typeof payload !== "string") {
+                if ("arrayBuffer" in payload) {
+                    payload = await payload.arrayBuffer();
+                } else if ("byteLength" in payload) {
+                    payload = payload.slice(0);
+                }
+            }
+            emitToChild({
+                id,
+                type: "message",
+                data: payload,
+                origin: ev.origin,
+                lastEventId: ev.lastEventId,
+                ports: ev.ports,
+            });
+        });
+        ws.addEventListener("error", () => {
+            emitToChild({ id, type: "error" });
+        });
+        ws.addEventListener("close", ev => {
+            sockets.delete(id);
+            emitToChild({
+                id,
+                type: "close",
+                code: ev.code,
+                reason: ev.reason,
+                wasClean: ev.wasClean,
+            });
+        });
+    };
+
+    /** Opens the host socket the child asked for, replacing any it already
+     *  had under the same id. */
+    const openSocket = (id: string, data: Record<string, string>): void => {
+        const existing = sockets.get(id);
+        if (existing) {
+            try {
+                existing.close(1000, "");
+            } catch {}
+            sockets.delete(id);
+        }
+
+        const url = typeof data.url === "string" ? data.url : "";
+        if (!url) return;
+        const protocols = Array.isArray(data.protocols)
+            ? data.protocols
+            : typeof data.protocols === "string"
+              ? data.protocols
+              : undefined;
+
+        const ws =
+            protocols === undefined
+                ? new HOST_WS(url)
+                : new HOST_WS(url, protocols);
+        sockets.set(id, ws);
+        relaySocketEvents(id, ws);
+    };
+
     const onBridgeRequest = (event: Event) => {
-        const detail = (event as CustomEvent<Record<string, string>>).detail;
-        const data = detail;
+        const data = (event as CustomEvent<Record<string, string>>).detail;
         if (!data) return;
         const id = typeof data.id === "string" ? data.id : "";
         if (!id) return;
 
         if (data.type === "create") {
-            const existing = sockets.get(id);
-            if (existing) {
-                try {
-                    existing.close(1000, "");
-                } catch {}
-                sockets.delete(id);
-            }
-
-            const url = typeof data.url === "string" ? data.url : "";
-            if (!url) return;
-            const protocols = Array.isArray(data.protocols)
-                ? data.protocols
-                : typeof data.protocols === "string"
-                  ? data.protocols
-                  : undefined;
-
-            const ws =
-                protocols === undefined
-                    ? new HOST_WS(url)
-                    : new HOST_WS(url, protocols);
-            sockets.set(id, ws);
-
-            ws.addEventListener("open", () => {
-                emitToChild({
-                    id,
-                    type: "open",
-                    protocol: ws.protocol,
-                    extensions: ws.extensions,
-                });
-            });
-            ws.addEventListener("message", async ev => {
-                let payload = ev.data;
-                if (payload && typeof payload !== "string") {
-                    if ("arrayBuffer" in payload) {
-                        payload = await payload.arrayBuffer();
-                    } else if ("byteLength" in payload) {
-                        payload = payload.slice(0);
-                    }
-                }
-                emitToChild({
-                    id,
-                    type: "message",
-                    data: payload,
-                    origin: ev.origin,
-                    lastEventId: ev.lastEventId,
-                    ports: ev.ports,
-                });
-            });
-            ws.addEventListener("error", () => {
-                emitToChild({ id, type: "error" });
-            });
-            ws.addEventListener("close", ev => {
-                sockets.delete(id);
-                emitToChild({
-                    id,
-                    type: "close",
-                    code: ev.code,
-                    reason: ev.reason,
-                    wasClean: ev.wasClean,
-                });
-            });
+            openSocket(id, data);
             return;
         }
 
         const ws = sockets.get(id);
         if (!ws) return;
 
-        if (data.type === "send") {
-            ws.send(data.data);
-            return;
-        }
-
-        if (data.type === "close") {
-            sockets.delete(id);
-            ws.close(
-                typeof data.code === "number" ? data.code : 1000,
-                typeof data.reason === "string" ? data.reason : "",
-            );
-            return;
-        }
-
-        if (data.type === "setBinaryType") {
-            if (
-                data.binaryType === "blob" ||
-                data.binaryType === "arraybuffer"
-            ) {
-                ws.binaryType = data.binaryType;
-            }
+        switch (data.type) {
+            case "send":
+                ws.send(data.data);
+                break;
+            case "close":
+                sockets.delete(id);
+                ws.close(
+                    typeof data.code === "number" ? data.code : 1000,
+                    typeof data.reason === "string" ? data.reason : "",
+                );
+                break;
+            case "setBinaryType":
+                if (
+                    data.binaryType === "blob" ||
+                    data.binaryType === "arraybuffer"
+                ) {
+                    ws.binaryType = data.binaryType;
+                }
+                break;
         }
     };
 

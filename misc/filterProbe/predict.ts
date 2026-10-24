@@ -78,6 +78,172 @@ function routeSource(civilDir: string, route: string): string | undefined {
     return existsSync(join(civilDir, rel)) ? rel : undefined;
 }
 
+type Signal = NonNullable<Verdict["signal"]>;
+type SignalOf<K extends Signal["kind"]> = Extract<Signal, { kind: K }>;
+
+/** Where `vendor`'s filtering is neutralised, or where it would have to be. */
+function handlerSuggestion(vendor: string, civilDir: string): Suggestion {
+    const handlerDir = VENDOR_HANDLER_DIR[vendor];
+    if (handlerDir && existsSync(join(civilDir, handlerDir))) {
+        const middleware = `${handlerDir}/middleware.ts`;
+        return {
+            file: existsSync(join(civilDir, middleware))
+                ? middleware
+                : handlerDir,
+            reason: `${vendor}'s dedicated handler — where its filtering behaviour is neutralised.`,
+            rank: 40,
+        };
+    }
+    return {
+        file: `misc/filters/${vendor}/`,
+        reason: `${vendor} has no dedicated handler yet; blocking it will need one.`,
+        rank: 45,
+    };
+}
+
+/** The proxy rewrite layer, for a flagged proxied-site route only. */
+function rewriteLayerSuggestion(
+    route: string,
+    civilDir: string,
+    reason: string,
+    rank: number,
+): Suggestion[] {
+    const rewrite = "src/lib/useIframeManager.ts";
+    return route.startsWith("/~/") && existsSync(join(civilDir, rewrite))
+        ? [{ file: rewrite, reason, rank }]
+        : [];
+}
+
+/** The route's own source, when the route has one, as a suggestion. */
+function routeSourceSuggestion(
+    route: string,
+    civilDir: string,
+    reason: string,
+    rank: number,
+): Suggestion[] {
+    const source = routeSource(civilDir, route);
+    return source ? [{ file: source, reason, rank }] : [];
+}
+
+function redirectSuggestions(
+    vendor: string,
+    signal: SignalOf<"redirect">,
+    civilDir: string,
+): Suggestion[] {
+    const known = (
+        filterVendorDomains as unknown as Record<string, readonly string[]>
+    )[vendor]?.includes(signal.domain as never);
+    if (!known) {
+        return [
+            {
+                file: MIDDLEWARE,
+                line: lineOf(civilDir, MIDDLEWARE, "filterVendorDomains"),
+                reason: `Redirected to ${signal.finalHost}, but ${signal.domain} is not in filterVendorDomains — add it so the proxy blocks the phone-home.`,
+                rank: 100,
+            },
+        ];
+    }
+    // Domain is blocked yet the redirect still happened: the filter
+    // reached it another way (its content script drove navigation, or
+    // hit an unblocked subdomain path), so the fix is upstream.
+    return [
+        {
+            file: MIDDLEWARE,
+            line: lineOf(civilDir, MIDDLEWARE, signal.domain),
+            reason: `${signal.domain} is already blocked, yet the page still reached ${signal.finalHost} — the filter's content script drove the redirect; neutralise it in the vendor handler.`,
+            rank: 60,
+        },
+    ];
+}
+
+function dnrBlockSuggestions(
+    vendor: string,
+    route: string,
+    signal: SignalOf<"dnr-block">,
+    civilDir: string,
+): Suggestion[] {
+    // The vendor's own declarativeNetRequest rules matched this exact
+    // URL before any page even rendered. Those rules ship inside the
+    // (static) extension bundle, so they cannot be keyed on this run's
+    // randomly generated FreeDNS hostname — the match is almost
+    // certainly on the URL's path/query shape, which is Civil's own
+    // route/proxy structure, not a domain to add to a blocklist.
+    return [
+        ...routeSourceSuggestion(
+            route,
+            civilDir,
+            `${vendor}'s declarativeNetRequest rules matched this URL directly (rule ${signal.matchedRuleId}), before the page even loaded. The rule ships in the bundle and can't target this run's random hostname, so it matched on the URL's path/query shape — this route's own URL structure is what to change.`,
+            90,
+        ),
+        ...rewriteLayerSuggestion(
+            route,
+            civilDir,
+            `The matched rule fired on the proxy route's URL shape; the rewrite layer controls what that URL looks like.`,
+            85,
+        ),
+    ];
+}
+
+function inPlaceBlockSuggestions(
+    vendor: string,
+    route: string,
+    signal: Signal,
+    civilDir: string,
+): Suggestion[] {
+    // In-place block: the content script rewrote the page before any
+    // request Civil could see. The fix is in how Civil serves/rewrites
+    // the flagged route.
+    return [
+        ...routeSourceSuggestion(
+            route,
+            civilDir,
+            `${vendor} blocked ${route} in place (${signal.kind}). This route's markup is what its content script matched against.`,
+            70,
+        ),
+        {
+            file: MIDDLEWARE,
+            line: lineOf(civilDir, MIDDLEWARE, "createFilterBlockerMiddleware"),
+            reason: `An in-place block bypasses the hostname blocklist. Civil needs to strip ${vendor}'s content script or its injected markers for this route.`,
+            rank: 55,
+        },
+        // The proxy rewrite layer, for the proxied-site route specifically.
+        ...rewriteLayerSuggestion(
+            route,
+            civilDir,
+            `The flagged route is proxied content; the rewrite layer is where a filter's injected markers can be scrubbed before they render.`,
+            65,
+        ),
+    ];
+}
+
+/** The suggestions that depend on how the filter flagged the route. */
+function signalSuggestions(
+    vendor: string,
+    route: string,
+    signal: Signal,
+    civilDir: string,
+): Suggestion[] {
+    switch (signal.kind) {
+        case "redirect":
+            return redirectSuggestions(vendor, signal, civilDir);
+        case "keyword-match":
+            // GoGuardian only (misc/filterProbe/goguardianCheck.ts): its own
+            // authenticated keyword model matched the route's content directly —
+            // no content script or hostname involved, so neither the redirect
+            // nor the generic in-place-block reasoning below is accurate for it.
+            return routeSourceSuggestion(
+                route,
+                civilDir,
+                `GoGuardian's keyword model matched this route's content (${signal.keywords.join(", ")}). This route's markup is what it matched against.`,
+                70,
+            );
+        case "dnr-block":
+            return dnrBlockSuggestions(vendor, route, signal, civilDir);
+        default:
+            return inPlaceBlockSuggestions(vendor, route, signal, civilDir);
+    }
+}
+
 /**
  * Rank the Civil files that most likely need to change so `verdict.vendor`
  * stops flagging `verdict.route`. Returns [] for a clean verdict.
@@ -85,7 +251,6 @@ function routeSource(civilDir: string, route: string): string | undefined {
 export function predictFix(verdict: Verdict, civilDir: string): Suggestion[] {
     if (!verdict.flagged || !verdict.signal) return [];
     const { vendor, route, signal } = verdict;
-    const out: Suggestion[] = [];
 
     // Nothing in a route, a handler or the rewrite layer changes a cloud
     // rating of the hostname itself; the only fix is a different domain, and
@@ -100,112 +265,8 @@ export function predictFix(verdict: Verdict, civilDir: string): Suggestion[] {
         ];
     }
 
-    const handlerDir = VENDOR_HANDLER_DIR[vendor];
-    if (handlerDir && existsSync(join(civilDir, handlerDir))) {
-        const middleware = `${handlerDir}/middleware.ts`;
-        out.push({
-            file: existsSync(join(civilDir, middleware))
-                ? middleware
-                : handlerDir,
-            reason: `${vendor}'s dedicated handler — where its filtering behaviour is neutralised.`,
-            rank: 40,
-        });
-    } else {
-        out.push({
-            file: `misc/filters/${vendor}/`,
-            reason: `${vendor} has no dedicated handler yet; blocking it will need one.`,
-            rank: 45,
-        });
-    }
-
-    if (signal.kind === "redirect") {
-        const known = (
-            filterVendorDomains as unknown as Record<string, readonly string[]>
-        )[vendor]?.includes(signal.domain as never);
-        if (!known) {
-            out.push({
-                file: MIDDLEWARE,
-                line: lineOf(civilDir, MIDDLEWARE, "filterVendorDomains"),
-                reason: `Redirected to ${signal.finalHost}, but ${signal.domain} is not in filterVendorDomains — add it so the proxy blocks the phone-home.`,
-                rank: 100,
-            });
-        } else {
-            // Domain is blocked yet the redirect still happened: the filter
-            // reached it another way (its content script drove navigation, or
-            // hit an unblocked subdomain path), so the fix is upstream.
-            out.push({
-                file: MIDDLEWARE,
-                line: lineOf(civilDir, MIDDLEWARE, signal.domain),
-                reason: `${signal.domain} is already blocked, yet the page still reached ${signal.finalHost} — the filter's content script drove the redirect; neutralise it in the vendor handler.`,
-                rank: 60,
-            });
-        }
-    } else if (signal.kind === "keyword-match") {
-        // GoGuardian only (misc/filterProbe/goguardianCheck.ts): its own
-        // authenticated keyword model matched the route's content directly —
-        // no content script or hostname involved, so neither the redirect
-        // nor the generic in-place-block reasoning below is accurate for it.
-        const source = routeSource(civilDir, route);
-        if (source) {
-            out.push({
-                file: source,
-                reason: `GoGuardian's keyword model matched this route's content (${signal.keywords.join(", ")}). This route's markup is what it matched against.`,
-                rank: 70,
-            });
-        }
-    } else if (signal.kind === "dnr-block") {
-        // The vendor's own declarativeNetRequest rules matched this exact
-        // URL before any page even rendered. Those rules ship inside the
-        // (static) extension bundle, so they cannot be keyed on this run's
-        // randomly generated FreeDNS hostname — the match is almost
-        // certainly on the URL's path/query shape, which is Civil's own
-        // route/proxy structure, not a domain to add to a blocklist.
-        const source = routeSource(civilDir, route);
-        if (source) {
-            out.push({
-                file: source,
-                reason: `${vendor}'s declarativeNetRequest rules matched this URL directly (rule ${signal.matchedRuleId}), before the page even loaded. The rule ships in the bundle and can't target this run's random hostname, so it matched on the URL's path/query shape — this route's own URL structure is what to change.`,
-                rank: 90,
-            });
-        }
-        if (route.startsWith("/~/")) {
-            const rewrite = "src/lib/useIframeManager.ts";
-            if (existsSync(join(civilDir, rewrite)))
-                out.push({
-                    file: rewrite,
-                    reason: `The matched rule fired on the proxy route's URL shape; the rewrite layer controls what that URL looks like.`,
-                    rank: 85,
-                });
-        }
-    } else {
-        // In-place block: the content script rewrote the page before any
-        // request Civil could see. The fix is in how Civil serves/rewrites
-        // the flagged route.
-        const source = routeSource(civilDir, route);
-        if (source) {
-            out.push({
-                file: source,
-                reason: `${vendor} blocked ${route} in place (${signal.kind}). This route's markup is what its content script matched against.`,
-                rank: 70,
-            });
-        }
-        out.push({
-            file: MIDDLEWARE,
-            line: lineOf(civilDir, MIDDLEWARE, "createFilterBlockerMiddleware"),
-            reason: `An in-place block bypasses the hostname blocklist. Civil needs to strip ${vendor}'s content script or its injected markers for this route.`,
-            rank: 55,
-        });
-        // The proxy rewrite layer, for the proxied-site route specifically.
-        if (route.startsWith("/~/")) {
-            const rewrite = "src/lib/useIframeManager.ts";
-            if (existsSync(join(civilDir, rewrite)))
-                out.push({
-                    file: rewrite,
-                    reason: `The flagged route is proxied content; the rewrite layer is where a filter's injected markers can be scrubbed before they render.`,
-                    rank: 65,
-                });
-        }
-    }
-
-    return out.toSorted((a, b) => b.rank - a.rank);
+    return [
+        handlerSuggestion(vendor, civilDir),
+        ...signalSuggestions(vendor, route, signal, civilDir),
+    ].toSorted((a, b) => b.rank - a.rank);
 }

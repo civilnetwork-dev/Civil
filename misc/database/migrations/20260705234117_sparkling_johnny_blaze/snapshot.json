@@ -1,0 +1,81 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "17995bdb-fc78-44fc-99d6-5eb1c8b30da2",
+  "prevIds": [
+    "d70023cd-f52e-4d8f-847b-46b57bce7c0b"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "site_proxy_configs",
+        "score_scramjet"
+      ],
+      "writes": [
+        "s|col|public.site_proxy_configs.score_scramjet",
+        "n|col|public.site_proxy_configs.score_scramjet",
+        "e|col|public.site_proxy_configs.score_scramjet"
+      ],
+      "reads": [
+        "n|tbl|public.site_proxy_configs",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "site_proxy_configs",
+        "score_uv"
+      ],
+      "writes": [
+        "s|col|public.site_proxy_configs.score_uv",
+        "n|col|public.site_proxy_configs.score_uv",
+        "e|col|public.site_proxy_configs.score_uv"
+      ],
+      "reads": [
+        "n|tbl|public.site_proxy_configs",
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "site_proxy_configs",
+        "name": "score_scramjet",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "site_proxy_configs",
+        "name": "score_uv",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -39,3 +39,83 @@ index 840979d9064d98159356d44a7a9add8edbdc820e..460cae8230eee3b7ec70ff53d681626c
        }
      });
    }
+diff --git a/server/lib/proxy.js b/server/lib/proxy.js
+index f91ee45603dab07962742aa9803ae5ac86cf0160..d73231d46217308d13db67999df0412ec71f07a6 100644
+--- a/server/lib/proxy.js
++++ b/server/lib/proxy.js
+@@ -1,17 +1,73 @@
+ const request = require('@cypress/request');
+ 
+-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
++// Civil: upstream set process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0' here, which
++// switched off certificate checks for every HTTPS request the server makes.
++// Only this proxy's own requests skip the check now (strictSSL below).
++
++// Civil: this route fetches any URL a visitor names, from inside the network the
++// server runs in. It follows misc/net.ts, the SSRF guard on Civil's own
++// URL-fetching endpoints: HTTP(S) only, never a private or loopback host, and
++// the same check on every redirect hop.
++function isPrivateHost(hostname) {
++  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
++  if (
++    h === 'localhost' ||
++    h === '127.0.0.1' ||
++    h === '::1' ||
++    h === '::' ||
++    h.endsWith('.local') ||
++    h.endsWith('.internal') ||
++    h.endsWith('.localhost')
++  ) {
++    return true;
++  }
++  return (
++    h.startsWith('10.') ||
++    h.startsWith('192.168.') ||
++    /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
++    h.startsWith('169.254.') ||
++    h.startsWith('127.') ||
++    h.startsWith('0.') ||
++    /^fc00:/i.test(h) ||
++    /^fd[0-9a-f]{2}:/i.test(h) ||
++    /^fe80:/i.test(h)
++  );
++}
++
++function isAllowedUrl(url) {
++  return (url.protocol === 'http:' || url.protocol === 'https:') && !isPrivateHost(url.hostname);
++}
+ 
+ module.exports = async function (ctx, url) {
++  let target;
++  try {
++    target = new URL(url);
++  } catch (e) {
++    ctx.status = 400;
++    return;
++  }
++  if (!isAllowedUrl(target)) {
++    ctx.status = 403;
++    return;
++  }
++
+   const headers = Object.assign({}, ctx.header);
+   delete headers.host;
+   delete headers.cookie;
+ 
+   const options = {
+-    uri: url,
++    uri: target.href,
+     method: ctx.method,
+     timeout: 5000,
+     headers,
++    strictSSL: false,
++    followRedirect(response) {
++      try {
++        return isAllowedUrl(new URL(response.headers.location, this.uri.href));
++      } catch (e) {
++        return false;
++      }
++    },
+   };
+ 
+   await pipeRequest(ctx, options);

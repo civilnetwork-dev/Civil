@@ -140,7 +140,13 @@ function startPostHog(posthog: typeof import("posthog-js").default): void {
     });
 }
 
-if (window.location.host === "civil.quartinal.me") {
+// A proxied path (/~/...) loads this document only when the service worker
+// missed it and NotFound is about to reload. Its URL encodes the site and
+// search the student visited, which PostHog recorded as $current_url.
+if (
+    window.location.host === "civil.quartinal.me" &&
+    !window.location.pathname.startsWith("/~/")
+) {
     await applyAnalytics();
     onLsChange(SETTINGS.analytics.key, () => void applyAnalytics());
 }

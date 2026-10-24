@@ -50,11 +50,12 @@
  * So every binary was checked and none yields a marker the JS did not.
  */
 
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { filterVendorDomains } from "../filters/filterBlockerMiddleware";
+import { walkFiles } from "../walkFiles";
 import { FOLDER_TO_VENDOR, VENDOR_DISPLAY_NAMES, VENDORS } from "./vendors";
 
 export interface VendorProbe {
@@ -132,18 +133,9 @@ function isDistinctiveMarker(marker: string): boolean {
     );
 }
 
-function walk(dir: string, out: string[] = []): string[] {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const path = join(dir, entry.name);
-        if (entry.isDirectory()) walk(path, out);
-        else out.push(path);
-    }
-    return out;
-}
-
 function markersFromFolder(dir: string): string[] {
     const markers = new Set<string>();
-    for (const file of walk(dir)) {
+    for (const file of walkFiles(dir)) {
         if (!SCANNABLE.test(file)) continue;
         if (statSync(file).size > MAX_FILE_BYTES) continue;
         const isBlockFile = BLOCK_FILE.test(file);

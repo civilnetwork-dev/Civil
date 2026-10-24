@@ -15,6 +15,11 @@ const proxyPath = genProxyPath("/", "scramjet");
 const spf = `${proxyPath}scramjet.`;
 const controllerPath = genProxyPath("/", "scramjetController");
 
+// The scramjet controller injects `codec.encode.toString()` and
+// `codec.decode.toString()` into proxied frames and workers, so each function
+// must stand alone: no imports, no closure over module scope. That is why they
+// repeat the WASM call from shared/wasmDencode.ts and the JS fallback from
+// shared/xorCodec.ts instead of calling them.
 const codec = {
     encode: (s: string) => {
         const state = (globalThis as any).__civil_xorWasm__;

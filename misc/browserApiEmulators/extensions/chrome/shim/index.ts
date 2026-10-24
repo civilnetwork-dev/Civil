@@ -1,3 +1,6 @@
+// Relative, not `$config/`: vite.config.ts bundles this shim with a bare
+// rolldown call that resolves no aliases.
+import { getExtensionFile } from "../../../../config/shared/extensionFile";
 import type { ShimOptions } from "../types";
 import { buildActionAPI } from "./action";
 import { buildAlarmsAPI } from "./alarms";
@@ -66,6 +69,7 @@ import {
     usb,
     webstore,
 } from "./extra";
+import { matchesAnyPattern } from "./matchPattern";
 import {
     buildBookmarksAPI,
     buildBrowsingDataAPI,
@@ -753,29 +757,11 @@ function patchUserScriptLocation(code: string): string {
                                           /* fall through to OPFS */
                                       }
                                       try {
-                                          const opfsRoot =
-                                              await navigator.storage.getDirectory();
-                                          const parts =
-                                              `extensions/${extId}/${file}`
-                                                  .split("/")
-                                                  .filter(Boolean);
-                                          let dir: FileSystemDirectoryHandle =
-                                              opfsRoot;
-                                          for (
-                                              let i = 0;
-                                              i < parts.length - 1;
-                                              i++
-                                          ) {
-                                              dir =
-                                                  await dir.getDirectoryHandle(
-                                                      parts[i]!,
-                                                  );
-                                          }
-                                          const fh = await dir.getFileHandle(
-                                              parts[parts.length - 1]!,
-                                          );
                                           return await (
-                                              await fh.getFile()
+                                              await getExtensionFile(
+                                                  extId,
+                                                  file,
+                                              )
                                           ).text();
                                       } catch {
                                           return null;
@@ -944,44 +930,7 @@ function patchUserScriptLocation(code: string): string {
     // that popup/content pages that navigate via window.open or plain links
     // instead of chrome.tabs.create still open as Civil browser tabs.
     if (opts.contextType === "popup" || opts.contextType === "content") {
-        try {
-            const _nativeOpen = window.open.bind(window);
-            window.open = (
-                url?: string | URL,
-                target?: string,
-                windowFeatures?: string,
-            ) => {
-                const urlStr = url ? String(url) : "";
-                if (
-                    urlStr.startsWith("chrome-extension://") ||
-                    urlStr.startsWith("moz-extension://")
-                ) {
-                    dispatchBrowserEvent(bib.newTabEvent, { url: urlStr });
-                    return null;
-                }
-                return _nativeOpen(url as string, target, windowFeatures);
-            };
-        } catch {}
-
-        try {
-            document.addEventListener(
-                "click",
-                (e: MouseEvent) => {
-                    const a = (e.target as Element | null)?.closest?.("a");
-                    if (!a) return;
-                    const href = (a as HTMLAnchorElement).href ?? "";
-                    if (
-                        href.startsWith("chrome-extension://") ||
-                        href.startsWith("moz-extension://")
-                    ) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        dispatchBrowserEvent(bib.newTabEvent, { url: href });
-                    }
-                },
-                true, // capture phase: fires before page handlers
-            );
-        } catch {}
+        interceptExtensionNavigation(bib.newTabEvent);
     }
 
     // Content context: listen for userScript registrations broadcast by the
@@ -998,217 +947,7 @@ function patchUserScriptLocation(code: string): string {
         // assigned, so the setter waits forever for an assignment that already
         // happened → bridge stuck (no throw). Inject each script id once.
         const _injectedScriptIds = new Set<string>();
-        _contentBus.addEventListener("message", (e: MessageEvent) => {
-            const data = e.data as {
-                kind?: string;
-                scripts?: unknown[];
-            };
-            if (data?.kind !== "userScriptRegister" || !data.scripts) return;
-            // Prefer bib.currentTab.url (baked in at inject time by
-            // injectExtensionShimsIntoIframe with the real decoded URL)
-            // over window.location.href, which returns the scramjet proxy
-            // URL for scripts injected from the parent frame.
-            const pageUrl =
-                bib.currentTab?.url ??
-                (typeof window !== "undefined" ? window.location.href : "");
-            for (const script of data.scripts) {
-                const s = script as {
-                    id?: string;
-                    matches?: string[];
-                    excludeMatches?: string[];
-                    js?: Array<{ file?: string; code?: string }>;
-                    world?: string;
-                };
-                if (!s.js?.length) continue;
-                if (s.id && _injectedScriptIds.has(s.id)) continue;
-                // Basic match-pattern check (same logic as matchesUrlPattern)
-                const matches = (patterns: string[], url: string) => {
-                    try {
-                        const u = new URL(url);
-                        return patterns.some(p => {
-                            if (p === "<all_urls>") return true;
-                            const m =
-                                /^(\*|https?|ftp|file):\/\/(\*|[^/]*)(\/.*)?$/.exec(
-                                    p,
-                                );
-                            if (!m) return false;
-                            const [, pS, pH, pP = "/*"] = m;
-                            const sch = u.protocol.slice(0, -1);
-                            if (pS !== "*" && pS !== sch) return false;
-                            if (pH !== "*") {
-                                if (pH.startsWith("*.")) {
-                                    const base = pH.slice(2);
-                                    if (
-                                        u.hostname !== base &&
-                                        !u.hostname.endsWith("." + base)
-                                    )
-                                        return false;
-                                } else if (u.hostname !== pH) return false;
-                            }
-                            const pathQ = u.pathname + (u.search ?? "");
-                            const re = new RegExp(
-                                "^" +
-                                    pP
-                                        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-                                        .replace(/\*/g, ".*") +
-                                    "$",
-                            );
-                            return re.test(pathQ);
-                        });
-                    } catch {
-                        return false;
-                    }
-                };
-                if (s.matches && !matches(s.matches, pageUrl)) continue;
-                if (s.excludeMatches && matches(s.excludeMatches, pageUrl))
-                    continue;
-                if (s.id) _injectedScriptIds.add(s.id);
-                for (const jsEntry of s.js) {
-                    try {
-                        if (jsEntry.code) {
-                            const targetWin = window as unknown as Record<
-                                string,
-                                unknown
-                            >;
-
-                            // Get the native eval saved before Scramjet runs.
-                            const nativeEval = targetWin.__civilNativeEval as
-                                | ((code: string) => unknown)
-                                | undefined;
-
-                            // Combined preamble: patch eval/Function to native
-                            // (so TM's runner doesn't go through Scramjet's
-                            // rewriter), rewrite Scramjet proxy URLs in
-                            // sendMessage calls, and expose real page URL.
-                            // Both MAIN and USER_SCRIPT worlds run in the same
-                            // window (Scramjet proxy iframe), so window.postMessage
-                            // between them works without any bridge.
-                            const _preamble = (function buildPreamble(
-                                realUrl: string,
-                            ): string {
-                                const safeUrl = JSON.stringify(realUrl);
-                                return `(function(){
-try {
-  var __nEv=window.__civilNativeEval;
-  if(__nEv){
-    try{Object.defineProperty(window,'eval',{value:__nEv,writable:true,configurable:true});}catch(_){window.eval=__nEv;}
-    try{
-      var __nFn=__nEv('(function(){return Function})')();
-      Object.defineProperty(window,'Function',{value:__nFn,writable:true,configurable:true});
-    }catch(_){}
-  }
-  var __cRealUrl=${safeUrl};
-  // window.location cannot be redefined (non-configurable) on the real
-  // window, and our nativeEval injection bypasses Scramjet's location
-  // proxy, so TM's USER_SCRIPT-world code reads the raw proxy URL. We can't
-  // fix the global; instead we expose the real URL + a fake Location object
-  // on window, and string-patch each injected script's location reads to
-  // prefer window.__cRealUrl (see patchUserScriptLocation in the content
-  // injector). The TM tm_scripts populator gates each @match on
-  // window.location.href, so without this it skips every script.
-  window.__cRealUrl=__cRealUrl;
-  try{
-    var __cU=new URL(__cRealUrl);
-    var __cFakeLoc={
-      href:__cU.href,protocol:__cU.protocol,host:__cU.host,
-      hostname:__cU.hostname,port:__cU.port,pathname:__cU.pathname,
-      search:__cU.search,hash:__cU.hash,origin:__cU.origin,
-      toString:function(){return __cU.href;},
-      assign:function(x){return window.location.assign(x);},
-      replace:function(x){return window.location.replace(x);},
-      reload:function(){return window.location.reload();}
-    };
-    window.__cFakeLoc=__cFakeLoc;
-  }catch(_){}
-  var __cRe=/^\\/~\\/(scramjet|uv)\\//;
-  var __cReAbs=new RegExp('^https?:\\/\\/[^/]+\\/~\\/(scramjet|uv)\\/');
-  function __cRewrite(obj) {
-    if(!obj||typeof obj!=='object') return obj;
-    var o={};
-    var ks=Object.keys(obj);
-    for(var i=0;i<ks.length;i++){
-      var k=ks[i],v=obj[k];
-      if(typeof v==='string'&&(__cRe.test(v)||__cReAbs.test(v))){o[k]=__cRealUrl;}
-      else if(v&&typeof v==='object'&&!Array.isArray(v)){o[k]=__cRewrite(v);}
-      else{o[k]=v;}
-    }
-    return o;
-  }
-  var __cChr=window.chrome;
-  if(__cChr&&__cChr.runtime){
-    if(__cChr.runtime.sendMessage){
-      var __cOrig=__cChr.runtime.sendMessage.bind(__cChr.runtime);
-      __cChr.runtime.sendMessage=function(){
-        var a=Array.prototype.slice.call(arguments);
-        if(typeof a[0]==='object'&&a[0]!==null){a[0]=__cRewrite(a[0]);}
-        else if(typeof a[0]==='string'&&a[1]&&typeof a[1]==='object'){a[1]=__cRewrite(a[1]);}
-        return __cOrig.apply(__cChr.runtime,a);
-      };
-    }
-    if(__cChr.runtime.connect){
-      var __cConnOrig=__cChr.runtime.connect.bind(__cChr.runtime);
-      __cChr.runtime.connect=function(){
-        var port=__cConnOrig.apply(__cChr.runtime,arguments);
-        if(port&&port.postMessage){
-          var __cPMOrig=port.postMessage.bind(port);
-          port.postMessage=function(msg){
-            if(msg&&typeof msg==='object') msg=__cRewrite(msg);
-            return __cPMOrig(msg);
-          };
-        }
-        return port;
-      };
-    }
-  }
-} catch(_){}
-})();`;
-                            })(pageUrl);
-                            // window.location can't be redefined and nativeEval
-                            // bypasses Scramjet's location proxy, so TM's
-                            // injected USER_SCRIPT code would read the raw
-                            // proxy URL. Rewrite its location reads to prefer
-                            // window.__cRealUrl (set in the preamble).
-                            const _injectCode = patchUserScriptLocation(
-                                jsEntry.code,
-                            );
-                            if (nativeEval) {
-                                // nativeEval is a stored reference, not the
-                                // eval keyword, so calling it is always an
-                                // indirect eval → global scope.
-                                nativeEval(_preamble);
-                                nativeEval(_injectCode);
-                            } else {
-                                try {
-                                    // Assign to variable = indirect eval →
-                                    // global scope (not handler's scope).
-                                    // oxlint-disable-next-line no-eval -- global-scope evaluation is the emulated API's contract
-                                    const _ieval = eval;
-                                    _ieval(_preamble + ";" + _injectCode);
-                                } catch {
-                                    // eslint-disable-next-line no-new-func
-                                    new Function(
-                                        _preamble + ";" + _injectCode,
-                                    )();
-                                }
-                            }
-                        } else if (jsEntry.file) {
-                            const el = document.createElement("script");
-                            el.type = "text/javascript";
-                            el.src = jsEntry.file.startsWith("http")
-                                ? jsEntry.file
-                                : extUrl(extId, jsEntry.file);
-                            (
-                                document.head ?? document.documentElement
-                            ).appendChild(el);
-                        }
-                    } catch (err) {
-                        console.warn(
-                            `[civil-ext:content:${extId}] userScript inject error:`,
-                            err,
-                        );
-                    }
-                }
-            }
+        const startDirectExec = () => {
             // Direct-exec fallback. TM's page.js delivers @grant-none bodies
             // through a blob-URL <script> vault; the page's CSP (e.g. Google)
             // blocks blob: scripts under Scramjet, so the body silently never
@@ -1299,12 +1038,245 @@ try {
                     setTimeout(_poll, 200);
                 }
             } catch {}
+        };
+        _contentBus.addEventListener("message", (e: MessageEvent) => {
+            const data = e.data as {
+                kind?: string;
+                scripts?: unknown[];
+            };
+            if (data?.kind !== "userScriptRegister" || !data.scripts) return;
+            // Prefer bib.currentTab.url (baked in at inject time by
+            // injectExtensionShimsIntoIframe with the real decoded URL)
+            // over window.location.href, which returns the scramjet proxy
+            // URL for scripts injected from the parent frame.
+            const pageUrl =
+                bib.currentTab?.url ??
+                (typeof window !== "undefined" ? window.location.href : "");
+            for (const script of data.scripts) {
+                const s = script as {
+                    id?: string;
+                    matches?: string[];
+                    excludeMatches?: string[];
+                    js?: Array<{ file?: string; code?: string }>;
+                    world?: string;
+                };
+                if (!s.js?.length) continue;
+                if (s.id && _injectedScriptIds.has(s.id)) continue;
+                if (s.matches && !matchesAnyPattern(s.matches, pageUrl))
+                    continue;
+                if (
+                    s.excludeMatches &&
+                    matchesAnyPattern(s.excludeMatches, pageUrl)
+                )
+                    continue;
+                if (s.id) _injectedScriptIds.add(s.id);
+                for (const jsEntry of s.js) {
+                    try {
+                        if (jsEntry.code) {
+                            runUserScriptCode(jsEntry.code, pageUrl);
+                        } else if (jsEntry.file) {
+                            appendUserScriptFile(extId, jsEntry.file);
+                        }
+                    } catch (err) {
+                        console.warn(
+                            `[civil-ext:content:${extId}] userScript inject error:`,
+                            err,
+                        );
+                    }
+                }
+            }
+            startDirectExec();
         });
         // Announce this content page is ready. Background replays any
         // userScripts registered before this shim was injected.
         _contentBus.postMessage({ kind: "contentReady" });
     }
 })();
+
+/**
+ * Opens `chrome-extension://` and `moz-extension://` URLs as Civil tabs when a
+ * popup or content page reaches them through window.open or a plain link
+ * rather than chrome.tabs.create.
+ */
+function interceptExtensionNavigation(newTabEvent: string): void {
+    try {
+        const _nativeOpen = window.open.bind(window);
+        window.open = (
+            url?: string | URL,
+            target?: string,
+            windowFeatures?: string,
+        ) => {
+            const urlStr = url ? String(url) : "";
+            if (
+                urlStr.startsWith("chrome-extension://") ||
+                urlStr.startsWith("moz-extension://")
+            ) {
+                dispatchBrowserEvent(newTabEvent, { url: urlStr });
+                return null;
+            }
+            return _nativeOpen(url as string, target, windowFeatures);
+        };
+    } catch {}
+
+    try {
+        document.addEventListener(
+            "click",
+            (e: MouseEvent) => {
+                const a = (e.target as Element | null)?.closest?.("a");
+                if (!a) return;
+                const href = (a as HTMLAnchorElement).href ?? "";
+                if (
+                    href.startsWith("chrome-extension://") ||
+                    href.startsWith("moz-extension://")
+                ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dispatchBrowserEvent(newTabEvent, { url: href });
+                }
+            },
+            true, // capture phase: fires before page handlers
+        );
+    } catch {}
+}
+
+/**
+ * Runs one userScript's code in this page with the preamble ahead of it, by
+ * the native eval Scramjet never wrapped when one was saved.
+ */
+function runUserScriptCode(code: string, pageUrl: string): void {
+    const targetWin = window as unknown as Record<string, unknown>;
+
+    // Get the native eval saved before Scramjet runs.
+    const nativeEval = targetWin.__civilNativeEval as
+        | ((code: string) => unknown)
+        | undefined;
+
+    // Combined preamble: patch eval/Function to native
+    // (so TM's runner doesn't go through Scramjet's
+    // rewriter), rewrite Scramjet proxy URLs in
+    // sendMessage calls, and expose real page URL.
+    // Both MAIN and USER_SCRIPT worlds run in the same
+    // window (Scramjet proxy iframe), so window.postMessage
+    // between them works without any bridge.
+    const _preamble = buildUserScriptPreamble(pageUrl);
+    // window.location can't be redefined and nativeEval
+    // bypasses Scramjet's location proxy, so TM's
+    // injected USER_SCRIPT code would read the raw
+    // proxy URL. Rewrite its location reads to prefer
+    // window.__cRealUrl (set in the preamble).
+    const _injectCode = patchUserScriptLocation(code);
+    if (nativeEval) {
+        // nativeEval is a stored reference, not the
+        // eval keyword, so calling it is always an
+        // indirect eval → global scope.
+        nativeEval(_preamble);
+        nativeEval(_injectCode);
+    } else {
+        try {
+            // Indirect eval → global scope (not this function's scope).
+            // `(0, eval)`, not `const e = eval; e(...)`: rolldown inlines that
+            // alias back into a direct eval when it bundles the shim.
+            // oxlint-disable-next-line no-eval -- global-scope evaluation is the emulated API's contract
+            (0, eval)(_preamble + ";" + _injectCode);
+        } catch {
+            // eslint-disable-next-line no-new-func
+            new Function(_preamble + ";" + _injectCode)();
+        }
+    }
+}
+
+/** Loads one userScript file into this page by a script tag. */
+function appendUserScriptFile(extId: string, file: string): void {
+    const el = document.createElement("script");
+    el.type = "text/javascript";
+    el.src = file.startsWith("http") ? file : extUrl(extId, file);
+    (document.head ?? document.documentElement).appendChild(el);
+}
+
+/**
+ * The script that runs before each userScript TM injects: it points eval and
+ * Function back at the native ones (so TM's runner skips Scramjet's
+ * rewriter), rewrites Scramjet proxy URLs in sendMessage calls, and exposes
+ * the page's real URL.
+ */
+function buildUserScriptPreamble(realUrl: string): string {
+    const safeUrl = JSON.stringify(realUrl);
+    return `(function(){
+try {
+  var __nEv=window.__civilNativeEval;
+  if(__nEv){
+    try{Object.defineProperty(window,'eval',{value:__nEv,writable:true,configurable:true});}catch(_){window.eval=__nEv;}
+    try{
+      var __nFn=__nEv('(function(){return Function})')();
+      Object.defineProperty(window,'Function',{value:__nFn,writable:true,configurable:true});
+    }catch(_){}
+  }
+  var __cRealUrl=${safeUrl};
+  // window.location cannot be redefined (non-configurable) on the real
+  // window, and our nativeEval injection bypasses Scramjet's location
+  // proxy, so TM's USER_SCRIPT-world code reads the raw proxy URL. We can't
+  // fix the global; instead we expose the real URL + a fake Location object
+  // on window, and string-patch each injected script's location reads to
+  // prefer window.__cRealUrl (see patchUserScriptLocation in the content
+  // injector). The TM tm_scripts populator gates each @match on
+  // window.location.href, so without this it skips every script.
+  window.__cRealUrl=__cRealUrl;
+  try{
+    var __cU=new URL(__cRealUrl);
+    var __cFakeLoc={
+      href:__cU.href,protocol:__cU.protocol,host:__cU.host,
+      hostname:__cU.hostname,port:__cU.port,pathname:__cU.pathname,
+      search:__cU.search,hash:__cU.hash,origin:__cU.origin,
+      toString:function(){return __cU.href;},
+      assign:function(x){return window.location.assign(x);},
+      replace:function(x){return window.location.replace(x);},
+      reload:function(){return window.location.reload();}
+    };
+    window.__cFakeLoc=__cFakeLoc;
+  }catch(_){}
+  var __cRe=/^\\/~\\/(scramjet|uv)\\//;
+  var __cReAbs=new RegExp('^https?:\\/\\/[^/]+\\/~\\/(scramjet|uv)\\/');
+  function __cRewrite(obj) {
+    if(!obj||typeof obj!=='object') return obj;
+    var o={};
+    var ks=Object.keys(obj);
+    for(var i=0;i<ks.length;i++){
+      var k=ks[i],v=obj[k];
+      if(typeof v==='string'&&(__cRe.test(v)||__cReAbs.test(v))){o[k]=__cRealUrl;}
+      else if(v&&typeof v==='object'&&!Array.isArray(v)){o[k]=__cRewrite(v);}
+      else{o[k]=v;}
+    }
+    return o;
+  }
+  var __cChr=window.chrome;
+  if(__cChr&&__cChr.runtime){
+    if(__cChr.runtime.sendMessage){
+      var __cOrig=__cChr.runtime.sendMessage.bind(__cChr.runtime);
+      __cChr.runtime.sendMessage=function(){
+        var a=Array.prototype.slice.call(arguments);
+        if(typeof a[0]==='object'&&a[0]!==null){a[0]=__cRewrite(a[0]);}
+        else if(typeof a[0]==='string'&&a[1]&&typeof a[1]==='object'){a[1]=__cRewrite(a[1]);}
+        return __cOrig.apply(__cChr.runtime,a);
+      };
+    }
+    if(__cChr.runtime.connect){
+      var __cConnOrig=__cChr.runtime.connect.bind(__cChr.runtime);
+      __cChr.runtime.connect=function(){
+        var port=__cConnOrig.apply(__cChr.runtime,arguments);
+        if(port&&port.postMessage){
+          var __cPMOrig=port.postMessage.bind(port);
+          port.postMessage=function(msg){
+            if(msg&&typeof msg==='object') msg=__cRewrite(msg);
+            return __cPMOrig(msg);
+          };
+        }
+        return port;
+      };
+    }
+  }
+} catch(_){}
+})();`;
+}
 
 function buildNoopNamespace(): Record<string, unknown> {
     return {};

@@ -39,6 +39,7 @@ import { randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
 
 import type { DomainVerdict } from "../domainReputation";
+import { env, toHost } from "../utils/vendorInput";
 
 const CMD = { AUTHENTICATE: 0, CHECK_URL: 2 } as const;
 
@@ -47,15 +48,6 @@ const DEFAULT_SECRET =
     "dec18994c0964e2c38508ee4abd7b46c1bf6ef32de1d03c7202236896335a934a3d8e7e3e755de31f2dd1f8291d59be3504ab02358b212a61c5652c3f6f37a04";
 const AUTH_KEY = "aristotle-chrome-agent";
 const CONNECT_TIMEOUT_MS = 10_000;
-
-const toHost = (domain: string): string =>
-    domain
-        .replace(/^https?:\/\//, "")
-        .replace(/\/.*$/, "")
-        .trim();
-
-const env = (name: string, fallback: string): string =>
-    process.env[name] || fallback;
 
 export async function checkAristotleDomain(
     domain: string,

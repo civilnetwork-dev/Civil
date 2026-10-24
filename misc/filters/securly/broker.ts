@@ -260,9 +260,7 @@ function getExtensionVersion(
             ) as SecurlyExtensionManifest;
 
             const apps = [parsed.gupdate.app].flat();
-            const app = apps.find(
-                extension => extension.appid === extensionId,
-            );
+            const app = apps.find(extension => extension.appid === extensionId);
 
             // The broker only ever sees the version (`ver`), never the id.
             // This subscriber manifest lists Securly's enterprise-distributed

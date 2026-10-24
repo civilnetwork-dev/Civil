@@ -2,9 +2,9 @@ import {
     draggable,
     dropTargetForElements,
     monitorForElements,
-} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview";
-import { preventUnhandled } from "@atlaskit/pragmatic-drag-and-drop/prevent-unhandled";
+} from "@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter";
+import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/utils/disable-native-drag-preview";
+import { preventUnhandled } from "@atlaskit/pragmatic-drag-and-drop/utils/prevent-unhandled";
 
 import type { Tab } from "~/lib/TabManager";
 

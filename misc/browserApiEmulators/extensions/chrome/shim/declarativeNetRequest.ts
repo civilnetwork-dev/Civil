@@ -1,3 +1,10 @@
+// Relative, not `$config/`: vite.config.ts bundles this shim with a bare
+// rolldown call that resolves no aliases.
+import {
+    DNR_NAV_DIR,
+    type DnrNavRule,
+    isNavRedirectRule,
+} from "../../../../config/shared/dnrNavRules";
 import type { DNRRule } from "../types";
 import { CivilEvent } from "./event";
 import { dual, resolved } from "./util";
@@ -13,22 +20,14 @@ export function buildDNRAPI(extId?: string) {
     function _persistNavigationRedirects(): void {
         if (!extId || typeof navigator === "undefined") return;
 
-        const rules = getDNRRules().filter(rule => {
-            if (rule.action?.type !== "redirect") return false;
-            const resourceTypes = rule.condition?.resourceTypes as
-                | string[]
-                | undefined;
-            return (
-                !resourceTypes ||
-                resourceTypes.includes("main_frame") ||
-                resourceTypes.includes("sub_frame")
-            );
-        });
+        const rules = getDNRRules().filter(rule =>
+            isNavRedirectRule(rule as DnrNavRule),
+        );
 
         void (async () => {
             try {
                 const root = await navigator.storage.getDirectory();
-                const dir = await root.getDirectoryHandle("_civil_dnr_nav", {
+                const dir = await root.getDirectoryHandle(DNR_NAV_DIR, {
                     create: true,
                 });
                 const handle = await dir.getFileHandle(
@@ -65,69 +64,67 @@ export function buildDNRAPI(extId?: string) {
         return [..._dynamicRules.values(), ..._sessionRules.values()];
     }
 
-    function updateDynamicRules(
-        options: {
-            addRules?: DNRRule[];
-            removeRuleIds?: number[];
-        },
+    type RuleUpdate = { addRules?: DNRRule[]; removeRuleIds?: number[] };
+    type RuleFilter = { ruleIds?: number[] };
+
+    function updateRules(
+        rules: Map<number, DNRRule>,
+        options: RuleUpdate,
         cb?: () => void,
     ): Promise<void> {
         return dual(() => {
-            for (const id of options.removeRuleIds ?? [])
-                _dynamicRules.delete(id);
-            for (const rule of options.addRules ?? [])
-                _dynamicRules.set(rule.id, rule);
+            for (const id of options.removeRuleIds ?? []) rules.delete(id);
+            for (const rule of options.addRules ?? []) rules.set(rule.id, rule);
             _notifyRulesChanged();
             return Promise.resolve();
         }, cb);
+    }
+
+    /** `filter` is optional, so a callback may arrive in its place. */
+    function getRules(
+        rules: Map<number, DNRRule>,
+        filter?: RuleFilter,
+        cb?: (rules: DNRRule[]) => void,
+    ): Promise<DNRRule[]> {
+        if (typeof filter === "function") {
+            cb = filter as unknown as (rules: DNRRule[]) => void;
+            filter = undefined;
+        }
+        const ruleIds = filter?.ruleIds;
+        return dual(() => {
+            const all = [...rules.values()];
+            return Promise.resolve(
+                ruleIds ? all.filter(r => ruleIds.includes(r.id)) : all,
+            );
+        }, cb);
+    }
+
+    function updateDynamicRules(
+        options: RuleUpdate,
+        cb?: () => void,
+    ): Promise<void> {
+        return updateRules(_dynamicRules, options, cb);
     }
 
     function getDynamicRules(
-        filter?: { ruleIds?: number[] },
+        filter?: RuleFilter,
         cb?: (rules: DNRRule[]) => void,
     ): Promise<DNRRule[]> {
-        if (typeof filter === "function") {
-            cb = filter as unknown as (rules: DNRRule[]) => void;
-            filter = undefined;
-        }
-        return dual(() => {
-            const all = [..._dynamicRules.values()];
-            const result = filter?.ruleIds
-                ? all.filter(r => filter!.ruleIds!.includes(r.id))
-                : all;
-            return Promise.resolve(result);
-        }, cb);
+        return getRules(_dynamicRules, filter, cb);
     }
 
     function updateSessionRules(
-        options: { addRules?: DNRRule[]; removeRuleIds?: number[] },
+        options: RuleUpdate,
         cb?: () => void,
     ): Promise<void> {
-        return dual(() => {
-            for (const id of options.removeRuleIds ?? [])
-                _sessionRules.delete(id);
-            for (const rule of options.addRules ?? [])
-                _sessionRules.set(rule.id, rule);
-            _notifyRulesChanged();
-            return Promise.resolve();
-        }, cb);
+        return updateRules(_sessionRules, options, cb);
     }
 
     function getSessionRules(
-        filter?: { ruleIds?: number[] },
+        filter?: RuleFilter,
         cb?: (rules: DNRRule[]) => void,
     ): Promise<DNRRule[]> {
-        if (typeof filter === "function") {
-            cb = filter as unknown as (rules: DNRRule[]) => void;
-            filter = undefined;
-        }
-        return dual(() => {
-            const all = [..._sessionRules.values()];
-            const result = filter?.ruleIds
-                ? all.filter(r => filter!.ruleIds!.includes(r.id))
-                : all;
-            return Promise.resolve(result);
-        }, cb);
+        return getRules(_sessionRules, filter, cb);
     }
 
     function updateEnabledRulesets(

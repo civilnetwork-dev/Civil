@@ -1,3 +1,9 @@
+import {
+    DNR_NAV_DIR,
+    type DnrNavRule,
+    isNavRedirectRule,
+} from "$config/shared/dnrNavRules";
+
 import type { ChromeManifest } from "~/types";
 
 import {
@@ -8,6 +14,7 @@ import {
 import type { CivilExtension } from "./extensions";
 import {
     extensionsGetAll,
+    extensionsInjectCss,
     extensionsReadLocaleMessages,
     extensionsReadText,
     extensionsSyncExternalKeys,
@@ -438,7 +445,7 @@ async function loadStaticDNRRulesets(
 
     // Collect all navigation-redirect rules so the SW can apply them for
     // main-frame navigations (e.g. TM redirecting *.user.js to confirm.html).
-    const allNavRedirectRules: unknown[] = [];
+    const allNavRedirectRules: DnrNavRule[] = [];
 
     for (const rs of resources) {
         if (!rs.enabled) continue;
@@ -461,23 +468,9 @@ try {
 
             // Collect redirect rules that apply to main_frame navigations.
             // The SW will read these from OPFS to intercept *.user.js navigations.
-            for (const rule of rules) {
-                const r = rule as Record<string, unknown>;
-                const action = r.action as Record<string, unknown> | undefined;
-                const cond = r.condition as Record<string, unknown> | undefined;
-                if (action?.type !== "redirect") continue;
-                const resourceTypes = cond?.resourceTypes as
-                    | string[]
-                    | undefined;
-                // Include if: no resource type restriction, OR includes main_frame/sub_frame
-                if (
-                    !resourceTypes ||
-                    resourceTypes.includes("main_frame") ||
-                    resourceTypes.includes("sub_frame")
-                ) {
-                    allNavRedirectRules.push(rule);
-                }
-            }
+            allNavRedirectRules.push(
+                ...(rules as DnrNavRule[]).filter(isNavRedirectRule),
+            );
         } catch (e) {
             console.warn(
                 `[extensionRuntime] DNR ruleset "${rs.path}" load failed:`,
@@ -490,10 +483,9 @@ try {
         void (async () => {
             try {
                 const opfsRoot = await navigator.storage.getDirectory();
-                const navDir = await opfsRoot.getDirectoryHandle(
-                    "_civil_dnr_nav",
-                    { create: true },
-                );
+                const navDir = await opfsRoot.getDirectoryHandle(DNR_NAV_DIR, {
+                    create: true,
+                });
                 const handle = await navDir.getFileHandle(`${extId}.json`, {
                     create: true,
                 });
@@ -510,6 +502,133 @@ try {
                 );
             }
         })();
+    }
+}
+
+/** The URL an iframe's document reports, read from the parent frame. */
+function iframePageUrl(iframe: HTMLIFrameElement, iframeDoc: Document): string {
+    try {
+        return iframeDoc.location?.href || iframe.src;
+    } catch {
+        return iframe.src;
+    }
+}
+
+/** The chrome.* shim an extension's content script sees on `pageUrl`. */
+async function buildContentShim(
+    extId: string,
+    manifest: ChromeManifest,
+    pageUrl: string,
+    civilTabId: string | undefined,
+): Promise<string> {
+    return buildChromeShim({
+        extId,
+        manifest: manifest as Parameters<typeof buildChromeShim>[0]["manifest"],
+        contextType: "content",
+        bib: {
+            messages: await extensionsReadLocaleMessages(extId, manifest),
+            ...(pageUrl || civilTabId !== undefined
+                ? {
+                      currentTab: {
+                          ...(pageUrl ? { url: pageUrl } : {}),
+                          ...(civilTabId !== undefined
+                              ? { id: extensionChromeTabId(civilTabId) }
+                              : {}),
+                      },
+                  }
+                : {}),
+        },
+    });
+}
+
+/**
+ * Runs a shim in the iframe's own context.
+ *
+ * Inject via contentWindow.eval to bypass Scramjet's
+ * createElement/prepend interception. Scramjet wraps the iframe's
+ * document.createElement("script") and Node.prepend so dynamically-
+ * inserted script elements don't execute. eval() on the child window
+ * from the parent frame runs in the child context without hitting
+ * those DOM hooks.
+ */
+function runShimInFrame(
+    iframe: HTMLIFrameElement,
+    iframeDoc: Document,
+    shim: string,
+    extId: string,
+    pageUrl: string,
+): void {
+    const iframeWin = iframe.contentWindow as
+        | (Window & typeof globalThis & Record<string, unknown>)
+        | null;
+    console.log(
+        `[extensionRuntime] injecting shim for ${extId}, pageUrl=${pageUrl?.slice(0, 60)}, shimLen=${shim.length}, hasEval=${typeof iframeWin?.eval}`,
+    );
+    const prependScript = () => {
+        const script = iframeDoc.createElement("script");
+        script.textContent = shim;
+        (iframeDoc.head ?? iframeDoc.documentElement)?.prepend(script);
+    };
+    if (iframeWin?.eval) {
+        try {
+            (iframeWin.eval as (code: string) => unknown)(shim);
+        } catch (e) {
+            console.error(
+                `[extensionRuntime] eval shim failed for ${extId}:`,
+                e,
+            );
+            // Fallback: script tag
+            prependScript();
+        }
+    } else {
+        prependScript();
+    }
+    // Verify shim IIFE ran
+    setTimeout(() => {
+        try {
+            const flag = iframeWin?.__civil_chrome_injected;
+            console.log(
+                `[extensionRuntime] post-inject check for ${extId}: civil_chrome_injected=${flag}`,
+            );
+        } catch (e) {
+            console.log(`[extensionRuntime] post-inject check threw: ${e}`);
+        }
+    }, 300);
+}
+
+/** Injects the content scripts of `ext` whose match patterns cover
+ *  `pageUrl`: their stylesheets, then their scripts. */
+async function injectContentScripts(
+    extId: string,
+    manifest: ChromeManifest,
+    iframeDoc: Document,
+    pageUrl: string,
+): Promise<void> {
+    for (const rule of manifest.content_scripts ?? []) {
+        // Check URL matching before injecting
+        const ruleEx = rule as typeof rule & {
+            exclude_matches?: string[];
+        };
+        if (rule.matches && !matchesUrlPatterns(rule.matches, pageUrl))
+            continue;
+        if (
+            ruleEx.exclude_matches &&
+            matchesUrlPatterns(ruleEx.exclude_matches, pageUrl)
+        )
+            continue;
+
+        await extensionsInjectCss(extId, iframeDoc, rule.css);
+        for (const jsPath of rule.js ?? []) {
+            try {
+                const raw = await extensionsReadText(extId, jsPath);
+                const el = iframeDoc.createElement("script");
+                el.textContent = `(function(){\n${raw}\n})();`;
+                (iframeDoc.head ?? iframeDoc.body)?.appendChild(el);
+                console.log(
+                    `[extensionRuntime] injected content script "${jsPath}" for ${extId} on ${pageUrl.slice(0, 80)}`,
+                );
+            } catch {}
+        }
     }
 }
 
@@ -562,119 +681,16 @@ export async function injectExtensionShimsIntoIframe(
             // but iframeDoc.location (read from the parent frame) still returns
             // the scramjet proxy URL, so content-script patterns like
             // *://www.google.com/* would never match without the hint.
-            const pageUrl =
-                pageUrlHint ??
-                (() => {
-                    try {
-                        return iframeDoc.location?.href || iframe.src;
-                    } catch {
-                        return iframe.src;
-                    }
-                })();
+            const pageUrl = pageUrlHint ?? iframePageUrl(iframe, iframeDoc);
 
-            const shim = buildChromeShim({
-                extId: ext.id,
-                manifest: manifest as Parameters<
-                    typeof buildChromeShim
-                >[0]["manifest"],
-                contextType: "content",
-                bib: {
-                    messages: await extensionsReadLocaleMessages(
-                        ext.id,
-                        manifest,
-                    ),
-                    ...(pageUrl || civilTabId !== undefined
-                        ? {
-                              currentTab: {
-                                  ...(pageUrl ? { url: pageUrl } : {}),
-                                  ...(civilTabId !== undefined
-                                      ? { id: extensionChromeTabId(civilTabId) }
-                                      : {}),
-                              },
-                          }
-                        : {}),
-                },
-            });
-
-            // Inject via contentWindow.eval to bypass Scramjet's
-            // createElement/prepend interception. Scramjet wraps the iframe's
-            // document.createElement("script") and Node.prepend so dynamically-
-            // inserted script elements don't execute. eval() on the child window
-            // from the parent frame runs in the child context without hitting
-            // those DOM hooks.
-            const iframeWin = iframe.contentWindow as
-                | (Window & typeof globalThis & Record<string, unknown>)
-                | null;
-            console.log(
-                `[extensionRuntime] injecting shim for ${ext.id}, pageUrl=${pageUrl?.slice(0, 60)}, shimLen=${shim.length}, hasEval=${typeof iframeWin?.eval}`,
+            const shim = await buildContentShim(
+                ext.id,
+                manifest,
+                pageUrl,
+                civilTabId,
             );
-            if (iframeWin?.eval) {
-                try {
-                    (iframeWin.eval as (code: string) => unknown)(shim);
-                } catch (e) {
-                    console.error(
-                        `[extensionRuntime] eval shim failed for ${ext.id}:`,
-                        e,
-                    );
-                    // Fallback: script tag
-                    const script = iframeDoc.createElement("script");
-                    script.textContent = shim;
-                    (iframeDoc.head ?? iframeDoc.documentElement)?.prepend(
-                        script,
-                    );
-                }
-            } else {
-                const script = iframeDoc.createElement("script");
-                script.textContent = shim;
-                (iframeDoc.head ?? iframeDoc.documentElement)?.prepend(script);
-            }
-            // Verify shim IIFE ran
-            setTimeout(() => {
-                try {
-                    const flag = iframeWin?.__civil_chrome_injected;
-                    console.log(
-                        `[extensionRuntime] post-inject check for ${ext.id}: civil_chrome_injected=${flag}`,
-                    );
-                } catch (e) {
-                    console.log(
-                        `[extensionRuntime] post-inject check threw: ${e}`,
-                    );
-                }
-            }, 300);
-            const cs = manifest.content_scripts ?? [];
-            for (const rule of cs) {
-                // Check URL matching before injecting
-                const ruleEx = rule as typeof rule & {
-                    exclude_matches?: string[];
-                };
-                if (rule.matches && !matchesUrlPatterns(rule.matches, pageUrl))
-                    continue;
-                if (
-                    ruleEx.exclude_matches &&
-                    matchesUrlPatterns(ruleEx.exclude_matches, pageUrl)
-                )
-                    continue;
-
-                for (const cssPath of rule.css ?? []) {
-                    try {
-                        const raw = await extensionsReadText(ext.id, cssPath);
-                        const el = iframeDoc.createElement("style");
-                        el.textContent = raw;
-                        iframeDoc.head?.appendChild(el);
-                    } catch {}
-                }
-                for (const jsPath of rule.js ?? []) {
-                    try {
-                        const raw = await extensionsReadText(ext.id, jsPath);
-                        const el = iframeDoc.createElement("script");
-                        el.textContent = `(function(){\n${raw}\n})();`;
-                        (iframeDoc.head ?? iframeDoc.body)?.appendChild(el);
-                        console.log(
-                            `[extensionRuntime] injected content script "${jsPath}" for ${ext.id} on ${pageUrl.slice(0, 80)}`,
-                        );
-                    } catch {}
-                }
-            }
+            runShimInFrame(iframe, iframeDoc, shim, ext.id, pageUrl);
+            await injectContentScripts(ext.id, manifest, iframeDoc, pageUrl);
         } catch (e) {
             console.error("[extensionRuntime] inject failed for", ext.id, e);
         }

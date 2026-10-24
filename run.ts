@@ -2,11 +2,13 @@ import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 
+import { getRequestListener } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 import { start as startChii } from "chii";
-import compression from "compression";
-import express from "express";
-import { toNodeHandler } from "h3/node";
+import { Hono, type MiddlewareHandler } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { compress } from "hono/compress";
 
 import { usePosthogProxy } from "./misc/analytics/posthogProxy";
 import {
@@ -20,10 +22,12 @@ import {
     probeSite,
     recordCompatFeedback,
     redis,
+    resolveSessionFromHeaders,
     resolveSessionFromRequest,
     upsertSiteProxyConfig,
 } from "./misc/database/index";
 import { requireEnv, validateEnv } from "./misc/env";
+import { type AppEnv, readJsonBody } from "./misc/http";
 import { isPrivateHost } from "./misc/net";
 import {
     extractClientIp,
@@ -65,7 +69,6 @@ import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 import { createBareServer } from "@tomphttp/bare-server-node";
 import { XMLParser } from "fast-xml-parser";
 import { blue, yellow } from "picocolors";
-import sirv from "sirv";
 import { build } from "vite";
 import { WebSocketServer } from "ws";
 import xior from "xior";
@@ -97,11 +100,24 @@ if (!existsSync(resolve(import.meta.dirname, "dist"))) {
     build();
 }
 
-const app = express();
+const app = new Hono<AppEnv>();
 const PORT = Number(process.env.PORT ?? 9876);
+const bare = createBareServer("/bare/");
+const handleWithHono = getRequestListener(app.fetch);
 const server = createServer((req, res) => {
     if (req.url?.startsWith("/chii/") || req.url === "/chii") return;
-    app(req, res);
+    // better-auth and the violation counters read the client address from
+    // these headers, and a direct connection carries neither.
+    if (!req.headers["x-forwarded-for"] && !req.headers["x-real-ip"]) {
+        req.headers["x-forwarded-for"] = req.socket.remoteAddress ?? "";
+    }
+    // The Bare server works on the raw Node streams, so it takes its requests
+    // before Hono, where nothing can have read their bodies first.
+    if (bare.shouldRoute(req)) {
+        bare.routeRequest(req, res).catch(console.error);
+        return;
+    }
+    void handleWithHono(req, res);
 });
 await startChii({
     server,
@@ -136,23 +152,15 @@ setupSchoolDistricts().catch(err =>
     console.error("Failed to setup school districts:", err),
 );
 
-if (process.env.REVERSE_PROXY) {
-    app.set("trust proxy", 1);
-}
-
 // Register before compression and body parsing so capture payloads reach
 // PostHog unparsed and the response is not re-encoded.
 usePosthogProxy(app);
 
-app.use(compression());
-app.use(express.json());
-app.use((req, _res, next) => {
-    if (!req.headers["x-forwarded-for"] && !req.headers["x-real-ip"]) {
-        req.headers["x-forwarded-for"] = req.socket.remoteAddress ?? "";
-    }
-    next();
-});
-app.use(createDatabaseMiddleware());
+app.use(compress());
+// Express's json() parser refused JSON bodies over 100 kB. Handlers now read
+// their own bodies, so the same cap applies to every route registered below.
+app.use(bodyLimit({ maxSize: 100 * 1024 }));
+app.route("/", createDatabaseMiddleware());
 
 useFilterBlockerMiddleware(app);
 useSharedFilterMiddleware(app, "/filterCheck");
@@ -166,42 +174,39 @@ useHaparaMiddleware(app);
 useLightspeedMiddleware(app);
 useIbossMiddleware(app, { securityKey: requireEnv("IBOSS_SECURITY_KEY") });
 
-app.get("/api/ip-location", async (req, res) => {
+app.get("/api/ip-location", async c => {
     const raw =
-        (req.headers["x-forwarded-for"] as string | undefined)
-            ?.split(",")[0]
-            ?.trim() ||
-        (req.headers["x-real-ip"] as string | undefined) ||
-        req.socket.remoteAddress ||
+        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+        c.req.header("x-real-ip") ||
+        c.env.incoming.socket.remoteAddress ||
         "";
     const ip = raw.replace(/^::ffff:/, "");
     try {
         const geoip = await import("doc999tor-fast-geoip");
         const info = await geoip.default.lookup(ip);
-        if (!info)
-            return void res.status(404).json({ error: "Location not found" });
+        if (!info) return c.json({ error: "Location not found" }, 404);
         const [lat, lon] = info.ll as [number, number];
-        res.json({ lat, lon, city: info.city, country: info.country });
+        return c.json({ lat, lon, city: info.city, country: info.country });
     } catch {
-        res.status(500).json({ error: "GeoIP lookup failed" });
+        return c.json({ error: "GeoIP lookup failed" }, 500);
     }
 });
 
-app.use("/api/school-districts", createSchoolDistrictsRouter());
-app.use("/api/goguardian", createGoGuardianKeysRouter());
-app.use("/api/iboss", createIbossGatewaysRouter());
+app.route("/api/school-districts", createSchoolDistrictsRouter());
+app.route("/api/goguardian", createGoGuardianKeysRouter());
+app.route("/api/iboss", createIbossGatewaysRouter());
 
-app.use("/health", (_req, res) => res.json({ ok: true }));
+app.all("/health/*", c => c.json({ ok: true }));
 
-app.get("/api/ext-proxy", async (req, res) => {
-    const target = req.query.url as string | undefined;
-    if (!target) return void res.status(400).json({ error: "url required" });
+app.get("/api/ext-proxy", async c => {
+    const target = c.req.query("url");
+    if (!target) return c.json({ error: "url required" }, 400);
 
     let current: URL;
     try {
         current = new URL(target);
     } catch {
-        return void res.status(400).json({ error: "invalid url" });
+        return c.json({ error: "invalid url" }, 400);
     }
 
     // Follow redirects by hand so the SSRF guard is re-applied to every hop:
@@ -210,10 +215,10 @@ app.get("/api/ext-proxy", async (req, res) => {
     const MAX_REDIRECTS = 5;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
         if (current.protocol !== "https:") {
-            return void res.status(400).json({ error: "https only" });
+            return c.json({ error: "https only" }, 400);
         }
         if (isPrivateHost(current.hostname)) {
-            return void res.status(403).json({ error: "host not allowed" });
+            return c.json({ error: "host not allowed" }, 403);
         }
 
         const response = await fetch(current, {
@@ -224,7 +229,7 @@ app.get("/api/ext-proxy", async (req, res) => {
         }).catch(() => null);
 
         if (!response) {
-            return void res.status(502).json({ error: "fetch failed" });
+            return c.json({ error: "fetch failed" }, 502);
         }
 
         const location = response.headers.get("location");
@@ -232,25 +237,27 @@ app.get("/api/ext-proxy", async (req, res) => {
             try {
                 current = new URL(location, current);
             } catch {
-                return void res.status(502).json({ error: "bad redirect" });
+                return c.json({ error: "bad redirect" }, 502);
             }
             continue;
         }
 
+        const headers = new Headers({ "Cache-Control": "no-store" });
         const contentType = response.headers.get("content-type");
-        if (contentType) res.set("Content-Type", contentType);
-        res.set("Cache-Control", "no-store");
-        res.status(response.status);
-        return void res.end(Buffer.from(await response.arrayBuffer()));
+        if (contentType) headers.set("Content-Type", contentType);
+        return new Response(response.body, {
+            status: response.status,
+            headers,
+        });
     }
 
-    return void res.status(502).json({ error: "too many redirects" });
+    return c.json({ error: "too many redirects" }, 502);
 });
 
-app.get("/api/favicon", async (req, res) => {
-    const url = req.query.url as string | undefined;
-    const size = (req.query.size as string | undefined) ?? "32";
-    if (!url) return void res.status(400).end();
+app.get("/api/favicon", async c => {
+    const url = c.req.query("url");
+    const size = c.req.query("size") ?? "32";
+    if (!url) return c.body(null, 400);
     try {
         const parsed = new URL(url);
         if (
@@ -258,7 +265,7 @@ app.get("/api/favicon", async (req, res) => {
             parsed.hostname === "127.0.0.1" ||
             parsed.hostname.endsWith(".local")
         ) {
-            return void res.redirect(301, "/favicon.ico");
+            return c.redirect("/favicon.ico", 301);
         }
     } catch {}
     try {
@@ -279,29 +286,26 @@ app.get("/api/favicon", async (req, res) => {
                 validateStatus: () => true,
             },
         );
-        if (status !== 200) return void res.status(404).end();
-        res.set(
-            "Content-Type",
-            (headers as unknown as Record<string, string>)["content-type"] ??
-                "image/png",
-        );
-        res.set("Cache-Control", "public, max-age=86400, immutable");
-        res.end(Buffer.from(data));
+        if (status !== 200) return c.body(null, 404);
+        c.header("Content-Type", headers.get("content-type") ?? "image/png");
+        c.header("Cache-Control", "public, max-age=86400, immutable");
+        return c.body(data);
     } catch {
-        res.status(404).end();
+        return c.body(null, 404);
     }
 });
 
 const _proxyProbesInFlight = new Map<string, Promise<unknown>>();
-app.get("/api/best-proxy", async (req, res) => {
-    const urlParam = req.query.url as string | undefined;
+app.get("/api/best-proxy", async c => {
+    const urlParam = c.req.query("url");
     const hostname = urlParam ? normalizeHostname(urlParam) : null;
     if (!hostname) {
-        return void res.status(400).json({ error: "invalid url" });
+        return c.json({ error: "invalid url" }, 400);
     }
 
+    c.header("Cache-Control", "no-store");
     if (isPrivateHost(hostname)) {
-        return void res.set("Cache-Control", "no-store").json({
+        return c.json({
             proxy: "scramjet",
             transport: "epoxy",
             wispVersion: 2,
@@ -315,9 +319,7 @@ app.get("/api/best-proxy", async (req, res) => {
     try {
         const hit = await redis.get(redisKey).catch(() => null);
         if (hit) {
-            return void res
-                .set("Cache-Control", "no-store")
-                .json({ ...JSON.parse(hit), cached: true });
+            return c.json({ ...JSON.parse(hit), cached: true });
         }
 
         const stored = await getSiteProxyConfig(hostname);
@@ -337,9 +339,7 @@ app.get("/api/best-proxy", async (req, res) => {
             await redis
                 .set(redisKey, JSON.stringify(payload), "EX", 86400)
                 .catch(() => {});
-            return void res
-                .set("Cache-Control", "no-store")
-                .json({ ...payload, cached: true });
+            return c.json({ ...payload, cached: true });
         }
 
         let inflight = _proxyProbesInFlight.get(hostname);
@@ -361,11 +361,9 @@ app.get("/api/best-proxy", async (req, res) => {
             _proxyProbesInFlight.set(hostname, inflight);
         }
         const payload = await inflight;
-        return void res
-            .set("Cache-Control", "no-store")
-            .json({ ...(payload as object), cached: false });
+        return c.json({ ...(payload as object), cached: false });
     } catch {
-        return void res.set("Cache-Control", "no-store").json({
+        return c.json({
             proxy: "scramjet",
             transport: "epoxy",
             wispVersion: 2,
@@ -376,24 +374,24 @@ app.get("/api/best-proxy", async (req, res) => {
     }
 });
 
-app.post("/api/best-proxy", async (req, res) => {
-    const body = req.body as {
-        url?: string;
-        proxy?: string;
-        transport?: string;
-        compat?: number;
-        rewriterErrors?: number;
-    };
-    const hostname = body?.url ? normalizeHostname(body.url) : null;
-    const proxy = body?.proxy;
-    const compat = Number(body?.compat);
-    const rewriterErrors = Number.isFinite(Number(body?.rewriterErrors))
+app.post("/api/best-proxy", async c => {
+    const body = await readJsonBody<{
+        url: string;
+        proxy: string;
+        transport: string;
+        compat: number;
+        rewriterErrors: number;
+    }>(c);
+    const hostname = body.url ? normalizeHostname(body.url) : null;
+    const proxy = body.proxy;
+    const compat = Number(body.compat);
+    const rewriterErrors = Number.isFinite(Number(body.rewriterErrors))
         ? Math.max(0, Number(body.rewriterErrors))
         : 0;
     if (!hostname || proxy !== "scramjet" || !Number.isFinite(compat)) {
-        return void res.status(400).json({ error: "bad feedback" });
+        return c.json({ error: "bad feedback" }, 400);
     }
-    if (isPrivateHost(hostname)) return void res.status(204).end();
+    if (isPrivateHost(hostname)) return c.body(null, 204);
 
     try {
         const transport =
@@ -410,26 +408,26 @@ app.post("/api/best-proxy", async (req, res) => {
         );
         await redis.del(`siteproxy:${hostname}`).catch(() => {});
     } catch {}
-    return void res.status(204).end();
+    return c.body(null, 204);
 });
 
-app.use("/api/check-banned", (req, res) => {
-    const url = req.query.url as string | undefined;
-    if (!url) return res.json({ banned: false });
+app.all("/api/check-banned/*", c => {
+    const url = c.req.query("url");
+    if (!url) return c.json({ banned: false });
     const matched = matchBannedDomain(url);
-    return res.json({ banned: matched !== null });
+    return c.json({ banned: matched !== null });
 });
 
-app.post("/api/violations", async (req, res) => {
-    const session = await resolveSessionFromRequest(req);
-    if (!session?.user) return void res.status(401).json({ ok: false });
+app.post("/api/violations", async c => {
+    const session = await resolveSessionFromHeaders(c.req.raw.headers);
+    if (!session?.user) return c.json({ ok: false }, 401);
 
     const { violations, banned } = await recordViolation(
         session.user.id,
-        extractClientIp(req),
+        extractClientIp(c.env.incoming),
     );
 
-    res.json({
+    return c.json({
         ok: true,
         violations,
         banned,
@@ -437,11 +435,11 @@ app.post("/api/violations", async (req, res) => {
     });
 });
 
-app.use("/api/violations", async (req, res) => {
-    const session = await resolveSessionFromRequest(req);
+app.all("/api/violations/*", async c => {
+    const session = await resolveSessionFromHeaders(c.req.raw.headers);
 
     if (!session?.user) {
-        return res.json({
+        return c.json({
             authenticated: false,
             banned: false,
             violations: 0,
@@ -450,9 +448,12 @@ app.use("/api/violations", async (req, res) => {
     }
 
     const user = session.user;
-    const violations = await readViolationCount(user.id, extractClientIp(req));
+    const violations = await readViolationCount(
+        user.id,
+        extractClientIp(c.env.incoming),
+    );
 
-    return res.json({
+    return c.json({
         authenticated: true,
         banned: Boolean(user.isBanned),
         banReason: user.banReason ?? null,
@@ -461,6 +462,21 @@ app.use("/api/violations", async (req, res) => {
         maxViolations: VIOLATION_LIMIT,
     });
 });
+
+/**
+ * Serves the files under `root`, with `prefix` stripped from the request path,
+ * the way sirv did. @hono/node-server's serveStatic resolves the full request
+ * path against its root, and it serves dotfiles, which sirv never did outside
+ * `.well-known`.
+ */
+function staticDir(root: string, prefix = ""): MiddlewareHandler<AppEnv> {
+    const serve = serveStatic<AppEnv>({
+        root,
+        rewriteRequestPath: path => path.slice(prefix.length),
+    });
+    return (c, next) =>
+        /\/\.(?!well-known\/)/.test(c.req.path) ? next() : serve(c, next);
+}
 
 const servicePathMaps: Record<string, string> = {
     "/scramjet": scramjetPath,
@@ -476,35 +492,27 @@ const servicePathMaps: Record<string, string> = {
 };
 
 Object.entries(servicePathMaps).forEach(([route, path]) => {
-    app.use(route, sirv(path));
-});
-
-const bare = createBareServer("/bare/");
-
-app.use((req, res, next) => {
-    if (bare.shouldRoute(req)) {
-        bare.routeRequest(req, res).catch(console.error);
-    } else {
-        next();
-    }
+    app.use(`${route}/*`, staticDir(path, route));
 });
 
 // Nitro names each Vite service entry after the file the environment built.
 // The SSR environment's entry is @solidjs/vite-plugin's `virtual:solid-ssr-handler`,
 // which emits as `server`; its default export is the Fetchable
-// `{ fetch(request) }` that toNodeHandler wants below.
+// `{ fetch(request) }` that the catch-all route below hands each request to.
 const { default: ssrHandler } =
-    await import("dist/nitro/vite/services/ssr/server.js");
+    (await import("./dist/nitro/vite/services/ssr/server.js")) as {
+        default: { fetch(request: globalThis.Request): Promise<Response> };
+    };
 
-app.use(sirv(resolve(import.meta.dirname, "dist/client")));
-app.use(sirv(resolve(import.meta.dirname, "dist/client/_build")));
-app.use(sirv(resolve(import.meta.dirname, "dist-config")));
+app.use(staticDir(resolve(import.meta.dirname, "dist/client")));
+app.use(staticDir(resolve(import.meta.dirname, "dist/client/_build")));
+app.use(staticDir(resolve(import.meta.dirname, "dist-config")));
 
 // A hashed chunk that no longer exists after a deploy must fail as a 404, not
 // fall through to the SSR handler and come back as an HTML page. Session replay
 // shows the alternative: `Uncaught SyntaxError: Unexpected token '<'` and
 // `Unable to preload CSS` in every tab that was open across the deploy.
-app.use("/_build", (_req, res) => void res.status(404).end());
+app.all("/_build/*", c => c.body(null, 404));
 
 const parser = new XMLParser({
     ignoreAttributes: false,
@@ -530,9 +538,7 @@ wss.on("connection", ws => {
     });
 });
 
-app.use(
-    toNodeHandler(ssrHandler as unknown as Parameters<typeof toNodeHandler>[0]),
-);
+app.all("*", c => ssrHandler.fetch(c.req.raw));
 
 function shouldRouteWisp(req: Request) {
     return req.url?.endsWith("/wisp/");

@@ -114,7 +114,7 @@ pub fn deobfuscate(
         .indent = 2,
         .quotes = .double,
     });
-    gpa.free(result.errors);
+    gpa.free(result.diagnostics);
     return .{ .code = result.code, .stats = stats };
 }
 

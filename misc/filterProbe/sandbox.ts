@@ -347,7 +347,6 @@ export async function observeRoute(
         settings: {
             disableJavaScriptEvaluation: true,
             disableJavaScriptFileLoading: true,
-            disableCSSFileLoading: true,
             // errorCapture left at the default ("tryAndCatch"): a content
             // script's own deferred timer callback (setTimeout/setInterval/…)
             // throwing is then caught and logged via console.error instead of

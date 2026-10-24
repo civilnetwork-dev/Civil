@@ -1,0 +1,313 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "cfbd4472-d9dc-4535-8da8-ef6e97d90d14",
+  "prevIds": [
+    "e8c4b6a0-3255-4640-9a20-539fbf62bb71"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "goguardian_manifest_keys"
+      ],
+      "writes": [
+        "s|tbl|public.goguardian_manifest_keys",
+        "n|tbl|public.goguardian_manifest_keys",
+        "e|tbl|public.goguardian_manifest_keys",
+        "n|rel|public.goguardian_manifest_keys",
+        "n|type|public.goguardian_manifest_keys",
+        "n|rel|public.goguardian_manifest_keys_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "goguardian_manifest_keys",
+        "goguardian_manifest_keys_extension_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.goguardian_manifest_keys_extension_id_idx",
+        "n|idx|public.goguardian_manifest_keys_extension_id_idx",
+        "e|idx|public.goguardian_manifest_keys_extension_id_idx",
+        "n|rel|public.goguardian_manifest_keys_extension_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.goguardian_manifest_keys",
+        "n|sch|public",
+        "n|col|public.goguardian_manifest_keys.extension_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "goguardian_manifest_keys",
+        "goguardian_manifest_keys_lea_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.goguardian_manifest_keys_lea_id_idx",
+        "n|idx|public.goguardian_manifest_keys_lea_id_idx",
+        "e|idx|public.goguardian_manifest_keys_lea_id_idx",
+        "n|rel|public.goguardian_manifest_keys_lea_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.goguardian_manifest_keys",
+        "n|sch|public",
+        "n|col|public.goguardian_manifest_keys.school_district_lea_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "goguardian_manifest_keys"
+      ],
+      "writes": [
+        "s|fk|public.goguardian_manifest_keys.goguardian_manifest_keys_submitted_by_user_id_users_id_fk",
+        "n|fk|public.goguardian_manifest_keys.goguardian_manifest_keys_submitted_by_user_id_users_id_fk",
+        "e|fk|public.goguardian_manifest_keys.goguardian_manifest_keys_submitted_by_user_id_users_id_fk",
+        "n|con|public.goguardian_manifest_keys.goguardian_manifest_keys_submitted_by_user_id_users_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.goguardian_manifest_keys",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.goguardian_manifest_keys.submitted_by_user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "goguardian_manifest_keys",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "id",
+        "type": "serial",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "manifest_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "extension_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "school_district_lea_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "school_district_name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "submitted_by_user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "submitted_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "verified_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "goguardian_manifest_keys_extension_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "extension_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "goguardian_manifest_keys_lea_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "school_district_lea_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "goguardian_manifest_keys_submitted_by_user_id_users_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "submitted_by_user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "goguardian_manifest_keys",
+        "name": "goguardian_manifest_keys_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

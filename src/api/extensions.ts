@@ -998,6 +998,30 @@ export function extensionsResolvePopup(
 }
 
 /**
+ * Appends an extension's content-script stylesheets to `doc`, skipping any
+ * that fail to load.
+ */
+export async function extensionsInjectCss(
+    extId: string,
+    doc: Document,
+    cssPaths: readonly string[] = [],
+): Promise<void> {
+    for (const cssPath of cssPaths) {
+        try {
+            const raw = await extensionsReadText(extId, cssPath);
+            const el = doc.createElement("style");
+            el.textContent = raw;
+            doc.head?.appendChild(el);
+        } catch (e) {
+            console.warn(
+                `[civil/extensions] CSS inject failed "${cssPath}":`,
+                e,
+            );
+        }
+    }
+}
+
+/**
  * Inject all enabled extensions' content scripts into a given iframe.
  */
 export async function extensionsApplyToIframe(
@@ -1019,19 +1043,7 @@ export async function extensionsApplyToIframe(
             for (const script of manifest.content_scripts ?? []) {
                 const iframeDoc = iframe.contentDocument;
                 if (!iframeDoc) continue;
-                for (const cssPath of script.css ?? []) {
-                    try {
-                        const raw = await extensionsReadText(ext.id, cssPath);
-                        const el = iframeDoc.createElement("style");
-                        el.textContent = raw;
-                        iframeDoc.head?.appendChild(el);
-                    } catch (e) {
-                        console.warn(
-                            `[civil/extensions] CSS inject failed "${cssPath}":`,
-                            e,
-                        );
-                    }
-                }
+                await extensionsInjectCss(ext.id, iframeDoc, script.css);
                 for (const jsPath of script.js ?? []) {
                     try {
                         const raw = await extensionsReadText(ext.id, jsPath);

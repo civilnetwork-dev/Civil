@@ -158,6 +158,21 @@ class StorageNamespace {
         });
     }
 
+    /** Tells this context's listeners, then every other context, about a
+     *  change. */
+    private _announce(changes: StorageChanges): void {
+        this._globalOnChanged.dispatch(changes, this._area);
+        // Broadcast to other contexts
+        try {
+            getCivilBus(this._extId).postMessage({
+                kind: "storageChanged",
+                extId: this._extId,
+                area: this._area,
+                changes,
+            } satisfies StorageBusMsg);
+        } catch {}
+    }
+
     get(
         keys?: string | string[] | Record<string, unknown> | null,
         cb?: (result: StorageData) => void,
@@ -197,16 +212,7 @@ class StorageNamespace {
             }
             if (this._db)
                 await idbSet(this._db, this._area, items).catch(() => {});
-            this._globalOnChanged.dispatch(changes, this._area);
-            // Broadcast to other contexts
-            try {
-                getCivilBus(this._extId).postMessage({
-                    kind: "storageChanged",
-                    extId: this._extId,
-                    area: this._area,
-                    changes,
-                } satisfies StorageBusMsg);
-            } catch {}
+            this._announce(changes);
         }, cb ?? undefined);
     }
 
@@ -226,15 +232,7 @@ class StorageNamespace {
             }
             if (this._db)
                 await idbDelete(this._db, this._area, ks).catch(() => {});
-            this._globalOnChanged.dispatch(changes, this._area);
-            try {
-                getCivilBus(this._extId).postMessage({
-                    kind: "storageChanged",
-                    extId: this._extId,
-                    area: this._area,
-                    changes,
-                } satisfies StorageBusMsg);
-            } catch {}
+            this._announce(changes);
         }, cb ?? undefined);
     }
 
@@ -250,15 +248,7 @@ class StorageNamespace {
             }
             this._cache = {};
             if (this._db) await idbClear(this._db, this._area).catch(() => {});
-            this._globalOnChanged.dispatch(changes, this._area);
-            try {
-                getCivilBus(this._extId).postMessage({
-                    kind: "storageChanged",
-                    extId: this._extId,
-                    area: this._area,
-                    changes,
-                } satisfies StorageBusMsg);
-            } catch {}
+            this._announce(changes);
         }, cb ?? undefined);
     }
 

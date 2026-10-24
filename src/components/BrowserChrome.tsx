@@ -28,14 +28,10 @@ import {
     loadSession,
     saveSession,
 } from "~/lib/browserHelpers";
+import { isInternalUrl, isNewtabUrl } from "~/lib/browserUrls";
 import searchBar from "~/lib/SearchBar";
 import { getSetting, useSetting } from "~/lib/settings";
-import {
-    isInternalUrl,
-    isNewtabUrl,
-    type Tab,
-    tabManager,
-} from "~/lib/TabManager";
+import { type Tab, tabManager } from "~/lib/TabManager";
 import {
     cleanupChiiArtifacts,
     createIframeManager,
@@ -43,6 +39,106 @@ import {
 import { registerTabMonitor } from "~/lib/useTabDrag";
 
 import * as s from "~/styles/BrowserChrome.css";
+
+/** An extension page a `tabs.create` URL asks for. */
+type ExtensionPageTarget = {
+    extId: string;
+    pagePath: string;
+    hashSearch: string;
+};
+
+/** Tampermonkey's extension ids across its store listings and channels. */
+const TAMPERMONKEY_IDS = new Set([
+    "dhdgffkkebhmkfjojejmpbldmpobfkfo",
+    "lcmhijbkigalmkeommnijlpobloojgfn",
+    "gcalenpjmijncebpfijmoaglllgpjagf",
+    "iikmkjmpaadaobahmlepeloendndfphd",
+    "clngdbkpkpeebahjckkjfobafhncgmne",
+]);
+
+/**
+ * The extension page a URL names: `/civil-ext/<id>/<page>.html` on this
+ * origin, or `chrome-extension://<id>/<page>.html`, either with any query
+ * and hash it carries.
+ */
+function extensionPageTarget(
+    url: string,
+    origin: string,
+): ExtensionPageTarget | null {
+    // Pattern (a): same-origin /civil-ext/{extId}/{page}.html
+    let parsed: URL | null = null;
+    try {
+        parsed = new URL(url, origin);
+    } catch {}
+    const civilMatch = /^\/civil-ext\/([^/]+)\/(.+\.html?)/.exec(
+        parsed?.pathname ?? "",
+    );
+    if (parsed && civilMatch && url.startsWith(origin)) {
+        return {
+            extId: civilMatch[1]!,
+            pagePath: civilMatch[2]!,
+            hashSearch: parsed.search + parsed.hash,
+        };
+    }
+
+    // Pattern (b): chrome-extension://{extId}/{page}.html[#hash]
+    const ceMatch = /^chrome-extension:\/\/([^/]+)\/(.+\.html?)(.*)$/.exec(url);
+    if (ceMatch) {
+        return {
+            extId: ceMatch[1]!,
+            pagePath: ceMatch[2]!,
+            hashSearch: ceMatch[3] ?? "",
+        };
+    }
+    return null;
+}
+
+/**
+ * Tampermonkey's web-install page for a user script, redirected to the
+ * installed Tampermonkey's own options page, which installs it. Null when the
+ * URL is not one, or no Tampermonkey is enabled.
+ */
+async function tampermonkeyInstallTarget(
+    url: string,
+): Promise<ExtensionPageTarget | null> {
+    if (!/tampermonkey\.net/i.test(url)) return null;
+    try {
+        const u = new URL(url);
+        // Script URL may appear in hash or query string after "url="
+        const combined = u.hash + "&" + u.search;
+        const scriptUrlMatch = /[?&#]url=([^&]+)/.exec(combined);
+        const scriptUrl = scriptUrlMatch
+            ? decodeURIComponent(scriptUrlMatch[1]!)
+            : null;
+        if (!scriptUrl || !/\.user\.(js|ts)/.test(scriptUrl)) return null;
+
+        // Find the enabled TM extension
+        const { extensionsGetAll } = await import("~/api/extensions");
+        const tmExt = extensionsGetAll().find(
+            ext => ext.enabled && TAMPERMONKEY_IDS.has(ext.id),
+        );
+        if (!tmExt) return null;
+        console.log(
+            "[Civil] intercepted TM web-install URL -> local options.html",
+            scriptUrl,
+        );
+        return {
+            extId: tmExt.id,
+            pagePath: "options.html",
+            // TM options.html uses hash router: #nav=install&url=SCRIPT_URL
+            hashSearch: `#nav=install&url=${encodeURIComponent(scriptUrl)}`,
+        };
+    } catch {
+        return null;
+    }
+}
+
+/** Where the service worker serves a built extension page, by its kind. */
+function servePrefixFor(pagePath: string): string {
+    if (pagePath.startsWith("options")) return "options-tab";
+    if (pagePath.startsWith("ask")) return "ask-tab";
+    return "action-popup";
+}
 
 export default function BrowserChrome() {
     const bar = searchBar();
@@ -223,151 +319,79 @@ export default function BrowserChrome() {
         // repeatedly for the same page before the first one finishes building.
         const _pendingExtPages = new Set<string>();
 
+        const openExtensionPage = ({
+            extId,
+            pagePath,
+            hashSearch,
+        }: ExtensionPageTarget) => {
+            const safeKey = pagePath.replace(/[^a-z0-9]/gi, "-");
+            const cacheKey = `${extId}--${safeKey}`;
+            const safeHash = hashSearch
+                .replace(/[^a-z0-9]/gi, "-")
+                .slice(0, 80);
+            const dedupKey = safeHash ? `${cacheKey}--${safeHash}` : cacheKey;
+
+            // Dedup: skip if already building this exact page+hash
+            if (_pendingExtPages.has(dedupKey)) return;
+            _pendingExtPages.add(dedupKey);
+
+            const servePrefix = servePrefixFor(pagePath);
+
+            // Build the extension page BEFORE creating the tab, then
+            // create the tab with the final served URL. This avoids two
+            // races that surfaced as a router 404: (1) navigate() no-ops
+            // if the iframe hasn't mounted yet, and (2) the served
+            // /{servePrefix}/{cacheKey} entry may not be registered when
+            // navigation fires. Creating the tab with the internal URL
+            // after the build lets registerIframe's restore path load it
+            // deterministically (isInternalUrl -> iframe.src = url).
+            void (async () => {
+                try {
+                    const [
+                        { extensionsGetById },
+                        { buildExtensionPageSrcDoc },
+                    ] = await Promise.all([
+                        import("~/api/extensions"),
+                        import("~/api/extensionRuntime"),
+                    ]);
+                    const ext = extensionsGetById(extId);
+                    if (!ext) return;
+                    await buildExtensionPageSrcDoc(
+                        ext,
+                        pagePath,
+                        "popup",
+                        cacheKey,
+                    );
+                    const t = tabManager.createTab(
+                        `${window.location.origin}/${servePrefix}/${cacheKey}${hashSearch}`,
+                    );
+                    tabManager.activateTab(t.id);
+                } catch (err) {
+                    console.warn(
+                        "[Civil] buildExtensionPageSrcDoc failed:",
+                        err,
+                    );
+                } finally {
+                    _pendingExtPages.delete(dedupKey);
+                }
+            })();
+        };
+
         const onBrowserNewTab = async (e: Event) => {
             const { url } = (e as CustomEvent<{ url?: string }>).detail ?? {};
             console.log("[Civil] browser:newtab fired, url=", url);
 
             if (url) {
-                const origin = window.location.origin;
-
-                let extId: string | undefined;
-                let pagePath: string | undefined;
-                let hashSearch = "";
-
-                // Pattern (a): same-origin /civil-ext/{extId}/{page}.html
-                const civilMatch = /^\/civil-ext\/([^/]+)\/(.+\.html?)/.exec(
-                    (() => {
-                        try {
-                            return new URL(url, origin).pathname;
-                        } catch {
-                            return "";
-                        }
-                    })(),
-                );
-                if (civilMatch && url.startsWith(origin)) {
-                    extId = civilMatch[1];
-                    pagePath = civilMatch[2];
-                    try {
-                        const u = new URL(url, origin);
-                        hashSearch = u.search + u.hash;
-                    } catch {}
-                }
-
-                // Pattern (b): chrome-extension://{extId}/{page}.html[#hash]
-                if (!extId) {
-                    const ceMatch =
-                        /^chrome-extension:\/\/([^/]+)\/(.+\.html?)(.*)$/.exec(
-                            url,
-                        );
-                    if (ceMatch) {
-                        extId = ceMatch[1];
-                        pagePath = ceMatch[2];
-                        hashSearch = ceMatch[3] ?? "";
-                    }
-                }
-
-                if (!extId && /tampermonkey\.net/i.test(url)) {
-                    try {
-                        const u = new URL(url);
-                        // Script URL may appear in hash or query string after "url="
-                        const combined = u.hash + "&" + u.search;
-                        const scriptUrlMatch = /[?&#]url=([^&]+)/.exec(
-                            combined,
-                        );
-                        const scriptUrl = scriptUrlMatch
-                            ? decodeURIComponent(scriptUrlMatch[1]!)
-                            : null;
-                        if (scriptUrl && /\.user\.(js|ts)/.test(scriptUrl)) {
-                            // Find the enabled TM extension
-                            const { extensionsGetAll } =
-                                await import("~/api/extensions");
-                            const TM_IDS = new Set([
-                                "dhdgffkkebhmkfjojejmpbldmpobfkfo",
-                                "lcmhijbkigalmkeommnijlpobloojgfn",
-                                "gcalenpjmijncebpfijmoaglllgpjagf",
-                                "iikmkjmpaadaobahmlepeloendndfphd",
-                                "clngdbkpkpeebahjckkjfobafhncgmne",
-                            ]);
-                            const tmExt = extensionsGetAll().find(
-                                ext => ext.enabled && TM_IDS.has(ext.id),
-                            );
-                            if (tmExt) {
-                                extId = tmExt.id;
-                                pagePath = "options.html";
-                                // TM options.html uses hash router: #nav=install&url=SCRIPT_URL
-                                hashSearch = `#nav=install&url=${encodeURIComponent(scriptUrl)}`;
-                                console.log(
-                                    "[Civil] intercepted TM web-install URL -> local options.html",
-                                    scriptUrl,
-                                );
-                            }
-                        }
-                    } catch {}
-                }
-
+                const target =
+                    extensionPageTarget(url, window.location.origin) ??
+                    (await tampermonkeyInstallTarget(url));
                 console.log("[Civil] browser:newtab pattern match:", {
-                    extId,
-                    pagePath,
-                    hashSearch,
+                    extId: target?.extId,
+                    pagePath: target?.pagePath,
+                    hashSearch: target?.hashSearch ?? "",
                 });
-                if (extId && pagePath) {
-                    const safeKey = pagePath.replace(/[^a-z0-9]/gi, "-");
-                    const cacheKey = `${extId}--${safeKey}`;
-                    const safeHash = hashSearch
-                        .replace(/[^a-z0-9]/gi, "-")
-                        .slice(0, 80);
-                    const dedupKey = safeHash
-                        ? `${cacheKey}--${safeHash}`
-                        : cacheKey;
-
-                    // Dedup: skip if already building this exact page+hash
-                    if (_pendingExtPages.has(dedupKey)) return;
-                    _pendingExtPages.add(dedupKey);
-
-                    const servePrefix = pagePath.startsWith("options")
-                        ? "options-tab"
-                        : pagePath.startsWith("ask")
-                          ? "ask-tab"
-                          : "action-popup";
-
-                    // Build the extension page BEFORE creating the tab, then
-                    // create the tab with the final served URL. This avoids two
-                    // races that surfaced as a router 404: (1) navigate() no-ops
-                    // if the iframe hasn't mounted yet, and (2) the served
-                    // /{servePrefix}/{cacheKey} entry may not be registered when
-                    // navigation fires. Creating the tab with the internal URL
-                    // after the build lets registerIframe's restore path load it
-                    // deterministically (isInternalUrl -> iframe.src = url).
-                    void (async () => {
-                        try {
-                            const [
-                                { extensionsGetById },
-                                { buildExtensionPageSrcDoc },
-                            ] = await Promise.all([
-                                import("~/api/extensions"),
-                                import("~/api/extensionRuntime"),
-                            ]);
-                            const ext = extensionsGetById(extId!);
-                            if (!ext) return;
-                            await buildExtensionPageSrcDoc(
-                                ext,
-                                pagePath!,
-                                "popup",
-                                cacheKey,
-                            );
-                            const t = tabManager.createTab(
-                                `${origin}/${servePrefix}/${cacheKey}${hashSearch}`,
-                            );
-                            tabManager.activateTab(t.id);
-                        } catch (err) {
-                            console.warn(
-                                "[Civil] buildExtensionPageSrcDoc failed:",
-                                err,
-                            );
-                        } finally {
-                            _pendingExtPages.delete(dedupKey);
-                        }
-                    })();
+                if (target) {
+                    openExtensionPage(target);
                     return;
                 }
             }

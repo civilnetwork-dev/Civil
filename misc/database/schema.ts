@@ -115,22 +115,30 @@ export const visits = pgTable(
     ],
 );
 
+/**
+ * Columns of a record a visitor contributes for their school district, shared
+ * by the GoGuardian manifest keys and the iboss gateways. A function, so each
+ * table gets its own column builders.
+ */
+const districtContribution = () => ({
+    schoolDistrictLeaId: text("school_district_lea_id"),
+    schoolDistrictName: text("school_district_name"),
+    submittedByUserId: uuid("submitted_by_user_id").references(() => users.id, {
+        onDelete: "set null",
+    }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+});
+
 export const goguardianManifestKeys = pgTable(
     "goguardian_manifest_keys",
     {
         id: serial("id").primaryKey(),
         manifestKey: text("manifest_key").notNull(),
         extensionId: text("extension_id").notNull(),
-        schoolDistrictLeaId: text("school_district_lea_id"),
-        schoolDistrictName: text("school_district_name"),
-        submittedByUserId: uuid("submitted_by_user_id").references(
-            () => users.id,
-            { onDelete: "set null" },
-        ),
-        submittedAt: timestamp("submitted_at", { withTimezone: true })
-            .notNull()
-            .defaultNow(),
-        verifiedAt: timestamp("verified_at", { withTimezone: true }),
+        ...districtContribution(),
     },
     t => [
         uniqueIndex("goguardian_manifest_keys_extension_id_idx").on(
@@ -149,17 +157,8 @@ export const ibossGateways = pgTable(
             .notNull()
             .default(8026),
         securityKey: text("security_key"),
-        schoolDistrictLeaId: text("school_district_lea_id"),
-        schoolDistrictName: text("school_district_name"),
         source: text("source").notNull().default("manual"),
-        submittedByUserId: uuid("submitted_by_user_id").references(
-            () => users.id,
-            { onDelete: "set null" },
-        ),
-        submittedAt: timestamp("submitted_at", { withTimezone: true })
-            .notNull()
-            .defaultNow(),
-        verifiedAt: timestamp("verified_at", { withTimezone: true }),
+        ...districtContribution(),
     },
     t => [
         uniqueIndex("iboss_gateways_host_lea_idx").on(

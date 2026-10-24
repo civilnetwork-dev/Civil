@@ -1,0 +1,121 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "bca3e6a5-3703-4a15-a9a5-8a80c8e5f996",
+  "prevIds": [
+    "0864b9cd-58c1-4f4b-8f06-1b960d47b0cc"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "visits",
+        "ip_address"
+      ],
+      "writes": [
+        "s|col|public.visits.ip_address",
+        "n|col|public.visits.ip_address",
+        "e|col|public.visits.ip_address"
+      ],
+      "reads": [
+        "n|tbl|public.visits",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "accounts",
+        "password"
+      ],
+      "writes": [
+        "s|col|public.accounts.password",
+        "n|col|public.accounts.password",
+        "e|col|public.accounts.password"
+      ],
+      "reads": [
+        "n|tbl|public.accounts",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "name"
+      ],
+      "writes": [
+        "s|colprop|public.users.name.notNull",
+        "s|colprop|public.users.name.default"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.users.name"
+      ],
+      "sqlHash": "3de525eab2560e76"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "email"
+      ],
+      "writes": [
+        "s|colprop|public.users.email.notNull"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.users.email"
+      ],
+      "sqlHash": "fb7521ebb57d0a4e"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "visits",
+        "name": "ip_address",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"accounts\",\"password\"]"
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"users\",\"name\"]",
+      "set": {
+        "notNull": false,
+        "default": null
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"users\",\"email\"]",
+      "set": {
+        "notNull": false
+      }
+    }
+  ]
+}

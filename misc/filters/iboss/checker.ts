@@ -1,6 +1,7 @@
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
 
+import { normalizeHttpUrl } from "../utils/normalizeHttpUrl";
 import {
     DEFAULT_CLOUD_CATEGORIZATION_SSL_PORT,
     DIRECT_FILTER_INTRINSIC_BYPASS_LIST,
@@ -139,30 +140,6 @@ export type IbossExceptionRequest = {
     overrideUser?: string;
     ipAddress?: string;
 };
-
-function normalizeUrl(input: string): Result<URL, IbossError> {
-    try {
-        const value = /^https?:\/\//i.test(input) ? input : `https://${input}`;
-
-        const url = new URL(value);
-
-        if (!["http:", "https:"].includes(url.protocol)) {
-            return err({
-                type: "INVALID_URL",
-                input,
-                message: "Only HTTP(S) URLs are supported.",
-            });
-        }
-
-        return ok(url);
-    } catch {
-        return err({
-            type: "INVALID_URL",
-            input,
-            message: "Invalid URL.",
-        });
-    }
-}
 
 function normalizeHost(input: string): string {
     return input.toLowerCase().replace(/^www\./, "");
@@ -369,7 +346,7 @@ class IbossFilterChecker {
     }
 
     checkUrl(input: string): ResultAsync<IbossDecision, IbossError> {
-        const parsed = normalizeUrl(input);
+        const parsed = normalizeHttpUrl(input);
 
         if (parsed.isErr()) {
             return errResult(parsed.error);

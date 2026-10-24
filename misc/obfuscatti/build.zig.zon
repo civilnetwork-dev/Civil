@@ -25,7 +25,7 @@
     .fingerprint = 0xe55c8f0fca72f7b4, // Changing this has security and trust implications.
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
@@ -33,20 +33,18 @@
     // internet connectivity.
     .dependencies = .{
         .yuku = .{
-            .url = "git+https://github.com/yuku-toolchain/yuku.git#2309072aea34f6c74aaf18d79ad3937a89d479b2",
-            .hash = "yuku-0.3.0-m6ranqg-FAAetEnnecwoa2PsH2y4cjy-ybs0loBLW7bO",
+            .url = "git+https://github.com/yuku-toolchain/yuku.git?ref=v0.19.0#f8496bd8dfd52ae528ade3bfe4c1ea57d1bde635",
+            .hash = "yuku-0.19.0-m6ranuYbEgDKEWKLhPKoNKdPgLoB5X6vElY2wFZXqh6m",
         },
         .napi_zig = .{
-            .url = "git+https://github.com/yuku-toolchain/napi-zig.git#253f5a92b1c0c70ad13a6583993a9befb88d1116",
-            .hash = "napi_zig-0.2.0-XRkY0Y8XAgBr17lGjp5nFI-CYpmjGManq9S4TkaY-D5g",
+            .url = "git+https://github.com/yuku-toolchain/napi-zig.git#2ef8928d9cdf70af1cc6b17928f506c0a5ca0076",
+            .hash = "napi_zig-0.2.0-XRkY0UsWAgAqaAoq4Zx7sCD39BNi-Uiq0uMS8sIX_ZUZ",
         },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        // For example...
-        //"LICENSE",
-        //"README.md",
+        "README.md",
     },
 }

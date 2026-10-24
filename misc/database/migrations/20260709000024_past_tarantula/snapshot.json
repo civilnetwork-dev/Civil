@@ -1,0 +1,353 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "d028e4bd-bc2f-401c-beb6-2f40e16a5a0f",
+  "prevIds": [
+    "17995bdb-fc78-44fc-99d6-5eb1c8b30da2"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "iboss_gateways"
+      ],
+      "writes": [
+        "s|tbl|public.iboss_gateways",
+        "n|tbl|public.iboss_gateways",
+        "e|tbl|public.iboss_gateways",
+        "n|rel|public.iboss_gateways",
+        "n|type|public.iboss_gateways",
+        "n|rel|public.iboss_gateways_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "iboss_gateways",
+        "iboss_gateways_host_lea_idx"
+      ],
+      "writes": [
+        "s|idx|public.iboss_gateways_host_lea_idx",
+        "n|idx|public.iboss_gateways_host_lea_idx",
+        "e|idx|public.iboss_gateways_host_lea_idx",
+        "n|rel|public.iboss_gateways_host_lea_idx"
+      ],
+      "reads": [
+        "n|tbl|public.iboss_gateways",
+        "n|sch|public",
+        "n|col|public.iboss_gateways.gateway_host",
+        "n|col|public.iboss_gateways.school_district_lea_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "iboss_gateways",
+        "iboss_gateways_lea_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.iboss_gateways_lea_id_idx",
+        "n|idx|public.iboss_gateways_lea_id_idx",
+        "e|idx|public.iboss_gateways_lea_id_idx",
+        "n|rel|public.iboss_gateways_lea_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.iboss_gateways",
+        "n|sch|public",
+        "n|col|public.iboss_gateways.school_district_lea_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "iboss_gateways"
+      ],
+      "writes": [
+        "s|fk|public.iboss_gateways.iboss_gateways_submitted_by_user_id_users_id_fk",
+        "n|fk|public.iboss_gateways.iboss_gateways_submitted_by_user_id_users_id_fk",
+        "e|fk|public.iboss_gateways.iboss_gateways_submitted_by_user_id_users_id_fk",
+        "n|con|public.iboss_gateways.iboss_gateways_submitted_by_user_id_users_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.iboss_gateways",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.iboss_gateways.submitted_by_user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "iboss_gateways",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "id",
+        "type": "serial",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "gateway_host",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "categorization_port",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "8026",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "security_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "school_district_lea_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "school_district_name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "source",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'manual'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "submitted_by_user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "submitted_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "verified_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "iboss_gateways_host_lea_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "gateway_host",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "school_district_lea_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "iboss_gateways_lea_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "school_district_lea_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "iboss_gateways_submitted_by_user_id_users_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "submitted_by_user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "iboss_gateways",
+        "name": "iboss_gateways_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

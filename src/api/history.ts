@@ -414,26 +414,20 @@ export function historyGetAll(): Promise<CivilHistoryEntry[]> {
     return merged;
 }
 
-export async function historyDelete(id: string): Promise<void> {
-    await serial(async () => {
-        const { segs, broken } = await readAll();
-        for (const loc of LOCATIONS) {
-            if (broken.has(loc)) continue;
-            const next = segs[loc].filter(e => e.id !== id);
-            if (next.length !== segs[loc].length) await save(loc, next);
-        }
-    });
-    announce();
-}
-
-/** Deletes every page from `site` or its subdomains. Returns how many went. */
-export async function historyDeleteSite(site: string): Promise<number> {
+/**
+ * Deletes the entries `drop` selects from every readable location and
+ * returns how many went. A location that could not be read is left alone,
+ * so its entries are not overwritten by an empty list.
+ */
+async function deleteWhere(
+    drop: (entry: CivilHistoryEntry) => boolean,
+): Promise<number> {
     let removed = 0;
     await serial(async () => {
         const { segs, broken } = await readAll();
         for (const loc of LOCATIONS) {
             if (broken.has(loc)) continue;
-            const next = segs[loc].filter(e => !onSite(e.url, site));
+            const next = segs[loc].filter(e => !drop(e));
             if (next.length === segs[loc].length) continue;
             removed += segs[loc].length - next.length;
             await save(loc, next);
@@ -441,6 +435,15 @@ export async function historyDeleteSite(site: string): Promise<number> {
     });
     announce();
     return removed;
+}
+
+export async function historyDelete(id: string): Promise<void> {
+    await deleteWhere(e => e.id === id);
+}
+
+/** Deletes every page from `site` or its subdomains. Returns how many went. */
+export function historyDeleteSite(site: string): Promise<number> {
+    return deleteWhere(e => onSite(e.url, site));
 }
 
 export async function historyClear(): Promise<void> {

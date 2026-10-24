@@ -1,6 +1,6 @@
 diff --git a/dist/index.mjs b/dist/index.mjs
-index c2f8e435ae7ac3c50a6f572c51bad413300a2d5a..e73cdb990aae8634e835fad799e7420ecd9d56f4 100644
---- a/dist/index.mjs
+index c2f8e435ae7ac3c50a6f572c51bad413300a2d5a..45dd617d96f6f5b057ee4886246173c8b654caf3 100644
+--- a/dist/index.mjs	
 +++ b/dist/index.mjs
 @@ -179,6 +179,9 @@ function isLikeNone(x) {
  function makeClosure(arg0, arg1, dtor, f) {
@@ -12,3 +12,13 @@ index c2f8e435ae7ac3c50a6f572c51bad413300a2d5a..e73cdb990aae8634e835fad799e7420e
      state.cnt++;
      try {
        return f(state.a, state.b, ...args);
+@@ -1620,6 +1623,9 @@ var EpoxyTransport = class {
+       protocols,
+       headersObj
+     );
++    // epoxy-tls already hands a failed connect to onerror, then rejects too.
++    // Unhandled, that rejection reached PostHog once per refused WebSocket.
++    ws.catch(() => {});
+     return [
+       async (data) => {
+         if (data instanceof Blob) data = await data.arrayBuffer();

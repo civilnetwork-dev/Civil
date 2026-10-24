@@ -8,8 +8,8 @@ import terser from "@rollup/plugin-terser";
 import { createColors } from "picocolors";
 import { rimraf } from "rimraf";
 import { rollup } from "rollup";
+import { transformSync } from "oxc-transform";
 import nodePolyfills from "rollup-plugin-polyfill-node";
-import typescript from "rollup-plugin-typescript2";
 import { visualizer } from "rollup-plugin-visualizer";
 
 const require = createRequire(import.meta.url);
@@ -22,6 +22,26 @@ const { green } = createColors();
 const useVisualizer = process.argv.includes("--visualize");
 
 await rimraf("../../dist-config");
+
+// Strips TypeScript syntax only; type checking is `tsc`'s job. This replaced
+// rollup-plugin-typescript2, which drives TypeScript's JS API - an API
+// TypeScript 7 no longer ships.
+const stripTypes = {
+    name: "strip-types",
+    transform(code, id) {
+        if (!/\.[cm]?tsx?$/.test(id)) return null;
+        const result = transformSync(id, code, { sourcemap: true });
+        if (result.errors.length)
+            this.error(
+                result.errors.map(e => e.codeframe ?? e.message).join("\n"),
+            );
+        return { code: result.code, map: result.map };
+    },
+};
+
+// Extensionless imports (`./xorCodec`) name .ts files, which rollup's
+// resolver only finds when told to look for them.
+const extensions = [".mjs", ".js", ".json", ".node", ".ts"];
 
 const basePlugins = [
     alias({
@@ -36,29 +56,8 @@ const basePlugins = [
             { find: "$config", replacement: import.meta.dirname },
         ],
     }),
-    typescript({
-        tsconfig: "../../tsconfig.json",
-        tsconfigOverride: {
-            compilerOptions: {
-                allowImportingTsExtensions: false,
-                rootDir: "../../",
-            },
-            exclude: [
-                "config",
-                "tests",
-                "run.ts",
-                "src",
-                "misc/apps",
-                "misc/filters",
-                "*.config.ts",
-                "types",
-                "patches",
-                "dist",
-                "public",
-            ],
-        },
-    }),
-    nodeResolve({ browser: true }),
+    stripTypes,
+    nodeResolve({ browser: true, extensions }),
     commonjs(),
     terser({
         compress: {
@@ -250,7 +249,7 @@ const baremuxTransportBundle = await rollup({
     plugins: [
         ...basePlugins.slice(0, 1),
         basePlugins[1],
-        nodeResolve({ browser: true }),
+        nodeResolve({ browser: true, extensions }),
         commonjs(),
         basePlugins[3],
     ],

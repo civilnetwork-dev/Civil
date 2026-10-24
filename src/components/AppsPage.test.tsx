@@ -24,7 +24,6 @@ vi.mock("~/lib/TabManager", () => ({
         createTab: vi.fn(() => ({ id: "t1" })),
         activateTab: vi.fn(),
     },
-    BROWSER_URLS: {},
 }));
 
 const { default: AppsPage } = await import("./AppsPage");

@@ -14,14 +14,12 @@
         "types": ["bun", "serviceworker", "chrome"],
         "isolatedModules": true,
         "paths": {
-            "~/*": ["src/*"],
-            "$wasm/*": ["config/encoder/*"],
-            "$config/*": ["misc/config/*"],
-            "$tests/*": ["tests/*"]
+            "~/*": ["./src/*"],
+            "$wasm/*": ["./config/encoder/*"],
+            "$config/*": ["./misc/config/*"],
+            "$tests/*": ["./tests/*"]
         },
-        "baseUrl": ".",
         "allowImportingTsExtensions": true,
-        "ignoreDeprecations": "6.0",
         "noUncheckedSideEffectImports": false
     },
     "exclude": ["node_modules", ".claude/worktrees"]

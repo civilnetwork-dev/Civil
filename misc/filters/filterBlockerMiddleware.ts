@@ -1,5 +1,6 @@
-import type { Express, RequestHandler } from "express";
+import type { Hono, MiddlewareHandler } from "hono";
 
+import { type AppEnv, clientIp } from "../http";
 import { posthog } from "./posthog";
 
 type Domain = `${string}.${string}`;
@@ -105,40 +106,40 @@ function isBlockedHostname(
 export function createFilterBlockerMiddleware(options?: {
     domains?: readonly Domain[];
     trustProxyHostHeader?: boolean;
-}): RequestHandler {
+}): MiddlewareHandler<AppEnv> {
     const domains = options?.domains ?? domainsToBlock;
 
-    return (req, res, next) => {
-        const rawHost =
+    return async (c, next) => {
+        const rawHost = c.req.header(
             options?.trustProxyHostHeader === true
-                ? req.headers["x-forwarded-host"]?.toString()
-                : req.headers.host;
+                ? "x-forwarded-host"
+                : "host",
+        );
 
-        if (!rawHost) {
-            next();
-            return;
-        }
+        if (!rawHost) return next();
 
         const hostname = normalizeHostname(rawHost);
 
         if (isBlockedHostname(hostname, domains)) {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_hostname_blocked",
                 properties: { hostname },
             });
-            res.status(403).json({
-                blocked: true,
-                reason: "Requested hostname matches a blocked domain.",
-                hostname,
-            });
-            return;
+            return c.json(
+                {
+                    blocked: true,
+                    reason: "Requested hostname matches a blocked domain.",
+                    hostname,
+                },
+                403,
+            );
         }
 
-        next();
+        return next();
     };
 }
 
-export function useFilterBlockerMiddleware(app: Express): void {
+export function useFilterBlockerMiddleware(app: Hono<AppEnv>): void {
     app.use(createFilterBlockerMiddleware());
 }

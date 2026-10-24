@@ -69,6 +69,7 @@ import {
     createHybridCaptchaSolver,
     FreeDnsClient,
     openTunnel,
+    type OpenTunnelOptions,
     pickTunnelDomain,
     sweepTunnelOrphans,
     type Tunnel,
@@ -185,7 +186,10 @@ async function hostnameResolvesPublicly(hostname: string): Promise<boolean> {
  * on an edge node that accepts the bare CNAME.
  */
 function tunnelAwareFetch(origin: string, hostname: string): typeof fetch {
-    return ((input: Parameters<typeof fetch>[0], init?: BunFetchRequestInit) => {
+    return ((
+        input: Parameters<typeof fetch>[0],
+        init?: BunFetchRequestInit,
+    ) => {
         const url = new URL(
             typeof input === "string" || input instanceof URL
                 ? input
@@ -383,6 +387,174 @@ async function probeVendorRoute(
     return second.flagged ? second : first;
 }
 
+/**
+ * Opens a tunnel to the local stack and waits until it answers, starting a
+ * fresh session when a warm-up times out. Throws when no attempt answers.
+ *
+ * openTunnel returns the instant the FreeDNS CNAME record is
+ * created, with no guarantee any resolver -- including this
+ * process's own -- already sees it. This wait's own fetches go
+ * through tunnelAwareFetch (see its doc comment), which routes
+ * around the other confirmed delay -- Cloudflare's edge not
+ * recognizing the CNAME'd hostname's SNI on some fraction of edge
+ * nodes -- so what's left to wait out here is genuinely just DNS
+ * propagation. A fresh session (new anycast route, new random label)
+ * is still attempted on a timeout as defense in depth against
+ * whatever this doesn't explain; each abandoned attempt is torn down
+ * before the next opens, so a few slow warm-ups don't leave a trail
+ * of orphaned subdomains.
+ */
+async function openReachableTunnel(
+    options: Omit<OpenTunnelOptions, "captchaAttempts">,
+): Promise<Tunnel> {
+    const MAX_TUNNEL_ATTEMPTS = 3;
+    // Long enough to actually outlast FreeDNS propagation, which has taken
+    // minutes on live runs. A fresh session can't speed that up -- it mints
+    // a new random label, restarting propagation from zero -- so timing out
+    // early here traded a record that was about to land for one that starts
+    // over. Retries stay for the failure a new session does fix: a tunnel
+    // that resolves but never answers.
+    const TUNNEL_WARMUP_TIMEOUT_MS = 300_000;
+    for (let attempt = 1; attempt <= MAX_TUNNEL_ATTEMPTS; attempt++) {
+        process.stdout.write(
+            `opening tunnel (attempt ${attempt}/${MAX_TUNNEL_ATTEMPTS})…\n`,
+        );
+        const candidate = await openTunnel({ ...options, captchaAttempts: 5 });
+        process.stdout.write(`tunnel up: ${candidate.url}\n`);
+
+        process.stdout.write("waiting for the tunnel to warm up…\n");
+        try {
+            await waitForTunnelReady(
+                candidate.url,
+                TUNNEL_WARMUP_TIMEOUT_MS,
+                tunnelAwareFetch(
+                    candidate.origin,
+                    new URL(candidate.url).hostname,
+                ),
+            );
+            process.stdout.write("tunnel is reachable\n");
+            return candidate;
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : String(error);
+            // Torn down before the next attempt opens, so a few failed
+            // warm-ups don't leave a trail of orphaned subdomains. A
+            // fresh session also gets a brand-new random label, which is
+            // the one thing that does help when the previous hostname is
+            // stuck in a resolver's negative cache.
+            await candidate.close();
+            process.stdout.write(
+                `tunnel not confirmed reachable (${message})${attempt < MAX_TUNNEL_ATTEMPTS ? " — opening a fresh session" : ""}\n`,
+            );
+        }
+    }
+    // Sweeping a tunnel that never confirmed reachable produces 180
+    // identical transport errors and no filter signal at all, so this
+    // stops instead: the run is worth nothing past here, and the
+    // ~45 minutes it would spend proving that are better not spent.
+    throw new Error(
+        `no tunnel confirmed reachable after ${MAX_TUNNEL_ATTEMPTS} attempts`,
+    );
+}
+
+interface SweepContext {
+    bundleRoot: string;
+    civilDir: string;
+    waitMs: number;
+    tunnel: Tunnel;
+    /** Vendors whose rating service already blocks the tunnel's hostname. */
+    ratedBlocked: Set<string>;
+}
+
+/** One route against one vendor's filter: a result, or the error that
+ *  vendor's bundle threw. */
+async function probeCell(
+    vendor: string,
+    folder: string,
+    route: CivilRoute,
+    ctx: SweepContext,
+): Promise<{ result: Result } | { error: ObservationError }> {
+    if (ctx.ratedBlocked.has(vendor)) {
+        const verdict: Verdict = {
+            vendor,
+            route: route.path,
+            flagged: true,
+            signal: {
+                kind: "domain-rating",
+                hostname: new URL(ctx.tunnel.url).hostname,
+            },
+        };
+        process.stdout.write(`FLAGGED  ${vendor} @ ${route.path}\n`);
+        return {
+            result: { verdict, suggestions: predictFix(verdict, ctx.civilDir) },
+        };
+    }
+    // One vendor's real-world bundle throwing (its own bug, not
+    // ours) must not void every other vendor's result — this is a
+    // sweep, and a partial one is still the point of it. Isolated
+    // per iteration rather than only hardening the sandbox itself:
+    // 28 independent, messy third-party bundles will keep finding
+    // new ways to throw.
+    try {
+        const verdict = await probeVendorRoute(vendor, folder, route, {
+            bundleRoot: ctx.bundleRoot,
+            tunnelUrl: ctx.tunnel.url,
+            tunnelOrigin: ctx.tunnel.origin,
+            waitMs: ctx.waitMs,
+        });
+        process.stdout.write(
+            `${verdict.flagged ? "FLAGGED " : "ok      "} ${vendor} @ ${route.path}\n`,
+        );
+        return {
+            result: {
+                verdict,
+                suggestions: verdict.flagged
+                    ? predictFix(verdict, ctx.civilDir)
+                    : [],
+            },
+        };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        process.stdout.write(
+            `error    ${vendor} @ ${route.path} — ${message}\n`,
+        );
+        return { error: { vendor, route: route.path, message } };
+    }
+}
+
+/** Every Civil route against every vendor's filter, through the tunnel. */
+async function sweepRoutes(
+    tunnel: Tunnel,
+    options: Pick<SweepContext, "bundleRoot" | "civilDir" | "waitMs">,
+): Promise<{ results: Result[]; errors: ObservationError[] }> {
+    // The picker vets the *base* domain; this is the same question asked
+    // of the hostname actually being served, by every vendor with a
+    // rating API, so a vendor that blocks the domain itself reports
+    // FLAGGED on every route rather than the "ok" a sandbox that never
+    // consults the vendor's cloud would give. Seen live: Securly rates
+    // meatballmanor.com as a proxy, and a sweep on it read all-clear.
+    const tunnelHost = new URL(tunnel.url).hostname;
+    const ratedBlocked = new Set((await classifyDomain(tunnelHost)).by);
+    if (ratedBlocked.size > 0)
+        process.stdout.write(
+            `${tunnelHost} is rated blocked by: ${[...ratedBlocked].join(", ")}\n`,
+        );
+
+    const ctx: SweepContext = { ...options, tunnel, ratedBlocked };
+    const results: Result[] = [];
+    const errors: ObservationError[] = [];
+    for (const route of CIVIL_ROUTES) {
+        for (const vendor of VENDORS) {
+            const folder = VENDOR_PRIMARY_FOLDER[vendor];
+            if (!folder) continue;
+            const cell = await probeCell(vendor, folder, route, ctx);
+            if ("result" in cell) results.push(cell.result);
+            else errors.push(cell.error);
+        }
+    }
+    return { results, errors };
+}
+
 async function main(): Promise<number> {
     const bundleRoot =
         process.env.CIVIL_FILTER_BUNDLES ??
@@ -401,8 +573,7 @@ async function main(): Promise<number> {
     const port = await freePort();
     let server: DockerStackHandle | undefined;
     let tunnel: Tunnel | undefined;
-    const results: Result[] = [];
-    const errors: ObservationError[] = [];
+    let sweep: { results: Result[]; errors: ObservationError[] };
 
     try {
         process.stdout.write(`starting docker-compose stack on :${port}\n`);
@@ -435,146 +606,14 @@ async function main(): Promise<number> {
                 : await pickTunnelDomain({ client });
         process.stdout.write(`using domain: ${domain.name}\n`);
 
-        // openTunnel returns the instant the FreeDNS CNAME record is
-        // created, with no guarantee any resolver -- including this
-        // process's own -- already sees it. This wait's own fetches go
-        // through tunnelAwareFetch (see its doc comment), which routes
-        // around the other confirmed delay -- Cloudflare's edge not
-        // recognizing the CNAME'd hostname's SNI on some fraction of edge
-        // nodes -- so what's left to wait out here is genuinely just DNS
-        // propagation. A fresh session (new anycast route, new random label)
-        // is still attempted on a timeout as defense in depth against
-        // whatever this doesn't explain; each abandoned attempt is torn down
-        // before the next opens, so a few slow warm-ups don't leave a trail
-        // of orphaned subdomains.
-        const MAX_TUNNEL_ATTEMPTS = 3;
-        // Long enough to actually outlast FreeDNS propagation, which has taken
-        // minutes on live runs. A fresh session can't speed that up -- it mints
-        // a new random label, restarting propagation from zero -- so timing out
-        // early here traded a record that was about to land for one that starts
-        // over. Retries stay for the failure a new session does fix: a tunnel
-        // that resolves but never answers.
-        const TUNNEL_WARMUP_TIMEOUT_MS = 300_000;
-        for (let attempt = 1; attempt <= MAX_TUNNEL_ATTEMPTS; attempt++) {
-            process.stdout.write(
-                `opening tunnel (attempt ${attempt}/${MAX_TUNNEL_ATTEMPTS})…\n`,
-            );
-            const candidate = await openTunnel({
-                port,
-                domain,
-                client,
-                captchaCode,
-                solveCaptcha,
-                captchaAttempts: 5,
-            });
-            process.stdout.write(`tunnel up: ${candidate.url}\n`);
-
-            process.stdout.write("waiting for the tunnel to warm up…\n");
-            try {
-                await waitForTunnelReady(
-                    candidate.url,
-                    TUNNEL_WARMUP_TIMEOUT_MS,
-                    tunnelAwareFetch(
-                        candidate.origin,
-                        new URL(candidate.url).hostname,
-                    ),
-                );
-                process.stdout.write("tunnel is reachable\n");
-                tunnel = candidate;
-                break;
-            } catch (error) {
-                const message =
-                    error instanceof Error ? error.message : String(error);
-                // Torn down before the next attempt opens, so a few failed
-                // warm-ups don't leave a trail of orphaned subdomains. A
-                // fresh session also gets a brand-new random label, which is
-                // the one thing that does help when the previous hostname is
-                // stuck in a resolver's negative cache.
-                await candidate.close();
-                process.stdout.write(
-                    `tunnel not confirmed reachable (${message})${attempt < MAX_TUNNEL_ATTEMPTS ? " — opening a fresh session" : ""}\n`,
-                );
-            }
-        }
-        // Sweeping a tunnel that never confirmed reachable produces 180
-        // identical transport errors and no filter signal at all, so this
-        // stops instead: the run is worth nothing past here, and the
-        // ~45 minutes it would spend proving that are better not spent.
-        if (!tunnel)
-            throw new Error(
-                `no tunnel confirmed reachable after ${MAX_TUNNEL_ATTEMPTS} attempts`,
-            );
-
-        // The picker vets the *base* domain; this is the same question asked
-        // of the hostname actually being served, by every vendor with a
-        // rating API, so a vendor that blocks the domain itself reports
-        // FLAGGED on every route rather than the "ok" a sandbox that never
-        // consults the vendor's cloud would give. Seen live: Securly rates
-        // meatballmanor.com as a proxy, and a sweep on it read all-clear.
-        const tunnelHost = new URL(tunnel.url).hostname;
-        const ratedBlocked = new Set(
-            (await classifyDomain(tunnelHost)).by,
-        );
-        if (ratedBlocked.size > 0)
-            process.stdout.write(
-                `${tunnelHost} is rated blocked by: ${[...ratedBlocked].join(", ")}\n`,
-            );
-
-        for (const route of CIVIL_ROUTES) {
-            for (const vendor of VENDORS) {
-                const folder = VENDOR_PRIMARY_FOLDER[vendor];
-                if (!folder) continue;
-                if (ratedBlocked.has(vendor)) {
-                    const verdict: Verdict = {
-                        vendor,
-                        route: route.path,
-                        flagged: true,
-                        signal: { kind: "domain-rating", hostname: tunnelHost },
-                    };
-                    results.push({
-                        verdict,
-                        suggestions: predictFix(verdict, civilDir),
-                    });
-                    process.stdout.write(`FLAGGED  ${vendor} @ ${route.path}\n`);
-                    continue;
-                }
-                // One vendor's real-world bundle throwing (its own bug, not
-                // ours) must not void every other vendor's result — this is a
-                // sweep, and a partial one is still the point of it. Isolated
-                // per iteration rather than only hardening the sandbox itself:
-                // 28 independent, messy third-party bundles will keep finding
-                // new ways to throw.
-                try {
-                    const verdict = await probeVendorRoute(
-                        vendor,
-                        folder,
-                        route,
-                        {
-                            bundleRoot,
-                            tunnelUrl: tunnel.url,
-                            tunnelOrigin: tunnel.origin,
-                            waitMs,
-                        },
-                    );
-                    results.push({
-                        verdict,
-                        suggestions: verdict.flagged
-                            ? predictFix(verdict, civilDir)
-                            : [],
-                    });
-                    process.stdout.write(
-                        `${verdict.flagged ? "FLAGGED " : "ok      "} ${vendor} @ ${route.path}\n`,
-                    );
-                } catch (error) {
-                    const message =
-                        error instanceof Error ? error.message : String(error);
-                    errors.push({ vendor, route: route.path, message });
-                    process.stdout.write(
-                        `error    ${vendor} @ ${route.path} — ${message}\n`,
-                    );
-                }
-            }
-        }
+        tunnel = await openReachableTunnel({
+            port,
+            domain,
+            client,
+            captchaCode,
+            solveCaptcha,
+        });
+        sweep = await sweepRoutes(tunnel, { bundleRoot, civilDir, waitMs });
     } finally {
         // Reverse order, best-effort: a failure tearing one down must not
         // strand the other. The tunnel close is what deletes the FreeDNS
@@ -586,6 +625,7 @@ async function main(): Promise<number> {
         }
     }
 
+    const { results, errors } = sweep;
     report(results, errors);
     return results.some(r => r.verdict.flagged) || errors.length > 0 ? 1 : 0;
 }

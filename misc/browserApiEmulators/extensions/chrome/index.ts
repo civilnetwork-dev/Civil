@@ -78,52 +78,6 @@ export function buildChromeShim(opts: import("./types").ShimOptions): string {
 `.trim();
 }
 
-export function resolveExtIcon(
-    extId: string,
-    manifest: import("./types").ChromeManifest,
-    preferredSize = 48,
-): string | null {
-    const icons =
-        manifest.icons ??
-        (
-            manifest.browser_action as
-                | { default_icon?: Record<string, string> }
-                | undefined
-        )?.default_icon ??
-        (
-            manifest.action as
-                | { default_icon?: Record<string, string> }
-                | undefined
-        )?.default_icon;
-
-    if (!icons) return null;
-    if (typeof icons === "string") return `/civil-ext/${extId}/${icons}`;
-
-    const sizes = Object.keys(icons)
-        .map(Number)
-        .filter(n => !Number.isNaN(n))
-        .toSorted((a, b) => a - b);
-    if (sizes.length === 0) return null;
-
-    const best =
-        sizes.find(s => s >= preferredSize) ?? sizes[sizes.length - 1]!;
-    const path = (icons as Record<string, string>)[String(best)];
-    return path ? `/civil-ext/${extId}/${path}` : null;
-}
-
-export function resolveExtPopupUrl(
-    extId: string,
-    manifest: import("./types").ChromeManifest,
-): string | null {
-    const popup =
-        (manifest.action as { default_popup?: string } | undefined)
-            ?.default_popup ??
-        (manifest.browser_action as { default_popup?: string } | undefined)
-            ?.default_popup ??
-        null;
-    return popup ? `/civil-ext/${extId}/${popup}` : null;
-}
-
 export function buildBackgroundShim(
     opts: import("./types").ShimOptions,
 ): string {

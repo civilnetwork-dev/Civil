@@ -1,4 +1,5 @@
 import { CivilEvent, makeNoopEvent } from "./event";
+import { multicastStubs } from "./socketStubs";
 import { dispatchBrowserEvent, getBiB, resolved } from "./util";
 
 const noopEvent = () => makeNoopEvent<(...a: never[]) => void>();
@@ -113,8 +114,9 @@ export const contentSettings = {
     unsandboxedPlugins: makeContentSetting(),
 };
 
-export const declarativeContent = {
-    onPageChanged: {
+/** A declarative rules event that keeps no rules and never fires. */
+function noopRulesEvent() {
+    return {
         addRules: (_rules: unknown[], cb?: () => void) => {
             if (cb) cb();
             return Promise.resolve([]);
@@ -128,7 +130,11 @@ export const declarativeContent = {
         removeListener: () => {},
         hasListener: () => false,
         hasListeners: () => false,
-    },
+    };
+}
+
+export const declarativeContent = {
+    onPageChanged: noopRulesEvent(),
     PageStateMatcher: class {},
     ShowAction: class {},
     ShowPageAction: class {},
@@ -137,21 +143,7 @@ export const declarativeContent = {
 };
 
 export const declarativeWebRequest = {
-    onRequest: {
-        addRules: (_rules: unknown[], cb?: () => void) => {
-            if (cb) cb();
-            return Promise.resolve([]);
-        },
-        removeRules: (_ids?: string[], cb?: () => void) => {
-            if (cb) cb();
-        },
-        getRules: (_ids?: string[], cb?: (r: unknown[]) => void) =>
-            resolved([], cb),
-        addListener: () => {},
-        removeListener: () => {},
-        hasListener: () => false,
-        hasListeners: () => false,
-    },
+    onRequest: noopRulesEvent(),
 };
 
 export const desktopCapture = {
@@ -914,28 +906,7 @@ export const socket = {
         if (cb) p.then(cb).catch(() => cb([]));
         return p;
     },
-    joinGroup: (
-        _socketId: number,
-        _address: string,
-        cb?: (result: number) => void,
-    ) => resolved(-1, cb),
-    leaveGroup: (
-        _socketId: number,
-        _address: string,
-        cb?: (result: number) => void,
-    ) => resolved(-1, cb),
-    setMulticastTimeToLive: (
-        _socketId: number,
-        _ttl: number,
-        cb?: (result: number) => void,
-    ) => resolved(-1, cb),
-    setMulticastLoopbackMode: (
-        _socketId: number,
-        _enabled: boolean,
-        cb?: (result: number) => void,
-    ) => resolved(-1, cb),
-    getJoinedGroups: (_socketId: number, cb?: (groups: string[]) => void) =>
-        resolved([], cb),
+    ...multicastStubs(),
     secure: (
         _socketId: number,
         _options?: unknown,
@@ -1226,16 +1197,7 @@ export const wallpaper = {
 };
 
 export const webAuthenticationProxy = {
-    requestFilter: {
-        addRules: (_rules: unknown[], cb?: () => void) => {
-            if (cb) cb();
-        },
-        removeRules: (_ids?: string[], cb?: () => void) => {
-            if (cb) cb();
-        },
-        getRules: (_ids?: string[], cb?: (r: unknown[]) => void) =>
-            resolved([], cb),
-    },
+    requestFilter: noopRulesEvent(),
     attach: (cb?: () => void) => resolved(undefined, cb),
     detach: (cb?: () => void) => resolved(undefined, cb),
     completeCreateRequest: (_details: unknown, cb?: () => void) =>

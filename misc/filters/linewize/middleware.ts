@@ -1,18 +1,12 @@
-import type { Express } from "express";
+import type { Hono } from "hono";
 
+import { type AppEnv, clientIp, readJsonBody } from "../../http";
 import { posthog } from "../posthog";
-import { isJsonEnabled } from "../utils/isJsonEnabled";
 import { createAutoLinewizeFilterChecker as createLinewizeFilterChecker } from "./checker";
 
-export function useLinewizeMiddleware(app: Express) {
-    app.post("/filterCheck/linewize", async (req, res) => {
-        if (!isJsonEnabled(app)) {
-            const { json } = await import("express");
-
-            app.use(json());
-        }
-
-        const { url, identity } = req.body as {
+export function useLinewizeMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/linewize", async c => {
+        const { url, identity } = (await readJsonBody(c)) as {
             url: string;
             identity: string;
         };
@@ -23,7 +17,7 @@ export function useLinewizeMiddleware(app: Express) {
 
         if (linewizeCheckerResult.isErr()) {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_error",
                 properties: {
                     filter: "linewize",
@@ -33,8 +27,9 @@ export function useLinewizeMiddleware(app: Express) {
                     phase: "checker_init",
                 },
             });
-            res.status(500).send(
+            return c.text(
                 `Internal Server Error - ${linewizeCheckerResult.error.type}: ${linewizeCheckerResult.error.message}`,
+                500,
             );
         } else {
             const checkResult = await linewizeCheckerResult.value.checkUrl({
@@ -43,7 +38,7 @@ export function useLinewizeMiddleware(app: Express) {
 
             if (checkResult.isOk()) {
                 posthog.capture({
-                    distinctId: req.ip ?? "unknown",
+                    distinctId: clientIp(c) ?? "unknown",
                     event: "filter_check",
                     properties: {
                         filter: "linewize",
@@ -53,7 +48,7 @@ export function useLinewizeMiddleware(app: Express) {
                         categories: checkResult.value.categories,
                     },
                 });
-                res.json({
+                return c.json({
                     blocked: checkResult.value.verdict === "BLOCK",
                     verdictIsKnown: checkResult.value.verdict !== "UNKNOWN",
                     categories: checkResult.value.categories,
@@ -61,7 +56,7 @@ export function useLinewizeMiddleware(app: Express) {
                 });
             } else {
                 posthog.capture({
-                    distinctId: req.ip ?? "unknown",
+                    distinctId: clientIp(c) ?? "unknown",
                     event: "filter_error",
                     properties: {
                         filter: "linewize",
@@ -71,8 +66,9 @@ export function useLinewizeMiddleware(app: Express) {
                         phase: "url_check",
                     },
                 });
-                res.status(500).send(
+                return c.text(
                     `Internal server error: ${checkResult.error.type} - ${checkResult.error.message}`,
+                    500,
                 );
             }
         }

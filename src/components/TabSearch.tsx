@@ -6,8 +6,8 @@ import { Portal } from "@solidjs/web";
 import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 
 import { IconSearch, IconWorld } from "~/components/icons";
+import { isNewtabUrl } from "~/lib/browserUrls";
 import type { Tab } from "~/lib/TabManager";
-import { isNewtabUrl } from "~/lib/TabManager";
 
 import * as s from "~/styles/TabSearch.css";
 

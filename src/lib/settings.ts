@@ -1,3 +1,4 @@
+import { hostKey } from "$config/shared/hostKey";
 import type { Accessor } from "solid-js";
 
 import { createReactiveKey, lsRemove, lsSetRaw } from "~/lib/reactiveStorage";
@@ -311,18 +312,11 @@ export function markSetupComplete(stamp = new Date().toISOString()): void {
     } catch {}
 }
 
-/** A hostname as the site rules and the best-proxy cache key it. */
+/** A hostname as the site rules and the best-proxy cache key it. A site rule
+ *  also needs a dot, so a bare word typed into the field is not a site. */
 export function normalizeHost(input: string): string | null {
-    let raw = input.trim();
-    if (!raw) return null;
-    if (!/^[a-z][\w+.-]*:\/\//i.test(raw)) raw = `https://${raw}`;
-    try {
-        const host = new URL(raw).hostname.toLowerCase();
-        if (!host.includes(".")) return null;
-        return host.startsWith("www.") ? host.slice(4) : host;
-    } catch {
-        return null;
-    }
+    const host = hostKey(input);
+    return host?.includes(".") ? host : null;
 }
 
 export const SEARCH_ENGINES = {

@@ -25,7 +25,9 @@ vi.mock("./securly/broker", () => ({
     checkStatus: async () => ok({ ...securly }),
 }));
 vi.mock("./cisco/security/checker", () => ({
-    createCiscoSecurityChecker: () => ({ checkUrl: async () => ok({ ...cisco }) }),
+    createCiscoSecurityChecker: () => ({
+        checkUrl: async () => ok({ ...cisco }),
+    }),
 }));
 vi.mock("./lightspeed/checker", () => ({
     checkLightspeedFilter: async () => ok({ ...lightspeed }),

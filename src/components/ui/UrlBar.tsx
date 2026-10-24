@@ -11,8 +11,8 @@ import {
     IconSearch,
 } from "~/components/icons";
 import { displayUrl, isProbablyUrl, WS_URL } from "~/lib/browserHelpers";
+import { resolveUrl } from "~/lib/browserUrls";
 import { getSetting } from "~/lib/settings";
-import { resolveUrl } from "~/lib/TabManager";
 import type { CivilHistoryEntry } from "~/types";
 
 import * as s from "~/styles/BrowserChrome.css";

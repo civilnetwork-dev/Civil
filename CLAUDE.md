@@ -1,13 +1,14 @@
-## Agent skills
+# CLAUDE.md
 
-### Issue tracker
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Issues live in GitHub Issues for `civilnetwork-dev/Civil`, driven via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+The guide shared by every coding agent is `AGENTS.md`, imported below. Put
+instructions that apply to any agent there, and keep only Claude Code specifics
+in this file.
 
-### Triage labels
+@AGENTS.md
 
-Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+## Claude Code specifics
 
-### Domain docs
-
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+- Save Playwright MCP screenshots under `.playwright-mcp/` (gitignored), with
+  absolute paths.

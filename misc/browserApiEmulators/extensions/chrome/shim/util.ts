@@ -1,6 +1,6 @@
 import type { BiBConfig } from "../types";
 
-let _bib: Required<BiBConfig> = {
+const DEFAULT_BIB: Required<BiBConfig> = {
     extPrefix: "/civil-ext/",
     origin: "",
     storagePersistence: "localStorage",
@@ -18,32 +18,28 @@ let _bib: Required<BiBConfig> = {
     features: {},
 };
 
+let _bib: Required<BiBConfig> = DEFAULT_BIB;
+
+/** `obj` without its null and undefined entries, so spreading it over the
+ *  defaults keeps a default wherever `??` would have. */
+function definedEntries<T extends object>(obj: T | undefined): Partial<T> {
+    return Object.fromEntries(
+        Object.entries(obj ?? {}).filter(([, value]) => value != null),
+    ) as Partial<T>;
+}
+
 export function initBiB(
     cfg: BiBConfig | undefined,
     fallbackOrigin: string,
 ): void {
     _bib = {
-        extPrefix: cfg?.extPrefix ?? "/civil-ext/",
+        ...DEFAULT_BIB,
+        ...definedEntries(cfg),
         origin: cfg?.origin ?? fallbackOrigin,
-        storagePersistence: cfg?.storagePersistence ?? "localStorage",
-        storageKey: cfg?.storageKey ?? "civil-ext-storage",
-        newTabEvent: cfg?.newTabEvent ?? "browser:newtab",
-        navigateEvent: cfg?.navigateEvent ?? "browser:navigate",
-        closeTabEvent: cfg?.closeTabEvent ?? "browser:closetab",
-        storagePostMessageType:
-            cfg?.storagePostMessageType ?? "civil-ext-storage",
-        storageSyncMessageType:
-            cfg?.storageSyncMessageType ?? "civil-ext-storage-sync",
         platformInfo: {
-            os: cfg?.platformInfo?.os ?? "win",
-            arch: cfg?.platformInfo?.arch ?? "x86-64",
-            nacl_arch: cfg?.platformInfo?.nacl_arch ?? "x86-64",
+            ...DEFAULT_BIB.platformInfo,
+            ...definedEntries(cfg?.platformInfo),
         },
-        currentTab: cfg?.currentTab ?? {},
-        currentWindow: cfg?.currentWindow ?? {},
-        incognito: cfg?.incognito ?? false,
-        messages: cfg?.messages ?? {},
-        features: cfg?.features ?? {},
     };
 }
 

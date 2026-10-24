@@ -1,3 +1,4 @@
+import { matchesAnyPattern } from "./matchPattern";
 import { extUrl, getBiB, getCivilBus, resolved } from "./util";
 
 type ExecBusMsg =
@@ -15,6 +16,83 @@ type ExecBusMsg =
           kind: "contentScriptRegister";
           scripts: chrome.scripting.RegisteredContentScript[];
       };
+
+/** A script or stylesheet path from an extension: absolute URLs stay as they
+ *  are, relative ones resolve against the extension. */
+function extensionAssetUrl(extId: string, file: string): string {
+    return file.startsWith("http") ? file : extUrl(extId, file);
+}
+
+/** Adds the registered content scripts whose patterns cover this page. */
+function injectRegisteredScripts(
+    extId: string,
+    scripts: chrome.scripting.RegisteredContentScript[],
+): void {
+    const pageUrl =
+        getBiB().currentTab?.url ??
+        (typeof window !== "undefined" ? window.location.href : "");
+    console.log(
+        `[civil-ext:scripting:content:${extId}] contentScriptRegister received`,
+        scripts,
+        "pageUrl=",
+        pageUrl,
+    );
+    for (const script of scripts) {
+        const patterns = script.matches;
+        if (patterns && !matchesAnyPattern(patterns, pageUrl)) continue;
+        for (const file of script.js ?? []) {
+            try {
+                const el = document.createElement("script");
+                // Resolve relative paths to extension URL
+                el.src = extensionAssetUrl(extId, file);
+                document.head?.appendChild(el);
+            } catch {}
+        }
+        for (const file of script.css ?? []) {
+            try {
+                const el = document.createElement("link");
+                el.rel = "stylesheet";
+                el.href = extensionAssetUrl(extId, file);
+                document.head?.appendChild(el);
+            } catch {}
+        }
+    }
+}
+
+/** Runs a background's executeScript request in this page and returns what
+ *  it produced. A request that throws produces nothing. */
+function runInjection(
+    extId: string,
+    {
+        code,
+        files,
+        funcStr,
+        args,
+    }: Extract<ExecBusMsg, { kind: "executeScript" }>,
+): unknown[] {
+    const results: unknown[] = [];
+    try {
+        if (funcStr) {
+            // eslint-disable-next-line no-new-func
+            const fn = new Function(`return (${funcStr})`)() as (
+                ...a: unknown[]
+            ) => unknown;
+            results.push(fn(...(args ?? [])));
+        } else if (code) {
+            // eslint-disable-next-line no-new-func
+            results.push(new Function(code)());
+        } else if (files) {
+            for (const file of files) {
+                const s = document.createElement("script");
+                s.src = extensionAssetUrl(extId, file);
+                document.head?.appendChild(s);
+            }
+        }
+    } catch (err) {
+        console.warn("[civil-ext-shim] executeScript from bus threw:", err);
+    }
+    return results;
+}
 
 export function buildScriptingAPI(contextType = "content", extId = "unknown") {
     const _registeredScripts = new Map<
@@ -46,110 +124,15 @@ export function buildScriptingAPI(contextType = "content", extId = "unknown") {
             const data = e.data as ExecBusMsg;
 
             if (data?.kind === "contentScriptRegister") {
-                const pageUrl =
-                    getBiB().currentTab?.url ??
-                    (typeof window !== "undefined" ? window.location.href : "");
-                console.log(
-                    `[civil-ext:scripting:content:${extId}] contentScriptRegister received`,
-                    data.scripts,
-                    "pageUrl=",
-                    pageUrl,
-                );
-                const matchesPat = (patterns: string[], url: string) => {
-                    try {
-                        const u = new URL(url);
-                        return patterns.some(p => {
-                            if (p === "<all_urls>") return true;
-                            const m =
-                                /^(\*|https?|ftp|file):\/\/(\*|[^/]*)(\/.*)?$/.exec(
-                                    p,
-                                );
-                            if (!m) return false;
-                            const [, pS, pH, pP = "/*"] = m;
-                            const sch = u.protocol.slice(0, -1);
-                            if (pS !== "*" && pS !== sch) return false;
-                            if (pH !== "*") {
-                                if (pH.startsWith("*.")) {
-                                    const base = pH.slice(2);
-                                    if (
-                                        u.hostname !== base &&
-                                        !u.hostname.endsWith("." + base)
-                                    )
-                                        return false;
-                                } else if (u.hostname !== pH) return false;
-                            }
-                            const pathQ = u.pathname + (u.search ?? "");
-                            return new RegExp(
-                                "^" +
-                                    pP
-                                        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-                                        .replace(/\*/g, ".*") +
-                                    "$",
-                            ).test(pathQ);
-                        });
-                    } catch {
-                        return false;
-                    }
-                };
-                for (const script of data.scripts) {
-                    const patterns = script.matches;
-                    if (patterns && !matchesPat(patterns, pageUrl)) continue;
-                    for (const file of script.js ?? []) {
-                        try {
-                            const el = document.createElement("script");
-                            // Resolve relative paths to extension URL
-                            el.src = file.startsWith("http")
-                                ? file
-                                : extUrl(extId, file);
-                            document.head?.appendChild(el);
-                        } catch {}
-                    }
-                    for (const file of script.css ?? []) {
-                        try {
-                            const el = document.createElement("link");
-                            el.rel = "stylesheet";
-                            el.href = file.startsWith("http")
-                                ? file
-                                : extUrl(extId, file);
-                            document.head?.appendChild(el);
-                        } catch {}
-                    }
-                }
+                injectRegisteredScripts(extId, data.scripts);
                 return;
             }
 
             if (data?.kind !== "executeScript") return;
-            const { reqId, code, files, funcStr, args } = data;
-            const results: unknown[] = [];
-            try {
-                if (funcStr) {
-                    // eslint-disable-next-line no-new-func
-                    const fn = new Function(`return (${funcStr})`)() as (
-                        ...a: unknown[]
-                    ) => unknown;
-                    results.push(fn(...(args ?? [])));
-                } else if (code) {
-                    // eslint-disable-next-line no-new-func
-                    results.push(new Function(code)());
-                } else if (files) {
-                    for (const file of files) {
-                        const s = document.createElement("script");
-                        s.src = file.startsWith("http")
-                            ? file
-                            : extUrl(extId, file);
-                        document.head?.appendChild(s);
-                    }
-                }
-            } catch (err) {
-                console.warn(
-                    "[civil-ext-shim] executeScript from bus threw:",
-                    err,
-                );
-            }
             bus.postMessage({
                 kind: "executeScriptResult",
-                reqId,
-                results,
+                reqId: data.reqId,
+                results: runInjection(extId, data),
             } satisfies ExecBusMsg);
         });
     }
@@ -237,9 +220,7 @@ export function buildScriptingAPI(contextType = "content", extId = "unknown") {
                     try {
                         const script = document.createElement("script");
                         // Resolve relative paths to extension URL
-                        script.src = file.startsWith("http")
-                            ? file
-                            : extUrl(extId, file);
+                        script.src = extensionAssetUrl(extId, file);
                         document.head?.appendChild(script);
                     } catch {}
                 }

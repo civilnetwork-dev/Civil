@@ -4,7 +4,7 @@ import { onSettled } from "solid-js";
 import { expect, it, vi } from "vitest";
 
 const releases = vi.hoisted(() => [vi.fn(), vi.fn(), vi.fn()]);
-vi.mock("@atlaskit/pragmatic-drag-and-drop/element/adapter", () => ({
+vi.mock("@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter", () => ({
     draggable: () => releases[0],
     dropTargetForElements: () => releases[1],
     monitorForElements: () => releases[2],

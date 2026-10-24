@@ -41,6 +41,53 @@ const TOLERANCE = 0.25;
 
 type Point = { x: number; y: number };
 
+/** The reader's position, where the current subpath began, and every point
+ *  it has passed through. */
+type Pen = {
+    x: number;
+    y: number;
+    startX: number;
+    startY: number;
+    out: Point[];
+};
+
+/** M and L: each coordinate pair moves or draws to a point. */
+function moveOrLine(pen: Pen, n: number[], rel: boolean, isMove: boolean) {
+    for (let i = 0; i + 1 < n.length; i += 2) {
+        pen.x = rel ? pen.x + n[i] : n[i];
+        pen.y = rel ? pen.y + n[i + 1] : n[i + 1];
+        pen.out.push({ x: pen.x, y: pen.y });
+        // A second coordinate pair after M is an implicit lineto,
+        // but the subpath still starts at the first one.
+        if (isMove && i === 0) {
+            pen.startX = pen.x;
+            pen.startY = pen.y;
+        }
+    }
+}
+
+/** H and V: each value moves along one axis. */
+function axisLine(pen: Pen, n: number[], rel: boolean, axis: "x" | "y") {
+    for (const v of n) {
+        pen[axis] = rel ? pen[axis] + v : v;
+        pen.out.push({ x: pen.x, y: pen.y });
+    }
+}
+
+/** C: both control points and the end point of each curve count as ink. */
+function curve(pen: Pen, n: number[], rel: boolean) {
+    for (let i = 0; i + 5 < n.length; i += 6) {
+        for (let k = 0; k < 6; k += 2) {
+            pen.out.push({
+                x: rel ? pen.x + n[i + k] : n[i + k],
+                y: rel ? pen.y + n[i + k + 1] : n[i + k + 1],
+            });
+        }
+        pen.x = rel ? pen.x + n[i + 4] : n[i + 4];
+        pen.y = rel ? pen.y + n[i + 5] : n[i + 5];
+    }
+}
+
 /**
  * A path-data reader covering the subset these icons use: M/L/H/V and their
  * relative forms, C for the one curved glyph, and Z.
@@ -50,70 +97,35 @@ type Point = { x: number; y: number };
  * for a centring check — and the only curved glyph is allow-listed anyway.
  */
 function pointsOf(d: string): Point[] {
-    const out: Point[] = [];
-    let x = 0;
-    let y = 0;
-    let startX = 0;
-    let startY = 0;
+    const pen: Pen = { x: 0, y: 0, startX: 0, startY: 0, out: [] };
 
     for (const [, cmd, rawArgs] of d.matchAll(
         /([MmLlHhVvCcZz])([^MmLlHhVvCcZz]*)/g,
     )) {
         const n = (rawArgs.match(/-?\d*\.?\d+/g) ?? []).map(Number);
         const rel = cmd === cmd.toLowerCase();
-        const push = () => out.push({ x, y });
 
         switch (cmd.toUpperCase()) {
             case "M":
-            case "L": {
-                for (let i = 0; i + 1 < n.length; i += 2) {
-                    x = rel ? x + n[i] : n[i];
-                    y = rel ? y + n[i + 1] : n[i + 1];
-                    push();
-                    // A second coordinate pair after M is an implicit lineto,
-                    // but the subpath still starts at the first one.
-                    if (cmd.toUpperCase() === "M" && i === 0) {
-                        startX = x;
-                        startY = y;
-                    }
-                }
+            case "L":
+                moveOrLine(pen, n, rel, cmd.toUpperCase() === "M");
                 break;
-            }
-            case "H": {
-                for (const v of n) {
-                    x = rel ? x + v : v;
-                    push();
-                }
+            case "H":
+                axisLine(pen, n, rel, "x");
                 break;
-            }
-            case "V": {
-                for (const v of n) {
-                    y = rel ? y + v : v;
-                    push();
-                }
+            case "V":
+                axisLine(pen, n, rel, "y");
                 break;
-            }
-            case "C": {
-                for (let i = 0; i + 5 < n.length; i += 6) {
-                    for (let k = 0; k < 6; k += 2) {
-                        out.push({
-                            x: rel ? x + n[i + k] : n[i + k],
-                            y: rel ? y + n[i + k + 1] : n[i + k + 1],
-                        });
-                    }
-                    x = rel ? x + n[i + 4] : n[i + 4];
-                    y = rel ? y + n[i + 5] : n[i + 5];
-                }
+            case "C":
+                curve(pen, n, rel);
                 break;
-            }
-            case "Z": {
-                x = startX;
-                y = startY;
+            case "Z":
+                pen.x = pen.startX;
+                pen.y = pen.startY;
                 break;
-            }
         }
     }
-    return out;
+    return pen.out;
 }
 
 /** Mount a glyph and collect every point in every path it draws. */

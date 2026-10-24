@@ -102,6 +102,7 @@ import { checkLightspeedFilter } from "./lightspeed/checker";
 import { createLinewizeFilterChecker } from "./linewize/checker";
 import { checkStatus } from "./securly/broker";
 import { decodeSecurlyCategoryId } from "./securly/categories";
+import { env, toHost } from "./utils/vendorInput";
 
 export type DomainVerdict = "BLOCK" | "ALLOW" | "UNKNOWN";
 
@@ -129,15 +130,6 @@ function withTimeout(work: Promise<DomainVerdict>): Promise<DomainVerdict> {
         );
     });
 }
-
-const toHost = (domain: string): string =>
-    domain
-        .replace(/^https?:\/\//, "")
-        .replace(/\/.*$/, "")
-        .trim();
-
-const env = (name: string, fallback: string): string =>
-    process.env[name] || fallback;
 
 // fortiguard, cisco and iboss each provision/cache state on construction, so
 // build one and share it across every domain — and lazily, so importing this

@@ -272,6 +272,30 @@ export default function ExtensionsPage() {
     const crxExts = () => extensions().filter(e => e.type === "crx");
     const xpiExts = () => extensions().filter(e => e.type === "xpi");
 
+    /** One kind of extension under its own rule, shown when any are installed. */
+    const section = (label: string, list: () => ExtensionListItem[]) => (
+        <Show when={list().length > 0}>
+            <div class={s.section}>
+                <Rule label={label} weight="major" />
+                <ul class={s.list}>
+                    <For each={list()} keyed={false}>
+                        {ext => (
+                            <ExtensionRow
+                                ext={ext()}
+                                armed={armedId() === ext().id}
+                                onToggle={v =>
+                                    extensionsSetEnabled(ext().id, v)
+                                }
+                                onArm={() => arm(ext().id)}
+                                onUninstall={() => handleUninstall(ext().id)}
+                            />
+                        )}
+                    </For>
+                </ul>
+            </div>
+        </Show>
+    );
+
     const enabledCount = () => extensions().filter(e => e.enabled).length;
 
     return (
@@ -386,51 +410,8 @@ export default function ExtensionsPage() {
                 </div>
             </Show>
 
-            <Show when={crxExts().length > 0}>
-                <div class={s.section}>
-                    <Rule label="Chrome extensions" weight="major" />
-                    <ul class={s.list}>
-                        <For each={crxExts()} keyed={false}>
-                            {ext => (
-                                <ExtensionRow
-                                    ext={ext()}
-                                    armed={armedId() === ext().id}
-                                    onToggle={v =>
-                                        extensionsSetEnabled(ext().id, v)
-                                    }
-                                    onArm={() => arm(ext().id)}
-                                    onUninstall={() =>
-                                        handleUninstall(ext().id)
-                                    }
-                                />
-                            )}
-                        </For>
-                    </ul>
-                </div>
-            </Show>
-
-            <Show when={xpiExts().length > 0}>
-                <div class={s.section}>
-                    <Rule label="Firefox extensions" weight="major" />
-                    <ul class={s.list}>
-                        <For each={xpiExts()} keyed={false}>
-                            {ext => (
-                                <ExtensionRow
-                                    ext={ext()}
-                                    armed={armedId() === ext().id}
-                                    onToggle={v =>
-                                        extensionsSetEnabled(ext().id, v)
-                                    }
-                                    onArm={() => arm(ext().id)}
-                                    onUninstall={() =>
-                                        handleUninstall(ext().id)
-                                    }
-                                />
-                            )}
-                        </For>
-                    </ul>
-                </div>
-            </Show>
+            {section("Chrome extensions", crxExts)}
+            {section("Firefox extensions", xpiExts)}
         </Sheet>
     );
 }

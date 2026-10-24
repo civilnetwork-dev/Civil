@@ -18,7 +18,13 @@ const NotFound = clientOnly(() => import("~/components/NotFound.tsx"));
 export function createRouter(history?: RouterHistory) {
     return createTanstackSolidRouter({
         history,
-        defaultErrorComponent: err => <div>{err.error.stack}</div>,
+        defaultErrorComponent: err => (
+            <div>
+                {err.error instanceof Error
+                    ? err.error.stack
+                    : String(err.error)}
+            </div>
+        ),
         defaultNotFoundComponent: NotFound,
         routeTree,
         defaultPreload: "intent",

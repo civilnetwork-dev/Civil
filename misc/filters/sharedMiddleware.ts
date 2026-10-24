@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { Express, Request, RequestHandler } from "express";
+import type { Hono, MiddlewareHandler } from "hono";
 import {
     type Oauth2StoredToken,
     PatreonUserClient,
@@ -10,8 +10,9 @@ import { RateLimiterMemory, type RateLimiterRes } from "rate-limiter-flexible";
 import { cached } from "../database/cache";
 import { db } from "../database/db";
 import { accounts } from "../database/schema";
-import { resolveSessionFromRequest } from "../database/session";
+import { resolveSessionFromHeaders } from "../database/session";
 import { requireEnv } from "../env";
+import { type AppEnv, clientIp } from "../http";
 import { posthog } from "./posthog";
 
 const BASE_RATE_LIMIT = 5;
@@ -144,35 +145,35 @@ async function getPatreonDollars(userId: string): Promise<number> {
     ).catch(() => 0);
 }
 
-function createSharedFilterMiddleware(route: `/${string}`): RequestHandler {
-    return async (req: Request, res, next) => {
-        if (req.method !== "POST" || !routeMatches(req.path, route)) {
+function createSharedFilterMiddleware(
+    route: `/${string}`,
+): MiddlewareHandler<AppEnv> {
+    return async (c, next) => {
+        if (c.req.method !== "POST" || !routeMatches(c.req.path, route)) {
             return next();
         }
 
+        const ip = clientIp(c);
         let userId: string | null = null;
+        let rateLimitHeaders: Record<string, string>;
         try {
-            const session = await resolveSessionFromRequest(req);
+            const session = await resolveSessionFromHeaders(c.req.raw.headers);
             userId = session?.user ? (session.user as { id: string }).id : null;
 
             const dollarsPaid = userId ? await getPatreonDollars(userId) : 0;
             const points = calculateLimit(dollarsPaid);
             const limiter = getLimiter(points);
-            const key = userId ? `user:${userId}` : `ip:${req.ip ?? "unknown"}`;
+            const key = userId ? `user:${userId}` : `ip:${ip ?? "unknown"}`;
 
             const result = await limiter.consume(key, 1);
 
-            res.setHeader("RateLimit-Limit", String(points));
-            res.setHeader(
-                "RateLimit-Remaining",
-                String(result.remainingPoints),
-            );
-            res.setHeader(
-                "RateLimit-Reset",
-                String(Math.ceil((Date.now() + result.msBeforeNext) / 1000)),
-            );
-
-            return next();
+            rateLimitHeaders = {
+                "RateLimit-Limit": String(points),
+                "RateLimit-Remaining": String(result.remainingPoints),
+                "RateLimit-Reset": String(
+                    Math.ceil((Date.now() + result.msBeforeNext) / 1000),
+                ),
+            };
         } catch (error) {
             const rateLimitError = error as RateLimiterRes;
 
@@ -181,37 +182,50 @@ function createSharedFilterMiddleware(route: `/${string}`): RequestHandler {
                     rateLimitError.msBeforeNext / 1000,
                 );
                 posthog.capture({
-                    distinctId: userId ?? req.ip ?? "unknown",
+                    distinctId: userId ?? ip ?? "unknown",
                     event: "filter_rate_limited",
                     properties: {
                         userId,
-                        ip: req.ip,
+                        ip,
                         route,
                         retryAfterSeconds,
                     },
                 });
-                res.setHeader("Retry-After", String(retryAfterSeconds));
-                res.setHeader("RateLimit-Remaining", "0");
-                return res
-                    .status(429)
-                    .json({ error: "Too many requests", retryAfterSeconds });
+                c.header("Retry-After", String(retryAfterSeconds));
+                c.header("RateLimit-Remaining", "0");
+                return c.json(
+                    { error: "Too many requests", retryAfterSeconds },
+                    429,
+                );
             }
 
             posthog.capture({
-                distinctId: userId ?? req.ip ?? "unknown",
+                distinctId: userId ?? ip ?? "unknown",
                 event: "filter_middleware_error",
                 properties: {
                     userId,
-                    ip: req.ip,
+                    ip,
                     route,
                     error: String(error),
                 },
             });
-            return next(error);
+            throw error;
+        }
+
+        // Outside the try: a failure in the filter check itself is that
+        // route's error, not this middleware's. The headers go on afterwards
+        // because a handler may return its own Response, which would not carry
+        // headers set on the context before it ran.
+        await next();
+        for (const [name, value] of Object.entries(rateLimitHeaders)) {
+            c.header(name, value);
         }
     };
 }
 
-export function useSharedFilterMiddleware(app: Express, route: `/${string}`) {
+export function useSharedFilterMiddleware(
+    app: Hono<AppEnv>,
+    route: `/${string}`,
+) {
     app.use(createSharedFilterMiddleware(route));
 }

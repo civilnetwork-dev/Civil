@@ -1,29 +1,25 @@
-import type { Express } from "express";
+import type { Hono } from "hono";
 
+import { type AppEnv, clientIp, readJsonBody } from "../../http";
 import { posthog } from "../posthog";
-import { isJsonEnabled } from "../utils/isJsonEnabled";
+import { respondFilterError } from "../utils/respondFilterError";
 import {
     checkLightspeedFilter,
     type LightspeedCheckerOptions,
 } from "./checker";
 
-export function useLightspeedMiddleware(app: Express) {
-    app.post("/filterCheck/lightspeed", async (req, res) => {
-        if (!isJsonEnabled(app)) {
-            const { json } = await import("express");
-            app.use(json());
-        }
-
-        const { url, blockedCategories, apiBaseUrl, timeoutMs } = req.body as {
-            url?: string;
-            blockedCategories?: string[];
-            apiBaseUrl?: string;
-            timeoutMs?: number;
-        };
+export function useLightspeedMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/lightspeed", async c => {
+        const { url, blockedCategories, apiBaseUrl, timeoutMs } =
+            (await readJsonBody(c)) as {
+                url?: string;
+                blockedCategories?: string[];
+                apiBaseUrl?: string;
+                timeoutMs?: number;
+            };
 
         if (!url) {
-            res.status(400).json({ error: "url is required." });
-            return;
+            return c.json({ error: "url is required." }, 400);
         }
 
         const options: LightspeedCheckerOptions = {
@@ -40,28 +36,7 @@ export function useLightspeedMiddleware(app: Express) {
         );
 
         if (result.isErr()) {
-            posthog.capture({
-                distinctId: req.ip ?? "unknown",
-                event: "filter_error",
-                properties: {
-                    filter: "lightspeed",
-                    url,
-                    errorType: result.error.type,
-                    errorMessage: result.error.message,
-                },
-            });
-
-            const statusCode =
-                result.error.type === "INVALID_URL"
-                    ? 400
-                    : result.error.type === "NETWORK"
-                      ? 502
-                      : 500;
-
-            res.status(statusCode).send(
-                `${result.error.type}: ${result.error.message}`,
-            );
-            return;
+            return respondFilterError(c, "lightspeed", url, result.error);
         }
 
         const {
@@ -74,7 +49,7 @@ export function useLightspeedMiddleware(app: Express) {
         } = result.value;
 
         posthog.capture({
-            distinctId: req.ip ?? "unknown",
+            distinctId: clientIp(c) ?? "unknown",
             event: "filter_check",
             properties: {
                 filter: "lightspeed",
@@ -87,7 +62,7 @@ export function useLightspeedMiddleware(app: Express) {
             },
         });
 
-        res.json({
+        return c.json({
             verdict,
             blocked,
             statusIsKnown: verdict !== "UNKNOWN",

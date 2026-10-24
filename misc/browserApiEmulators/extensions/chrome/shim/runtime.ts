@@ -284,154 +284,109 @@ export function buildRuntimeAPI(
     // pending sendMessage responses keyed by reqId
     const _pendingResponses = new Map<string, (r: unknown) => void>();
 
+    /**
+     * Hands a bus request to `event`'s listeners and posts one response back,
+     * from whichever comes first: a listener calling sendResponse, or a
+     * promise a listener returned.
+     */
+    function answerRequest(
+        event: typeof onMessage,
+        {
+            reqId,
+            message,
+            sender,
+        }: { reqId: string; message: unknown; sender: MessageSender },
+    ): void {
+        let responded = false;
+        const sendResponse = (r?: unknown) => {
+            if (responded) return;
+            responded = true;
+            bus.postMessage({
+                kind: "sendResponse",
+                reqId,
+                response: r,
+            } satisfies BusMsg);
+        };
+        const results = event.dispatch(
+            message,
+            sender,
+            sendResponse,
+        ) as unknown[];
+        const thenable = results.find(
+            r =>
+                r !== null &&
+                typeof r === "object" &&
+                typeof (r as { then?: unknown }).then === "function",
+        ) as Promise<unknown> | undefined;
+        if (thenable) {
+            thenable.then(sendResponse).catch(() => sendResponse(undefined));
+        }
+    }
+
+    function bridgePort(
+        data: { portId: string; portName: string; sender: MessageSender },
+        event: typeof onConnect,
+    ): void {
+        const port = new BusBridgedPort(
+            data.portId,
+            data.portName,
+            bus,
+            _contextId,
+            data.sender,
+        );
+        _busPorts.set(data.portId, port);
+        event.dispatch(port);
+    }
+
     bus.addEventListener("message", (e: MessageEvent) => {
         const data = e.data as BusMsg;
         if (!data?.kind) return;
 
-        if (data.kind === "sendMessage") {
-            // Don't process our own messages
-            if (data.from === _contextId) return;
-            const { reqId, message, sender } = data;
-            let responded = false;
-            const sendResponse = (r?: unknown) => {
-                if (!responded) {
-                    responded = true;
-                    bus.postMessage({
-                        kind: "sendResponse",
-                        reqId,
-                        response: r,
-                    } satisfies BusMsg);
+        switch (data.kind) {
+            case "sendMessage":
+                // Don't process our own messages
+                if (data.from !== _contextId) answerRequest(onMessage, data);
+                break;
+            case "sendMessageToTab":
+                if (contextType === "content" && data.from !== _contextId) {
+                    answerRequest(onMessage, data);
                 }
-            };
-            const results = onMessage.dispatch(
-                message,
-                sender,
-                sendResponse,
-            ) as unknown[];
-            const thenable = results.find(
-                r =>
-                    r !== null &&
-                    typeof r === "object" &&
-                    typeof (r as { then?: unknown }).then === "function",
-            ) as Promise<unknown> | undefined;
-            if (thenable) {
-                thenable
-                    .then(sendResponse)
-                    .catch(() => sendResponse(undefined));
-            }
-        }
-
-        if (data.kind === "sendMessageToTab") {
-            if (contextType !== "content") return;
-            if (data.from === _contextId) return;
-            const { reqId, message, sender } = data;
-            let responded = false;
-            const sendResponse = (r?: unknown) => {
-                if (!responded) {
-                    responded = true;
-                    bus.postMessage({
-                        kind: "sendResponse",
-                        reqId,
-                        response: r,
-                    } satisfies BusMsg);
+                break;
+            case "sendMessageExternal":
+                if (data.from !== _contextId) {
+                    answerRequest(onMessageExternal, data);
                 }
-            };
-            const results = onMessage.dispatch(
-                message,
-                sender,
-                sendResponse,
-            ) as unknown[];
-            const thenable = results.find(
-                r =>
-                    r !== null &&
-                    typeof r === "object" &&
-                    typeof (r as { then?: unknown }).then === "function",
-            ) as Promise<unknown> | undefined;
-            if (thenable) {
-                thenable
-                    .then(sendResponse)
-                    .catch(() => sendResponse(undefined));
-            }
-        }
-
-        if (data.kind === "sendResponse") {
-            const resolve = _pendingResponses.get(data.reqId);
-            if (resolve) {
-                _pendingResponses.delete(data.reqId);
-                resolve(data.response);
-            }
-        }
-
-        if (data.kind === "sendMessageExternal") {
-            if (data.from === _contextId) return;
-            const { reqId, message, sender } = data;
-            let responded = false;
-            const sendResponse = (r?: unknown) => {
-                if (!responded) {
-                    responded = true;
-                    bus.postMessage({
-                        kind: "sendResponse",
-                        reqId,
-                        response: r,
-                    } satisfies BusMsg);
+                break;
+            case "sendResponse": {
+                const resolve = _pendingResponses.get(data.reqId);
+                if (resolve) {
+                    _pendingResponses.delete(data.reqId);
+                    resolve(data.response);
                 }
-            };
-            const results = onMessageExternal.dispatch(
-                message,
-                sender,
-                sendResponse,
-            ) as unknown[];
-            const thenable = results.find(
-                r =>
-                    r !== null &&
-                    typeof r === "object" &&
-                    typeof (r as { then?: unknown }).then === "function",
-            ) as Promise<unknown> | undefined;
-            if (thenable) {
-                thenable
-                    .then(sendResponse)
-                    .catch(() => sendResponse(undefined));
+                break;
             }
-        }
-
-        if (data.kind === "connect") {
-            if (data.from === _contextId) return;
-            const port = new BusBridgedPort(
-                data.portId,
-                data.portName,
-                bus,
-                _contextId,
-                data.sender,
-            );
-            _busPorts.set(data.portId, port);
-            onConnect.dispatch(port);
-        }
-
-        if (data.kind === "connectExternal") {
-            if (data.from === _contextId) return;
-            const port = new BusBridgedPort(
-                data.portId,
-                data.portName,
-                bus,
-                _contextId,
-                data.sender,
-            );
-            _busPorts.set(data.portId, port);
-            onConnectExternal.dispatch(port);
-        }
-
-        if (data.kind === "portMessage") {
-            const port = _busPorts.get(data.portId);
-            if (port && data.from !== _contextId) {
-                port._receiveMessage(data.message);
+            case "connect":
+                if (data.from !== _contextId) bridgePort(data, onConnect);
+                break;
+            case "connectExternal":
+                if (data.from !== _contextId) {
+                    bridgePort(data, onConnectExternal);
+                }
+                break;
+            case "portMessage": {
+                const port = _busPorts.get(data.portId);
+                if (port && data.from !== _contextId) {
+                    port._receiveMessage(data.message);
+                }
+                break;
             }
-        }
-
-        if (data.kind === "portDisconnect") {
-            const port = _busPorts.get(data.portId);
-            if (port) {
-                _busPorts.delete(data.portId);
-                port._receiveDisconnect();
+            case "portDisconnect": {
+                const port = _busPorts.get(data.portId);
+                if (port) {
+                    _busPorts.delete(data.portId);
+                    port._receiveDisconnect();
+                }
+                break;
             }
         }
     });

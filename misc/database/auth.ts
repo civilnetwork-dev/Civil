@@ -22,6 +22,12 @@ export const auth = betterAuth({
     advanced: {
         database: {
             generateId: "uuid",
+            // better-auth 1.7 checks the Drizzle schema against its own on
+            // every auth request and fails the request on a mismatch. Its
+            // account model always has a `password` column, which Civil
+            // dropped (migration 20260610194037_strange_supernaut: there is
+            // no email/password sign-in), so the check could never pass.
+            validateSchema: false,
         },
         ipAddress: {
             ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],

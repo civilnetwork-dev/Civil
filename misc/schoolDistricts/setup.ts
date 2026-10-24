@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+    existsSync,
+    mkdirSync,
+    renameSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
 import { resolve } from "node:path";
 
 import { unzipSync } from "fflate";
@@ -41,7 +47,7 @@ export async function setupSchoolDistricts(): Promise<void> {
         .get();
     if (row && row.n > 0) return;
 
-    console.log("[school-districts] Downloading NCES shapefile (~50 MB)…");
+    console.log("[school-districts] Downloading NCES shapefile (~210 MB)…");
 
     const tmpDir = resolve(import.meta.dirname, "data", "tmp");
     mkdirSync(tmpDir, { recursive: true });
@@ -68,13 +74,18 @@ export async function setupSchoolDistricts(): Promise<void> {
         const { createWriteStream } = await import("node:fs");
         const { pipeline } = await import("node:stream/promises");
         const { Readable } = await import("node:stream");
-        const writer = createWriteStream(zipPath);
+        // Written beside the cache and renamed only once complete: an
+        // interrupted download left a truncated districts.zip behind, and
+        // every later start reused it and failed with "invalid zip data".
+        const partPath = `${zipPath}.part`;
+        const writer = createWriteStream(partPath);
         await pipeline(
             Readable.fromWeb(
                 res!.body as unknown as Parameters<typeof Readable.fromWeb>[0],
             ),
             writer,
         );
+        renameSync(partPath, zipPath);
         console.log("[school-districts] Download complete.");
     } else {
         console.log("[school-districts] Using cached zip…");
@@ -82,7 +93,19 @@ export async function setupSchoolDistricts(): Promise<void> {
 
     console.log("[school-districts] Extracting…");
     const zipBytes = new Uint8Array(await Bun.file(zipPath).arrayBuffer());
-    const extracted = unzipSync(zipBytes);
+    let extracted: ReturnType<typeof unzipSync>;
+    try {
+        // Only the geometry and attribute tables: inflating every entry of a
+        // ~200 MB archive in the server's own process is memory it never uses.
+        extracted = unzipSync(zipBytes, {
+            filter: file => /\.(shp|dbf)$/i.test(file.name),
+        });
+    } catch (error) {
+        // A damaged cache would fail the same way on every start; drop it so
+        // the next one downloads a fresh copy.
+        rmSync(zipPath, { force: true });
+        throw error;
+    }
 
     const shpName = Object.keys(extracted).find(f => f.endsWith(".shp"));
     if (!shpName) throw new Error("No .shp file found in NCES zip");

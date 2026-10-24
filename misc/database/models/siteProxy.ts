@@ -23,17 +23,7 @@ export interface ProxyDecision {
     reason: string;
 }
 
-export function normalizeHostname(input: string): string | null {
-    let raw = input.trim();
-    if (!raw) return null;
-    if (!/^[a-z][\w+.-]*:\/\//i.test(raw)) raw = `https://${raw}`;
-    try {
-        const host = new URL(raw).hostname.toLowerCase();
-        return host.startsWith("www.") ? host.slice(4) : host;
-    } catch {
-        return null;
-    }
-}
+export { hostKey as normalizeHostname } from "../../config/shared/hostKey";
 
 export async function getSiteProxyConfig(
     hostname: string,

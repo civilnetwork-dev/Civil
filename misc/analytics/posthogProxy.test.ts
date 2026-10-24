@@ -4,58 +4,27 @@
  * upstream response comes back with the stale encoding headers dropped.
  */
 
-import { Readable } from "node:stream";
-
-import type { Request, Response } from "express";
+import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createPosthogProxy } from "./posthogProxy";
+import type { AppEnv } from "../http";
+import { usePosthogProxy } from "./posthogProxy";
 
-function makeReq(opts: {
-    method?: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    /** Express's own resolved client IP (what `req.ip` returns on a real
-     *  request once `trust proxy` has been applied) -- not the raw socket
-     *  peer, which the proxy no longer reads. */
-    ip?: string | null;
-}): Request {
-    const req = Readable.from(
-        opts.body ? [Buffer.from(opts.body)] : [],
-    ) as unknown as Record<string, unknown>;
-    req.method = opts.method ?? "GET";
-    req.url = opts.url;
-    req.headers = opts.headers ?? {};
-    req.socket = { remoteAddress: "203.0.113.7" };
-    req.ip = opts.ip === undefined ? "203.0.113.7" : opts.ip;
-    return req as unknown as Request;
+/** Sends a request through the relay as mounted on the app. The socket peer
+ *  is what `clientIp` reports while `REVERSE_PROXY` is unset. */
+async function relay(
+    path: string,
+    init: RequestInit = {},
+    peer = "203.0.113.7",
+): Promise<Response> {
+    const app = new Hono<AppEnv>();
+    usePosthogProxy(app);
+    return app.request(`/api/relay${path}`, init, {
+        incoming: { socket: { remoteAddress: peer } },
+    } as unknown as AppEnv["Bindings"]);
 }
 
-function makeRes() {
-    const res = {
-        statusCode: 200,
-        headers: {} as Record<string, string>,
-        body: undefined as Buffer | undefined,
-        status(code: number) {
-            this.statusCode = code;
-            return this;
-        },
-        setHeader(name: string, value: string) {
-            this.headers[name.toLowerCase()] = value;
-        },
-        json(obj: unknown) {
-            this.body = Buffer.from(JSON.stringify(obj));
-            return this;
-        },
-        end(buf?: Buffer) {
-            this.body = buf;
-        },
-    };
-    return res;
-}
-
-describe("createPosthogProxy", () => {
+describe("usePosthogProxy", () => {
     afterEach(() => vi.restoreAllMocks());
 
     it("routes /static/ requests to the assets host", async () => {
@@ -64,11 +33,7 @@ describe("createPosthogProxy", () => {
             .mockResolvedValue(new Response("ok", { status: 200 }));
         vi.stubGlobal("fetch", fetchMock);
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({ url: "/static/array.js?v=2" }),
-            res as unknown as Response,
-        );
+        await relay("/static/array.js?v=2");
 
         expect(fetchMock.mock.calls[0]?.[0]).toBe(
             "https://us-assets.i.posthog.com/static/array.js?v=2",
@@ -81,19 +46,14 @@ describe("createPosthogProxy", () => {
             .mockResolvedValue(new Response("1", { status: 200 }));
         vi.stubGlobal("fetch", fetchMock);
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({
-                method: "POST",
-                url: "/e/?ver=1.2",
-                headers: {
-                    host: "civil.quartinal.me",
-                    "content-type": "text/plain",
-                },
-                body: "payload",
-            }),
-            res as unknown as Response,
-        );
+        await relay("/e/?ver=1.2", {
+            method: "POST",
+            headers: {
+                host: "civil.quartinal.me",
+                "content-type": "text/plain",
+            },
+            body: "payload",
+        });
 
         const [target, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         const headers = init.headers as Headers;
@@ -102,7 +62,9 @@ describe("createPosthogProxy", () => {
         expect(headers.get("host")).toBeNull();
         expect(headers.get("content-type")).toBe("text/plain");
         expect(headers.get("x-forwarded-for")).toBe("203.0.113.7");
-        expect(Buffer.from(init.body as Buffer).toString()).toBe("payload");
+        expect(Buffer.from(init.body as ArrayBuffer).toString()).toBe(
+            "payload",
+        );
     });
 
     it("strips cookie and authorization from forwarded headers", async () => {
@@ -111,20 +73,15 @@ describe("createPosthogProxy", () => {
             .mockResolvedValue(new Response("1", { status: 200 }));
         vi.stubGlobal("fetch", fetchMock);
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({
-                method: "POST",
-                url: "/e/",
-                headers: {
-                    cookie: "better-auth.session_token=secret",
-                    authorization: "Bearer secret",
-                    "content-type": "text/plain",
-                },
-                body: "payload",
-            }),
-            res as unknown as Response,
-        );
+        await relay("/e/", {
+            method: "POST",
+            headers: {
+                cookie: "better-auth.session_token=secret",
+                authorization: "Bearer secret",
+                "content-type": "text/plain",
+            },
+            body: "payload",
+        });
 
         const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
         const headers = init.headers as Headers;
@@ -148,29 +105,38 @@ describe("createPosthogProxy", () => {
             ),
         );
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({ url: "/flags/" }),
-            res as unknown as Response,
+        const res = await relay("/flags/");
+
+        expect(res.status).toBe(202);
+        expect(res.headers.get("x-keep")).toBe("1");
+        expect(res.headers.get("content-encoding")).toBeNull();
+        expect(res.headers.get("content-length")).not.toBe("999");
+        expect(await res.text()).toBe("body");
+    });
+
+    it("relays a 304 for a cached bundle without a body", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue(
+                new Response(null, {
+                    status: 304,
+                    headers: { etag: '"a"' },
+                }),
+            ),
         );
 
-        expect(res.statusCode).toBe(202);
-        expect(res.headers["x-keep"]).toBe("1");
-        expect(res.headers["content-encoding"]).toBeUndefined();
-        expect(res.headers["content-length"]).toBeUndefined();
-        expect(res.body?.toString()).toBe("body");
+        const res = await relay("/static/recorder.js", {
+            headers: { "if-none-match": '"a"' },
+        });
+
+        expect(res.status).toBe(304);
+        expect(res.headers.get("etag")).toBe('"a"');
     });
 
     it("answers 502 when the upstream is unreachable", async () => {
         vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("boom")));
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({ url: "/e/" }),
-            res as unknown as Response,
-        );
-
-        expect(res.statusCode).toBe(502);
+        expect((await relay("/e/")).status).toBe(502);
     });
 
     it("strips set-cookie from the relayed response", async () => {
@@ -184,43 +150,31 @@ describe("createPosthogProxy", () => {
             ),
         );
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({ url: "/e/" }),
-            res as unknown as Response,
-        );
+        const res = await relay("/e/");
 
-        expect(res.headers["set-cookie"]).toBeUndefined();
+        expect(res.headers.get("set-cookie")).toBeNull();
     });
 
     it("404s a path outside the allowlist instead of relaying it", async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal("fetch", fetchMock);
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({ url: "/organizations/whoami" }),
-            res as unknown as Response,
-        );
+        const res = await relay("/organizations/whoami");
 
-        expect(res.statusCode).toBe(404);
+        expect(res.status).toBe(404);
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("uses req.ip, not a client-supplied x-forwarded-for, for the visitor IP", async () => {
+    it("uses the resolved client IP, not a client-supplied x-forwarded-for", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValue(new Response("1", { status: 200 }));
         vi.stubGlobal("fetch", fetchMock);
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({
-                url: "/e/",
-                ip: "198.51.100.9",
-                headers: { "x-forwarded-for": "1.2.3.4, evil-spoofed" },
-            }),
-            res as unknown as Response,
+        await relay(
+            "/e/",
+            { headers: { "x-forwarded-for": "1.2.3.4, evil-spoofed" } },
+            "198.51.100.9",
         );
 
         const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -233,17 +187,12 @@ describe("createPosthogProxy", () => {
         const fetchMock = vi.fn();
         vi.stubGlobal("fetch", fetchMock);
 
-        const res = makeRes();
-        await createPosthogProxy()(
-            makeReq({
-                method: "POST",
-                url: "/e/",
-                body: "x".repeat(9 * 1024 * 1024),
-            }),
-            res as unknown as Response,
-        );
+        const res = await relay("/e/", {
+            method: "POST",
+            body: "x".repeat(9 * 1024 * 1024),
+        });
 
-        expect(res.statusCode).toBe(413);
+        expect(res.status).toBe(413);
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });

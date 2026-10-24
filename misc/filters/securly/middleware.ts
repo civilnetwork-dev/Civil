@@ -2,10 +2,10 @@ import {
     enableCache as enableIpCaching,
     lookup as lookupIp,
 } from "doc999tor-fast-geoip";
-import type { Express } from "express";
+import type { Hono } from "hono";
 
+import { type AppEnv, clientIp, readJsonBody } from "../../http";
 import { posthog } from "../posthog";
-import { isJsonEnabled } from "../utils/isJsonEnabled";
 import type { Email, Hostname } from "./broker";
 import { checkStatus } from "./broker";
 import { decodeSecurlyCategoryId } from "./categories";
@@ -20,23 +20,17 @@ interface MiddlewareResponse {
     categories?: string[];
 }
 
-export function useSecurlyMiddleware(app: Express) {
-    app.post("/filterCheck/securly", async (req, res) => {
+export function useSecurlyMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/securly", async c => {
         enableIpCaching();
 
-        if (!isJsonEnabled(app)) {
-            const { json } = await import("express");
-
-            app.use(json());
-        }
-
-        const { useremail, host, extensionId } = req.body as {
+        const { useremail, host, extensionId } = (await readJsonBody(c)) as {
             useremail: Email;
             host: Hostname;
             extensionId: string;
         };
 
-        const ipData = await lookupIp(req.ip!);
+        const ipData = await lookupIp(clientIp(c) ?? "");
         const [lat, lng] = ipData?.ll ?? [0, 0];
 
         const result = await checkStatus({
@@ -49,7 +43,7 @@ export function useSecurlyMiddleware(app: Express) {
 
         if (result.isErr()) {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_error",
                 properties: {
                     filter: "securly",
@@ -58,9 +52,7 @@ export function useSecurlyMiddleware(app: Express) {
                     errorMessage: result.error.message,
                 },
             });
-            res.status(500).send(
-                `${result.error.type}: ${result.error.message}`,
-            );
+            return c.text(`${result.error.type}: ${result.error.message}`, 500);
         } else {
             const { labels } = decodeSecurlyCategoryId(
                 result.value.categoryId!,
@@ -74,7 +66,7 @@ export function useSecurlyMiddleware(app: Express) {
                 decisionIsKnown: result.value.decision !== "UNKNOWN",
             };
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_check",
                 properties: {
                     filter: "securly",
@@ -83,7 +75,7 @@ export function useSecurlyMiddleware(app: Express) {
                     categories: Array.isArray(labels) ? labels : [labels],
                 },
             });
-            res.json({
+            return c.json({
                 decision,
                 categories: Array.isArray(labels) ? labels : [labels],
             } satisfies MiddlewareResponse);

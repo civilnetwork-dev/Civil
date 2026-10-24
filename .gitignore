@@ -103,3 +103,9 @@ misc/schoolDistricts/data/tmp/*
 
 # Original Brand Assets
 docs/brand/
+
+# Graphify Output Files
+graphify-out/
+
+# Future Folders
+.understand-anything/

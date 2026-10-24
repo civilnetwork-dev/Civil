@@ -1,5 +1,12 @@
 import mime from "mime/lite";
 import { encode } from "$config/shared/wasmDencode";
+import {
+    navConditionMatches,
+    navRedirectTarget,
+} from "$config/shared/dnrNavMatch";
+import { DNR_NAV_DIR, type DnrNavRule } from "$config/shared/dnrNavRules";
+import { getExtensionFile } from "$config/shared/extensionFile";
+import { jsDecode } from "$config/shared/xorCodec";
 
 importScripts("/scramjetController/controller.sw.js");
 
@@ -12,6 +19,39 @@ if (navigator.userAgent.includes("Firefox")) {
 
 const CIVIL_EXT_RE = /^\/civil-ext\/([^/]+)\/(.+)$/;
 
+/** Every extension's stored navigation-redirect rules (see dnrNavRules.ts). */
+async function* readNavRedirectRules(): AsyncGenerator<{
+    extId: string;
+    rules: DnrNavRule[];
+}> {
+    const opfsRoot = await navigator.storage.getDirectory();
+    let navDir: FileSystemDirectoryHandle;
+    try {
+        navDir = await opfsRoot.getDirectoryHandle(DNR_NAV_DIR);
+    } catch {
+        return; // directory doesn't exist yet
+    }
+    for await (const [fileName, handle] of (
+        navDir as FileSystemDirectoryHandle & {
+            entries(): AsyncIterable<[string, FileSystemHandle]>;
+        }
+    ).entries()) {
+        if (!fileName.endsWith(".json") || handle.kind !== "file") continue;
+        try {
+            const file = await (handle as FileSystemFileHandle).getFile();
+            const stored = JSON.parse(await file.text()) as
+                | DnrNavRule[]
+                | { extensionId?: string; rules?: DnrNavRule[] };
+            yield Array.isArray(stored)
+                ? { extId: fileName.slice(0, -5), rules: stored }
+                : {
+                      extId: stored.extensionId ?? fileName.split(".")[0]!,
+                      rules: stored.rules ?? [],
+                  };
+        } catch {}
+    }
+}
+
 /**
  * Check OPFS for static and runtime DNR navigation-redirect rules.
  * If a matching redirect rule is found for the given original URL, returns the
@@ -21,163 +61,32 @@ const CIVIL_EXT_RE = /^\/civil-ext\/([^/]+)\/(.+)$/;
 async function checkDNRNavRedirect(
     originalUrl: string,
 ): Promise<string | null> {
+    let url: URL;
     try {
-        const opfsRoot = await navigator.storage.getDirectory();
-        let navDir: FileSystemDirectoryHandle;
-        try {
-            navDir = await opfsRoot.getDirectoryHandle("_civil_dnr_nav");
-        } catch {
-            return null; // directory doesn't exist yet
-        }
-        for await (const [fileName, handle] of (
-            navDir as FileSystemDirectoryHandle & {
-                entries(): AsyncIterable<[string, FileSystemHandle]>;
-            }
-        ).entries()) {
-            if (!fileName.endsWith(".json") || handle.kind !== "file") continue;
+        url = new URL(originalUrl);
+    } catch {
+        return null;
+    }
+    try {
+        for await (const { extId, rules } of readNavRedirectRules()) {
+            // One malformed rule skips the rest of its file, not the others.
             try {
-                const file = await (handle as FileSystemFileHandle).getFile();
-                const stored = JSON.parse(await file.text()) as
-                    | unknown[]
-                    | { extensionId?: string; rules?: unknown[] };
-                const rules = Array.isArray(stored)
-                    ? stored
-                    : (stored.rules ?? []);
-                const extId = Array.isArray(stored)
-                    ? fileName.slice(0, -5)
-                    : (stored.extensionId ?? fileName.split(".")[0]);
                 for (const rule of rules) {
-                    const r = rule as Record<string, unknown>;
-                    const action = r.action as
-                        | Record<string, unknown>
-                        | undefined;
-                    const cond = r.condition as
-                        | Record<string, unknown>
-                        | undefined;
-                    if (action?.type !== "redirect") continue;
-
-                    const resourceTypes = cond?.resourceTypes as
-                        | string[]
-                        | undefined;
-                    if (
-                        resourceTypes &&
-                        !resourceTypes.includes("main_frame")
-                    ) {
+                    if (rule.action?.type !== "redirect") continue;
+                    if (!navConditionMatches(rule.condition, url, originalUrl)) {
                         continue;
                     }
-                    const requestMethods = cond?.requestMethods as
-                        | string[]
-                        | undefined;
-                    if (
-                        requestMethods &&
-                        !requestMethods.some(
-                            method => method.toLowerCase() === "get",
-                        )
-                    ) {
-                        continue;
-                    }
-
-                    let parsedUrl: URL;
-                    try {
-                        parsedUrl = new URL(originalUrl);
-                    } catch {
-                        continue;
-                    }
-                    const requestDomains = cond?.requestDomains as
-                        | string[]
-                        | undefined;
-                    if (
-                        requestDomains &&
-                        !requestDomains.some(
-                            domain =>
-                                parsedUrl.hostname === domain ||
-                                parsedUrl.hostname.endsWith(`.${domain}`),
-                        )
-                    ) {
-                        continue;
-                    }
-                    const excludedRequestDomains =
-                        cond?.excludedRequestDomains as string[] | undefined;
-                    if (
-                        excludedRequestDomains?.some(
-                            domain =>
-                                parsedUrl.hostname === domain ||
-                                parsedUrl.hostname.endsWith(`.${domain}`),
-                        )
-                    ) {
-                        continue;
-                    }
-
-                    // Match URL against condition
-                    const urlFilter = cond?.urlFilter as string | undefined;
-                    const regexFilter = cond?.regexFilter as string | undefined;
-                    let matched = false;
-                    if (regexFilter) {
-                        try {
-                            matched = new RegExp(regexFilter, "i").test(
-                                originalUrl,
-                            );
-                        } catch {
-                            /* invalid regex */
-                        }
-                    } else if (urlFilter) {
-                        // Simple glob: * = wildcard, treat as substring match for common patterns
-                        const escaped = urlFilter
-                            .replace(/[.+?^${}()[\]\\]/g, "\\$&")
-                            .replace(/\*/g, ".*");
-                        try {
-                            matched = new RegExp(escaped, "i").test(
-                                originalUrl,
-                            );
-                        } catch {
-                            /* invalid */
-                        }
-                    }
-                    if (!matched) continue;
-                    const redirect = action?.redirect as
-                        | Record<string, unknown>
-                        | undefined;
-                    let redirectUrl: string | null = null;
-                    if (redirect?.url && typeof redirect.url === "string") {
-                        redirectUrl = redirect.url;
-                    } else if (redirect?.regexSubstitution && regexFilter) {
-                        try {
-                            const flags = cond?.isUrlFilterCaseSensitive
-                                ? ""
-                                : "i";
-                            // DNR uses \0 (full match), \1, \2 … for capture groups.
-                            // JS String.replace uses $& / $1 / $2 …  Convert:
-                            const jsSub = (redirect.regexSubstitution as string)
-                                .replace(/\\0/g, "$$&")
-                                .replace(/\\([1-9])/g, "$$$1");
-                            redirectUrl = originalUrl.replace(
-                                new RegExp(regexFilter, flags),
-                                jsSub,
-                            );
-                        } catch {}
-                    } else if (
-                        redirect?.extensionPath &&
-                        typeof redirect.extensionPath === "string"
-                    ) {
-                        // Extension-relative path, possibly with placeholders
-                        const path = (redirect.extensionPath as string)
-                            .replace(/^\//, "")
-                            .replace(
-                                /\[\[SPEC_URL\]\]|%SPEC_URL%/g,
-                                encodeURIComponent(originalUrl),
-                            )
-                            .replace(
-                                /\[\[URL\]\]|%URL%/g,
-                                encodeURIComponent(originalUrl),
-                            );
-                        redirectUrl = `${self.location.origin}/civil-ext/${extId}/${path}`;
-                    }
-                    if (redirectUrl) {
-                        redirectUrl = redirectUrl.replace(
+                    const target = navRedirectTarget(
+                        rule,
+                        extId,
+                        originalUrl,
+                        self.location.origin,
+                    );
+                    if (target) {
+                        return target.replace(
                             /^chrome-extension:\/\/([^/]+)\//,
                             `${self.location.origin}/civil-ext/$1/`,
                         );
-                        return redirectUrl;
                     }
                 }
             } catch {}
@@ -209,17 +118,7 @@ async function serveCivilExt(request: Request): Promise<Response | null> {
 
     try {
         const opfsRoot = await navigator.storage.getDirectory();
-        const parts = `extensions/${extId}/${filePath}`
-            .split("/")
-            .filter(Boolean);
-
-        let dir: FileSystemDirectoryHandle = opfsRoot;
-        for (let i = 0; i < parts.length - 1; i++) {
-            dir = await dir.getDirectoryHandle(parts[i]!);
-        }
-        const fileName = parts[parts.length - 1]!;
-        const fileHandle = await dir.getFileHandle(fileName);
-        const file = await fileHandle.getFile();
+        const file = await getExtensionFile(extId, filePath);
 
         const contentType =
             mime.getType(filePath) ?? "application/octet-stream";
@@ -662,22 +561,6 @@ ${CIVIL_EXT_DETECT_STUB}
 
 const SCRAMJET_PREFIX = "/~/scramjet/";
 
-function decodeScramjetUrl(s: string): string {
-    const b: number[] = [];
-    for (let i = 0; i < s.length; i++) {
-        if (s[i] === "%" && i + 2 < s.length) {
-            b.push(parseInt(s.slice(i + 1, i + 3), 16));
-            i += 2;
-        } else b.push(s.charCodeAt(i));
-    }
-    for (let i = 1; i < b.length; i += 2) b[i] ^= 2;
-    try {
-        return decodeURIComponent(String.fromCharCode(...b));
-    } catch {
-        return s;
-    }
-}
-
 /** The real-origin `/civil-ext/` request a proxied URL decodes to, or null. */
 function unwrapCivilExt(originalUrl: string): Request | null {
     try {
@@ -703,7 +586,7 @@ function decodeProxiedUrl(encodedUrl: string): string | null {
             const segments = afterPrefix.split("/").filter(Boolean);
             const lastSegment = segments[segments.length - 1];
             if (!lastSegment) return null;
-            return decodeScramjetUrl(lastSegment);
+            return jsDecode(lastSegment);
         }
     } catch {}
     return null;
@@ -798,10 +681,36 @@ async function guardBannedRedirect(
     return bannedBlockResponse(target, request);
 }
 
-async function swResponse(event: FetchEvent) {
-    const { request } = event;
-    const url = new URL(request.url);
+const POPUP_PREFIXES = ["/action-popup/", "/options-tab/", "/ask-tab/"];
 
+/** An extension's popup, options or ask page, from the cache the browser
+ *  chrome fills in OPFS. */
+async function servePopupPage(cacheKey: string): Promise<Response> {
+    try {
+        const opfsRoot = await navigator.storage.getDirectory();
+        const cacheDir =
+            await opfsRoot.getDirectoryHandle("_civil_popup_cache");
+        const fileHandle = await cacheDir.getFileHandle(`${cacheKey}.html`);
+        const file = await fileHandle.getFile();
+        const html = await file.text();
+        return new Response(html, {
+            status: 200,
+            headers: {
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "no-store",
+            },
+        });
+    } catch {
+        return new Response("Popup not ready", { status: 503 });
+    }
+}
+
+/** The answer to a request for one of Civil's own extension or devtools
+ *  paths, or null when the request is not one of them. */
+async function civilPathResponse(
+    request: Request,
+    url: URL,
+): Promise<Response | null> {
     if (url.protocol === "chrome-extension:") {
         try {
             return await fetch(request);
@@ -835,41 +744,22 @@ async function swResponse(event: FetchEvent) {
         );
     }
 
-    if (
-        url.pathname.startsWith("/action-popup/") ||
-        url.pathname.startsWith("/options-tab/") ||
-        url.pathname.startsWith("/ask-tab/")
-    ) {
-        const prefix = url.pathname.startsWith("/options-tab/")
-            ? "/options-tab/"
-            : url.pathname.startsWith("/ask-tab/")
-              ? "/ask-tab/"
-              : "/action-popup/";
-        const cacheKey = url.pathname.slice(prefix.length);
-        try {
-            const opfsRoot = await navigator.storage.getDirectory();
-            const cacheDir =
-                await opfsRoot.getDirectoryHandle("_civil_popup_cache");
-            const fileHandle = await cacheDir.getFileHandle(`${cacheKey}.html`);
-            const file = await fileHandle.getFile();
-            const html = await file.text();
-            return new Response(html, {
-                status: 200,
-                headers: {
-                    "Content-Type": "text/html; charset=utf-8",
-                    "Cache-Control": "no-store",
-                },
-            });
-        } catch {
-            return new Response("Popup not ready", { status: 503 });
-        }
+    const popupPrefix = POPUP_PREFIXES.find(prefix =>
+        url.pathname.startsWith(prefix),
+    );
+    if (popupPrefix) {
+        return servePopupPage(url.pathname.slice(popupPrefix.length));
     }
 
-    const isScramjetRequest = url.pathname.startsWith(SCRAMJET_PREFIX);
-    if (!isScramjetRequest) {
-        return fetch(request);
-    }
+    return null;
+}
 
+/** A request under the scramjet prefix: a proxied page or one of its
+ *  subresources. */
+async function proxiedResponse(
+    event: FetchEvent,
+    request: Request,
+): Promise<Response> {
     const originalUrl = decodeProxiedUrl(request.url);
 
     // An extension content script running inside a proxied page asks for its
@@ -907,10 +797,7 @@ async function swResponse(event: FetchEvent) {
         return bannedBlockResponse(originalUrl, request);
     }
 
-    if (
-        isScramjetRequest &&
-        ($scramjetController as any).shouldRoute(event)
-    ) {
+    if (($scramjetController as any).shouldRoute(event)) {
         const response = (await ($scramjetController as any).route(
             event,
         )) as Response;
@@ -924,6 +811,20 @@ async function swResponse(event: FetchEvent) {
     }
 
     return await fetch(request);
+}
+
+async function swResponse(event: FetchEvent) {
+    const { request } = event;
+    const url = new URL(request.url);
+
+    const civilResponse = await civilPathResponse(request, url);
+    if (civilResponse) return civilResponse;
+
+    if (!url.pathname.startsWith(SCRAMJET_PREFIX)) {
+        return fetch(request);
+    }
+
+    return proxiedResponse(event, request);
 }
 
 self.addEventListener("install", (event: ExtendableEvent) => {

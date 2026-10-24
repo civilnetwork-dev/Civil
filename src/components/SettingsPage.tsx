@@ -125,6 +125,158 @@ function Section(props: {
     );
 }
 
+/** What happened when history was asked to move to `to`. */
+const moveNote = (result: MoveResult, to: HistoryLocation) =>
+    result.ok
+        ? `New pages are saved in ${PLACE_NAMES[to]} now.`
+        : result.reason === "full"
+          ? `History doesn't fit in ${PLACE_NAMES[to]} under the current space limit, so it stayed where it was.`
+          : `History couldn't be moved to ${PLACE_NAMES[to]}, so it stayed where it was.`;
+
+/** Where history lives, and how much of it there is, in a sentence. */
+const statusSentence = (st: HistoryStatus, compressed: boolean) => {
+    const pages = st.pages.localstorage + st.pages.indexeddb;
+    const size = st.size.localstorage + st.size.indexeddb;
+    const other = otherThan(st.writer);
+    const split =
+        st.pages[other] > 0
+            ? ` ${st.pages[other].toLocaleString()} of them are in ${PLACE_NAMES[other]}.`
+            : "";
+    const where = `New pages are saved in ${PLACE_NAMES[st.writer]}.`;
+    if (!pages) return `${where} History is empty.`;
+    return `${where} History holds ${pages.toLocaleString()} ${pages === 1 ? "page" : "pages"} in ${formatSize(size)}, ${compressed ? "compressed" : "as plain JSON"}.${split}`;
+};
+
+type Save = <K extends SettingKey>(key: K, value: SettingValue<K>) => void;
+
+/** How proxied pages are fetched, and what Civil does when one fails. */
+function ConnectionSection(props: { save: Save }) {
+    const transportAuto = useSetting("transportAuto");
+    const transport = useSetting("transport");
+    const sites = useSetting("transportSites");
+    const failover = useSetting("transportFailover");
+    const remember = useSetting("transportRemember");
+    const navTimeout = useSetting("navTimeout");
+    const wisp = useSetting("wispVersion");
+
+    const [lastChoice, setLastChoice] = createSignal(lastTransportChoice());
+    onSettled(() =>
+        onLsChange("civil:transport-last", () =>
+            setLastChoice(lastTransportChoice()),
+        ),
+    );
+
+    const [newMethod, setNewMethod] = createSignal<TransportName>("libcurl");
+    const siteList = () =>
+        Object.entries(sites()).toSorted(([a], [b]) => a.localeCompare(b));
+
+    const addRule = (host: string) =>
+        props.save("transportSites", { ...sites(), [host]: newMethod() });
+
+    const setRule = (host: string, method: TransportName) =>
+        props.save("transportSites", { ...sites(), [host]: method });
+
+    const removeRule = (host: string) => {
+        const next = { ...sites() };
+        delete next[host];
+        props.save("transportSites", next);
+    };
+
+    return (
+        <Section id="connection" title="Connection">
+            <ToggleRow
+                label="Pick a method for each site automatically"
+                hint={
+                    <>
+                        Civil tests each new site and uses the method it loads
+                        best with. Turned off, every site uses the default
+                        method and addresses aren't sent for testing.
+                        <Show when={lastChoice()}>
+                            {` The last site, ${lastChoice()!.host}, used ${lastChoice()!.transport} (${SOURCE[lastChoice()!.source]}).`}
+                        </Show>
+                    </>
+                }
+                checked={transportAuto()}
+                onChange={on => props.save("transportAuto", on)}
+            />
+            <ChoiceRow
+                label="Default method"
+                hint={TRANSPORT_NOTES[transport()]}
+                value={transport()}
+                options={TRANSPORT_OPTIONS}
+                onChange={value => props.save("transport", value)}
+            />
+            <div class={s.rules}>
+                <span class={s.rulesLabel}>Sites with their own method</span>
+                <span class={s.rulesHint}>
+                    These sites always use the method set here, whatever the
+                    settings above say.
+                </span>
+                <Show when={siteList().length > 0}>
+                    <ul class={s.ruleList}>
+                        <For each={siteList()}>
+                            {([host, method]) => (
+                                <li class={s.ruleItem}>
+                                    <span class={s.ruleHost}>{host}</span>
+                                    <Select
+                                        label={`Method for ${host}`}
+                                        value={method}
+                                        options={TRANSPORT_OPTIONS}
+                                        onChange={value => setRule(host, value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        class={s.ruleRemove}
+                                        aria-label={`Remove the rule for ${host}`}
+                                        onClick={() => removeRule(host)}
+                                    >
+                                        <IconClose size={14} />
+                                    </button>
+                                </li>
+                            )}
+                        </For>
+                    </ul>
+                </Show>
+                <HostForm label="Site" submitLabel="Add site" onAdd={addRule}>
+                    <Select
+                        label="Method for the new site"
+                        value={newMethod()}
+                        options={TRANSPORT_OPTIONS}
+                        onChange={setNewMethod}
+                    />
+                </HostForm>
+            </div>
+            <ChoiceRow
+                label="Wisp version"
+                hint={WISP_NOTE}
+                value={wisp()}
+                options={WISP_OPTIONS}
+                onChange={value => props.save("wispVersion", value)}
+            />
+            <ToggleRow
+                label="Switch methods when a page doesn't load"
+                hint="Tries the next method once on its own. Turned off, you choose one on the error page instead. Never overrides a site's own method."
+                checked={failover()}
+                onChange={on => props.save("transportFailover", on)}
+            />
+            <ToggleRow
+                label="Remember the method that worked"
+                hint="Makes the method Civil switched to your default, so the next visit starts with it."
+                checked={remember()}
+                disabled={!failover()}
+                onChange={on => props.save("transportRemember", on)}
+            />
+            <ChoiceRow
+                label="Give up on a page after"
+                hint="How long a page can take before Civil counts it as failed."
+                value={navTimeout()}
+                options={TIMEOUT_OPTIONS}
+                onChange={value => props.save("navTimeout", value)}
+            />
+        </Section>
+    );
+}
+
 export default function SettingsPage() {
     const [note, setNote] = createSignal("");
     const save = <K extends SettingKey>(key: K, value: SettingValue<K>) => {
@@ -139,12 +291,6 @@ export default function SettingsPage() {
     const searchTemplate = useSetting("searchTemplate");
     const suggestLive = useSetting("suggestLive");
     const suggestHistory = useSetting("suggestHistory");
-    const transportAuto = useSetting("transportAuto");
-    const transport = useSetting("transport");
-    const sites = useSetting("transportSites");
-    const failover = useSetting("transportFailover");
-    const remember = useSetting("transportRemember");
-    const navTimeout = useSetting("navTimeout");
     const historyEnabled = useSetting("historyEnabled");
     const location = useSetting("historyLocation");
     const format = useSetting("historyFormat");
@@ -158,35 +304,9 @@ export default function SettingsPage() {
     const motion = useSetting("motion");
     const compatReports = useSetting("compatReports");
     const filterDetect = useSetting("filterDetect");
-    const wisp = useSetting("wispVersion");
     const excluded = useSetting("historyExclude");
     const analytics = useSetting("analytics");
     const ads = useSetting("ads");
-
-    /* Connection */
-
-    const [lastChoice, setLastChoice] = createSignal(lastTransportChoice());
-    onSettled(() =>
-        onLsChange("civil:transport-last", () =>
-            setLastChoice(lastTransportChoice()),
-        ),
-    );
-
-    const [newMethod, setNewMethod] = createSignal<TransportName>("libcurl");
-    const siteList = () =>
-        Object.entries(sites()).toSorted(([a], [b]) => a.localeCompare(b));
-
-    const addRule = (host: string) =>
-        save("transportSites", { ...sites(), [host]: newMethod() });
-
-    const setRule = (host: string, method: TransportName) =>
-        save("transportSites", { ...sites(), [host]: method });
-
-    const removeRule = (host: string) => {
-        const next = { ...sites() };
-        delete next[host];
-        save("transportSites", next);
-    };
 
     /* History */
 
@@ -214,13 +334,6 @@ export default function SettingsPage() {
             refresh();
         }
     };
-
-    const moveNote = (result: MoveResult, to: HistoryLocation) =>
-        result.ok
-            ? `New pages are saved in ${PLACE_NAMES[to]} now.`
-            : result.reason === "full"
-              ? `History doesn't fit in ${PLACE_NAMES[to]} under the current space limit, so it stayed where it was.`
-              : `History couldn't be moved to ${PLACE_NAMES[to]}, so it stayed where it was.`;
 
     /** Puts history where `value` says, and says what happened. */
     const relocate = async (value: SettingValue<"historyLocation">) => {
@@ -352,19 +465,6 @@ export default function SettingsPage() {
         }
     };
 
-    const statusSentence = (st: HistoryStatus) => {
-        const pages = st.pages.localstorage + st.pages.indexeddb;
-        const size = st.size.localstorage + st.size.indexeddb;
-        const other = otherThan(st.writer);
-        const split =
-            st.pages[other] > 0
-                ? ` ${st.pages[other].toLocaleString()} of them are in ${PLACE_NAMES[other]}.`
-                : "";
-        const where = `New pages are saved in ${PLACE_NAMES[st.writer]}.`;
-        if (!pages) return `${where} History is empty.`;
-        return `${where} History holds ${pages.toLocaleString()} ${pages === 1 ? "page" : "pages"} in ${formatSize(size)}, ${format() === "compressed" ? "compressed" : "as plain JSON"}.${split}`;
-    };
-
     return (
         <Sheet>
             <TitleBlock title="Settings" icon={IconSliders} tint="stone" />
@@ -419,106 +519,7 @@ export default function SettingsPage() {
                 />
             </Section>
 
-            <Section id="connection" title="Connection">
-                <ToggleRow
-                    label="Pick a method for each site automatically"
-                    hint={
-                        <>
-                            Civil tests each new site and uses the method it
-                            loads best with. Turned off, every site uses the
-                            default method and addresses aren't sent for
-                            testing.
-                            <Show when={lastChoice()}>
-                                {` The last site, ${lastChoice()!.host}, used ${lastChoice()!.transport} (${SOURCE[lastChoice()!.source]}).`}
-                            </Show>
-                        </>
-                    }
-                    checked={transportAuto()}
-                    onChange={on => save("transportAuto", on)}
-                />
-                <ChoiceRow
-                    label="Default method"
-                    hint={TRANSPORT_NOTES[transport()]}
-                    value={transport()}
-                    options={TRANSPORT_OPTIONS}
-                    onChange={value => save("transport", value)}
-                />
-                <div class={s.rules}>
-                    <span class={s.rulesLabel}>
-                        Sites with their own method
-                    </span>
-                    <span class={s.rulesHint}>
-                        These sites always use the method set here, whatever the
-                        settings above say.
-                    </span>
-                    <Show when={siteList().length > 0}>
-                        <ul class={s.ruleList}>
-                            <For each={siteList()}>
-                                {([host, method]) => (
-                                    <li class={s.ruleItem}>
-                                        <span class={s.ruleHost}>{host}</span>
-                                        <Select
-                                            label={`Method for ${host}`}
-                                            value={method}
-                                            options={TRANSPORT_OPTIONS}
-                                            onChange={value =>
-                                                setRule(host, value)
-                                            }
-                                        />
-                                        <button
-                                            type="button"
-                                            class={s.ruleRemove}
-                                            aria-label={`Remove the rule for ${host}`}
-                                            onClick={() => removeRule(host)}
-                                        >
-                                            <IconClose size={14} />
-                                        </button>
-                                    </li>
-                                )}
-                            </For>
-                        </ul>
-                    </Show>
-                    <HostForm
-                        label="Site"
-                        submitLabel="Add site"
-                        onAdd={addRule}
-                    >
-                        <Select
-                            label="Method for the new site"
-                            value={newMethod()}
-                            options={TRANSPORT_OPTIONS}
-                            onChange={setNewMethod}
-                        />
-                    </HostForm>
-                </div>
-                <ChoiceRow
-                    label="Wisp version"
-                    hint={WISP_NOTE}
-                    value={wisp()}
-                    options={WISP_OPTIONS}
-                    onChange={value => save("wispVersion", value)}
-                />
-                <ToggleRow
-                    label="Switch methods when a page doesn't load"
-                    hint="Tries the next method once on its own. Turned off, you choose one on the error page instead. Never overrides a site's own method."
-                    checked={failover()}
-                    onChange={on => save("transportFailover", on)}
-                />
-                <ToggleRow
-                    label="Remember the method that worked"
-                    hint="Makes the method Civil switched to your default, so the next visit starts with it."
-                    checked={remember()}
-                    disabled={!failover()}
-                    onChange={on => save("transportRemember", on)}
-                />
-                <ChoiceRow
-                    label="Give up on a page after"
-                    hint="How long a page can take before Civil counts it as failed."
-                    value={navTimeout()}
-                    options={TIMEOUT_OPTIONS}
-                    onChange={value => save("navTimeout", value)}
-                />
-            </Section>
+            <ConnectionSection save={save} />
 
             <Section
                 id="history"
@@ -526,7 +527,9 @@ export default function SettingsPage() {
                 before={<HistoryFullNotice />}
             >
                 <p class={[s.summary, s.numbers]}>
-                    {status() ? statusSentence(status()!) : "Reading history."}
+                    {status()
+                        ? statusSentence(status()!, format() === "compressed")
+                        : "Reading history."}
                 </p>
                 <ToggleRow
                     label="Save history"

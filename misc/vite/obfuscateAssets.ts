@@ -20,13 +20,13 @@ export type ObfuscateAssetsOptions = {
     maxFileBytes?: number;
     /**
      * `obscura-rs` (default) is battle-tested; `obfuscatti` is this repo's
-     * own in-progress Zig port of js-confuser (see misc/obfuscatti/README.md),
+     * Zig port of JSDefender Core 2.12.0 (see misc/obfuscatti/README.md),
      * verified against real code but far newer and not yet proven at
      * obscura-rs's level of real-world use. Opt in explicitly here, or set
      * `OBFUSCATE_ENGINE=obfuscatti` for a one-off build without touching
      * config. Needs `misc/obfuscatti` built first (`cd misc/obfuscatti &&
-     * zig build`, with Zig 0.16.0 specifically -- see that README's "Known
-     * blocker") -- this throws a clear, actionable error if it isn't,
+     * zig build`, using the toolchain and dependency preparation in that
+     * README) -- this throws a clear, actionable error if it isn't,
      * rather than silently falling back, since a silent fallback would
      * mean "I asked for obfuscatti" quietly became "I got obscura-rs".
      */
@@ -62,7 +62,7 @@ function loadObfuscatti(): ObfuscattiBinding {
     if (!existsSync(OBFUSCATTI_NODE_PATH)) {
         throw new Error(
             `[obfuscate-assets] engine "obfuscatti" selected, but its native binding isn't built: ${OBFUSCATTI_NODE_PATH} not found. ` +
-                `Build it first: cd misc/obfuscatti && zig build (needs Zig 0.16.0 specifically -- see misc/obfuscatti/README.md's "Known blocker"). ` +
+                `Build it first using the toolchain and dependency preparation in misc/obfuscatti/README.md, then run cd misc/obfuscatti && zig build. ` +
                 `Or drop engine: "obfuscatti" / OBFUSCATE_ENGINE to use obscura-rs instead.`,
         );
     }

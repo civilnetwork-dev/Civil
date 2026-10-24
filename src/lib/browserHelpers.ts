@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 
+import { BROWSER_URLS } from "~/lib/browserUrls";
 import type { Tab } from "~/lib/TabManager";
-import { BROWSER_URLS } from "~/lib/TabManager";
 
 export function gstaticFavicon(url: string, size = 32): string {
     return `/api/favicon?url=${encodeURIComponent(url)}&size=${size}`;

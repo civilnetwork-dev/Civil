@@ -49,6 +49,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { walkFiles } from "../../walkFiles";
 import { resolveBackground } from "../manifest";
 
 /**
@@ -193,13 +194,35 @@ export interface FilterApiSurface {
     scannedFiles: number;
 }
 
-function walk(dir: string, out: string[] = []): string[] {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const path = join(dir, entry.name);
-        if (entry.isDirectory()) walk(path, out);
-        else out.push(path);
+interface ApiScan {
+    apis: Map<string, Set<string>>;
+    callbackCalls: Set<string>;
+    maxMessageListenerArity: number;
+}
+
+/** Records which extension APIs one file of a bundle touches, and how. */
+function scanFileText(text: string, scan: ApiScan): void {
+    for (const [, namespace, member] of text.matchAll(MEMBER)) {
+        if (!KNOWN_NAMESPACES.has(namespace!)) continue;
+        if (!scan.apis.has(namespace!)) scan.apis.set(namespace!, new Set());
+        scan.apis.get(namespace!)!.add(member!);
     }
-    return out;
+
+    const dense = text.replace(/\s+/g, "");
+    for (const [, a, b, c] of dense.matchAll(CALLBACK_CALL)) {
+        if (!KNOWN_NAMESPACES.has(a!)) continue;
+        scan.callbackCalls.add(b ? `${a}.${b}.${c}` : `${a}.${c}`);
+    }
+
+    for (const [, params = ""] of text.matchAll(MESSAGE_LISTENER)) {
+        const arity = params.trim()
+            ? params.split(",").filter(part => part.trim()).length
+            : 0;
+        scan.maxMessageListenerArity = Math.max(
+            scan.maxMessageListenerArity,
+            arity,
+        );
+    }
 }
 
 function scanBundle(dir: string): FilterApiSurface {
@@ -210,12 +233,14 @@ function scanBundle(dir: string): FilterApiSurface {
     );
     const background = resolveBackground(manifest).type;
 
-    const apis = new Map<string, Set<string>>();
-    const callbackCalls = new Set<string>();
-    let maxMessageListenerArity = 0;
+    const scan: ApiScan = {
+        apis: new Map(),
+        callbackCalls: new Set(),
+        maxMessageListenerArity: 0,
+    };
     let scannedFiles = 0;
 
-    for (const file of walk(dir)) {
+    for (const file of walkFiles(dir)) {
         if (!SCANNABLE.test(file)) continue;
         if (statSync(file).size > MAX_FILE_BYTES) continue;
         scannedFiles++;
@@ -225,24 +250,7 @@ function scanBundle(dir: string): FilterApiSurface {
         // truncating a file mid-scan.
         const text = readFileSync(file, "latin1");
 
-        for (const [, namespace, member] of text.matchAll(MEMBER)) {
-            if (!KNOWN_NAMESPACES.has(namespace!)) continue;
-            if (!apis.has(namespace!)) apis.set(namespace!, new Set());
-            apis.get(namespace!)!.add(member!);
-        }
-
-        const dense = text.replace(/\s+/g, "");
-        for (const [, a, b, c] of dense.matchAll(CALLBACK_CALL)) {
-            if (!KNOWN_NAMESPACES.has(a!)) continue;
-            callbackCalls.add(b ? `${a}.${b}.${c}` : `${a}.${c}`);
-        }
-
-        for (const [, params = ""] of text.matchAll(MESSAGE_LISTENER)) {
-            const arity = params.trim()
-                ? params.split(",").filter(part => part.trim()).length
-                : 0;
-            maxMessageListenerArity = Math.max(maxMessageListenerArity, arity);
-        }
+        scanFileText(text, scan);
     }
 
     return {
@@ -257,12 +265,12 @@ function scanBundle(dir: string): FilterApiSurface {
             manifest.declarative_net_request?.rule_resources ?? []
         ).length,
         apis: Object.fromEntries(
-            [...apis]
+            [...scan.apis]
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([ns, members]) => [ns, [...members].sort()]),
         ),
-        callbackCalls: [...callbackCalls].sort(),
-        maxMessageListenerArity,
+        callbackCalls: [...scan.callbackCalls].sort(),
+        maxMessageListenerArity: scan.maxMessageListenerArity,
         scannedFiles,
     };
 }

@@ -1,5 +1,7 @@
-import { err, ok, type Result, ResultAsync } from "neverthrow";
+import { ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
+
+import { normalizeHttpUrl } from "../utils/normalizeHttpUrl";
 
 enum BlocksiAction {
     Allow = 0,
@@ -384,30 +386,6 @@ type BlocksiRatingResponse = {
     };
 };
 
-function normalizeUrl(input: string): Result<URL, BlocksiError> {
-    try {
-        const value = /^https?:\/\//i.test(input) ? input : `https://${input}`;
-
-        const url = new URL(value);
-
-        if (!["http:", "https:"].includes(url.protocol)) {
-            return err({
-                type: "INVALID_URL",
-                input,
-                message: "Only HTTP(S) URLs are supported.",
-            });
-        }
-
-        return ok(url);
-    } catch {
-        return err({
-            type: "INVALID_URL",
-            input,
-            message: "Invalid URL.",
-        });
-    }
-}
-
 function normalizeHost(input: string): string {
     try {
         const value = /^https?:\/\//i.test(input) ? input : `https://${input}`;
@@ -547,7 +525,7 @@ class BlocksiFilterChecker {
     }
 
     checkUrl(input: string): ResultAsync<BlocksiDecision, BlocksiError> {
-        const parsed = normalizeUrl(input);
+        const parsed = normalizeHttpUrl(input);
 
         if (parsed.isErr()) {
             return ResultAsync.fromPromise(

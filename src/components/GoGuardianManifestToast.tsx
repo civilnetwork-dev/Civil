@@ -1,6 +1,10 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal } from "solid-js";
 
-import { IconClose } from "~/components/icons";
+import {
+    ContributionActions,
+    ContributionHeader,
+    submitContribution,
+} from "~/components/ContributionToast";
 
 import * as s from "~/styles/GoGuardianManifestToast.css";
 
@@ -62,21 +66,14 @@ export default function GoGuardianManifestToast(props: Props) {
         setSubmitting(true);
         setError(null);
         try {
-            const res = await fetch("/api/goguardian/submit-manifest-key", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+            const data = await submitContribution<{ extensionId: string }>(
+                "/api/goguardian/submit-manifest-key",
+                {
                     manifestKey: key,
                     leaId: props.leaId,
                     districtName: props.districtName,
-                }),
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                setError(text.slice(0, 120) || `HTTP ${res.status}`);
-                return;
-            }
-            const data = (await res.json()) as { extensionId: string };
+                },
+            );
             props.onSubmit(data.extensionId);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Network error");
@@ -91,22 +88,11 @@ export default function GoGuardianManifestToast(props: Props) {
             role="dialog"
             aria-label="Share GoGuardian manifest key"
         >
-            <div class={s.header}>
-                <div class={s.titleGroup}>
-                    <h3 class={s.title}>Improve GoGuardian filter checking</h3>
-                    <span class={s.districtName} title={props.districtName}>
-                        {props.districtName}
-                    </span>
-                </div>
-                <button
-                    class={s.dismissBtn}
-                    onClick={props.onDismiss}
-                    aria-label="Dismiss"
-                    type="button"
-                >
-                    <IconClose />
-                </button>
-            </div>
+            <ContributionHeader
+                title="Improve GoGuardian filter checking"
+                districtName={props.districtName}
+                onDismiss={props.onDismiss}
+            />
 
             <p class={s.description}>
                 No GoGuardian manifest key on file for your school district.
@@ -146,27 +132,13 @@ export default function GoGuardianManifestToast(props: Props) {
                 spellcheck="false"
             />
 
-            <Show when={error()}>
-                <p class={s.errorText}>{error()}</p>
-            </Show>
-
-            <div class={s.actions}>
-                <button
-                    class={s.cancelBtn}
-                    type="button"
-                    onClick={props.onDismiss}
-                >
-                    Skip
-                </button>
-                <button
-                    class={s.submitBtn}
-                    type="button"
-                    disabled={!manifestKey().trim() || submitting()}
-                    onClick={() => void handleSubmit()}
-                >
-                    {submitting() ? "Submitting…" : "Submit"}
-                </button>
-            </div>
+            <ContributionActions
+                error={error()}
+                canSubmit={!!manifestKey().trim()}
+                submitting={submitting()}
+                onSkip={props.onDismiss}
+                onSubmit={() => void handleSubmit()}
+            />
         </div>
     );
 }

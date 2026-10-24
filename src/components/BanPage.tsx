@@ -1,31 +1,17 @@
-import { createSignal, onSettled, Show } from "solid-js";
+import { Show } from "solid-js";
 
 import { IconBan } from "~/components/icons";
 import Specimen from "~/components/Specimen";
 import StrikeGauge from "~/components/StrikeGauge";
+import { createViolationsStatus } from "~/lib/violations";
 
 import * as s from "~/styles/BanPage.css";
 
 /** The specimen wears the severity band's tone. */
 const SPECIMEN_TINT = { banned: "wine", restricted: "sandstone" } as const;
 
-type ViolationsData = {
-    authenticated: boolean;
-    banned: boolean;
-    banReason: string | null;
-    violations: number;
-    maxViolations: number;
-};
-
 export default function BanPage({ banReason }: { banReason: string }) {
-    const [status, setStatus] = createSignal<ViolationsData | null>(null);
-
-    onSettled(() => {
-        void fetch("/api/violations")
-            .then(r => r.json())
-            .then((data: ViolationsData) => setStatus(data))
-            .catch(() => {});
-    });
+    const status = createViolationsStatus();
 
     const isPermanentlyBanned = () => status()?.banned === true;
     const tone = () => (isPermanentlyBanned() ? "banned" : "restricted");

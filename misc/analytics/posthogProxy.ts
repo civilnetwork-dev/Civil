@@ -1,4 +1,7 @@
-import type { Express, Request, Response } from "express";
+import type { Context, Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+
+import { type AppEnv, clientIp } from "../http";
 
 /**
  * First-party path that browser analytics talk to instead of PostHog directly.
@@ -18,8 +21,8 @@ const ASSETS_HOST = "https://us-assets.i.posthog.com";
 
 /**
  * Path prefixes this relay actually forwards. Anything else 404s here rather
- * than being relayed to PostHog: `${upstream}${req.url}` forwards `req.url`
- * verbatim, so without an allowlist this endpoint is an open relay to any
+ * than being relayed to PostHog: the relay forwards the rest of the request
+ * path verbatim, so without an allowlist this endpoint is an open relay to any
  * path on either PostHog host, not just the ingestion/asset surface
  * `posthog-js` actually uses. Verified against the installed posthog-js
  * (1.410.4) bundle itself, not assumed: `analyticsDefaultEndpoint` is
@@ -76,6 +79,13 @@ const RESPONSE_STRIP = new Set([
     "set-cookie",
 ]);
 
+/**
+ * Statuses whose response must not carry a body. `new Response()` throws when
+ * given one alongside a body, even an empty buffer, and PostHog's asset CDN
+ * answers a browser's conditional request for a cached bundle with 304.
+ */
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
 /** A batched `$snapshot` (session replay) request is the largest legitimate
  *  payload this ever forwards; PostHog's own capture endpoint rejects
  *  anything bigger anyway. Bounding it here means a hostile client can't make
@@ -83,99 +93,73 @@ const RESPONSE_STRIP = new Set([
  *  ever gets a say. */
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
-function flatten(value: string | string[] | undefined): string | undefined {
-    return Array.isArray(value) ? value.join(", ") : value;
-}
-
-function readBody(req: Request): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-        const chunks: Buffer[] = [];
-        let total = 0;
-        req.on("data", (chunk: Buffer) => {
-            total += chunk.length;
-            if (total > MAX_BODY_BYTES) {
-                req.destroy();
-                reject(new Error("body too large"));
-                return;
-            }
-            chunks.push(chunk);
-        });
-        req.on("end", () => resolve(Buffer.concat(chunks)));
-        req.on("error", reject);
-    });
-}
-
-function buildForwardHeaders(req: Request): Headers {
+function buildForwardHeaders(c: Context<AppEnv>): Headers {
     const headers = new Headers();
-    for (const [name, value] of Object.entries(req.headers)) {
-        const flat = flatten(value);
-        if (flat === undefined || REQUEST_STRIP.has(name.toLowerCase())) {
-            continue;
-        }
-        headers.set(name, flat);
-    }
+    c.req.raw.headers.forEach((value, name) => {
+        if (!REQUEST_STRIP.has(name.toLowerCase())) headers.set(name, value);
+    });
 
     // Keep the visitor's IP in the chain so PostHog can still geolocate the
     // event; without it every proxied event reports this server's location.
-    // `req.ip`, not `req.socket.remoteAddress`: run.ts sets `trust proxy: 1`,
-    // so the socket's peer is the one trusted reverse-proxy hop in front of
-    // this process, not the visitor -- forwarding it would geolocate every
-    // event to wherever that hop runs. `req.ip` is Express's own resolution
-    // of the real client through that trusted hop, with the trust-proxy
-    // split already applied -- unlike the raw incoming `x-forwarded-for`
-    // header, it can't carry extra entries a client prepended themselves, so
-    // it replaces that header rather than extending it.
-    if (req.ip) headers.set("x-forwarded-for", req.ip);
+    // `clientIp`, not the socket's peer: behind `REVERSE_PROXY` that peer is
+    // the one trusted reverse-proxy hop in front of this process, not the
+    // visitor -- forwarding it would geolocate every event to wherever that
+    // hop runs. `clientIp` resolves the real client through that trusted hop,
+    // the way Express's `req.ip` did under `trust proxy: 1` -- unlike the raw
+    // incoming `x-forwarded-for` header, it can't carry extra entries a client
+    // prepended themselves, so it replaces that header rather than extending
+    // it.
+    const ip = clientIp(c);
+    if (ip) headers.set("x-forwarded-for", ip);
 
     return headers;
 }
 
 /** How long to wait on PostHog before giving up. A stalled upstream must not
- *  hold this connection (and, via `readBody`'s buffered body, its memory)
+ *  hold this connection (and, via the buffered request body, its memory)
  *  open indefinitely. */
 const UPSTREAM_TIMEOUT_MS = 10_000;
 
-export function createPosthogProxy() {
-    return async (req: Request, res: Response): Promise<void> => {
-        const path = req.url.split("?")[0] ?? "";
-        if (!ALLOWED_PREFIXES.some(prefix => path.startsWith(prefix))) {
-            res.status(404).end();
-            return;
-        }
-        const upstream = path.startsWith("/static/")
-            ? ASSETS_HOST
-            : INGESTION_HOST;
-        const hasBody = req.method !== "GET" && req.method !== "HEAD";
+async function relay(c: Context<AppEnv>): Promise<Response> {
+    const url = new URL(c.req.url);
+    const path = url.pathname.slice(POSTHOG_PROXY_PREFIX.length);
+    if (!ALLOWED_PREFIXES.some(prefix => path.startsWith(prefix))) {
+        return c.body(null, 404);
+    }
+    const upstream = path.startsWith("/static/") ? ASSETS_HOST : INGESTION_HOST;
+    const hasBody = c.req.method !== "GET" && c.req.method !== "HEAD";
 
-        try {
-            const body = hasBody
-                ? ((await readBody(req)) as unknown as BodyInit)
-                : undefined;
-            const response = await fetch(`${upstream}${req.url}`, {
-                method: req.method,
-                headers: buildForwardHeaders(req),
-                body,
-                redirect: "manual",
-                signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-            });
+    try {
+        const response = await fetch(`${upstream}${path}${url.search}`, {
+            method: c.req.method,
+            headers: buildForwardHeaders(c),
+            body: hasBody ? await c.req.arrayBuffer() : undefined,
+            redirect: "manual",
+            signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        });
 
-            res.status(response.status);
-            response.headers.forEach((value, name) => {
-                if (!RESPONSE_STRIP.has(name.toLowerCase())) {
-                    res.setHeader(name, value);
-                }
-            });
-            res.end(Buffer.from(await response.arrayBuffer()));
-        } catch (error) {
-            const tooLarge =
-                error instanceof Error && error.message === "body too large";
-            res.status(tooLarge ? 413 : 502).json({
-                error: tooLarge ? "payload too large" : "capture proxy failed",
-            });
-        }
-    };
+        const headers = new Headers();
+        response.headers.forEach((value, name) => {
+            if (!RESPONSE_STRIP.has(name.toLowerCase())) {
+                headers.set(name, value);
+            }
+        });
+        const body = NULL_BODY_STATUSES.has(response.status)
+            ? null
+            : await response.arrayBuffer();
+        return new Response(body, { status: response.status, headers });
+    } catch {
+        return c.json({ error: "capture proxy failed" }, 502);
+    }
 }
 
-export function usePosthogProxy(app: Express): void {
-    app.use(POSTHOG_PROXY_PREFIX, createPosthogProxy());
+export function usePosthogProxy(app: Hono<AppEnv>): void {
+    app.all(
+        `${POSTHOG_PROXY_PREFIX}/*`,
+        bodyLimit({
+            maxSize: MAX_BODY_BYTES,
+            onError: c => c.json({ error: "payload too large" }, 413),
+        }),
+        relay,
+    );
 }

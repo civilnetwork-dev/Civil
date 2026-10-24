@@ -92,9 +92,9 @@ export default defineConfig({
         // Every call site is BroadcastChannel.postMessage, whose signature has
         // no targetOrigin - the rule only applies to window/iframe postMessage.
         "unicorn/require-post-message-target-origin": "off",
-        // The rule warns that Express drops rejections from async handlers.
-        // That was Express 4; this app runs Express 5, which forwards a
-        // rejected handler promise to next(err) itself.
+        // The rule warns that Express 4 dropped rejections from async
+        // handlers. The server runs Hono, whose handlers are async by design:
+        // Hono awaits each one and sends a rejection to its error handler.
         "oxc/no-async-endpoint-handlers": "off",
         // Every hit assigns a one-shot handler on an object the same function
         // just created (IDBRequest, XMLHttpRequest, Image, WebSocket,

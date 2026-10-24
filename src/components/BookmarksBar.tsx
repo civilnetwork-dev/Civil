@@ -12,7 +12,7 @@ import {
     IconClose,
     IconWorld,
 } from "~/components/icons";
-import { isNewtabUrl } from "~/lib/TabManager";
+import { isNewtabUrl } from "~/lib/browserUrls";
 
 import * as s from "~/styles/BookmarksBar.css";
 

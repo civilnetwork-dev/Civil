@@ -2,7 +2,6 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { requireEnv } from "../env";
-import * as schema from "./schema";
 
 const client = postgres(requireEnv("DATABASE_URL"), {
     max: 20,
@@ -11,5 +10,8 @@ const client = postgres(requireEnv("DATABASE_URL"), {
     prepare: false,
 });
 
-export const db = drizzle(client, { schema });
+// Drizzle 1.0 dropped the `schema` option along with relational queries v1.
+// Nothing here uses `db.query`, and better-auth gets its tables passed in
+// explicitly (auth.ts), so the client needs no schema.
+export const db = drizzle({ client });
 export type DB = typeof db;

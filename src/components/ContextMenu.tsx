@@ -13,7 +13,7 @@ import {
 
 import * as s from "~/styles/ContextMenu.css";
 
-export interface ContextMenuItem {
+interface ContextMenuItem {
     type?: "item" | "separator" | "submenu";
     label?: string;
     icon?: JSX.Element;

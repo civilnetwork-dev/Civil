@@ -37,7 +37,7 @@
 
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
 
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import UserAgent from "user-agents";
@@ -119,6 +119,24 @@ function offlineFetch(): Promise<Response> {
     );
 }
 
+/**
+ * The file a path inside the extension (the part of a `chrome-extension://`
+ * URL after the id) names on disk, or null when it climbs out of the
+ * extension's directory.
+ */
+function extensionFile(
+    urlPath: string,
+    extensionDir: string,
+): { path: string; relative: string } | null {
+    const relative = decodeURIComponent(urlPath.split(/[?#]/)[0] ?? "");
+    // Nothing outside the extension directory, whatever the path says. The
+    // separator matters: without it, a sibling directory whose name merely
+    // starts with this one's would pass.
+    const root = resolve(extensionDir);
+    const path = resolve(root, relative);
+    return path.startsWith(root + sep) ? { path, relative } : null;
+}
+
 const CONTENT_TYPES: Record<string, string> = {
     ".css": "text/css",
     ".html": "text/html",
@@ -166,16 +184,14 @@ export function buildFetch(
             return (await network?.({ url, method })) ?? offlineFetch();
         }
 
-        const relative = decodeURIComponent(
-            url.slice(prefix.length).split(/[?#]/)[0] ?? "",
-        );
-        // Nothing outside the extension directory, whatever the path says.
-        const resolved = resolve(extensionDir, relative);
-        if (!resolved.startsWith(resolve(extensionDir))) return offlineFetch();
+        const file = extensionFile(url.slice(prefix.length), extensionDir);
+        if (!file) return offlineFetch();
 
         try {
-            const body = await readFile(resolved);
-            const extension = relative.slice(relative.lastIndexOf("."));
+            const body = await readFile(file.path);
+            const extension = file.relative.slice(
+                file.relative.lastIndexOf("."),
+            );
             return new Response(new Uint8Array(body), {
                 status: 200,
                 headers: {
@@ -242,13 +258,10 @@ export function buildXMLHttpRequest(
 
     const readLocal = (url: string): string | null => {
         if (!url.startsWith(prefix)) return null;
-        const relative = decodeURIComponent(
-            url.slice(prefix.length).split(/[?#]/)[0] ?? "",
-        );
-        const resolved = resolve(extensionDir, relative);
-        if (!resolved.startsWith(resolve(extensionDir))) return null;
+        const file = extensionFile(url.slice(prefix.length), extensionDir);
+        if (!file) return null;
         try {
-            return readFileSync(resolved, "utf-8");
+            return readFileSync(file.path, "utf-8");
         } catch {
             return null;
         }
@@ -480,7 +493,9 @@ export function buildNavigator(target: ExtensionTarget) {
     const userAgentData = {
         platform: target === "safari" ? "macOS" : "Chrome OS",
         mobile: data.deviceCategory === "mobile",
-        brands: chromeMajor ? [{ brand: "Chromium", version: chromeMajor }] : [],
+        brands: chromeMajor
+            ? [{ brand: "Chromium", version: chromeMajor }]
+            : [],
     };
 
     return {
@@ -810,7 +825,6 @@ export async function buildPlatform(
         settings: {
             disableJavaScriptEvaluation: true,
             disableJavaScriptFileLoading: true,
-            disableCSSFileLoading: true,
             // errorCapture left at the default ("tryAndCatch"): a background
             // page's own deferred timer callback (setTimeout/setInterval/…)
             // throwing is then caught and logged via console.error instead of

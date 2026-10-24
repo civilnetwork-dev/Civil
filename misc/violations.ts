@@ -15,8 +15,8 @@ export const ipViolationKey = (ip: string) => `wisp:violations:ip:${ip}`;
 /**
  * Best-effort client IP from proxy headers, falling back to the socket.
  *
- * Only trustworthy when Express is running with `trust proxy` behind a proxy we
- * control — `x-forwarded-for` is client-settable otherwise. It feeds the per-IP
+ * Only trustworthy behind a reverse proxy we control that overwrites
+ * `x-forwarded-for` — the header is client-settable otherwise. It feeds the per-IP
  * strike counter, so a wrong answer here means either a missed strike or a
  * strike attributed to the wrong network.
  *

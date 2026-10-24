@@ -1,23 +1,18 @@
-import type { Express } from "express";
+import type { Hono } from "hono";
 
+import { type AppEnv, clientIp, readJsonBody } from "../../http";
 import { posthog } from "../posthog";
-import { isJsonEnabled } from "../utils/isJsonEnabled";
+import { respondFilterError } from "../utils/respondFilterError";
 import {
     checkHaparaFilter,
     type HaparaCheckerOptions,
     type HaparaStudentInput,
 } from "./checker";
 
-export function useHaparaMiddleware(app: Express) {
-    app.post("/filterCheck/hapara", async (req, res) => {
-        if (!isJsonEnabled(app)) {
-            const { json } = await import("express");
-
-            app.use(json());
-        }
-
+export function useHaparaMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/hapara", async c => {
         const { url, userId, classIds, email, apiBaseUrl, timeoutMs } =
-            req.body as {
+            (await readJsonBody(c)) as {
                 url: string;
                 userId?: string;
                 classIds?: string[];
@@ -27,15 +22,16 @@ export function useHaparaMiddleware(app: Express) {
             };
 
         if (!url) {
-            res.status(400).json({ error: "url is required." });
-            return;
+            return c.json({ error: "url is required." }, 400);
         }
 
         if (!userId && !email) {
-            res.status(400).json({
-                error: "Either userId (with optional classIds) or email is required.",
-            });
-            return;
+            return c.json(
+                {
+                    error: "Either userId (with optional classIds) or email is required.",
+                },
+                400,
+            );
         }
 
         const student: HaparaStudentInput =
@@ -54,28 +50,7 @@ export function useHaparaMiddleware(app: Express) {
         );
 
         if (result.isErr()) {
-            posthog.capture({
-                distinctId: req.ip ?? "unknown",
-                event: "filter_error",
-                properties: {
-                    filter: "hapara",
-                    url,
-                    errorType: result.error.type,
-                    errorMessage: result.error.message,
-                },
-            });
-
-            const statusCode =
-                result.error.type === "INVALID_URL"
-                    ? 400
-                    : result.error.type === "NETWORK"
-                      ? 502
-                      : 500;
-
-            res.status(statusCode).send(
-                `${result.error.type}: ${result.error.message}`,
-            );
-            return;
+            return respondFilterError(c, "hapara", url, result.error);
         }
 
         const {
@@ -97,7 +72,7 @@ export function useHaparaMiddleware(app: Express) {
         const blocked = verdict === "BLOCKED" || verdict === "LOCKED";
 
         posthog.capture({
-            distinctId: req.ip ?? "unknown",
+            distinctId: clientIp(c) ?? "unknown",
             event: "filter_check",
             properties: {
                 filter: "hapara",
@@ -113,7 +88,7 @@ export function useHaparaMiddleware(app: Express) {
             },
         });
 
-        res.json({
+        return c.json({
             verdict,
             blocked,
             statusIsKnown: verdict !== "NO_SESSION",

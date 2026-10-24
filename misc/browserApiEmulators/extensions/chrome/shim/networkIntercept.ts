@@ -1,3 +1,6 @@
+// Relative, not `$config/`: vite.config.ts bundles this shim with a bare
+// rolldown call that resolves no aliases.
+import { dnrSubstitution } from "../../../../config/shared/dnrNavMatch";
 import type { DNRRule } from "../types";
 
 export interface WebRequestDetails {
@@ -269,11 +272,15 @@ function _matchDnrUrlFilter(url: string, filter: string): boolean {
         pattern = pattern.slice(0, -1);
     }
 
-    // Replace ^ with separator regex and * with .*
+    // Escape every regex metacharacter except the two DNR wildcards, then
+    // translate those: * is any run of characters, ^ a separator (anything
+    // but a letter, digit, _, -, . or %) or the end of the URL. Escaping ^
+    // first, as this once did, left `\[^…]` behind, so no filter using ^
+    // ever matched.
     const regexBody = pattern
-        .replace(/[.+?^${}()[\]\\]/g, "\\$&")
-        .replace(/\\\*/g, ".*")
-        .replace(/\^/g, "[^a-zA-Z0-9_.%-]");
+        .replace(/[.+?${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*")
+        .replace(/\^/g, "(?:[^a-zA-Z0-9_.%-]|$)");
 
     let regexStr: string;
     if (domainAnchor) {
@@ -295,144 +302,191 @@ function _matchDnrUrlFilter(url: string, filter: string): boolean {
     }
 }
 
-function _applyDnrRules(
+type HeaderPair = { name: string; value: string };
+type HeaderMod = { header: string; operation: string; value?: string };
+
+/** Whether a rule's condition covers this XHR or fetch request. */
+function _ruleMatchesRequest(
+    cond: Record<string, unknown>,
     url: string,
     method: string,
-    requestHeaders: { name: string; value: string }[],
+): boolean {
+    // Check resource type
+    const resourceTypes = cond.resourceTypes as string[] | undefined;
+    const excludedResourceTypes = cond.excludedResourceTypes as
+        | string[]
+        | undefined;
+    if (resourceTypes && !resourceTypes.includes("xmlhttprequest")) {
+        return false;
+    }
+    if (excludedResourceTypes?.includes("xmlhttprequest")) return false;
+
+    // Check request method
+    const requestMethods = cond.requestMethods as string[] | undefined;
+    if (requestMethods && !requestMethods.includes(method.toLowerCase())) {
+        return false;
+    }
+
+    return _dnrUrlMatches(url, cond);
+}
+
+/**
+ * What a redirect action does to `url`. An action naming no target lets
+ * evaluation move on to the next rule (`stop: false`). One whose target
+ * cannot be applied still ends evaluation, without a redirect.
+ */
+function _redirectFor(
+    redirect: Record<string, unknown> | undefined,
+    cond: Record<string, unknown>,
+    url: string,
+): { stop: boolean; url?: string } {
+    if (redirect?.url) return { stop: true, url: redirect.url as string };
+    if (redirect?.transform) {
+        // Apply URL transform
+        try {
+            const t = redirect.transform as Record<string, unknown>;
+            const u = new URL(url);
+            if (t.scheme) u.protocol = `${t.scheme}:`;
+            if (t.host) u.hostname = t.host as string;
+            if (t.path) u.pathname = t.path as string;
+            if (t.query) u.search = t.query as string;
+            if (t.port) u.port = t.port as string;
+            return { stop: true, url: u.toString() };
+        } catch {
+            return { stop: true };
+        }
+    }
+    if (redirect?.regexSubstitution) {
+        if (!cond.regexFilter) return { stop: true };
+        try {
+            const flags = cond.isUrlFilterCaseSensitive ? "" : "i";
+            return {
+                stop: true,
+                url: url.replace(
+                    new RegExp(cond.regexFilter as string, flags),
+                    dnrSubstitution(redirect.regexSubstitution as string),
+                ),
+            };
+        } catch {
+            return { stop: true };
+        }
+    }
+    return { stop: false };
+}
+
+/** The https: form of an http: URL; undefined for any other URL. */
+function _upgradedUrl(url: string): string | undefined {
+    try {
+        const u = new URL(url);
+        if (u.protocol !== "http:") return undefined;
+        u.protocol = "https:";
+        return u.toString();
+    } catch {
+        return undefined;
+    }
+}
+
+/** Applies a modifyHeaders action's request-header operations in order. */
+function _modifyHeaders(
+    headers: HeaderPair[],
+    mods: HeaderMod[] = [],
+): HeaderPair[] {
+    let result = headers;
+    for (const mod of mods) {
+        if (mod.operation === "set") {
+            const existing = result.findIndex(
+                h => h.name.toLowerCase() === mod.header.toLowerCase(),
+            );
+            const header = { name: mod.header, value: mod.value ?? "" };
+            if (existing >= 0) result[existing] = header;
+            else result.push(header);
+        } else if (mod.operation === "remove") {
+            result = result.filter(
+                h => h.name.toLowerCase() !== mod.header.toLowerCase(),
+            );
+        } else if (mod.operation === "append") {
+            result.push({ name: mod.header, value: mod.value ?? "" });
+        }
+    }
+    return result;
+}
+
+export function applyDnrRules(
+    url: string,
+    method: string,
+    requestHeaders: HeaderPair[],
     rules: DNRRule[],
 ): {
     blocked: boolean;
     redirectUrl?: string;
-    requestHeaders: { name: string; value: string }[];
+    requestHeaders: HeaderPair[];
 } {
     // Sort rules by priority descending
     const sorted = rules.toSorted(
         (a, b) => (b.priority ?? 1) - (a.priority ?? 1),
     );
 
-    let blocked = false;
-    let redirectUrl: string | undefined;
-    let hdrs = [...requestHeaders];
+    // The first matching rule that blocks, allows or redirects decides;
+    // header changes accumulate until then.
+    let headers = [...requestHeaders];
+    const decide = (blocked: boolean, redirectUrl?: string) => ({
+        blocked,
+        redirectUrl,
+        requestHeaders: headers,
+    });
 
     for (const rule of sorted) {
         const cond = rule.condition as Record<string, unknown>;
-
-        // Check resource type
-        const resourceTypes = cond.resourceTypes as string[] | undefined;
-        const excludedResourceTypes = cond.excludedResourceTypes as
-            | string[]
-            | undefined;
-        if (resourceTypes && !resourceTypes.includes("xmlhttprequest")) {
-            continue;
-        }
-        if (excludedResourceTypes?.includes("xmlhttprequest")) continue;
-
-        // Check request method
-        const requestMethods = cond.requestMethods as string[] | undefined;
-        if (requestMethods) {
-            if (!requestMethods.includes(method.toLowerCase())) continue;
-        }
-
-        if (!_dnrUrlMatches(url, cond)) continue;
+        if (!_ruleMatchesRequest(cond, url, method)) continue;
 
         const action = rule.action as Record<string, unknown>;
-        const actionType = action.type as string;
-
-        if (actionType === "block") {
-            blocked = true;
-            break;
-        }
-        if (actionType === "allow" || actionType === "allowAllRequests") {
-            break;
-        }
-        if (actionType === "redirect") {
-            const redirect = action.redirect as
-                | Record<string, unknown>
-                | undefined;
-            if (redirect?.url) {
-                redirectUrl = redirect.url as string;
+        switch (action.type) {
+            case "block":
+                return decide(true);
+            case "allow":
+            case "allowAllRequests":
+                return decide(false);
+            case "redirect": {
+                const redirect = _redirectFor(
+                    action.redirect as Record<string, unknown> | undefined,
+                    cond,
+                    url,
+                );
+                if (redirect.stop) return decide(false, redirect.url);
                 break;
             }
-            if (redirect?.transform) {
-                // Apply URL transform
-                try {
-                    const t = redirect.transform as Record<string, unknown>;
-                    const u = new URL(url);
-                    if (t.scheme) u.protocol = `${t.scheme}:`;
-                    if (t.host) u.hostname = t.host as string;
-                    if (t.path) u.pathname = t.path as string;
-                    if (t.query) u.search = t.query as string;
-                    if (t.port) u.port = t.port as string;
-                    redirectUrl = u.toString();
-                } catch {}
+            case "upgradeScheme":
+                return decide(false, _upgradedUrl(url));
+            case "modifyHeaders":
+                headers = _modifyHeaders(
+                    headers,
+                    action.requestHeaders as HeaderMod[] | undefined,
+                );
                 break;
-            }
-            if (redirect?.regexSubstitution && rule.condition) {
-                const cond2 = rule.condition as Record<string, unknown>;
-                if (cond2.regexFilter) {
-                    try {
-                        const flags = cond2.isUrlFilterCaseSensitive ? "" : "i";
-                        const re = new RegExp(
-                            cond2.regexFilter as string,
-                            flags,
-                        );
-                        redirectUrl = url.replace(
-                            re,
-                            redirect.regexSubstitution as string,
-                        );
-                    } catch {}
-                }
-                break;
-            }
-        }
-        if (actionType === "upgradeScheme") {
-            try {
-                const u = new URL(url);
-                if (u.protocol === "http:") {
-                    u.protocol = "https:";
-                    redirectUrl = u.toString();
-                }
-            } catch {}
-            break;
-        }
-        if (actionType === "modifyHeaders") {
-            const requestHeadersMod = action.requestHeaders as
-                | Array<{ header: string; operation: string; value?: string }>
-                | undefined;
-            if (requestHeadersMod) {
-                for (const mod of requestHeadersMod) {
-                    if (mod.operation === "set") {
-                        const existing = hdrs.findIndex(
-                            h =>
-                                h.name.toLowerCase() ===
-                                mod.header.toLowerCase(),
-                        );
-                        if (existing >= 0) {
-                            hdrs[existing] = {
-                                name: mod.header,
-                                value: mod.value ?? "",
-                            };
-                        } else {
-                            hdrs.push({
-                                name: mod.header,
-                                value: mod.value ?? "",
-                            });
-                        }
-                    } else if (mod.operation === "remove") {
-                        hdrs = hdrs.filter(
-                            h =>
-                                h.name.toLowerCase() !==
-                                mod.header.toLowerCase(),
-                        );
-                    } else if (mod.operation === "append") {
-                        hdrs.push({ name: mod.header, value: mod.value ?? "" });
-                    }
-                }
-            }
         }
     }
 
-    return { blocked, redirectUrl, requestHeaders: hdrs };
+    return decide(false);
+}
+
+/** `response` with its headers replaced, as an onHeadersReceived listener
+ *  rewrote them. */
+async function _withResponseHeaders(
+    response: Response,
+    headers: { name: string; value: string }[],
+): Promise<Response> {
+    const newHdrs = new Headers();
+    for (const h of headers) {
+        try {
+            newHdrs.set(h.name, h.value);
+        } catch {}
+    }
+    const body = await response.arrayBuffer();
+    return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHdrs,
+    });
 }
 
 function _buildInitWithHeaders(
@@ -532,38 +586,10 @@ export function installNetworkInterceptor(
         const requestId = _nextId();
         const timeStamp = Date.now();
         let reqHeaders = _headersFromInit(init);
+        let finalUrl = url;
 
-        // Apply DNR rules first
-        const dnrResult = _applyDnrRules(
-            url,
-            method,
-            reqHeaders,
-            getDNRRules(),
-        );
-        if (dnrResult.blocked) {
-            const err = new DOMException(
-                "net::ERR_BLOCKED_BY_CLIENT",
-                "AbortError",
-            );
-            events.onErrorOccurred._dispatch({
-                requestId,
-                url,
-                method,
-                frameId: 0,
-                parentFrameId: -1,
-                tabId: -1,
-                type: "xmlhttprequest",
-                timeStamp,
-                error: "net::ERR_BLOCKED_BY_CLIENT",
-            });
-            throw err;
-        }
-
-        let finalUrl = dnrResult.redirectUrl ?? url;
-        reqHeaders = dnrResult.requestHeaders;
-
-        // onBeforeRequest
-        const beforeReqDetails: WebRequestDetails = {
+        /** One webRequest event's details for this request, as it stands. */
+        const details = (extra: Partial<WebRequestDetails>) => ({
             requestId,
             url: finalUrl,
             method,
@@ -571,51 +597,44 @@ export function installNetworkInterceptor(
             parentFrameId: -1,
             tabId: -1,
             type: "xmlhttprequest",
-            timeStamp,
-            requestHeaders: reqHeaders,
-        };
-        const beforeReqResp =
-            events.onBeforeRequest._dispatch(beforeReqDetails);
-        if (beforeReqResp.cancel) {
-            throw new DOMException("net::ERR_BLOCKED_BY_CLIENT", "AbortError");
+            timeStamp: Date.now(),
+            ...extra,
+        });
+        const blockedByClient = () =>
+            new DOMException("net::ERR_BLOCKED_BY_CLIENT", "AbortError");
+
+        // Apply DNR rules first
+        const dnrResult = applyDnrRules(url, method, reqHeaders, getDNRRules());
+        if (dnrResult.blocked) {
+            events.onErrorOccurred._dispatch(
+                details({ timeStamp, error: "net::ERR_BLOCKED_BY_CLIENT" }),
+            );
+            throw blockedByClient();
         }
+
+        finalUrl = dnrResult.redirectUrl ?? url;
+        reqHeaders = dnrResult.requestHeaders;
+
+        // onBeforeRequest
+        const beforeReqResp = events.onBeforeRequest._dispatch(
+            details({ timeStamp, requestHeaders: reqHeaders }),
+        );
+        if (beforeReqResp.cancel) throw blockedByClient();
         if (beforeReqResp.redirectUrl) {
             finalUrl = beforeReqResp.redirectUrl;
         }
 
         // onBeforeSendHeaders
-        const beforeSendDetails: WebRequestDetails = {
-            requestId,
-            url: finalUrl,
-            method,
-            frameId: 0,
-            parentFrameId: -1,
-            tabId: -1,
-            type: "xmlhttprequest",
-            timeStamp: Date.now(),
-            requestHeaders: reqHeaders,
-        };
-        const beforeSendResp =
-            events.onBeforeSendHeaders._dispatch(beforeSendDetails);
-        if (beforeSendResp.cancel) {
-            throw new DOMException("net::ERR_BLOCKED_BY_CLIENT", "AbortError");
-        }
+        const beforeSendResp = events.onBeforeSendHeaders._dispatch(
+            details({ requestHeaders: reqHeaders }),
+        );
+        if (beforeSendResp.cancel) throw blockedByClient();
         if (beforeSendResp.requestHeaders) {
             reqHeaders = beforeSendResp.requestHeaders;
         }
 
         // onSendHeaders
-        events.onSendHeaders._dispatch({
-            requestId,
-            url: finalUrl,
-            method,
-            frameId: 0,
-            parentFrameId: -1,
-            tabId: -1,
-            type: "xmlhttprequest",
-            timeStamp: Date.now(),
-            requestHeaders: reqHeaders,
-        });
+        events.onSendHeaders._dispatch(details({ requestHeaders: reqHeaders }));
 
         let response: Response;
         try {
@@ -638,108 +657,59 @@ export function installNetworkInterceptor(
                               : init,
                       );
         } catch (err) {
-            events.onErrorOccurred._dispatch({
-                requestId,
-                url: finalUrl,
-                method,
-                frameId: 0,
-                parentFrameId: -1,
-                tabId: -1,
-                type: "xmlhttprequest",
-                timeStamp: Date.now(),
-                error: String(err),
-            });
+            events.onErrorOccurred._dispatch(details({ error: String(err) }));
             throw err;
         }
 
         const respHeaders = _headersFromResponse(response);
+        const statusLine = `HTTP/1.1 ${response.status} ${response.statusText}`;
 
         // onHeadersReceived
-        const headersReceivedDetails: WebRequestDetails = {
-            requestId,
-            url: finalUrl,
-            method,
-            frameId: 0,
-            parentFrameId: -1,
-            tabId: -1,
-            type: "xmlhttprequest",
-            timeStamp: Date.now(),
-            statusCode: response.status,
-            statusLine: `HTTP/1.1 ${response.status} ${response.statusText}`,
-            responseHeaders: respHeaders,
-            fromCache: false,
-        };
         const headersReceivedResp = events.onHeadersReceived._dispatch(
-            headersReceivedDetails,
+            details({
+                statusCode: response.status,
+                statusLine,
+                responseHeaders: respHeaders,
+                fromCache: false,
+            }),
         );
-        if (headersReceivedResp.cancel) {
-            throw new DOMException("net::ERR_BLOCKED_BY_CLIENT", "AbortError");
-        }
+        if (headersReceivedResp.cancel) throw blockedByClient();
         if (headersReceivedResp.redirectUrl) {
             // follow redirect
-            events.onBeforeRedirect._dispatch({
-                requestId,
-                url: finalUrl,
-                method,
-                frameId: 0,
-                parentFrameId: -1,
-                tabId: -1,
-                type: "xmlhttprequest",
-                timeStamp: Date.now(),
-                statusCode: response.status,
-                redirectUrl: headersReceivedResp.redirectUrl,
-            });
+            events.onBeforeRedirect._dispatch(
+                details({
+                    statusCode: response.status,
+                    redirectUrl: headersReceivedResp.redirectUrl,
+                }),
+            );
             return _patchedFetch(headersReceivedResp.redirectUrl, init);
         }
 
         // Build potentially modified response
-        let finalResponse = response;
         const modifiedRespHeaders = headersReceivedResp.responseHeaders;
-        if (modifiedRespHeaders) {
-            const newHdrs = new Headers();
-            for (const h of modifiedRespHeaders) {
-                try {
-                    newHdrs.set(h.name, h.value);
-                } catch {}
-            }
-            const body = await response.arrayBuffer();
-            finalResponse = new Response(body, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: newHdrs,
-            });
-        }
+        const finalResponse = modifiedRespHeaders
+            ? await _withResponseHeaders(response, modifiedRespHeaders)
+            : response;
+        const responseHeaders = modifiedRespHeaders ?? respHeaders;
 
         // onResponseStarted
-        events.onResponseStarted._dispatch({
-            requestId,
-            url: finalUrl,
-            method,
-            frameId: 0,
-            parentFrameId: -1,
-            tabId: -1,
-            type: "xmlhttprequest",
-            timeStamp: Date.now(),
-            statusCode: response.status,
-            fromCache: false,
-            responseHeaders: modifiedRespHeaders ?? respHeaders,
-        });
+        events.onResponseStarted._dispatch(
+            details({
+                statusCode: response.status,
+                fromCache: false,
+                responseHeaders,
+            }),
+        );
 
         // onCompleted
-        events.onCompleted._dispatch({
-            requestId,
-            url: finalUrl,
-            method,
-            frameId: 0,
-            parentFrameId: -1,
-            tabId: -1,
-            type: "xmlhttprequest",
-            timeStamp: Date.now(),
-            statusCode: response.status,
-            statusLine: `HTTP/1.1 ${response.status} ${response.statusText}`,
-            fromCache: false,
-            responseHeaders: modifiedRespHeaders ?? respHeaders,
-        });
+        events.onCompleted._dispatch(
+            details({
+                statusCode: response.status,
+                statusLine,
+                fromCache: false,
+                responseHeaders,
+            }),
+        );
 
         return finalResponse;
     };
@@ -784,7 +754,7 @@ export function installNetworkInterceptor(
             const timeStamp = Date.now();
 
             // Apply DNR rules
-            const dnrResult = _applyDnrRules(
+            const dnrResult = applyDnrRules(
                 url,
                 method,
                 this._civHeaders,

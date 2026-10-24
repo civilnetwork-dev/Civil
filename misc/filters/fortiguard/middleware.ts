@@ -1,18 +1,12 @@
-import type { Express } from "express";
+import type { Hono } from "hono";
 
+import { type AppEnv, clientIp, readJsonBody } from "../../http";
 import { posthog } from "../posthog";
-import { isJsonEnabled } from "../utils/isJsonEnabled";
 import { createFortiGuardChecker } from "./checker";
 
-export function useFortiGuardMiddleware(app: Express) {
-    app.post("/filterCheck/fortiguard", async (req, res) => {
-        if (!isJsonEnabled(app)) {
-            const { json } = await import("express");
-
-            app.use(json());
-        }
-
-        const { url } = req.body as { url: string };
+export function useFortiGuardMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/fortiguard", async c => {
+        const { url } = (await readJsonBody(c)) as { url: string };
 
         const fortiguardChecker = createFortiGuardChecker();
 
@@ -20,7 +14,7 @@ export function useFortiGuardMiddleware(app: Express) {
 
         if (checkResult.isErr()) {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_error",
                 properties: {
                     filter: "fortiguard",
@@ -29,12 +23,13 @@ export function useFortiGuardMiddleware(app: Express) {
                     errorMessage: checkResult.error.message,
                 },
             });
-            res.sendStatus(500).send(
+            return c.text(
                 `Internal Server Error - ${checkResult.error.type}: ${checkResult.error.message}`,
+                500,
             );
         } else {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_check",
                 properties: {
                     filter: "fortiguard",
@@ -42,7 +37,7 @@ export function useFortiGuardMiddleware(app: Express) {
                     result: checkResult.value,
                 },
             });
-            res.json(checkResult.value);
+            return c.json(checkResult.value);
         }
     });
 }

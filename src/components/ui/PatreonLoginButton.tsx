@@ -1,5 +1,4 @@
 import { createAuthClient } from "better-auth/client";
-import { genericOAuthClient } from "better-auth/client/plugins";
 import { createSignal, onSettled, Show } from "solid-js";
 
 import { IconPatreon } from "~/components/icons";
@@ -16,10 +15,7 @@ type SessionUser = {
 let _client: ReturnType<typeof createAuthClient> | null = null;
 function getClient() {
     if (typeof window === "undefined") return null;
-    _client ??= createAuthClient({
-        baseURL: window.location.origin,
-        plugins: [genericOAuthClient()],
-    });
+    _client ??= createAuthClient({ baseURL: window.location.origin });
     return _client;
 }
 
@@ -51,9 +47,9 @@ export default function PatreonLoginButton() {
     const handleLogin = () => {
         const client = getClient();
         if (!client) return;
-        (client.signIn as any)
-            .oauth2({
-                providerId: "patreon",
+        client.signIn
+            .social({
+                provider: "patreon",
                 callbackURL: window.location.pathname,
             })
             .catch(console.error);

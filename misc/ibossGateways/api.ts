@@ -1,8 +1,9 @@
-import { desc, eq } from "drizzle-orm";
-import { Router } from "express";
+import { Hono } from "hono";
 
 import { db } from "../database/db";
+import { getLatestIbossGateway } from "../database/models/ibossGateway";
 import { ibossGateways } from "../database/schema";
+import { readJsonBody } from "../http";
 
 /** iboss cloud gateway host, e.g. cn1759617341-vnsg10840.ibosscloud.com */
 const GATEWAY_HOST_RE =
@@ -16,42 +17,29 @@ function normalizeGatewayHost(input: string): string | null {
     return GATEWAY_HOST_RE.test(raw) ? raw : null;
 }
 
-export function createIbossGatewaysRouter(): Router {
-    const router = Router();
+export function createIbossGatewaysRouter() {
+    const router = new Hono();
 
     /**
      * GET /api/iboss/gateway?leaId=<leaId>
      * Returns the most recently contributed gateway for a district.
      */
-    router.get("/gateway", async (req, res) => {
-        const leaId = req.query.leaId as string | undefined;
+    router.get("/gateway", async c => {
+        const leaId = c.req.query("leaId");
         if (!leaId) {
-            return void res.status(400).json({ error: "leaId required" });
+            return c.json({ error: "leaId required" }, 400);
         }
 
-        const rows = await db
-            .select({
-                gatewayHost: ibossGateways.gatewayHost,
-                categorizationPort: ibossGateways.categorizationPort,
-                hasSecurityKey: ibossGateways.securityKey,
-            })
-            .from(ibossGateways)
-            .where(eq(ibossGateways.schoolDistrictLeaId, leaId))
-            .orderBy(desc(ibossGateways.submittedAt))
-            .limit(1);
-
-        const row = rows[0];
+        const row = await getLatestIbossGateway(leaId);
         if (!row) {
-            return void res
-                .status(404)
-                .json({ error: "No iboss gateway for this district" });
+            return c.json({ error: "No iboss gateway for this district" }, 404);
         }
 
-        res.json({
+        return c.json({
             gatewayHost: row.gatewayHost,
             categorizationPort: row.categorizationPort,
             // Never leak the key itself; just signal whether a live check is possible.
-            hasSecurityKey: Boolean(row.hasSecurityKey),
+            hasSecurityKey: Boolean(row.securityKey),
         });
     });
 
@@ -60,9 +48,9 @@ export function createIbossGatewaysRouter(): Router {
      * Body: { gatewayHost, leaId?, districtName?, securityKey?, port?, source? }
      * Validates the host shape, upserts by (host, leaId).
      */
-    router.post("/submit-gateway", async (req, res) => {
+    router.post("/submit-gateway", async c => {
         const { gatewayHost, leaId, districtName, securityKey, port, source } =
-            req.body as {
+            (await readJsonBody(c)) as {
                 gatewayHost?: string;
                 leaId?: string;
                 districtName?: string;
@@ -72,14 +60,12 @@ export function createIbossGatewaysRouter(): Router {
             };
 
         if (!gatewayHost || typeof gatewayHost !== "string") {
-            return void res.status(400).json({ error: "gatewayHost required" });
+            return c.json({ error: "gatewayHost required" }, 400);
         }
 
         const host = normalizeGatewayHost(gatewayHost);
         if (!host) {
-            return void res
-                .status(400)
-                .json({ error: "Invalid iboss gateway host" });
+            return c.json({ error: "Invalid iboss gateway host" }, 400);
         }
 
         await db
@@ -109,7 +95,7 @@ export function createIbossGatewaysRouter(): Router {
                 },
             });
 
-        res.json({ gatewayHost: host });
+        return c.json({ gatewayHost: host });
     });
 
     return router;

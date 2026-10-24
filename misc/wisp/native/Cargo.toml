@@ -10,14 +10,14 @@ crate-type = ["cdylib"]
 napi = { version = "3", features = ["napi8"] }
 napi-derive = "3"
 tokio = { version = "1", features = ["full"] }
-sockudo-ws = "1"
+sockudo-ws = "3"
 papaya = "0.2"
-parking_lot = "0.12"
+parking_lot = "0.13"
 ahash = "0.8"
-json-steroids = "0.2"
-json-steroids-derive = "0.2"
+json-steroids = "0.3"
+json-steroids-derive = "0.3"
 smallvec = { version = "1", features = ["union"] }
-argon2 = "0.5"
+argon2 = "0.6"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 futures-util = { version = "0.3", features = ["sink"] }
 bytes = "1"

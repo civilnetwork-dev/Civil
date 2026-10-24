@@ -4,7 +4,7 @@ import { cached, sessionKey } from "./cache";
 /**
  * Name of the cookie better-auth stores the session token in. Kept in one place
  * so a change to better-auth's cookie naming is a one-line edit rather than a
- * hunt through run.ts, the Express middleware and the GraphQL resolvers.
+ * hunt through run.ts, the HTTP routes and the GraphQL resolvers.
  */
 export const SESSION_COOKIE_NAME = "better-auth.session_token";
 
@@ -48,7 +48,7 @@ export function extractSessionTokenFromHeaders(
     );
 }
 
-/** Extract the session token from a Node/Express request. */
+/** Extract the session token from a Node request (a WebSocket upgrade). */
 export function extractSessionTokenFromRequest(req: {
     headers: {
         authorization?: string;
@@ -87,7 +87,7 @@ export function resolveSessionFromHeaders(
     return resolveSession(extractSessionTokenFromHeaders(headers));
 }
 
-/** Convenience: token extraction + resolution for a Node/Express request. */
+/** Convenience: token extraction + resolution for a Node request. */
 export function resolveSessionFromRequest(req: {
     headers: { authorization?: string; cookie?: string };
 }): Promise<ResolvedSession> {

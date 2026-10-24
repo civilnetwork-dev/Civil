@@ -17,6 +17,36 @@ function save(list: CivilGame[]): void {
     lsSetJSON(LS_KEY, list);
 }
 
+type GameFs = Awaited<ReturnType<typeof getTFS>>["fs"]["promises"];
+
+/**
+ * Stores a game under `/games/<slug>` (its assets, then `meta.json`) and adds
+ * it to the installed list. A storage failure still installs the game; it only
+ * loses its stored copy.
+ */
+async function saveGame(
+    game: CivilGame,
+    writeAssets?: (fs: GameFs, dir: string) => Promise<void>,
+): Promise<CivilGame> {
+    try {
+        const { fs } = await getTFS();
+        const dir = `/games/${game.slug}`;
+        try {
+            await fs.promises.mkdir(dir);
+        } catch {}
+        await writeAssets?.(fs.promises, dir);
+        await fs.promises.writeFile(
+            `${dir}/meta.json`,
+            JSON.stringify(game),
+            "utf8",
+        );
+    } catch {}
+    const all = load();
+    if (!all.some(g => g.slug === game.slug)) all.push(game);
+    save(all);
+    return game;
+}
+
 /**
  * Install a game by its slug from the Civil games API (HTML5).
  */
@@ -31,21 +61,7 @@ export async function gamesInstallBySlug(slug: string): Promise<CivilGame> {
         url: data.url ?? `${GAMES_API}/games/${slug}/index.html`,
         installedAt: Date.now(),
     };
-    try {
-        const tfs = await getTFS();
-        try {
-            await tfs.fs.promises.mkdir(`/games/${slug}`);
-        } catch {}
-        await tfs.fs.promises.writeFile(
-            `/games/${slug}/meta.json`,
-            JSON.stringify(game),
-            "utf8",
-        );
-    } catch {}
-    const all = load();
-    if (!all.find(g => g.slug === slug)) all.push(game);
-    save(all);
-    return game;
+    return saveGame(game);
 }
 
 /**
@@ -63,21 +79,7 @@ export async function gamesInstallFromUrl(
         url,
         installedAt: Date.now(),
     };
-    try {
-        const tfs = await getTFS();
-        try {
-            await tfs.fs.promises.mkdir(`/games/${slug}`);
-        } catch {}
-        await tfs.fs.promises.writeFile(
-            `/games/${slug}/meta.json`,
-            JSON.stringify(game),
-            "utf8",
-        );
-    } catch {}
-    const all = load();
-    all.push(game);
-    save(all);
-    return game;
+    return saveGame(game);
 }
 
 /**
@@ -99,31 +101,14 @@ export async function gamesInstallSwf(
         url: swfUrl,
         installedAt: Date.now(),
     };
-    try {
-        const tfs = await getTFS();
-        try {
-            await tfs.fs.promises.mkdir(`/games/${slug}`);
-        } catch {}
-        await tfs.fs.promises.writeFile(
-            `/games/${slug}/game.swf`,
+    return saveGame(game, async (fs, dir) => {
+        await fs.writeFile(
+            `${dir}/game.swf`,
             swfBytes.buffer as ArrayBuffer,
             "arraybuffer",
         );
-        await tfs.fs.promises.writeFile(
-            `/games/${slug}/index.html`,
-            ruffleHtml,
-            "utf8",
-        );
-        await tfs.fs.promises.writeFile(
-            `/games/${slug}/meta.json`,
-            JSON.stringify(game),
-            "utf8",
-        );
-    } catch {}
-    const all = load();
-    all.push(game);
-    save(all);
-    return game;
+        await fs.writeFile(`${dir}/index.html`, ruffleHtml, "utf8");
+    });
 }
 
 export function gamesGetAll(): CivilGame[] {

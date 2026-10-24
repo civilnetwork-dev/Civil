@@ -1,20 +1,16 @@
-import type { Express } from "express";
+import type { Hono } from "hono";
 
+import { type AppEnv, clientIp, readJsonBody } from "../../http";
 import { posthog } from "../posthog";
-import { isJsonEnabled } from "../utils/isJsonEnabled";
 import { checkGoGuardianFilterAuthenticated } from "./checker";
 import { computeExtensionIdFromKey } from "./generateAuthToken";
 import { getGoGuardianVersion } from "./getVersion";
 
-export function useGoGuardianMiddleware(app: Express) {
-    app.post("/filterCheck/goguardian", async (req, res) => {
-        if (!isJsonEnabled(app)) {
-            const { json } = await import("express");
-
-            app.use(json());
-        }
-
-        const { authToken, orgRands, manifestKey, url } = req.body as {
+export function useGoGuardianMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/goguardian", async c => {
+        const { authToken, orgRands, manifestKey, url } = (await readJsonBody(
+            c,
+        )) as {
             authToken?: string;
             orgRands?: string[];
             manifestKey?: string;
@@ -38,7 +34,7 @@ export function useGoGuardianMiddleware(app: Express) {
 
         if (result.isErr()) {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_error",
                 properties: {
                     filter: "goguardian",
@@ -47,16 +43,14 @@ export function useGoGuardianMiddleware(app: Express) {
                     errorMessage: result.error.message,
                 },
             });
-            res.status(500).send(
-                `${result.error.type}: ${result.error.message}`,
-            );
+            return c.text(`${result.error.type}: ${result.error.message}`, 500);
         } else {
             const matchedKeywords = [
                 ...result.value.matchedProxyKeywords,
                 ...result.value.matchedThreatKeywords,
             ];
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_check",
                 properties: {
                     filter: "goguardian",
@@ -68,7 +62,7 @@ export function useGoGuardianMiddleware(app: Express) {
                     threatsModelVersion: result.value.threatsModelVersion,
                 },
             });
-            res.json({
+            return c.json({
                 blocked: result.value.verdict !== "BLOCK",
                 statusIsKnown: result.value.verdict !== "UNKNOWN",
                 proxyModelVersion: result.value.proxyModelVersion,

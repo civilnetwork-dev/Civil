@@ -1,21 +1,22 @@
 import { eq } from "drizzle-orm";
-import { Router } from "express";
+import { Hono } from "hono";
 
 import { db } from "../database/db";
 import { goguardianManifestKeys } from "../database/schema";
 import { computeExtensionIdFromKey } from "../filters/goguardian/generateAuthToken";
+import { readJsonBody } from "../http";
 
-export function createGoGuardianKeysRouter(): Router {
-    const router = Router();
+export function createGoGuardianKeysRouter() {
+    const router = new Hono();
 
     /**
      * GET /api/goguardian/manifest-key?leaId=<leaId>
      * Returns the known extensionId for a given school district LEA ID.
      */
-    router.get("/manifest-key", async (req, res) => {
-        const leaId = req.query.leaId as string | undefined;
+    router.get("/manifest-key", async c => {
+        const leaId = c.req.query("leaId");
         if (!leaId) {
-            return void res.status(400).json({ error: "leaId required" });
+            return c.json({ error: "leaId required" }, 400);
         }
 
         const rows = await db
@@ -25,12 +26,10 @@ export function createGoGuardianKeysRouter(): Router {
             .limit(1);
 
         if (!rows.length) {
-            return void res
-                .status(404)
-                .json({ error: "No manifest key for this district" });
+            return c.json({ error: "No manifest key for this district" }, 404);
         }
 
-        res.json({ extensionId: rows[0]!.extensionId });
+        return c.json({ extensionId: rows[0]!.extensionId });
     });
 
     /**
@@ -38,22 +37,24 @@ export function createGoGuardianKeysRouter(): Router {
      * Body: { manifestKey: string, leaId?: string, districtName?: string }
      * Computes extensionId from the key, upserts to DB, returns extensionId.
      */
-    router.post("/submit-manifest-key", async (req, res) => {
-        const { manifestKey, leaId, districtName } = req.body as {
+    router.post("/submit-manifest-key", async c => {
+        const { manifestKey, leaId, districtName } = (await readJsonBody(
+            c,
+        )) as {
             manifestKey?: string;
             leaId?: string;
             districtName?: string;
         };
 
         if (!manifestKey || typeof manifestKey !== "string") {
-            return void res.status(400).json({ error: "manifestKey required" });
+            return c.json({ error: "manifestKey required" }, 400);
         }
 
         let extensionId: string;
         try {
             extensionId = computeExtensionIdFromKey(manifestKey);
         } catch {
-            return void res.status(400).json({ error: "Invalid manifest key" });
+            return c.json({ error: "Invalid manifest key" }, 400);
         }
 
         await db
@@ -74,7 +75,7 @@ export function createGoGuardianKeysRouter(): Router {
                 },
             });
 
-        res.json({ extensionId });
+        return c.json({ extensionId });
     });
 
     return router;

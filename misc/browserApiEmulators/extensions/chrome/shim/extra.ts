@@ -1,4 +1,5 @@
 import { CivilEvent, makeNoopEvent } from "./event";
+import { multicastStubs, socketBase } from "./socketStubs";
 import { resolved } from "./util";
 
 const noopEvent = () => makeNoopEvent<(...a: never[]) => void>();
@@ -361,14 +362,7 @@ export const bluetoothLowEnergy = {
 
 // chrome.bluetoothSocket
 export const bluetoothSocket = {
-    create: (
-        _properties?: unknown,
-        cb?: (createInfo: { socketId: number }) => void,
-    ) => resolved({ socketId: -1 }, cb),
-    update: (_socketId: number, _properties: unknown, cb?: () => void) =>
-        resolved(undefined, cb),
-    setPaused: (_socketId: number, _paused: boolean, cb?: () => void) =>
-        resolved(undefined, cb),
+    ...socketBase(),
     listenUsingRfcomm: (
         _socketId: number,
         _uuid: string,
@@ -406,9 +400,6 @@ export const bluetoothSocket = {
         _data: ArrayBuffer,
         cb?: (bytesSent: number) => void,
     ) => resolved(0, cb),
-    getInfo: (_socketId: number, cb?: (socketInfo: unknown) => void) =>
-        resolved({}, cb),
-    getSockets: (cb?: (sockets: unknown[]) => void) => resolved([], cb),
     onAccept: noopEvent(),
     onAcceptError: noopEvent(),
     onReceive: noopEvent(),
@@ -418,14 +409,7 @@ export const bluetoothSocket = {
 // chrome.sockets (new API - different from legacy chrome.socket)
 function makeSocketsTcp() {
     return {
-        create: (
-            _properties?: unknown,
-            cb?: (createInfo: { socketId: number }) => void,
-        ) => resolved({ socketId: -1 }, cb),
-        update: (_socketId: number, _properties: unknown, cb?: () => void) =>
-            resolved(undefined, cb),
-        setPaused: (_socketId: number, _paused: boolean, cb?: () => void) =>
-            resolved(undefined, cb),
+        ...socketBase(),
         setKeepAlive: (
             _socketId: number,
             _enable: boolean,
@@ -466,9 +450,6 @@ function makeSocketsTcp() {
             cb?: (sendInfo: unknown) => void,
         ) => resolved({ resultCode: -1, bytesSent: 0 }, cb),
         close: (_socketId: number, cb?: () => void) => resolved(undefined, cb),
-        getInfo: (_socketId: number, cb?: (socketInfo: unknown) => void) =>
-            resolved({}, cb),
-        getSockets: (cb?: (sockets: unknown[]) => void) => resolved([], cb),
         onReceive: noopEvent(),
         onReceiveError: noopEvent(),
     };
@@ -476,14 +457,7 @@ function makeSocketsTcp() {
 
 function makeSocketsUdp() {
     return {
-        create: (
-            _properties?: unknown,
-            cb?: (createInfo: { socketId: number }) => void,
-        ) => resolved({ socketId: -1 }, cb),
-        update: (_socketId: number, _properties: unknown, cb?: () => void) =>
-            resolved(undefined, cb),
-        setPaused: (_socketId: number, _paused: boolean, cb?: () => void) =>
-            resolved(undefined, cb),
+        ...socketBase(),
         bind: (
             _socketId: number,
             _address: string,
@@ -504,31 +478,7 @@ function makeSocketsUdp() {
             _enabled: boolean,
             cb?: (result: number) => void,
         ) => resolved(-1, cb),
-        setMulticastTimeToLive: (
-            _socketId: number,
-            _ttl: number,
-            cb?: (result: number) => void,
-        ) => resolved(-1, cb),
-        setMulticastLoopbackMode: (
-            _socketId: number,
-            _enabled: boolean,
-            cb?: (result: number) => void,
-        ) => resolved(-1, cb),
-        getJoinedGroups: (_socketId: number, cb?: (groups: string[]) => void) =>
-            resolved([], cb),
-        joinGroup: (
-            _socketId: number,
-            _address: string,
-            cb?: (result: number) => void,
-        ) => resolved(-1, cb),
-        leaveGroup: (
-            _socketId: number,
-            _address: string,
-            cb?: (result: number) => void,
-        ) => resolved(-1, cb),
-        getInfo: (_socketId: number, cb?: (socketInfo: unknown) => void) =>
-            resolved({}, cb),
-        getSockets: (cb?: (sockets: unknown[]) => void) => resolved([], cb),
+        ...multicastStubs(),
         onReceive: noopEvent(),
         onReceiveError: noopEvent(),
     };
@@ -536,14 +486,7 @@ function makeSocketsUdp() {
 
 function makeSocketsTcpServer() {
     return {
-        create: (
-            _properties?: unknown,
-            cb?: (createInfo: { socketId: number }) => void,
-        ) => resolved({ socketId: -1 }, cb),
-        update: (_socketId: number, _properties: unknown, cb?: () => void) =>
-            resolved(undefined, cb),
-        setPaused: (_socketId: number, _paused: boolean, cb?: () => void) =>
-            resolved(undefined, cb),
+        ...socketBase(),
         listen: (
             _socketId: number,
             _address: string,
@@ -558,9 +501,6 @@ function makeSocketsTcpServer() {
         disconnect: (_socketId: number, cb?: () => void) =>
             resolved(undefined, cb),
         close: (_socketId: number, cb?: () => void) => resolved(undefined, cb),
-        getInfo: (_socketId: number, cb?: (socketInfo: unknown) => void) =>
-            resolved({}, cb),
-        getSockets: (cb?: (sockets: unknown[]) => void) => resolved([], cb),
         onAccept: noopEvent(),
         onAcceptError: noopEvent(),
     };

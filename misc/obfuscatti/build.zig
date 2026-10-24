@@ -19,6 +19,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     obfuscatti_module.addImport("parser", parser_module);
+    addRegex(b, obfuscatti_module);
 
     // CLI playground: `zig build run`.
     const main_module = b.createModule(.{
@@ -34,13 +35,13 @@ pub fn build(b: *std.Build) void {
 
     // Tests: `zig build test`.
     const test_step = b.step("test", "Run the transform + pipeline tests");
-    test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = obfuscatti_module })).step);
+    const unit_tests = b.addRunArtifact(b.addTest(.{ .root_module = obfuscatti_module }));
+    test_step.dependOn(&unit_tests.step);
+    const port_test_step = b.step("test-jsdefender", "Run recovered JSDefender algorithm tests");
+    port_test_step.dependOn(&unit_tests.step);
 
-    // Node.js binding: built by the default `zig build` step (addLib below
-    // hooks into it directly). Requires the Zig 0.16.0 toolchain specifically
-    // (not whatever `zig` resolves to on PATH) — see README.md's "Known
-    // blocker" for why napi-zig's build.zig doesn't evaluate under this
-    // environment's newer Zig dev snapshot.
+    // Node.js binding: addLib hooks into the default build/install steps.
+    // See README.md for the pinned toolchain and dependency preparation.
     const napi_dep = b.dependency("napi_zig", .{});
     // addLib registers its own build/install steps internally (confirmed:
     // it returns void, not a Step — yuku's own build.zig also never
@@ -57,7 +58,29 @@ pub fn build(b: *std.Build) void {
         },
         .npm = .{
             .scope = "@civil",
-            .description = "Zig-native JS/TS obfuscator for Civil, built on yuku",
+            .description = "Native Zig port of JSDefender Core 2.12.0 protections for Civil",
         },
+    });
+    // napi-zig disables unwind tables. MinGW's SEH thread support requires
+    // them when a Windows addon links native C dependencies.
+    if (target.result.os.tag == .windows) {
+        for (b.getInstallStep().dependencies.items) |step| {
+            if (step.cast(std.Build.Step.InstallArtifact)) |installation| {
+                installation.artifact.root_module.unwind_tables = .sync;
+            }
+        }
+    }
+}
+
+fn addRegex(b: *std.Build, module: *std.Build.Module) void {
+    module.link_libc = true;
+    module.addIncludePath(b.path("src/jsdefender/vendor/quickjs"));
+    module.addCSourceFiles(.{
+        .files = &.{
+            "src/jsdefender/vendor/quickjs/libregexp.c",
+            "src/jsdefender/vendor/quickjs/libunicode.c",
+            "src/jsdefender/vendor/quickjs/cutils.c",
+        },
+        .flags = &.{ "-std=c11", "-D_GNU_SOURCE" },
     });
 }

@@ -1,18 +1,12 @@
-import type { Express } from "express";
+import type { Hono } from "hono";
 
+import { type AppEnv, clientIp, readJsonBody } from "../../http";
 import { posthog } from "../posthog";
-import { isJsonEnabled } from "../utils/isJsonEnabled";
 import { createBlocksiFilterChecker } from "./checker";
 
-export function useBlocksiMiddleware(app: Express) {
-    app.post("/filterCheck/blocksi", async (req, res) => {
-        if (!isJsonEnabled(app)) {
-            const { json } = await import("express");
-
-            app.use(json());
-        }
-
-        const { url } = req.body as {
+export function useBlocksiMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/blocksi", async c => {
+        const { url } = (await readJsonBody(c)) as {
             url: string;
         };
 
@@ -22,7 +16,7 @@ export function useBlocksiMiddleware(app: Express) {
 
         if (blocksiCheckResult.isErr()) {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_error",
                 properties: {
                     filter: "blocksi",
@@ -31,12 +25,13 @@ export function useBlocksiMiddleware(app: Express) {
                     errorMessage: blocksiCheckResult.error.message,
                 },
             });
-            res.status(500).send(
+            return c.text(
                 `Internal server error: ${blocksiCheckResult.error.type} - ${blocksiCheckResult.error.message}`,
+                500,
             );
         } else {
             posthog.capture({
-                distinctId: req.ip ?? "unknown",
+                distinctId: clientIp(c) ?? "unknown",
                 event: "filter_check",
                 properties: {
                     filter: "blocksi",
@@ -44,7 +39,7 @@ export function useBlocksiMiddleware(app: Express) {
                     result: blocksiCheckResult.value,
                 },
             });
-            res.json(blocksiCheckResult.value);
+            return c.json(blocksiCheckResult.value);
         }
     });
 }

@@ -132,39 +132,30 @@ export function checkGoGuardianFilterAuthenticated(
             },
         });
 
-        const fetchProxyVersion = ResultAsync.fromPromise(
-            client.get(
-                "https://snat.goguardian.com/api/v1/ext/smart-filtering/models/proxies/version/current",
-            ),
-            toNetworkError,
-        ).andThen(res => {
-            const parsed = VersionSchema.safeParse(res.data);
+        /** The current version of one of GoGuardian's smart-filtering models. */
+        const fetchModelVersion = (
+            model: "proxies" | "threats",
+            label: string,
+        ) =>
+            ResultAsync.fromPromise(
+                client.get(
+                    `https://snat.goguardian.com/api/v1/ext/smart-filtering/models/${model}/version/current`,
+                ),
+                toNetworkError,
+            ).andThen(res => {
+                const parsed = VersionSchema.safeParse(res.data);
 
-            return parsed.success
-                ? ok(parsed.data.version)
-                : err({
-                      type: "PARSE" as const,
-                      message: "Invalid proxy model version response.",
-                      body: res.data,
-                  });
-        });
+                return parsed.success
+                    ? ok(parsed.data.version)
+                    : err({
+                          type: "PARSE" as const,
+                          message: `Invalid ${label} model version response.`,
+                          body: res.data,
+                      });
+            });
 
-        const fetchThreatsVersion = ResultAsync.fromPromise(
-            client.get(
-                "https://snat.goguardian.com/api/v1/ext/smart-filtering/models/threats/version/current",
-            ),
-            toNetworkError,
-        ).andThen(res => {
-            const parsed = VersionSchema.safeParse(res.data);
-
-            return parsed.success
-                ? ok(parsed.data.version)
-                : err({
-                      type: "PARSE" as const,
-                      message: "Invalid threats model version response.",
-                      body: res.data,
-                  });
-        });
+        const fetchProxyVersion = fetchModelVersion("proxies", "proxy");
+        const fetchThreatsVersion = fetchModelVersion("threats", "threats");
 
         return fetchProxyVersion.andThen(proxyVersion =>
             fetchThreatsVersion.andThen(threatsVersion =>

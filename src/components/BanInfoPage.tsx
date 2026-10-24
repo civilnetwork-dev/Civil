@@ -5,30 +5,15 @@ import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import StrikeGauge from "~/components/StrikeGauge";
+import { createViolationsStatus } from "~/lib/violations";
 
 import * as s from "~/styles/BanInfoPage.css";
 import * as schematic from "~/styles/schematic.css";
 
 const PAGE_SIZE = 50;
 
-type ViolationsData = {
-    authenticated: boolean;
-    banned: boolean;
-    banReason: string | null;
-    bannedAt: string | null;
-    violations: number;
-    maxViolations: number;
-};
-
 function StatusSection() {
-    const [status, setStatus] = createSignal<ViolationsData | null>(null);
-
-    onSettled(() => {
-        void fetch("/api/violations")
-            .then(r => r.json())
-            .then((data: ViolationsData) => setStatus(data))
-            .catch(() => {});
-    });
+    const status = createViolationsStatus();
 
     return (
         <Show when={status()}>

@@ -602,93 +602,85 @@ function fetchStudentState(
     );
 }
 
-function computeVerdict(
-    state: z.infer<typeof StudentStateSchema>,
-    parsedUrl: URL,
-    normalizedUrlStr: string,
-    inputUrl: string,
-    config?: HaparaStudentConfig,
+type HaparaSession = z.infer<typeof SessionSchema>;
+type VerdictBase = Pick<
+    HaparaCheckResult,
+    | "inputUrl"
+    | "normalizedUrl"
+    | "hostname"
+    | "monitored"
+    | "invalidCode"
+    | "whitelisted"
+    | "rawState"
+>;
+
+/** The verdict while no filter, focus or lock session runs: a paused screen,
+ *  or else what the session-independent config says. */
+function verdictWithoutSession(
+    base: VerdictBase,
+    pauseSession: HaparaSession | undefined,
+    config: HaparaStudentConfig | undefined,
 ): HaparaCheckResult {
-    const sessions = state.CurrentSessions ?? [];
-
-    const pauseSession = sessions.find(s => s.Type === "pausescreen");
-    const activeSession = sessions.find(
-        s => s.Type === "filter" || s.Type === "focus" || s.Type === "lock",
-    );
-
-    // `monitored` reflects only the MonitoringTime schedule, NOT config.isValid:
-    // Valid is relative to the *requester's* IP (false with InvalidCode
-    // "ip_not_in_range" whenever the check runs off the school network), so
-    // gating on it would always report UNMONITORED server-side. isValid is still
-    // surfaced separately via `invalidCode` for callers that care.
-    const monitored = config ? isMonitoredNow(config.monitoringTime) : null;
-    const whitelisted = config
-        ? matchesWhiteList(normalizedUrlStr, config.whiteList)
-        : false;
-
-    const base = {
-        inputUrl,
-        normalizedUrl: normalizedUrlStr,
-        hostname: parsedUrl.hostname,
-        monitored,
-        invalidCode: config?.invalidCode ?? null,
-        whitelisted,
-        rawState: state,
-    };
-
-    if (!activeSession) {
-        if (pauseSession) {
-            return {
-                ...base,
-                verdict: "PAUSED",
-                sessionType: "pausescreen",
-                sessionId: pauseSession.ID,
-                teacherName: buildTeacherName(pauseSession),
-                sessionStart: pauseSession.Start ?? null,
-                sessionEnd: pauseSession.End ?? null,
-                blockedDomains: [],
-                allowedDomains: [],
-                allowedLinks: [],
-                matchedDomain: null,
-                stateSource: "session",
-                rawSession: pauseSession,
-            };
-        }
-
-        // No session at all. Answer from session-independent config when we
-        // have it, instead of giving up with NO_SESSION.
-        const noSession = {
+    if (pauseSession) {
+        return {
             ...base,
-            sessionType: null,
-            sessionId: null,
-            teacherName: null,
-            sessionStart: null,
-            sessionEnd: null,
+            verdict: "PAUSED",
+            sessionType: "pausescreen",
+            sessionId: pauseSession.ID,
+            teacherName: buildTeacherName(pauseSession),
+            sessionStart: pauseSession.Start ?? null,
+            sessionEnd: pauseSession.End ?? null,
             blockedDomains: [],
             allowedDomains: [],
             allowedLinks: [],
             matchedDomain: null,
+            stateSource: "session",
+            rawSession: pauseSession,
         };
-
-        if (!config) {
-            return { ...noSession, verdict: "NO_SESSION", stateSource: null };
-        }
-        if (whitelisted) {
-            return { ...noSession, verdict: "ALLOWED", stateSource: "config" };
-        }
-        if (monitored === false) {
-            // Not monitored right now → Highlights isn't filtering.
-            return {
-                ...noSession,
-                verdict: "UNMONITORED",
-                stateSource: "config",
-            };
-        }
-        // Monitored but no restricting session → Highlights doesn't block
-        // outside of an active session, so browsing is allowed.
-        return { ...noSession, verdict: "ALLOWED", stateSource: "config" };
     }
 
+    // No session at all. Answer from session-independent config when we
+    // have it, instead of giving up with NO_SESSION.
+    const noSession = {
+        ...base,
+        sessionType: null,
+        sessionId: null,
+        teacherName: null,
+        sessionStart: null,
+        sessionEnd: null,
+        blockedDomains: [],
+        allowedDomains: [],
+        allowedLinks: [],
+        matchedDomain: null,
+    };
+
+    if (!config) {
+        return { ...noSession, verdict: "NO_SESSION", stateSource: null };
+    }
+    if (base.whitelisted) {
+        return { ...noSession, verdict: "ALLOWED", stateSource: "config" };
+    }
+    if (base.monitored === false) {
+        // Not monitored right now → Highlights isn't filtering.
+        return {
+            ...noSession,
+            verdict: "UNMONITORED",
+            stateSource: "config",
+        };
+    }
+    // Monitored but no restricting session → Highlights doesn't block
+    // outside of an active session, so browsing is allowed.
+    return { ...noSession, verdict: "ALLOWED", stateSource: "config" };
+}
+
+/** The verdict a running filter, focus or lock session gives the URL. */
+function verdictForSession(
+    base: VerdictBase,
+    activeSession: HaparaSession,
+    parsedUrl: URL,
+    normalizedUrlStr: string,
+): HaparaCheckResult {
+    const { whitelisted } = base;
     const links = activeSession.Links ?? [];
     const sharedFields = {
         ...base,
@@ -756,4 +748,43 @@ function computeVerdict(
         allowedLinks,
         matchedDomain: matchedLink,
     };
+}
+
+function computeVerdict(
+    state: z.infer<typeof StudentStateSchema>,
+    parsedUrl: URL,
+    normalizedUrlStr: string,
+    inputUrl: string,
+    config?: HaparaStudentConfig,
+): HaparaCheckResult {
+    const sessions = state.CurrentSessions ?? [];
+
+    const pauseSession = sessions.find(s => s.Type === "pausescreen");
+    const activeSession = sessions.find(
+        s => s.Type === "filter" || s.Type === "focus" || s.Type === "lock",
+    );
+
+    // `monitored` reflects only the MonitoringTime schedule, NOT config.isValid:
+    // Valid is relative to the *requester's* IP (false with InvalidCode
+    // "ip_not_in_range" whenever the check runs off the school network), so
+    // gating on it would always report UNMONITORED server-side. isValid is still
+    // surfaced separately via `invalidCode` for callers that care.
+    const monitored = config ? isMonitoredNow(config.monitoringTime) : null;
+    const whitelisted = config
+        ? matchesWhiteList(normalizedUrlStr, config.whiteList)
+        : false;
+
+    const base: VerdictBase = {
+        inputUrl,
+        normalizedUrl: normalizedUrlStr,
+        hostname: parsedUrl.hostname,
+        monitored,
+        invalidCode: config?.invalidCode ?? null,
+        whitelisted,
+        rawState: state,
+    };
+
+    return activeSession
+        ? verdictForSession(base, activeSession, parsedUrl, normalizedUrlStr)
+        : verdictWithoutSession(base, pauseSession, config);
 }

@@ -981,6 +981,18 @@ function _parseDomCookies(): chrome.cookies.Cookie[] {
     }
 }
 
+/** The domain a cookies.set or cookies.remove call names: its `domain`, else
+ *  its `url`'s host, else this page's host. */
+function cookieDomain(d: { domain?: string; url?: string }): string {
+    if (d.domain != null) return d.domain;
+    if (!d.url) return window.location.hostname;
+    try {
+        return new URL(d.url).hostname;
+    } catch {
+        return window.location.hostname;
+    }
+}
+
 export function buildCookiesAPI() {
     const _jar = _loadVirtualCookies();
     const onChanged = new CivilEvent<
@@ -1071,17 +1083,7 @@ export function buildCookiesAPI() {
                 storeId?: string;
             };
 
-            const domain =
-                d.domain ??
-                (d.url
-                    ? (() => {
-                          try {
-                              return new URL(d.url as string).hostname;
-                          } catch {
-                              return window.location.hostname;
-                          }
-                      })()
-                    : window.location.hostname);
+            const domain = cookieDomain(d);
 
             const virtual: VirtualCookie = {
                 name: d.name,
@@ -1144,17 +1146,7 @@ export function buildCookiesAPI() {
                 url?: string;
                 domain?: string;
             };
-            const domain =
-                d.domain ??
-                (d.url
-                    ? (() => {
-                          try {
-                              return new URL(d.url as string).hostname;
-                          } catch {
-                              return window.location.hostname;
-                          }
-                      })()
-                    : window.location.hostname);
+            const domain = cookieDomain(d);
             const idx = _jar.findIndex(
                 c => c.name === d.name && c.domain === domain,
             );

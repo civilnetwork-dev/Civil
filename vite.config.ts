@@ -15,7 +15,7 @@ import { defineConfig } from "vite";
 import { BLOCK_AI_ALLOW_REST, robots } from "vite-plugin-robots-ts";
 import { sitemap } from "vite-plugin-sitemap-ts";
 
-import { obfuscateAssets } from "./misc/vite/obfuscateAssets";
+import { obfuscateAssets } from "./misc/vite/obfuscateAssets.ts";
 
 const cssTargets = browserslistToTargets(
     browserslist("last 2 years, > 0.5%, not dead"),

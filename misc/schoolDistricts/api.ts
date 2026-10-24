@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Hono } from "hono";
 
 import { cached } from "../database/cache";
 import { districtDb } from "./db";
@@ -65,17 +65,18 @@ function findNearest(lat: number, lon: number): NearestResult | null {
     return { leaId: nearest.lea_id, name: nearest.name, distanceKm: minDist };
 }
 
-export function createSchoolDistrictsRouter(): Router {
-    const router = Router();
+export function createSchoolDistrictsRouter() {
+    const router = new Hono();
 
-    router.get("/nearest", async (req, res) => {
-        const lat = parseFloat(req.query.lat as string);
-        const lon = parseFloat(req.query.lon as string);
+    router.get("/nearest", async c => {
+        const lat = parseFloat(c.req.query("lat") ?? "");
+        const lon = parseFloat(c.req.query("lon") ?? "");
 
         if (Number.isNaN(lat) || Number.isNaN(lon)) {
-            return void res
-                .status(400)
-                .json({ error: "lat and lon are required query params" });
+            return c.json(
+                { error: "lat and lon are required query params" },
+                400,
+            );
         }
 
         const cacheKey = `school-district:nearest:${lat.toFixed(2)}:${lon.toFixed(2)}`;
@@ -88,15 +89,13 @@ export function createSchoolDistrictsRouter(): Router {
             );
 
             if (!result) {
-                return void res
-                    .status(404)
-                    .json({ error: "No district found" });
+                return c.json({ error: "No district found" }, 404);
             }
 
-            res.json(result);
+            return c.json(result);
         } catch (err) {
             console.error("[school-districts] nearest lookup error:", err);
-            res.status(500).json({ error: "Internal error" });
+            return c.json({ error: "Internal error" }, 500);
         }
     });
 

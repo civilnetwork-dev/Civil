@@ -1,6 +1,10 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal } from "solid-js";
 
-import { IconClose } from "~/components/icons";
+import {
+    ContributionActions,
+    ContributionHeader,
+    submitContribution,
+} from "~/components/ContributionToast";
 
 import * as s from "~/styles/GoGuardianManifestToast.css";
 
@@ -23,23 +27,16 @@ export default function IbossGatewayToast(props: Props) {
         setSubmitting(true);
         setError(null);
         try {
-            const res = await fetch("/api/iboss/submit-gateway", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+            const data = await submitContribution<{ gatewayHost: string }>(
+                "/api/iboss/submit-gateway",
+                {
                     gatewayHost: host,
                     securityKey: securityKey().trim() || undefined,
                     leaId: props.leaId,
                     districtName: props.districtName,
                     source: "manual",
-                }),
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                setError(text.slice(0, 120) || `HTTP ${res.status}`);
-                return;
-            }
-            const data = (await res.json()) as { gatewayHost: string };
+                },
+            );
             props.onSubmit(data.gatewayHost);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Network error");
@@ -54,22 +51,11 @@ export default function IbossGatewayToast(props: Props) {
             role="dialog"
             aria-label="Share iboss gateway host"
         >
-            <div class={s.header}>
-                <div class={s.titleGroup}>
-                    <h3 class={s.title}>Improve iboss filter checking</h3>
-                    <span class={s.districtName} title={props.districtName}>
-                        {props.districtName}
-                    </span>
-                </div>
-                <button
-                    class={s.dismissBtn}
-                    onClick={props.onDismiss}
-                    aria-label="Dismiss"
-                    type="button"
-                >
-                    <IconClose />
-                </button>
-            </div>
+            <ContributionHeader
+                title="Improve iboss filter checking"
+                districtName={props.districtName}
+                onDismiss={props.onDismiss}
+            />
 
             <p class={s.description}>
                 No iboss cloud gateway on file for your school district. If you
@@ -98,27 +84,13 @@ export default function IbossGatewayToast(props: Props) {
                 spellcheck="false"
             />
 
-            <Show when={error()}>
-                <p class={s.errorText}>{error()}</p>
-            </Show>
-
-            <div class={s.actions}>
-                <button
-                    class={s.cancelBtn}
-                    type="button"
-                    onClick={props.onDismiss}
-                >
-                    Skip
-                </button>
-                <button
-                    class={s.submitBtn}
-                    type="button"
-                    disabled={!gatewayHost().trim() || submitting()}
-                    onClick={() => void handleSubmit()}
-                >
-                    {submitting() ? "Submitting…" : "Submit"}
-                </button>
-            </div>
+            <ContributionActions
+                error={error()}
+                canSubmit={!!gatewayHost().trim()}
+                submitting={submitting()}
+                onSkip={props.onDismiss}
+                onSubmit={() => void handleSubmit()}
+            />
         </div>
     );
 }
