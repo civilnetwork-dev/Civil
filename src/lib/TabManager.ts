@@ -1,14 +1,7 @@
 import { EventEmitter } from "tseep";
 
 import { resolveUrl } from "~/lib/browserUrls";
-
-export interface Tab {
-    id: string;
-    url: string;
-    title: string;
-    favicon?: string;
-    isLoading: boolean;
-}
+import type { Tab } from "~/types";
 
 type TabManagerEvents = {
     tabAdded: (tab: Tab) => void;

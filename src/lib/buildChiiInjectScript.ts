@@ -1,5 +1,6 @@
-export function buildChiiInjectScript(targetScriptText: string) {
-    return `(function(){
+// The script runs in the inspected page: everything before the target
+// script, then everything after it.
+const BEFORE_TARGET = `(function(){
   var L = function (m, x) { try { console.log('[civil-chii] ' + m, x === undefined ? '' : x); } catch(_) {} };
   // Re-entry guard: injectChiiIntoIframe may run more than once per document
   // (multiple load events / native-eval re-runs); a second run would spawn a
@@ -396,7 +397,9 @@ export function buildChiiInjectScript(targetScriptText: string) {
 
   L('about to run target.js, ChiiServerUrl=', window.ChiiServerUrl);
   try {
-    ${targetScriptText}
+    `;
+
+const AFTER_TARGET = `
     L('target.js evaluated successfully');
   } catch (err) {
     L('target.js init threw', String(err));
@@ -446,4 +449,7 @@ export function buildChiiInjectScript(targetScriptText: string) {
     }
   }
 })();`;
+
+export function buildChiiInjectScript(targetScriptText: string) {
+    return BEFORE_TARGET + targetScriptText + AFTER_TARGET;
 }

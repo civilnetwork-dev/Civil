@@ -26,47 +26,115 @@ const NODES = [0, 1, 2];
 /** One pass of a node from outside the mouth to absorbed at the stem. */
 const CYCLE_MS = 2400;
 
-export default function LoadingAnimation() {
+function formatResource(url: string): string {
+    try {
+        const u = new URL(url, window.location.href);
+        return u.pathname.split("/").pop() || u.hostname;
+    } catch {
+        return url;
+    }
+}
+
+function isExternal(url: string): boolean {
+    try {
+        return new URL(url, window.location.href).host !== window.location.host;
+    } catch {
+        return false;
+    }
+}
+
+const TRACKED = new Set([
+    "script",
+    "fetch",
+    "xmlhttprequest",
+    "link",
+    "css",
+    "beacon",
+]);
+
+function observeResources(pushLive: (text: string) => void) {
+    if (typeof PerformanceObserver === "undefined") return undefined;
+    const perfObserver = new PerformanceObserver(list => {
+        for (const entry of list.getEntries()) {
+            const res = entry as PerformanceResourceTiming;
+            if (res.initiatorType && !TRACKED.has(res.initiatorType)) {
+                continue;
+            }
+            const verb = isExternal(res.name) ? "Fetching" : "Loading";
+            pushLive(`${verb} ${formatResource(res.name)}...`);
+        }
+    });
+    try {
+        perfObserver.observe({ type: "resource", buffered: true });
+    } catch {}
+    return perfObserver;
+}
+
+function wrapRegister(
+    swContainer: ServiceWorkerContainer,
+    pushLive: (text: string) => void,
+) {
+    const originalRegister = swContainer.register.bind(swContainer);
+    try {
+        swContainer.register = ((
+            scriptURL: string | URL,
+            options?: RegistrationOptions,
+        ) => {
+            pushLive(`Registering ${formatResource(String(scriptURL))}...`);
+            return originalRegister(scriptURL, options);
+        }) as typeof swContainer.register;
+        return () => {
+            swContainer.register = originalRegister;
+        };
+    } catch {}
+    return undefined;
+}
+
+function watchServiceWorker(pushLive: (text: string) => void) {
+    const swContainer =
+        typeof navigator !== "undefined" ? navigator.serviceWorker : undefined;
+    if (!swContainer) return undefined;
+    void swContainer.getRegistrations().then(regs => {
+        for (const reg of regs) {
+            const active = reg.installing ?? reg.waiting ?? reg.active;
+            if (active && active.state !== "activated") {
+                pushLive(`Registering ${reg.scope}...`);
+            }
+        }
+    });
+
+    const onControllerChange = () => pushLive("Service worker activated...");
+    swContainer.addEventListener("controllerchange", onControllerChange);
+
+    const restoreRegister = wrapRegister(swContainer, pushLive);
+
+    return () => {
+        swContainer.removeEventListener("controllerchange", onControllerChange);
+        restoreRegister?.();
+    };
+}
+
+/**
+ * Everything torn down when this screen goes away, collected as it is set
+ * up and released by the function this returns.
+ *
+ * `onSettled` must **return** its cleanup; calling `onCleanup` inside it
+ * throws `CLEANUP_IN_FORBIDDEN_SCOPE` in Solid 2.0, and because the throw
+ * happens during the effect run it halts the reactive system for the whole
+ * root — "no further updates will be processed". This screen mounts on
+ * every cold load, so that was every cold load. It never surfaced because
+ * the halt is reported to the console rather than thrown to the caller, and
+ * the loader looks identical either way: the artwork was a canvas driving
+ * itself, and the status text stops updating on a screen that is about to
+ * be replaced anyway.
+ */
+function useLiveStatus() {
     const [visible, setVisible] = createSignal(true);
     const [liveStatus, setLiveStatus] = createSignal<string | null>(
         "Loading...",
     );
 
-    const formatResource = (url: string): string => {
-        try {
-            const u = new URL(url, window.location.href);
-            return u.pathname.split("/").pop() || u.hostname;
-        } catch {
-            return url;
-        }
-    };
-
-    const isExternal = (url: string): boolean => {
-        try {
-            return (
-                new URL(url, window.location.href).host !== window.location.host
-            );
-        } catch {
-            return false;
-        }
-    };
-
-    /**
-     * Everything torn down when this screen goes away, collected as it is set
-     * up and released by the function this returns.
-     *
-     * `onSettled` must **return** its cleanup; calling `onCleanup` inside it
-     * throws `CLEANUP_IN_FORBIDDEN_SCOPE` in Solid 2.0, and because the throw
-     * happens during the effect run it halts the reactive system for the whole
-     * root — "no further updates will be processed". This screen mounts on
-     * every cold load, so that was every cold load. It never surfaced because
-     * the halt is reported to the console rather than thrown to the caller, and
-     * the loader looks identical either way: the artwork was a canvas driving
-     * itself, and the status text stops updating on a screen that is about to
-     * be replaced anyway.
-     */
     onSettled(() => {
-        const teardown: (() => void)[] = [];
         let aborted = false;
         let liveTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -82,85 +150,47 @@ export default function LoadingAnimation() {
             });
         };
 
-        const tracked = new Set([
-            "script",
-            "fetch",
-            "xmlhttprequest",
-            "link",
-            "css",
-            "beacon",
-        ]);
-        let perfObserver: PerformanceObserver | undefined;
-        if (typeof PerformanceObserver !== "undefined") {
-            perfObserver = new PerformanceObserver(list => {
-                for (const entry of list.getEntries()) {
-                    const res = entry as PerformanceResourceTiming;
-                    if (res.initiatorType && !tracked.has(res.initiatorType)) {
-                        continue;
-                    }
-                    const verb = isExternal(res.name) ? "Fetching" : "Loading";
-                    pushLive(`${verb} ${formatResource(res.name)}...`);
-                }
-            });
-            try {
-                perfObserver.observe({ type: "resource", buffered: true });
-            } catch {}
-        }
-
-        let restoreRegister: (() => void) | undefined;
-        const swContainer =
-            typeof navigator !== "undefined"
-                ? navigator.serviceWorker
-                : undefined;
-        if (swContainer) {
-            void swContainer.getRegistrations().then(regs => {
-                for (const reg of regs) {
-                    const active = reg.installing ?? reg.waiting ?? reg.active;
-                    if (active && active.state !== "activated") {
-                        pushLive(`Registering ${reg.scope}...`);
-                    }
-                }
-            });
-
-            const onControllerChange = () =>
-                pushLive("Service worker activated...");
-            swContainer.addEventListener(
-                "controllerchange",
-                onControllerChange,
-            );
-
-            const originalRegister = swContainer.register.bind(swContainer);
-            try {
-                swContainer.register = ((
-                    scriptURL: string | URL,
-                    options?: RegistrationOptions,
-                ) => {
-                    pushLive(
-                        `Registering ${formatResource(String(scriptURL))}...`,
-                    );
-                    return originalRegister(scriptURL, options);
-                }) as typeof swContainer.register;
-                restoreRegister = () => {
-                    swContainer.register = originalRegister;
-                };
-            } catch {}
-
-            teardown.push(() => {
-                swContainer.removeEventListener(
-                    "controllerchange",
-                    onControllerChange,
-                );
-                restoreRegister?.();
-            });
-        }
+        const perfObserver = observeResources(pushLive);
+        const releaseServiceWorker = watchServiceWorker(pushLive);
 
         return () => {
             aborted = true;
             clearTimeout(liveTimer);
             perfObserver?.disconnect();
-            for (const release of teardown) release();
+            releaseServiceWorker?.();
         };
     });
+
+    return { visible, liveStatus };
+}
+
+function LoadingMark() {
+    return (
+        <svg class={s.loadingMark} viewBox="0 0 16 16" aria-hidden="true">
+            <For each={NODES}>
+                {i => (
+                    <rect
+                        class={s.loadingMarkNode}
+                        x="11.24"
+                        y="6.8"
+                        width="3.5"
+                        height="2.4"
+                        style={{
+                            "animation-delay": `${
+                                (i * CYCLE_MS) / NODES.length
+                            }ms`,
+                        }}
+                    />
+                )}
+            </For>
+            <path class={s.loadingMarkDepth} d={MARK_C} />
+            <path class={s.loadingMarkC} d={MARK_C} />
+        </svg>
+    );
+}
+
+export default function LoadingAnimation() {
+    const { visible, liveStatus } = useLiveStatus();
 
     return (
         <div class={s.loadingContainer}>
@@ -168,26 +198,7 @@ export default function LoadingAnimation() {
                 what hides the route, so it surfaces only in the mouth and the
                 counter. Reordering these two blocks makes the nodes float over
                 the glyph and the whole idea disappears. */}
-            <svg class={s.loadingMark} viewBox="0 0 16 16" aria-hidden="true">
-                <For each={NODES}>
-                    {i => (
-                        <rect
-                            class={s.loadingMarkNode}
-                            x="11.24"
-                            y="6.8"
-                            width="3.5"
-                            height="2.4"
-                            style={{
-                                "animation-delay": `${
-                                    (i * CYCLE_MS) / NODES.length
-                                }ms`,
-                            }}
-                        />
-                    )}
-                </For>
-                <path class={s.loadingMarkDepth} d={MARK_C} />
-                <path class={s.loadingMarkC} d={MARK_C} />
-            </svg>
+            <LoadingMark />
             <div class={s.loadingStatusWrapper}>
                 <span
                     class={[

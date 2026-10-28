@@ -112,3 +112,11 @@ export interface CivilTabCreateProperties {
     url?: string;
     active?: boolean;
 }
+
+export interface Tab {
+    id: string;
+    url: string;
+    title: string;
+    favicon?: string;
+    isLoading: boolean;
+}

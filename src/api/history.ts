@@ -276,6 +276,79 @@ async function fit(loc: HistoryLocation, segs: Segments): Promise<number> {
 const oldest = (list: readonly CivilHistoryEntry[]) =>
     list.length ? list[list.length - 1].visitedAt : Infinity;
 
+async function wipeBest(
+    segs: Segments,
+    entry: CivilHistoryEntry,
+): Promise<void> {
+    const removed = segs.localstorage.length + segs.indexeddb.length - 1;
+    for (const l of LOCATIONS) {
+        await clearLocation(l).catch(() => {});
+        segs[l] = [];
+    }
+    const best = pickBest(
+        await measureLocations(0, getSetting("historyLimitKb")),
+        256 * 1024,
+    );
+    setWriter(best);
+    segs[best] = [entry];
+    return record("wipe-best", removed + (await fit(best, segs)), best);
+}
+
+async function spill(
+    loc: HistoryLocation,
+    segs: Segments,
+    entry: CivilHistoryEntry,
+    broken: Set<HistoryLocation>,
+): Promise<void> {
+    const other = otherThan(loc);
+    if (broken.has(other)) {
+        return record("trim", await trimToFit(loc, segs), loc);
+    }
+    segs[loc] = segs[loc].filter(e => e !== entry);
+    segs[other] = [entry, ...segs[other]];
+    try {
+        await save(other, segs[other]);
+        setWriter(other);
+        return record("spill", 0, other);
+    } catch (error) {
+        ignoreFull(error);
+    }
+    // Both are full. Carry on where the oldest pages are, so the two
+    // locations turn over as one ring.
+    const target =
+        oldest(segs.localstorage) <= oldest(segs.indexeddb)
+            ? "localstorage"
+            : "indexeddb";
+    if (target !== other) {
+        segs[other] = segs[other].filter(e => e !== entry);
+        segs[target] = [entry, ...segs[target]];
+    }
+    const removed = await trimToFit(target, segs);
+    setWriter(target);
+    return record("spill", removed, target);
+}
+
+async function compress(
+    loc: HistoryLocation,
+    segs: Segments,
+    broken: Set<HistoryLocation>,
+): Promise<void> {
+    if (getSetting("historyFormat") !== "compressed") {
+        setSetting("historyFormat", "compressed");
+        try {
+            await save(loc, segs[loc]);
+            const other = otherThan(loc);
+            if (!broken.has(other) && segs[other].length) {
+                await save(other, segs[other]).catch(ignoreFull);
+            }
+            return record("compress", 0, loc);
+        } catch (error) {
+            ignoreFull(error);
+        }
+    }
+    return record("compress", await trimToFit(loc, segs), loc);
+}
+
 async function whenFull(
     loc: HistoryLocation,
     segs: Segments,
@@ -292,67 +365,14 @@ async function whenFull(
             return record("wipe", removed + (await fit(loc, segs)), loc);
         }
 
-        case "wipe-best": {
-            const removed =
-                segs.localstorage.length + segs.indexeddb.length - 1;
-            for (const l of LOCATIONS) {
-                await clearLocation(l).catch(() => {});
-                segs[l] = [];
-            }
-            const best = pickBest(
-                await measureLocations(0, getSetting("historyLimitKb")),
-                256 * 1024,
-            );
-            setWriter(best);
-            segs[best] = [entry];
-            return record("wipe-best", removed + (await fit(best, segs)), best);
-        }
+        case "wipe-best":
+            return wipeBest(segs, entry);
 
-        case "spill": {
-            const other = otherThan(loc);
-            if (broken.has(other)) {
-                return record("trim", await trimToFit(loc, segs), loc);
-            }
-            segs[loc] = segs[loc].filter(e => e !== entry);
-            segs[other] = [entry, ...segs[other]];
-            try {
-                await save(other, segs[other]);
-                setWriter(other);
-                return record("spill", 0, other);
-            } catch (error) {
-                ignoreFull(error);
-            }
-            // Both are full. Carry on where the oldest pages are, so the two
-            // locations turn over as one ring.
-            const target =
-                oldest(segs.localstorage) <= oldest(segs.indexeddb)
-                    ? "localstorage"
-                    : "indexeddb";
-            if (target !== other) {
-                segs[other] = segs[other].filter(e => e !== entry);
-                segs[target] = [entry, ...segs[target]];
-            }
-            const removed = await trimToFit(target, segs);
-            setWriter(target);
-            return record("spill", removed, target);
-        }
+        case "spill":
+            return spill(loc, segs, entry, broken);
 
-        case "compress": {
-            if (getSetting("historyFormat") !== "compressed") {
-                setSetting("historyFormat", "compressed");
-                try {
-                    await save(loc, segs[loc]);
-                    const other = otherThan(loc);
-                    if (!broken.has(other) && segs[other].length) {
-                        await save(other, segs[other]).catch(ignoreFull);
-                    }
-                    return record("compress", 0, loc);
-                } catch (error) {
-                    ignoreFull(error);
-                }
-            }
-            return record("compress", await trimToFit(loc, segs), loc);
-        }
+        case "compress":
+            return compress(loc, segs, broken);
 
         case "stop":
             // The new page is not saved and nothing is removed. Later visits

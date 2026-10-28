@@ -8,10 +8,7 @@ import {
     IconLayoutSidebar,
     IconLayoutSidebarRight,
 } from "~/components/icons";
-import {
-    cleanupChiiArtifacts,
-    injectChiiIntoIframe,
-} from "~/lib/useIframeManager";
+import { cleanupChiiArtifacts, injectChiiIntoIframe } from "~/lib/chii";
 
 import * as s from "~/styles/ChiiPanel.css";
 
@@ -162,6 +159,12 @@ function dividerPositionStyle(side: ChiiDockSide): Record<string, string> {
     return { right: "0", top: "0", bottom: "0", width: "4px" };
 }
 
+const CONTENT_BASE = {
+    position: "absolute",
+    display: "flex",
+    "flex-direction": "column",
+} as const;
+
 function contentInsetStyle(side: ChiiDockSide): Record<string, string> {
     if (side === "bottom")
         return { top: "4px", left: "0", right: "0", bottom: "0" };
@@ -172,32 +175,47 @@ function contentInsetStyle(side: ChiiDockSide): Record<string, string> {
     return { right: "4px", top: "0", left: "0", bottom: "0" };
 }
 
-export function ChiiPanel(props: ChiiPanelProps) {
-    const [side, setSide] = createSignal<ChiiDockSide>(
-        props.initialSide ?? "bottom",
-    );
-    const [size, setSize] = createSignal(0.4);
-    const [dragging, setDragging] = createSignal(false);
+function dragRatio(cur: ChiiDockSide, e: PointerEvent, rect: DOMRect): number {
+    if (cur === "bottom") return 1 - (e.clientY - rect.top) / rect.height;
+    if (cur === "top") return (e.clientY - rect.top) / rect.height;
+    if (cur === "right") return 1 - (e.clientX - rect.left) / rect.width;
+    return (e.clientX - rect.left) / rect.width;
+}
 
+function sweepArtifacts(iframe: HTMLIFrameElement) {
+    const sweep = () => cleanupChiiArtifacts(iframe);
+    sweep();
+    // Chii redraws its inspect/ghost overlay AFTER the relayout, so a single
+    // synchronous sweep misses the re-created node (seen on top/left docks).
+    // Sweep again on the next frames + a short tail.
+    requestAnimationFrame(() => {
+        sweep();
+        requestAnimationFrame(sweep);
+    });
+    for (const delay of [120, 400]) setTimeout(sweep, delay);
+}
+
+function currentUrl(iframe: HTMLIFrameElement): string | null {
+    try {
+        return iframe.contentWindow?.location.href ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function useDevtoolsTarget(
+    props: ChiiPanelProps,
+    side: () => ChiiDockSide,
+    size: () => number,
+) {
     let devtoolsRef!: HTMLIFrameElement;
-    let disposed = false;
     let initialized = false;
+    let disposed = false;
     let activeTargetId: string | null = null;
-
-    const isHoriz = () => side() === "left" || side() === "right";
-    const cleanupTargetArtifacts = () => {
-        cleanupChiiArtifacts(props.targetIframe);
-    };
 
     const resolveDevtoolsSrc = async () => {
         const knownIds = await snapshotTargetIds();
-        const expectedUrl = (() => {
-            try {
-                return props.targetIframe.contentWindow?.location.href ?? null;
-            } catch {
-                return null;
-            }
-        })();
+        const expectedUrl = currentUrl(props.targetIframe);
         injectChiiIntoIframe(props.targetIframe, devtoolsRef);
         const target = await waitForNewTarget(knownIds, expectedUrl, 4000);
         if (disposed) return;
@@ -211,7 +229,7 @@ export function ChiiPanel(props: ChiiPanelProps) {
 
     onSettled(() => {
         applyTargetSize(props.targetIframe, side(), size());
-        cleanupTargetArtifacts();
+        cleanupChiiArtifacts(props.targetIframe);
         if (initialized) return;
         initialized = true;
         void resolveDevtoolsSrc();
@@ -220,6 +238,22 @@ export function ChiiPanel(props: ChiiPanelProps) {
     onCleanup(() => {
         disposed = true;
     });
+
+    return {
+        setFrame: (el: HTMLIFrameElement) => (devtoolsRef = el),
+        detachUrl: () =>
+            activeTargetId
+                ? buildDetachUrlForId(activeTargetId)
+                : `${location.origin}${CHII_BASE}`,
+    };
+}
+
+function useDockDrag(
+    props: ChiiPanelProps,
+    side: () => ChiiDockSide,
+    setSize: (ratio: number) => void,
+) {
+    const [dragging, setDragging] = createSignal(false);
 
     const onPointerdown = (e: PointerEvent) => {
         e.preventDefault();
@@ -233,13 +267,9 @@ export function ChiiPanel(props: ChiiPanelProps) {
         if (!parent) return;
         const rect = parent.getBoundingClientRect();
         const cur = side();
-        let ratio: number;
-        if (cur === "bottom") ratio = 1 - (e.clientY - rect.top) / rect.height;
-        else if (cur === "top") ratio = (e.clientY - rect.top) / rect.height;
-        else if (cur === "right")
-            ratio = 1 - (e.clientX - rect.left) / rect.width;
-        else ratio = (e.clientX - rect.left) / rect.width;
-        const minRatio = MIN_PX / (isHoriz() ? rect.width : rect.height);
+        const ratio = dragRatio(cur, e, rect);
+        const horiz = cur === "left" || cur === "right";
+        const minRatio = MIN_PX / (horiz ? rect.width : rect.height);
         const clamped = Math.max(minRatio, Math.min(1 - minRatio, ratio));
         setSize(clamped);
         applyTargetSize(props.targetIframe, cur, clamped);
@@ -247,114 +277,136 @@ export function ChiiPanel(props: ChiiPanelProps) {
 
     const onPointerup = () => setDragging(false);
 
-    const changeSide = (next: ChiiDockSide) => {
-        setSide(next);
-        applyTargetSize(props.targetIframe, next, size());
-        cleanupTargetArtifacts();
-        // Chii redraws its inspect/ghost overlay AFTER the relayout, so a single
-        // synchronous sweep misses the re-created node (seen on top/left docks).
-        // Sweep again on the next frames + a short tail.
-        requestAnimationFrame(() => {
-            cleanupTargetArtifacts();
-            requestAnimationFrame(cleanupTargetArtifacts);
-        });
-        for (const delay of [120, 400])
-            setTimeout(cleanupTargetArtifacts, delay);
-    };
+    return { dragging, onPointerdown, onPointermove, onPointerup };
+}
 
-    const handleClose = () => {
-        cleanupTargetArtifacts();
-        resetTargetSize(props.targetIframe);
-        props.onClose();
-    };
+const SIDES: { s: ChiiDockSide; icon: () => any }[] = [
+    { s: "bottom", icon: () => <IconLayoutBottom size={14} /> },
+    { s: "top", icon: () => <IconLayoutNavbar size={14} /> },
+    { s: "left", icon: () => <IconLayoutSidebar size={14} /> },
+    { s: "right", icon: () => <IconLayoutSidebarRight size={14} /> },
+];
 
-    const handleDetach = async () => {
-        cleanupTargetArtifacts();
-        resetTargetSize(props.targetIframe);
-        const url = activeTargetId
-            ? buildDetachUrlForId(activeTargetId)
-            : `${location.origin}${CHII_BASE}`;
-        props.onDetach(url);
-    };
+function ChiiToolbar(props: {
+    side: ChiiDockSide;
+    onSide: (side: ChiiDockSide) => void;
+    onDetach: () => void;
+    onClose: () => void;
+}) {
+    return (
+        <div class={s.toolbar}>
+            {SIDES.map(({ s: ds, icon }) => (
+                <button
+                    type="button"
+                    title={`Dock ${ds}`}
+                    class={[
+                        s.dockBtn,
+                        { [s.dockBtnActive]: props.side === ds },
+                    ]}
+                    onClick={() => props.onSide(ds)}
+                >
+                    {icon()}
+                </button>
+            ))}
+            <div class={s.toolbarSpacer} />
+            <button
+                type="button"
+                title="Open in new window"
+                class={s.detachBtn}
+                onClick={() => props.onDetach()}
+            >
+                <IconArrowUpRight size={14} />
+            </button>
+            <button
+                type="button"
+                title="Close devtools"
+                class={s.closeBtn}
+                onClick={() => props.onClose()}
+            >
+                <IconClose size={14} />
+            </button>
+        </div>
+    );
+}
 
-    const sides: { s: ChiiDockSide; icon: () => any }[] = [
-        { s: "bottom", icon: () => <IconLayoutBottom size={14} /> },
-        { s: "top", icon: () => <IconLayoutNavbar size={14} /> },
-        { s: "left", icon: () => <IconLayoutSidebar size={14} /> },
-        { s: "right", icon: () => <IconLayoutSidebarRight size={14} /> },
-    ];
-
+function DockDivider(props: {
+    side: ChiiDockSide;
+    dragging: boolean;
+    onPointerDown: (e: PointerEvent) => void;
+    onPointerUp: () => void;
+}) {
+    const isHoriz = () => props.side === "left" || props.side === "right";
     const dividerClass = () =>
         [
             isHoriz() ? s.dividerVert : s.dividerHoriz,
-            dragging() ? s.dividerDragging : "",
+            props.dragging ? s.dividerDragging : "",
         ]
             .filter(Boolean)
             .join(" ");
 
     return (
         <div
+            class={dividerClass()}
+            style={{
+                position: "absolute",
+                "z-index": "2",
+                ...dividerPositionStyle(props.side),
+            }}
+            onPointerDown={e => props.onPointerDown(e)}
+            onPointerUp={() => props.onPointerUp()}
+        />
+    );
+}
+
+export function ChiiPanel(props: ChiiPanelProps) {
+    const [side, setSide] = createSignal<ChiiDockSide>(
+        props.initialSide ?? "bottom",
+    );
+    const [size, setSize] = createSignal(0.4);
+    const target = useDevtoolsTarget(props, side, size);
+    const drag = useDockDrag(props, side, setSize);
+
+    const changeSide = (next: ChiiDockSide) => {
+        setSide(next);
+        applyTargetSize(props.targetIframe, next, size());
+        sweepArtifacts(props.targetIframe);
+    };
+
+    const release = () => {
+        cleanupChiiArtifacts(props.targetIframe);
+        resetTargetSize(props.targetIframe);
+    };
+
+    return (
+        <div
             class={s.panel}
             style={panelPositionStyle(side(), size())}
-            onPointerMove={onPointermove}
-            onPointerUp={onPointerup}
+            onPointerMove={drag.onPointermove}
+            onPointerUp={drag.onPointerup}
         >
-            <div
-                class={dividerClass()}
-                style={{
-                    position: "absolute",
-                    "z-index": "2",
-                    ...dividerPositionStyle(side()),
-                }}
-                onPointerDown={onPointerdown}
-                onPointerUp={onPointerup}
+            <DockDivider
+                side={side()}
+                dragging={drag.dragging()}
+                onPointerDown={drag.onPointerdown}
+                onPointerUp={drag.onPointerup}
             />
 
-            <div
-                style={{
-                    position: "absolute",
-                    display: "flex",
-                    "flex-direction": "column",
-                    ...contentInsetStyle(side()),
-                }}
-            >
-                <div class={s.toolbar}>
-                    {sides.map(({ s: ds, icon }) => (
-                        <button
-                            type="button"
-                            title={`Dock ${ds}`}
-                            class={[
-                                s.dockBtn,
-                                { [s.dockBtnActive]: side() === ds },
-                            ]}
-                            onClick={() => changeSide(ds)}
-                        >
-                            {icon()}
-                        </button>
-                    ))}
-                    <div class={s.toolbarSpacer} />
-                    <button
-                        type="button"
-                        title="Open in new window"
-                        class={s.detachBtn}
-                        onClick={() => {
-                            void handleDetach();
-                        }}
-                    >
-                        <IconArrowUpRight size={14} />
-                    </button>
-                    <button
-                        type="button"
-                        title="Close devtools"
-                        class={s.closeBtn}
-                        onClick={handleClose}
-                    >
-                        <IconClose size={14} />
-                    </button>
-                </div>
+            <div style={{ ...CONTENT_BASE, ...contentInsetStyle(side()) }}>
+                <ChiiToolbar
+                    side={side()}
+                    onSide={changeSide}
+                    onDetach={() => {
+                        release();
+                        props.onDetach(target.detachUrl());
+                    }}
+                    onClose={() => {
+                        release();
+                        props.onClose();
+                    }}
+                />
 
                 <iframe
-                    ref={devtoolsRef}
+                    ref={target.setFrame}
                     src=""
                     class={s.devtoolsFrame}
                     title="Chii DevTools"

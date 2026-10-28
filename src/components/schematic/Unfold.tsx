@@ -3,6 +3,60 @@ import { createSignal, createUniqueId } from "solid-js";
 
 import * as s from "~/styles/schematic.css";
 
+/** The open state and the handlers that drive it; see Unfold. */
+function useUnfoldState() {
+    const [pinned, setPinned] = createSignal(false);
+    const [hovered, setHovered] = createSignal(false);
+    const [focusHeld, setFocusHeld] = createSignal(false);
+    const open = () => pinned() || hovered() || focusHeld();
+    const refs: { root?: HTMLDivElement; trigger?: HTMLButtonElement } = {};
+
+    /**
+     * A deliberate close: second activation of the trigger, or Escape. If
+     * focus is currently anywhere inside the container it is about to land
+     * on content that becomes `inert`, so the trigger takes focus back
+     * before `pinned`/`focusHeld` are cleared.
+     */
+    const collapse = () => {
+        if (
+            refs.root &&
+            document.activeElement &&
+            refs.root.contains(document.activeElement)
+        ) {
+            refs.trigger?.focus();
+        }
+        setPinned(false);
+        setFocusHeld(false);
+    };
+
+    return {
+        open,
+        refs,
+        onTriggerClick: () => {
+            if (pinned()) collapse();
+            else setPinned(true);
+        },
+        onPointerEnter: (event: PointerEvent) => {
+            if (event.pointerType === "mouse") setHovered(true);
+        },
+        onPointerLeave: (event: PointerEvent) => {
+            if (event.pointerType === "mouse") setHovered(false);
+        },
+        onFocusIn: () => {
+            if (pinned() || hovered()) setFocusHeld(true);
+        },
+        onFocusOut: (event: FocusEvent) => {
+            const next = event.relatedTarget as Node | null;
+            if (next && refs.root?.contains(next)) return;
+            setFocusHeld(false);
+        },
+        onKeyDown: (event: KeyboardEvent) => {
+            if (event.key !== "Escape" || !open()) return;
+            collapse();
+        },
+    };
+}
+
 /**
  * Depth on demand: a summary at rest, a dense block on intent.
  *
@@ -59,91 +113,36 @@ export default function Unfold(props: {
     children: JSX.Element;
     class?: string;
 }) {
-    const [pinned, setPinned] = createSignal(false);
-    const [hovered, setHovered] = createSignal(false);
-    const [focusHeld, setFocusHeld] = createSignal(false);
-    const open = () => pinned() || hovered() || focusHeld();
+    const state = useUnfoldState();
     const regionId = createUniqueId();
-
-    let root: HTMLDivElement | undefined;
-    let triggerRef: HTMLButtonElement | undefined;
-
-    /**
-     * A deliberate close: second activation of the trigger, or Escape. If
-     * focus is currently anywhere inside the container it is about to land
-     * on content that becomes `inert`, so the trigger takes focus back
-     * before `pinned`/`focusHeld` are cleared.
-     */
-    const collapse = () => {
-        if (
-            root &&
-            document.activeElement &&
-            root.contains(document.activeElement)
-        ) {
-            triggerRef?.focus();
-        }
-        setPinned(false);
-        setFocusHeld(false);
-    };
-
-    const handleTriggerClick = () => {
-        if (pinned()) {
-            collapse();
-        } else {
-            setPinned(true);
-        }
-    };
-
-    const handlePointerEnter = (event: PointerEvent) => {
-        if (event.pointerType === "mouse") setHovered(true);
-    };
-
-    const handlePointerLeave = (event: PointerEvent) => {
-        if (event.pointerType === "mouse") setHovered(false);
-    };
-
-    const handleFocusIn = () => {
-        if (pinned() || hovered()) setFocusHeld(true);
-    };
-
-    const handleFocusOut = (event: FocusEvent) => {
-        const next = event.relatedTarget as Node | null;
-        if (next && root?.contains(next)) return;
-        setFocusHeld(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key !== "Escape" || !open()) return;
-        collapse();
-    };
 
     return (
         // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- hover/focus tracking wrapper around a real interactive button; the div itself is not the control
         <div
-            ref={root}
+            ref={el => (state.refs.root = el)}
             class={[s.unfold, props.class]}
-            onPointerEnter={handlePointerEnter}
-            onPointerLeave={handlePointerLeave}
-            onFocusIn={handleFocusIn}
-            onFocusOut={handleFocusOut}
-            onKeyDown={handleKeyDown}
+            onPointerEnter={state.onPointerEnter}
+            onPointerLeave={state.onPointerLeave}
+            onFocusIn={state.onFocusIn}
+            onFocusOut={state.onFocusOut}
+            onKeyDown={state.onKeyDown}
         >
             <button
                 type="button"
-                ref={triggerRef}
+                ref={el => (state.refs.trigger = el)}
                 class={s.unfoldTrigger}
-                aria-expanded={open() ? "true" : "false"}
+                aria-expanded={state.open() ? "true" : "false"}
                 aria-controls={regionId}
-                onClick={handleTriggerClick}
+                onClick={state.onTriggerClick}
             >
                 <span class={s.srOnly}>{props.label}</span>
                 {props.summary}
             </button>
             <div
                 id={regionId}
-                class={open() ? s.unfoldRegionOpen : s.unfoldRegion}
-                aria-hidden={open() ? "false" : "true"}
-                inert={!open() || undefined}
+                class={state.open() ? s.unfoldRegionOpen : s.unfoldRegion}
+                aria-hidden={state.open() ? "false" : "true"}
+                inert={!state.open() || undefined}
             >
                 <div class={s.unfoldInner}>
                     <div class={s.unfoldContent}>{props.children}</div>

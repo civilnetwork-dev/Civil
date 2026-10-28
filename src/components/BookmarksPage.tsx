@@ -5,14 +5,15 @@ import {
     IconBookmark,
     IconClock,
     IconClose,
-    IconSearch,
     IconTrash,
     IconWorld,
 } from "~/components/icons";
 import Anno from "~/components/schematic/Anno";
+import Lookup from "~/components/schematic/Lookup";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
+import { ArmedKey } from "~/components/SettingControls";
 import Specimen from "~/components/Specimen";
 import { tabManager } from "~/lib/TabManager";
 import type { CivilBookmark } from "~/types";
@@ -45,10 +46,27 @@ function Stamp(props: { favicon?: string }) {
     );
 }
 
-export default function BookmarksPage() {
+/** Compact and absolute: "3 Aug" beats "11 days ago" for scanning a column. */
+function savedOn(ts: number) {
+    return new Date(ts).toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+    });
+}
+
+function openBookmark(bm: CivilBookmark) {
+    const existing = tabManager.tabs.find(t => t.url === bm.url);
+    if (existing) {
+        tabManager.activateTab(existing.id);
+    } else {
+        const t = tabManager.createTab(bm.url);
+        tabManager.activateTab(t.id);
+    }
+}
+
+function useBookmarkList() {
     const [search, setSearch] = createSignal("");
     const [scope, setScope] = createSignal<"all" | "recent">("all");
-    let lookupInput: HTMLInputElement | undefined;
 
     // The set the current scope selects, before the lookup narrows it. The
     // count reads against this so a search that matches nothing doesn't render
@@ -83,39 +101,132 @@ export default function BookmarksPage() {
             : `${inScope().length} saved`,
     );
 
-    /** Compact and absolute: "3 Aug" beats "11 days ago" for scanning a column. */
-    const savedOn = (ts: number) =>
-        new Date(ts).toLocaleDateString(undefined, {
-            day: "numeric",
-            month: "short",
-        });
+    return { search, setSearch, scope, setScope, inScope, listed, countLabel };
+}
 
-    const handleOpen = (bm: CivilBookmark) => {
-        const existing = tabManager.tabs.find(t => t.url === bm.url);
-        if (existing) {
-            tabManager.activateTab(existing.id);
-        } else {
-            const t = tabManager.createTab(bm.url);
-            tabManager.activateTab(t.id);
-        }
-    };
+type BookmarkList = ReturnType<typeof useBookmarkList>;
 
-    // Deleting every bookmark in view can't be undone, so the button asks once
-    // first — the same inline two-step used on History.
-    const [confirmingClear, setConfirmingClear] = createSignal(false);
-    let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+function ScopeSwitch(props: { list: BookmarkList }) {
+    return (
+        <div class={s.scopeSwitch}>
+            <button
+                type="button"
+                class={
+                    props.list.scope() === "all"
+                        ? s.scopeBtn.on
+                        : s.scopeBtn.off
+                }
+                aria-pressed={props.list.scope() === "all" ? "true" : "false"}
+                onClick={() => props.list.setScope("all")}
+            >
+                <IconBookmark size={13} />
+                All
+            </button>
+            <button
+                type="button"
+                class={
+                    props.list.scope() === "recent"
+                        ? s.scopeBtn.on
+                        : s.scopeBtn.off
+                }
+                aria-pressed={
+                    props.list.scope() === "recent" ? "true" : "false"
+                }
+                onClick={() => props.list.setScope("recent")}
+            >
+                <IconClock size={13} />
+                Recent
+            </button>
+        </div>
+    );
+}
 
-    const handleClearAll = () => {
-        if (!confirmingClear()) {
-            setConfirmingClear(true);
-            confirmTimer = setTimeout(() => setConfirmingClear(false), 4000);
-            return;
-        }
-        clearTimeout(confirmTimer);
-        setConfirmingClear(false);
-        // Clears what is listed, not the whole store: the label sits next to a
-        // scope selector and a lookup, so "clear" can only sensibly mean these.
-        for (const b of listed()) bookmarksRemove(b.id);
+function BookmarkActions(props: { list: BookmarkList }) {
+    return (
+        <div class={s.titleActions}>
+            <ScopeSwitch list={props.list} />
+            {/* Deleting every bookmark in view can't be undone, so the button
+                asks once first — the same inline two-step used on History. */}
+            <Show when={props.list.listed().length > 0}>
+                <ArmedKey
+                    icon={<IconTrash size={13} />}
+                    label="Clear"
+                    armedLabel="Click again to delete"
+                    onConfirm={() => {
+                        // Clears what is listed, not the whole store: the
+                        // label sits next to a scope selector and a lookup, so
+                        // "clear" can only sensibly mean these.
+                        for (const b of props.list.listed())
+                            bookmarksRemove(b.id);
+                    }}
+                />
+            </Show>
+        </div>
+    );
+}
+
+function NoBookmarks(props: { list: BookmarkList; onClearSearch: () => void }) {
+    return (
+        <div class={s.empty}>
+            <Specimen icon={IconBookmark} tint="stone" size={64} />
+            <Anno muted>
+                {props.list.search()
+                    ? `No bookmarks match “${props.list.search()}”.`
+                    : props.list.scope() === "recent"
+                      ? "Nothing bookmarked in the last week."
+                      : "No bookmarks yet. Save a page from the bookmarks bar and it will show up here."}
+            </Anno>
+            {/* A dead end otherwise: the list is empty and the only way
+                back is to find the lookup again. */}
+            <Show when={props.list.search()}>
+                <button
+                    type="button"
+                    class={s.emptyAction}
+                    onClick={() => props.onClearSearch()}
+                >
+                    Clear search
+                </button>
+            </Show>
+        </div>
+    );
+}
+
+function BookmarkRow(props: { bm: CivilBookmark }) {
+    return (
+        <li class={s.row}>
+            <button
+                type="button"
+                class={s.openBtn}
+                onClick={() => openBookmark(props.bm)}
+            >
+                <Stamp favicon={props.bm.favicon} />
+                <span class={s.entry}>
+                    <span class={s.entryTitle}>{props.bm.title}</span>
+                    <span class={s.entryUrl}>{props.bm.url}</span>
+                </span>
+                {/* The date column is what the RECENT scope exists to
+                    answer. */}
+                <span class={s.entryAdded}>{savedOn(props.bm.addedAt)}</span>
+            </button>
+            <button
+                type="button"
+                class={s.removeBtn}
+                aria-label={`Remove bookmark ${props.bm.title}`}
+                onClick={() => bookmarksRemove(props.bm.id)}
+            >
+                <IconClose size={14} />
+            </button>
+        </li>
+    );
+}
+
+export default function BookmarksPage() {
+    const list = useBookmarkList();
+    let lookupInput: HTMLInputElement | undefined;
+
+    const clearSearch = () => {
+        list.setSearch("");
+        lookupInput?.focus();
     };
 
     return (
@@ -128,54 +239,7 @@ export default function BookmarksPage() {
                 // pixels below. Printing it twice on one screen is noise, and
                 // the lookup's copy is the one that responds to a search.
                 meta={undefined}
-                actions={
-                    <div class={s.titleActions}>
-                        <div class={s.scopeSwitch}>
-                            <button
-                                type="button"
-                                class={
-                                    scope() === "all"
-                                        ? s.scopeBtn.on
-                                        : s.scopeBtn.off
-                                }
-                                aria-pressed={
-                                    scope() === "all" ? "true" : "false"
-                                }
-                                onClick={() => setScope("all")}
-                            >
-                                <IconBookmark size={13} />
-                                All
-                            </button>
-                            <button
-                                type="button"
-                                class={
-                                    scope() === "recent"
-                                        ? s.scopeBtn.on
-                                        : s.scopeBtn.off
-                                }
-                                aria-pressed={
-                                    scope() === "recent" ? "true" : "false"
-                                }
-                                onClick={() => setScope("recent")}
-                            >
-                                <IconClock size={13} />
-                                Recent
-                            </button>
-                        </div>
-                        <Show when={listed().length > 0}>
-                            <button
-                                type="button"
-                                class={`${schematic.clearKey}${confirmingClear() ? ` ${schematic.clearKeyArmed}` : ""}`}
-                                onClick={handleClearAll}
-                            >
-                                <IconTrash size={13} />
-                                {confirmingClear()
-                                    ? "Click again to delete"
-                                    : "Clear"}
-                            </button>
-                        </Show>
-                    </div>
-                }
+                actions={<BookmarkActions list={list} />}
             />
 
             <p class={schematic.lede}>
@@ -183,104 +247,31 @@ export default function BookmarksPage() {
             </p>
 
             <div class={s.lookup}>
-                <IconSearch size={15} class={schematic.inputIcon} />
-                <input
-                    ref={lookupInput}
-                    class={schematic.inputControl}
-                    type="text"
-                    value={search()}
+                <Lookup
+                    value={list.search()}
                     placeholder="Search title or address"
-                    aria-label="Search bookmarks"
-                    onInput={e => setSearch(e.currentTarget.value)}
-                    onKeyDown={e => {
-                        if (e.key === "Escape") {
-                            setSearch("");
-                            e.currentTarget.blur();
-                        }
-                    }}
+                    label="Search bookmarks"
+                    clearTitle="Clear search"
+                    onChange={list.setSearch}
+                    inputRef={el => (lookupInput = el)}
                 />
-                <Show when={search()}>
-                    <button
-                        type="button"
-                        class={schematic.inputClear}
-                        title="Clear search"
-                        onClick={() => {
-                            setSearch("");
-                            lookupInput?.focus();
-                        }}
-                    >
-                        <IconClose size={13} />
-                    </button>
-                </Show>
                 <span class={s.lookupCount} aria-live="polite">
-                    {countLabel()}
+                    {list.countLabel()}
                 </span>
             </div>
 
             <Rule
-                label={scope() === "recent" ? "Last 7 days" : undefined}
+                label={list.scope() === "recent" ? "Last 7 days" : undefined}
                 weight="major"
             />
 
-            <Show when={listed().length === 0}>
-                <div class={s.empty}>
-                    <Specimen icon={IconBookmark} tint="stone" size={64} />
-                    <Anno muted>
-                        {search()
-                            ? `No bookmarks match “${search()}”.`
-                            : scope() === "recent"
-                              ? "Nothing bookmarked in the last week."
-                              : "No bookmarks yet. Save a page from the bookmarks bar and it will show up here."}
-                    </Anno>
-                    {/* A dead end otherwise: the list is empty and the only way
-                        back is to find the lookup again. */}
-                    <Show when={search()}>
-                        <button
-                            type="button"
-                            class={s.emptyAction}
-                            onClick={() => {
-                                setSearch("");
-                                lookupInput?.focus();
-                            }}
-                        >
-                            Clear search
-                        </button>
-                    </Show>
-                </div>
+            <Show when={list.listed().length === 0}>
+                <NoBookmarks list={list} onClearSearch={clearSearch} />
             </Show>
 
             <ul class={s.register}>
-                <For each={listed()} keyed={false}>
-                    {bm => (
-                        <li class={s.row}>
-                            <button
-                                type="button"
-                                class={s.openBtn}
-                                onClick={() => handleOpen(bm())}
-                            >
-                                <Stamp favicon={bm().favicon} />
-                                <span class={s.entry}>
-                                    <span class={s.entryTitle}>
-                                        {bm().title}
-                                    </span>
-                                    <span class={s.entryUrl}>{bm().url}</span>
-                                </span>
-                                {/* The date column is what the RECENT scope
-                                    exists to answer. */}
-                                <span class={s.entryAdded}>
-                                    {savedOn(bm().addedAt)}
-                                </span>
-                            </button>
-                            <button
-                                type="button"
-                                class={s.removeBtn}
-                                aria-label={`Remove bookmark ${bm().title}`}
-                                onClick={() => bookmarksRemove(bm().id)}
-                            >
-                                <IconClose size={14} />
-                            </button>
-                        </li>
-                    )}
+                <For each={list.listed()} keyed={false}>
+                    {bm => <BookmarkRow bm={bm()} />}
                 </For>
             </ul>
         </Sheet>

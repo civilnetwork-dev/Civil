@@ -58,6 +58,46 @@ function StatusMark(props: { status: FilterStatus }) {
     );
 }
 
+function ResultSummary(props: { result: FilterResult }) {
+    return (
+        <span class={s.rowGrid}>
+            <span class={s.rowVendor}>
+                <StatusMark status={props.result.status} />
+                {props.result.filterName}
+            </span>
+            <span class={s.rowVerdict[props.result.status]}>
+                {props.result.status}
+            </span>
+            <span class={s.rowCat}>
+                {/* String(), because Solid renders the number 0 as nothing
+                    at all. In an aligned ledger a blank cell reads as
+                    missing data rather than "no categories". */}
+                {String(props.result.categories?.length ?? 0)}
+            </span>
+        </span>
+    );
+}
+
+function ResultDetail(props: { result: FilterResult }) {
+    return (
+        <div class={s.rowDetail}>
+            <Anno>{props.result.detail}</Anno>
+            <Show
+                when={
+                    props.result.categories &&
+                    props.result.categories.length > 0
+                }
+            >
+                <div class={s.catRow}>
+                    <For each={props.result.categories} keyed={false}>
+                        {cat => <span class={s.catChip}>{cat()}</span>}
+                    </For>
+                </div>
+            </Show>
+        </div>
+    );
+}
+
 export default function FilterCheckResults(props: { results: FilterResult[] }) {
     return (
         <div class={s.ledger}>
@@ -72,57 +112,9 @@ export default function FilterCheckResults(props: { results: FilterResult[] }) {
                         <li class={s.ledgerRow}>
                             <Unfold
                                 label={`${result().filterName} detail`}
-                                summary={
-                                    <span class={s.rowGrid}>
-                                        <span class={s.rowVendor}>
-                                            <StatusMark
-                                                status={result().status}
-                                            />
-                                            {result().filterName}
-                                        </span>
-                                        <span
-                                            class={
-                                                s.rowVerdict[result().status]
-                                            }
-                                        >
-                                            {result().status}
-                                        </span>
-                                        <span class={s.rowCat}>
-                                            {/* String(), because Solid renders
-                                                the number 0 as nothing at all.
-                                                In an aligned ledger a blank
-                                                cell reads as missing data
-                                                rather than "no categories". */}
-                                            {String(
-                                                result().categories?.length ??
-                                                    0,
-                                            )}
-                                        </span>
-                                    </span>
-                                }
+                                summary={<ResultSummary result={result()} />}
                             >
-                                <div class={s.rowDetail}>
-                                    <Anno>{result().detail}</Anno>
-                                    <Show
-                                        when={
-                                            result().categories &&
-                                            result().categories!.length > 0
-                                        }
-                                    >
-                                        <div class={s.catRow}>
-                                            <For
-                                                each={result().categories}
-                                                keyed={false}
-                                            >
-                                                {cat => (
-                                                    <span class={s.catChip}>
-                                                        {cat()}
-                                                    </span>
-                                                )}
-                                            </For>
-                                        </div>
-                                    </Show>
-                                </div>
+                                <ResultDetail result={result()} />
                             </Unfold>
                         </li>
                     )}

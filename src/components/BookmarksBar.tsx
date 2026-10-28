@@ -13,6 +13,7 @@ import {
     IconWorld,
 } from "~/components/icons";
 import { isNewtabUrl } from "~/lib/browserUrls";
+import type { CivilBookmark } from "~/types";
 
 import * as s from "~/styles/BookmarksBar.css";
 
@@ -44,6 +45,33 @@ interface BookmarksBarProps {
     onNavigate: (url: string) => void;
 }
 
+function BookmarkChip(props: {
+    bookmark: CivilBookmark;
+    onNavigate: (url: string) => void;
+}) {
+    return (
+        <button
+            type="button"
+            class={s.bookmark}
+            title={props.bookmark.url}
+            onClick={() => props.onNavigate(props.bookmark.url)}
+        >
+            <BookmarkFavicon favicon={props.bookmark.favicon} />
+            <span class={s.bookmarkLabel}>{props.bookmark.title}</span>
+            {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- remove control sits inside the bookmark's own button row */}
+            <span
+                class={s.bookmarkRemove}
+                onClick={e => {
+                    e.stopPropagation();
+                    bookmarksRemove(props.bookmark.id);
+                }}
+            >
+                <IconClose size={10} />
+            </span>
+        </button>
+    );
+}
+
 export default function BookmarksBar(props: BookmarksBarProps) {
     const isNewtab = () => isNewtabUrl(props.activeUrl);
     const isBookmarked = () =>
@@ -63,11 +91,6 @@ export default function BookmarksBar(props: BookmarksBarProps) {
         }
     };
 
-    const handleRemove = (e: MouseEvent, id: string) => {
-        e.stopPropagation();
-        bookmarksRemove(id);
-    };
-
     return (
         <div class={s.bar}>
             <Show when={bookmarks().length === 0}>
@@ -75,24 +98,10 @@ export default function BookmarksBar(props: BookmarksBarProps) {
             </Show>
             <For each={bookmarks()} keyed={false}>
                 {bm => (
-                    <button
-                        type="button"
-                        class={s.bookmark}
-                        title={bm().url}
-                        onClick={() => props.onNavigate(bm().url)}
-                    >
-                        <BookmarkFavicon favicon={bm().favicon} />
-                        <span class={s.bookmarkLabel}>{bm().title}</span>
-                        {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- remove control sits inside the bookmark's own button row */}
-                        <span
-                            class={s.bookmarkRemove}
-                            onClick={e =>
-                                handleRemove(e as MouseEvent, bm().id)
-                            }
-                        >
-                            <IconClose size={10} />
-                        </span>
-                    </button>
+                    <BookmarkChip
+                        bookmark={bm()}
+                        onNavigate={props.onNavigate}
+                    />
                 )}
             </For>
             <Show when={!isNewtab() && props.activeUrl}>

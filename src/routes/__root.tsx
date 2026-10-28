@@ -55,21 +55,71 @@ function RouterLoadingAnimation() {
     );
 }
 
+/** An anonymous session, so the proxy can count strikes per account. */
+async function ensureSession(): Promise<void> {
+    try {
+        const sessionRes = await fetch("/api/auth/get-session");
+        const session = await sessionRes.json();
+        if (!session) {
+            await fetch("/api/auth/sign-in/anonymous", {
+                method: "POST",
+            });
+        }
+    } catch {}
+}
+
+async function reportDistrict(lat: number, lon: number): Promise<void> {
+    const distRes = await fetch(
+        `/api/school-districts/nearest?lat=${lat}&lon=${lon}`,
+    );
+    if (!distRes.ok) return;
+    const { leaId, name, distanceKm } = (await distRes.json()) as {
+        leaId: string;
+        name: string;
+        distanceKm: number;
+    };
+
+    localStorage.setItem("civil:district:lat", lat.toFixed(2));
+    localStorage.setItem("civil:district:lon", lon.toFixed(2));
+
+    if (window.location.host === "civil.quartinal.me") {
+        const { default: posthog } = await import("posthog-js");
+        posthog.capture("school_district_detected", {
+            lea_id: leaId,
+            district_name: name,
+            distance_km: Math.round(distanceKm),
+            $set: {
+                school_district_lea_id: leaId,
+                school_district_name: name,
+            },
+        });
+    }
+}
+
+/** Looks up the school district once per rough location, for analytics. */
+async function detectDistrict(): Promise<void> {
+    try {
+        const locRes = await fetch("/api/ip-location");
+        if (!locRes.ok) return;
+        const { lat, lon } = (await locRes.json()) as {
+            lat: number;
+            lon: number;
+        };
+
+        const storedLat = localStorage.getItem("civil:district:lat");
+        const storedLon = localStorage.getItem("civil:district:lon");
+        if (storedLat === lat.toFixed(2) && storedLon === lon.toFixed(2))
+            return;
+
+        await reportDistrict(lat, lon);
+    } catch {}
+}
+
 function RootComponent() {
     createEffect(
         () => undefined,
         () => {
-            void (async () => {
-                try {
-                    const sessionRes = await fetch("/api/auth/get-session");
-                    const session = await sessionRes.json();
-                    if (!session) {
-                        await fetch("/api/auth/sign-in/anonymous", {
-                            method: "POST",
-                        });
-                    }
-                } catch {}
-            })();
+            void ensureSession();
         },
     );
 
@@ -77,49 +127,7 @@ function RootComponent() {
         // The district lookup exists only to feed analytics, so it goes
         // when the user turns analytics off.
         if (!getSetting("analytics")) return;
-        void (async () => {
-            try {
-                const locRes = await fetch("/api/ip-location");
-                if (!locRes.ok) return;
-                const { lat, lon } = (await locRes.json()) as {
-                    lat: number;
-                    lon: number;
-                };
-
-                const latKey = lat.toFixed(2);
-                const lonKey = lon.toFixed(2);
-
-                const storedLat = localStorage.getItem("civil:district:lat");
-                const storedLon = localStorage.getItem("civil:district:lon");
-                if (storedLat === latKey && storedLon === lonKey) return;
-
-                const distRes = await fetch(
-                    `/api/school-districts/nearest?lat=${lat}&lon=${lon}`,
-                );
-                if (!distRes.ok) return;
-                const { leaId, name, distanceKm } = (await distRes.json()) as {
-                    leaId: string;
-                    name: string;
-                    distanceKm: number;
-                };
-
-                localStorage.setItem("civil:district:lat", latKey);
-                localStorage.setItem("civil:district:lon", lonKey);
-
-                if (window.location.host === "civil.quartinal.me") {
-                    const { default: posthog } = await import("posthog-js");
-                    posthog.capture("school_district_detected", {
-                        lea_id: leaId,
-                        district_name: name,
-                        distance_km: Math.round(distanceKm),
-                        $set: {
-                            school_district_lea_id: leaId,
-                            school_district_name: name,
-                        },
-                    });
-                }
-            } catch {}
-        })();
+        void detectDistrict();
     });
 
     return (

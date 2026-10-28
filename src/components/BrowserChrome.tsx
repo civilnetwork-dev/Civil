@@ -29,14 +29,13 @@ import {
     saveSession,
 } from "~/lib/browserHelpers";
 import { isInternalUrl, isNewtabUrl } from "~/lib/browserUrls";
+import { cleanupChiiArtifacts } from "~/lib/chii";
 import searchBar from "~/lib/SearchBar";
 import { getSetting, useSetting } from "~/lib/settings";
-import { type Tab, tabManager } from "~/lib/TabManager";
-import {
-    cleanupChiiArtifacts,
-    createIframeManager,
-} from "~/lib/useIframeManager";
+import { tabManager } from "~/lib/TabManager";
+import { createIframeManager } from "~/lib/useIframeManager";
 import { registerTabMonitor } from "~/lib/useTabDrag";
+import type { Tab } from "~/types";
 
 import * as s from "~/styles/BrowserChrome.css";
 
@@ -140,41 +139,555 @@ function servePrefixFor(pagePath: string): string {
     return "action-popup";
 }
 
-export default function BrowserChrome() {
-    const bar = searchBar();
-    const ctx = useContextMenu();
+function openNewTab(url = "browser:newtab") {
+    const t = tabManager.createTab(url);
+    tabManager.activateTab(t.id);
+}
 
+function listen(
+    target: EventTarget,
+    type: string,
+    handler: (e: Event) => void,
+): () => void {
+    target.addEventListener(type, handler);
+    return () => target.removeEventListener(type, handler);
+}
+
+const TAB_MIN = 60,
+    TAB_MAX = 220,
+    NEW_BTN_W = 40,
+    // Must track the `gap` on .browserTabstrip.
+    TAB_GAP = 6;
+
+function tabWidthFor(n: number, barWidth: number) {
+    if (!n) return TAB_MAX;
+    // n tabs plus the new-tab button is n+1 items, so n gaps sit between
+    // them. The old constant 8px stood in for all of them, which left the
+    // row ~50px too wide at eight tabs and pushed the new-tab button off
+    // the edge of the window, where it couldn't be clicked at all.
+    const available = barWidth - NEW_BTN_W - TAB_GAP * n;
+    return Math.min(TAB_MAX, Math.max(TAB_MIN, available / n));
+}
+
+interface TabHandlers {
+    tabAdded: (tab: Tab) => void;
+    tabRemoved: (id: string) => void;
+    tabActivated: (id: string) => void;
+    tabUpdated: (tab: Tab) => void;
+    tabMoved: (id: string, toIndex: number) => void;
+}
+
+function subscribeTabs(h: TabHandlers) {
+    tabManager.on("tabAdded", h.tabAdded);
+    tabManager.on("tabRemoved", h.tabRemoved);
+    tabManager.on("tabActivated", h.tabActivated);
+    tabManager.on("tabUpdated", h.tabUpdated);
+    tabManager.on("tabMoved", h.tabMoved);
+    return () => {
+        tabManager.off("tabAdded", h.tabAdded);
+        tabManager.off("tabRemoved", h.tabRemoved);
+        tabManager.off("tabActivated", h.tabActivated);
+        tabManager.off("tabUpdated", h.tabUpdated);
+        tabManager.off("tabMoved", h.tabMoved);
+    };
+}
+
+const persist = () => saveSession(tabManager.tabs, tabManager.activeId);
+
+function withUpdate(tabs: Tab[], upd: Tab): Tab[] {
+    return tabs.map(t =>
+        t.id === upd.id
+            ? {
+                  ...t,
+                  title: upd.title,
+                  url: upd.url,
+                  isLoading: upd.isLoading,
+                  favicon: upd.favicon,
+              }
+            : t,
+    );
+}
+
+function moveInto(tabs: Tab[], id: string, toIndex: number): Tab[] | null {
+    const arr = [...tabs];
+    const from = arr.findIndex(t => t.id === id);
+    if (from === -1 || from === toIndex) return null;
+    const [tab] = arr.splice(from, 1);
+    arr.splice(toIndex, 0, tab);
+    return arr;
+}
+
+function useTabState(activation: { before: () => void; after: () => void }) {
     const [tabStore, setTabStore] = createStore<{ tabs: Tab[] }>({ tabs: [] });
     const [activeId, setActiveId] = createSignal<string | null>(null);
-    const [tabBarWidth, setTabBarWidth] = createSignal(600);
-    const [draggingId, setDraggingId] = createSignal<string | null>(null);
     const [iframeIds, setIframeIds] = createSignal<string[]>([]);
-    const [showSearch, setShowSearch] = createSignal(false);
-    const [chiiOpen, setChiiOpen] = createSignal(false);
 
-    const { pushHistory, back, forward, canBack, canForward } =
-        createTabHistory();
-    const { iframeMap, navigateIframe, navigate, registerIframe } =
-        createIframeManager(bar, pushHistory);
+    const setTabs = (update: (tabs: Tab[]) => Tab[] | null) =>
+        setTabStore(store => {
+            const next = update(store.tabs);
+            if (next) store.tabs = next;
+        });
 
-    let tabStripRef: HTMLDivElement | undefined;
-    let browserRootRef: HTMLDivElement | undefined;
+    onCleanup(
+        subscribeTabs({
+            tabAdded: tab => {
+                setTabs(tabs => [...tabs, tab]);
+                setIframeIds(ids => [...ids, tab.id]);
+                persist();
+            },
+            tabRemoved: id => {
+                setTabs(tabs => tabs.filter(t => t.id !== id));
+                setIframeIds(ids => ids.filter(i => i !== id));
+                setActiveId(tabManager.activeId);
+                persist();
+            },
+            tabActivated: id => {
+                activation.before();
+                setActiveId(id);
+                activation.after();
+                persist();
+            },
+            tabUpdated: upd => {
+                setTabs(tabs => withUpdate(tabs, upd));
+                persist();
+            },
+            tabMoved: (id, toIndex) => {
+                setTabs(tabs => moveInto(tabs, id, toIndex));
+                persist();
+            },
+        }),
+    );
 
-    const TAB_MIN = 60,
-        TAB_MAX = 220,
-        NEW_BTN_W = 40,
-        // Must track the `gap` on .browserTabstrip.
-        TAB_GAP = 6;
-    const tabWidth = createMemo(() => {
-        const n = tabStore.tabs.length;
-        if (!n) return TAB_MAX;
-        // n tabs plus the new-tab button is n+1 items, so n gaps sit between
-        // them. The old constant 8px stood in for all of them, which left the
-        // row ~50px too wide at eight tabs and pushed the new-tab button off
-        // the edge of the window, where it couldn't be clicked at all.
-        const available = tabBarWidth() - NEW_BTN_W - TAB_GAP * n;
-        return Math.min(TAB_MAX, Math.max(TAB_MIN, available / n));
+    /** Takes over the tabs `tabManager` already holds. */
+    const adopt = () => {
+        setTabs(() => [...tabManager.tabs]);
+        setIframeIds(tabManager.tabs.map(t => t.id));
+        setActiveId(tabManager.activeId);
+    };
+
+    return { tabStore, activeId, iframeIds, adopt };
+}
+
+function restoreSession(session: NonNullable<ReturnType<typeof loadSession>>) {
+    for (const saved of session.tabs) {
+        const t = tabManager.createTab(saved.url);
+        tabManager.updateTab(t.id, {
+            title: saved.title || t.title,
+            favicon: saved.favicon,
+            isLoading: false,
+        });
+    }
+    const idx = Math.min(
+        Math.max(0, session.activeIndex ?? 0),
+        tabManager.tabs.length - 1,
+    );
+    tabManager.activateTab(tabManager.tabs[idx].id);
+}
+
+function openStartupTabs(adopt: () => void) {
+    // `tabManager` is a module singleton, so a remount (HMR, or the route
+    // re-entering the browser) finds it already holding tabs. Adopt them;
+    // restoring the saved session on top doubled the strip every time.
+    // The session is still saved when restoring is off, so turning it
+    // back on picks up the last tabs.
+    const startup = getSetting("startup");
+    const session =
+        tabManager.tabs.length || startup !== "restore" ? null : loadSession();
+    if (tabManager.tabs.length) {
+        adopt();
+    } else if (session) {
+        restoreSession(session);
+    } else {
+        const page = getSetting("startupUrl").trim();
+        openNewTab(startup === "page" && page ? page : "browser:newtab");
+    }
+}
+
+function createExtensionPageOpener() {
+    // Dedup guard: prevents infinite-loop if background calls tabs.create
+    // repeatedly for the same page before the first one finishes building.
+    const _pendingExtPages = new Set<string>();
+
+    return ({ extId, pagePath, hashSearch }: ExtensionPageTarget) => {
+        const safeKey = pagePath.replace(/[^a-z0-9]/gi, "-");
+        const cacheKey = `${extId}--${safeKey}`;
+        const safeHash = hashSearch.replace(/[^a-z0-9]/gi, "-").slice(0, 80);
+        const dedupKey = safeHash ? `${cacheKey}--${safeHash}` : cacheKey;
+
+        // Dedup: skip if already building this exact page+hash
+        if (_pendingExtPages.has(dedupKey)) return;
+        _pendingExtPages.add(dedupKey);
+
+        const servePrefix = servePrefixFor(pagePath);
+
+        // Build the extension page BEFORE creating the tab, then
+        // create the tab with the final served URL. This avoids two
+        // races that surfaced as a router 404: (1) navigate() no-ops
+        // if the iframe hasn't mounted yet, and (2) the served
+        // /{servePrefix}/{cacheKey} entry may not be registered when
+        // navigation fires. Creating the tab with the internal URL
+        // after the build lets registerIframe's restore path load it
+        // deterministically (isInternalUrl -> iframe.src = url).
+        void (async () => {
+            try {
+                const [{ extensionsGetById }, { buildExtensionPageSrcDoc }] =
+                    await Promise.all([
+                        import("~/api/extensions"),
+                        import("~/api/extensionRuntime"),
+                    ]);
+                const ext = extensionsGetById(extId);
+                if (!ext) return;
+                await buildExtensionPageSrcDoc(
+                    ext,
+                    pagePath,
+                    "popup",
+                    cacheKey,
+                );
+                openNewTab(
+                    `${window.location.origin}/${servePrefix}/${cacheKey}${hashSearch}`,
+                );
+            } catch (err) {
+                console.warn("[Civil] buildExtensionPageSrcDoc failed:", err);
+            } finally {
+                _pendingExtPages.delete(dedupKey);
+            }
+        })();
+    };
+}
+
+function newTabHandler(openExtensionPage: (t: ExtensionPageTarget) => void) {
+    return async (e: Event) => {
+        const { url } = (e as CustomEvent<{ url?: string }>).detail ?? {};
+        console.log("[Civil] browser:newtab fired, url=", url);
+
+        if (url) {
+            const target =
+                extensionPageTarget(url, window.location.origin) ??
+                (await tampermonkeyInstallTarget(url));
+            console.log("[Civil] browser:newtab pattern match:", {
+                extId: target?.extId,
+                pagePath: target?.pagePath,
+                hashSearch: target?.hashSearch ?? "",
+            });
+            if (target) {
+                openExtensionPage(target);
+                return;
+            }
+        }
+
+        openNewTab(url ?? "browser:newtab");
+    };
+}
+
+function closeChromeTabs(e: Event) {
+    const { chromeTabIds } =
+        (e as CustomEvent<{ chromeTabIds?: number[] }>).detail ?? {};
+    if (!chromeTabIds?.length) return;
+    for (const chromeId of chromeTabIds) {
+        const civilId = extensionCivilTabIdFromChromeId(chromeId);
+        if (civilId) tabManager.removeTab(civilId);
+    }
+}
+
+function broadcastUserscriptInstall(e: Event) {
+    const { url, source } =
+        (e as CustomEvent<{ url?: string; source?: string }>).detail ?? {};
+    if (!url || !source) return;
+    void import("~/api/extensions").then(({ extensionsGetAll }) => {
+        const BroadcastChannel = (window as unknown as Record<string, unknown>)
+            .BroadcastChannel as typeof window.BroadcastChannel;
+        for (const ext of extensionsGetAll().filter(x => x.enabled)) {
+            const bus = new BroadcastChannel(`civil-ext-bus-${ext.id}`);
+            const reqId = Math.random().toString(36).slice(2);
+            bus.postMessage({
+                kind: "sendMessageExternal",
+                reqId,
+                from: `civil-userscript-${Math.random().toString(36).slice(2)}`,
+                contextType: "content",
+                message: {
+                    action: "userscript",
+                    source,
+                    url,
+                },
+                sender: { id: ext.id, url },
+            });
+            setTimeout(() => bus.close(), 500);
+        }
     });
+}
+
+function useBrowserEvents(opts: {
+    navigateIframe: (tabId: string, url: string) => void;
+    toggleSearch: () => void;
+}) {
+    onSettled(() => {
+        const releases = [
+            listen(document, "browser:navigate", e => {
+                const { tabId, url } = (
+                    e as CustomEvent<{ tabId: string; url: string }>
+                ).detail;
+                opts.navigateIframe(tabId, url);
+            }),
+            // Debug: log events from extension shims
+            listen(window, "__civilDebug", e => {
+                console.log("[civil-debug]", (e as CustomEvent).detail);
+            }),
+            listen(
+                document,
+                "browser:newtab",
+                newTabHandler(createExtensionPageOpener()),
+            ),
+            listen(document, "browser:closetab", closeChromeTabs),
+            listen(
+                window,
+                "browser:userscript-install",
+                broadcastUserscriptInstall,
+            ),
+            listen(window, "keydown", e => {
+                const key = e as KeyboardEvent;
+                if ((key.ctrlKey || key.metaKey) && key.key === "k") {
+                    key.preventDefault();
+                    opts.toggleSearch();
+                }
+            }),
+        ];
+        return () => {
+            for (const release of releases) release();
+        };
+    });
+}
+
+type TextField = HTMLInputElement | HTMLTextAreaElement;
+
+function focusedField(): TextField | null {
+    const el = document.activeElement as TextField | null;
+    return el && "setRangeText" in el ? el : null;
+}
+
+function replaceSelection(el: TextField, text: string) {
+    el.setRangeText(text, el.selectionStart ?? 0, el.selectionEnd ?? 0, "end");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function cutSelection() {
+    const active = focusedField();
+    if (!active) return;
+    const start = active.selectionStart ?? 0;
+    const end = active.selectionEnd ?? 0;
+    const cut = active.value.slice(start, end);
+    if (cut) {
+        navigator.clipboard.writeText(cut);
+        replaceSelection(active, "");
+    }
+}
+
+function copySelection() {
+    const sel = window.getSelection()?.toString() ?? "";
+    if (sel) navigator.clipboard.writeText(sel);
+}
+
+function pasteClipboard() {
+    navigator.clipboard.readText().then(text => {
+        const el = focusedField();
+        if (el) replaceSelection(el, text);
+    });
+}
+
+type MenuItems = Parameters<ReturnType<typeof useContextMenu>["open"]>[1];
+
+const EDIT_ITEMS: MenuItems = [
+    { label: "Cut", shortcut: "⌘X", action: cutSelection },
+    { label: "Copy", shortcut: "⌘C", action: copySelection },
+    { label: "Paste", shortcut: "⌘V", action: pasteClipboard },
+    { type: "separator" as const },
+];
+
+function isTextTarget(target: HTMLElement) {
+    return (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+    );
+}
+
+function chromeMenu(opts: {
+    isInput: boolean;
+    open: (url: string) => void;
+    inspect: () => void;
+    closeActive: () => void;
+}): MenuItems {
+    return [
+        {
+            label: "New Tab",
+            icon: <IconPlus size={14} />,
+            action: () => openNewTab(),
+        },
+        { type: "separator" },
+        {
+            label: "Extensions",
+            icon: <IconPuzzle size={14} />,
+            action: () => opts.open("browser:extensions"),
+        },
+        { label: "History", action: () => opts.open("browser:history") },
+        { label: "Bookmarks", action: () => opts.open("browser:bookmarks") },
+        { label: "Apps", action: () => opts.open("browser:apps") },
+        {
+            label: "Settings",
+            icon: <IconSliders size={14} />,
+            action: () => opts.open("browser:settings"),
+        },
+        { type: "separator" },
+        ...(opts.isInput ? EDIT_ITEMS : []),
+        { label: "Inspect", action: opts.inspect },
+        { type: "separator" },
+        { label: "Close Tab", danger: true, action: opts.closeActive },
+    ];
+}
+
+function TabStrip(props: {
+    tabs: Tab[];
+    activeId: string | null;
+    width: number;
+    draggingId: string | null;
+    setDraggingId: (id: string | null) => void;
+    stripRef: (el: HTMLDivElement) => void;
+    getStrip: () => HTMLDivElement | undefined;
+}) {
+    return (
+        <div
+            class={s.browserTabstrip}
+            ref={props.stripRef}
+            role="tablist"
+            aria-label="Browser tabs"
+        >
+            <For each={props.tabs} keyed={false}>
+                {tab => (
+                    <TabPill
+                        tab={tab()}
+                        active={tab().id === props.activeId}
+                        width={props.width}
+                        isDragging={tab().id === props.draggingId}
+                        onClose={() => tabManager.removeTab(tab().id)}
+                        setDraggingId={props.setDraggingId}
+                        getTabs={() => props.tabs}
+                        getStrip={props.getStrip}
+                        onReorder={(tabId, newIndex) =>
+                            tabManager.moveTab(tabId, newIndex)
+                        }
+                    />
+                )}
+            </For>
+            <button
+                type="button"
+                class={s.tabNew}
+                title="New tab"
+                onClick={() => openNewTab()}
+            >
+                <IconPlus size={15} />
+            </button>
+        </div>
+    );
+}
+
+function ChromeButtons(props: { open: (url: string) => void }) {
+    return (
+        <>
+            <ExtensionIconBar />
+            <button
+                type="button"
+                class={s.extensionsBtn}
+                title="Extensions"
+                onClick={() => props.open("browser:extensions")}
+            >
+                <IconPuzzle size={15} />
+            </button>
+            <button
+                type="button"
+                class={s.extensionsBtn}
+                title="Settings"
+                onClick={() => props.open("browser:settings")}
+            >
+                <IconSliders size={15} />
+            </button>
+        </>
+    );
+}
+
+function EmptyViewport() {
+    return (
+        <div class={s.browserEmpty}>
+            <Specimen icon={IconWorld} size={64} />
+            <p>No tabs open</p>
+            <button
+                type="button"
+                class={s.browserEmptyButton}
+                onClick={() => openNewTab()}
+            >
+                Open a tab
+            </button>
+        </div>
+    );
+}
+
+function Frames(props: {
+    ids: string[];
+    activeId: string | null;
+    register: (id: string, el: HTMLIFrameElement) => void;
+}) {
+    return (
+        <>
+            {/*
+             * Keyed by tab id, unlike the lists around it: a frame is a
+             * live page that has to stay with its tab. Keyed by index,
+             * closing a tab handed its frame to the tab on its right,
+             * which then showed the closed page.
+             */}
+            <For each={props.ids}>
+                {id => (
+                    <iframe
+                        title="Proxied browser-in-browser webpage"
+                        class={[
+                            s.browserFrame,
+                            { [s.browserFrameActive]: id === props.activeId },
+                        ]}
+                        ref={el => props.register(id, el)}
+                    />
+                )}
+            </For>
+        </>
+    );
+}
+
+function useChii(activeIframe: () => HTMLIFrameElement | undefined) {
+    const [chiiOpen, setChiiOpen] = createSignal(false);
+    const cleanup = () => {
+        const iframe = activeIframe();
+        if (iframe) cleanupChiiArtifacts(iframe);
+    };
+    return { chiiOpen, setChiiOpen, cleanup };
+}
+
+function useTabStripWidth(count: () => number) {
+    const [tabBarWidth, setTabBarWidth] = createSignal(600);
+    const ro = new ResizeObserver(entries => {
+        for (const e of entries) setTabBarWidth(e.contentRect.width);
+    });
+    onCleanup(() => ro.disconnect());
+    const tabWidth = createMemo(() => tabWidthFor(count(), tabBarWidth()));
+    return { tabWidth, observe: (el: HTMLElement) => ro.observe(el) };
+}
+
+function useBrowserState() {
+    const bar = searchBar();
+    const tabHistory = createTabHistory();
+    const frames = createIframeManager(bar, tabHistory.pushHistory);
+
+    const state = useTabState({
+        before: () => chii.cleanup(),
+        after: () => chii.setChiiOpen(false),
+    });
+    const { tabStore, activeId } = state;
+
     const activeTab = createMemo(
         () => tabStore.tabs.find(t => t.id === activeId()) ?? null,
     );
@@ -182,627 +695,226 @@ export default function BrowserChrome() {
     const activeTabIsNewtab = createMemo(() => isNewtabUrl(activeUrl()));
     const activeIframe = createMemo(() => {
         const id = activeId();
-        return id ? iframeMap.get(id) : undefined;
+        return id ? frames.iframeMap.get(id) : undefined;
     });
-    const cleanupActiveChii = () => {
-        const iframe = activeIframe();
-        if (iframe) cleanupChiiArtifacts(iframe);
+    const chii = useChii(activeIframe);
+
+    return {
+        bar,
+        tabHistory,
+        frames,
+        state,
+        activeTab,
+        activeUrl,
+        activeTabIsNewtab,
+        activeIframe,
+        chii,
     };
+}
 
-    const persist = () => saveSession(tabManager.tabs, tabManager.activeId);
+type Browser = ReturnType<typeof useBrowserState>;
 
-    const onTabAdded = (tab: Tab) => {
-        setTabStore(store => {
-            store.tabs = [...store.tabs, tab];
-        });
-        setIframeIds(ids => [...ids, tab.id]);
-        persist();
-    };
-    const onTabRemoved = (id: string) => {
-        setTabStore(store => {
-            store.tabs = store.tabs.filter(t => t.id !== id);
-        });
-        setIframeIds(ids => ids.filter(i => i !== id));
-        setActiveId(tabManager.activeId);
-        persist();
-    };
-    const onTabActivated = (id: string) => {
-        cleanupActiveChii();
-        setActiveId(id);
-        setChiiOpen(false);
-        persist();
-    };
-    const onTabUpdated = (upd: Tab) => {
-        setTabStore(store => {
-            store.tabs = store.tabs.map(t =>
-                t.id === upd.id
-                    ? {
-                          ...t,
-                          title: upd.title,
-                          url: upd.url,
-                          isLoading: upd.isLoading,
-                          favicon: upd.favicon,
-                      }
-                    : t,
-            );
-        });
-        persist();
-    };
-    const onTabMoved = (id: string, toIndex: number) => {
-        setTabStore(store => {
-            const arr = [...store.tabs];
-            const from = arr.findIndex(t => t.id === id);
-            if (from === -1 || from === toIndex) return;
-            const [tab] = arr.splice(from, 1);
-            arr.splice(toIndex, 0, tab);
-            store.tabs = arr;
-        });
-        persist();
-    };
-
-    tabManager.on("tabAdded", onTabAdded);
-    tabManager.on("tabRemoved", onTabRemoved);
-    tabManager.on("tabActivated", onTabActivated);
-    tabManager.on("tabUpdated", onTabUpdated);
-    tabManager.on("tabMoved", onTabMoved);
-    onCleanup(() => {
-        tabManager.off("tabAdded", onTabAdded);
-        tabManager.off("tabRemoved", onTabRemoved);
-        tabManager.off("tabActivated", onTabActivated);
-        tabManager.off("tabUpdated", onTabUpdated);
-        tabManager.off("tabMoved", onTabMoved);
-    });
-
-    const ro = new ResizeObserver(entries => {
-        for (const e of entries) setTabBarWidth(e.contentRect.width);
-    });
-    onCleanup(() => ro.disconnect());
-
-    onSettled(() => {
-        if (tabStripRef) ro.observe(tabStripRef);
-
-        const releaseTabMonitor = registerTabMonitor({ setDraggingId });
-
-        // `tabManager` is a module singleton, so a remount (HMR, or the route
-        // re-entering the browser) finds it already holding tabs. Adopt them;
-        // restoring the saved session on top doubled the strip every time.
-        // The session is still saved when restoring is off, so turning it
-        // back on picks up the last tabs.
-        const startup = getSetting("startup");
-        const session =
-            tabManager.tabs.length || startup !== "restore"
-                ? null
-                : loadSession();
-        if (tabManager.tabs.length) {
-            setTabStore(store => {
-                store.tabs = [...tabManager.tabs];
-            });
-            setIframeIds(tabManager.tabs.map(t => t.id));
-            setActiveId(tabManager.activeId);
-        } else if (session) {
-            for (const saved of session.tabs) {
-                const t = tabManager.createTab(saved.url);
-                tabManager.updateTab(t.id, {
-                    title: saved.title || t.title,
-                    favicon: saved.favicon,
-                    isLoading: false,
-                });
+function browserActions(b: Browser) {
+    const activeId = b.state.activeId;
+    return {
+        open: (url: string) => {
+            const id = activeId();
+            if (id) b.frames.navigate(id, url);
+        },
+        travel: (step: (id: string | null) => string | null | undefined) => {
+            const id = activeId();
+            const url = step(id);
+            if (id && url) b.frames.navigateIframe(id, url);
+        },
+        refresh: () => {
+            const id = activeId();
+            if (!id) return;
+            const tab = b.state.tabStore.tabs.find(t => t.id === id);
+            if (!tab) return;
+            const iframe = b.frames.iframeMap.get(id);
+            if (!iframe) return;
+            tabManager.updateTab(id, { isLoading: true });
+            if (isInternalUrl(tab.url)) {
+                iframe.src = tab.url;
+            } else {
+                b.bar.emit("submit", iframe, tab.url);
             }
-            const idx = Math.min(
-                Math.max(0, session.activeIndex ?? 0),
-                tabManager.tabs.length - 1,
-            );
-            tabManager.activateTab(tabManager.tabs[idx].id);
-        } else {
-            const page = getSetting("startupUrl").trim();
-            const t = tabManager.createTab(
-                startup === "page" && page ? page : "browser:newtab",
-            );
-            tabManager.activateTab(t.id);
-        }
+        },
+        inspect: () => {
+            const id = activeId();
+            if (!id) return;
+            const iframe = b.frames.iframeMap.get(id);
+            if (!iframe) return;
+            if (isInternalUrl(b.activeUrl())) return;
+            b.chii.setChiiOpen(true);
+        },
+        closeActive: () => {
+            const id = activeId();
+            if (id) tabManager.removeTab(id);
+        },
+    };
+}
 
-        const onBrowserNavigate = (e: Event) => {
-            const { tabId, url } = (
-                e as CustomEvent<{ tabId: string; url: string }>
-            ).detail;
-            navigateIframe(tabId, url);
-        };
-        document.addEventListener("browser:navigate", onBrowserNavigate);
+type Actions = ReturnType<typeof browserActions>;
 
-        // Debug: log events from extension shims
-        const onCivilDebug = (e: Event) => {
-            console.log("[civil-debug]", (e as CustomEvent).detail);
-        };
-        window.addEventListener("__civilDebug", onCivilDebug);
-
-        // Dedup guard: prevents infinite-loop if background calls tabs.create
-        // repeatedly for the same page before the first one finishes building.
-        const _pendingExtPages = new Set<string>();
-
-        const openExtensionPage = ({
-            extId,
-            pagePath,
-            hashSearch,
-        }: ExtensionPageTarget) => {
-            const safeKey = pagePath.replace(/[^a-z0-9]/gi, "-");
-            const cacheKey = `${extId}--${safeKey}`;
-            const safeHash = hashSearch
-                .replace(/[^a-z0-9]/gi, "-")
-                .slice(0, 80);
-            const dedupKey = safeHash ? `${cacheKey}--${safeHash}` : cacheKey;
-
-            // Dedup: skip if already building this exact page+hash
-            if (_pendingExtPages.has(dedupKey)) return;
-            _pendingExtPages.add(dedupKey);
-
-            const servePrefix = servePrefixFor(pagePath);
-
-            // Build the extension page BEFORE creating the tab, then
-            // create the tab with the final served URL. This avoids two
-            // races that surfaced as a router 404: (1) navigate() no-ops
-            // if the iframe hasn't mounted yet, and (2) the served
-            // /{servePrefix}/{cacheKey} entry may not be registered when
-            // navigation fires. Creating the tab with the internal URL
-            // after the build lets registerIframe's restore path load it
-            // deterministically (isInternalUrl -> iframe.src = url).
-            void (async () => {
-                try {
-                    const [
-                        { extensionsGetById },
-                        { buildExtensionPageSrcDoc },
-                    ] = await Promise.all([
-                        import("~/api/extensions"),
-                        import("~/api/extensionRuntime"),
-                    ]);
-                    const ext = extensionsGetById(extId);
-                    if (!ext) return;
-                    await buildExtensionPageSrcDoc(
-                        ext,
-                        pagePath,
-                        "popup",
-                        cacheKey,
-                    );
-                    const t = tabManager.createTab(
-                        `${window.location.origin}/${servePrefix}/${cacheKey}${hashSearch}`,
-                    );
-                    tabManager.activateTab(t.id);
-                } catch (err) {
-                    console.warn(
-                        "[Civil] buildExtensionPageSrcDoc failed:",
-                        err,
-                    );
-                } finally {
-                    _pendingExtPages.delete(dedupKey);
+function UrlbarRow(props: {
+    b: Browser;
+    actions: Actions;
+    onTabSearch: () => void;
+}) {
+    const activeId = () => props.b.state.activeId();
+    return (
+        <div class={s.urlbarRow}>
+            <UrlBar
+                value={props.b.activeUrl()}
+                canBack={props.b.tabHistory.canBack(activeId())}
+                canForward={props.b.tabHistory.canForward(activeId())}
+                isNewtab={props.b.activeTabIsNewtab()}
+                onTabSearch={() => props.onTabSearch()}
+                onNavigate={props.actions.open}
+                onBack={() => props.actions.travel(props.b.tabHistory.back)}
+                onForward={() =>
+                    props.actions.travel(props.b.tabHistory.forward)
                 }
-            })();
-        };
+                onRefresh={props.actions.refresh}
+            />
+            <ChromeButtons open={props.actions.open} />
+        </div>
+    );
+}
 
-        const onBrowserNewTab = async (e: Event) => {
-            const { url } = (e as CustomEvent<{ url?: string }>).detail ?? {};
-            console.log("[Civil] browser:newtab fired, url=", url);
-
-            if (url) {
-                const target =
-                    extensionPageTarget(url, window.location.origin) ??
-                    (await tampermonkeyInstallTarget(url));
-                console.log("[Civil] browser:newtab pattern match:", {
-                    extId: target?.extId,
-                    pagePath: target?.pagePath,
-                    hashSearch: target?.hashSearch ?? "",
-                });
-                if (target) {
-                    openExtensionPage(target);
-                    return;
-                }
-            }
-
-            const t = tabManager.createTab(url ?? "browser:newtab");
-            tabManager.activateTab(t.id);
-        };
-        document.addEventListener("browser:newtab", onBrowserNewTab);
-
-        const onBrowserCloseTab = (e: Event) => {
-            const { chromeTabIds } =
-                (e as CustomEvent<{ chromeTabIds?: number[] }>).detail ?? {};
-            if (!chromeTabIds?.length) return;
-            for (const chromeId of chromeTabIds) {
-                const civilId = extensionCivilTabIdFromChromeId(chromeId);
-                if (civilId) tabManager.removeTab(civilId);
-            }
-        };
-        document.addEventListener("browser:closetab", onBrowserCloseTab);
-
-        const onUserscriptInstall = (e: Event) => {
-            const { url, source } =
-                (e as CustomEvent<{ url?: string; source?: string }>).detail ??
-                {};
-            if (!url || !source) return;
-            void import("~/api/extensions").then(({ extensionsGetAll }) => {
-                const BroadcastChannel = (
-                    window as unknown as Record<string, unknown>
-                ).BroadcastChannel as typeof window.BroadcastChannel;
-                for (const ext of extensionsGetAll().filter(x => x.enabled)) {
-                    const bus = new BroadcastChannel(`civil-ext-bus-${ext.id}`);
-                    const reqId = Math.random().toString(36).slice(2);
-                    bus.postMessage({
-                        kind: "sendMessageExternal",
-                        reqId,
-                        from: `civil-userscript-${Math.random().toString(36).slice(2)}`,
-                        contextType: "content",
-                        message: {
-                            action: "userscript",
-                            source,
-                            url,
-                        },
-                        sender: { id: ext.id, url },
-                    });
-                    setTimeout(() => bus.close(), 500);
-                }
-            });
-        };
-        window.addEventListener(
-            "browser:userscript-install",
-            onUserscriptInstall,
-        );
-
-        const onGlobalKey = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-                e.preventDefault();
-                setShowSearch(v => !v);
-            }
-        };
-        window.addEventListener("keydown", onGlobalKey);
-
-        return () => {
-            releaseTabMonitor();
-            document.removeEventListener("browser:navigate", onBrowserNavigate);
-            document.removeEventListener("browser:newtab", onBrowserNewTab);
-            document.removeEventListener("browser:closetab", onBrowserCloseTab);
-            window.removeEventListener("__civilDebug", onCivilDebug);
-            window.removeEventListener(
-                "browser:userscript-install",
-                onUserscriptInstall,
-            );
-            window.removeEventListener("keydown", onGlobalKey);
-        };
-    });
-
-    const openExtensions = () => {
-        const id = activeId();
-        if (id) navigate(id, "browser:extensions");
-    };
-
-    const openSettings = () => {
-        const id = activeId();
-        if (id) navigate(id, "browser:settings");
-    };
-
+function ChromeBookmarks(props: { b: Browser; open: (url: string) => void }) {
     const bookmarksBar = useSetting("bookmarksBar");
     const showBookmarksBar = () =>
         bookmarksBar() === "always" ||
-        (bookmarksBar() === "newtab" && activeTabIsNewtab());
+        (bookmarksBar() === "newtab" && props.b.activeTabIsNewtab());
+    return (
+        <Show when={showBookmarksBar()}>
+            <BookmarksBar
+                activeUrl={props.b.activeUrl()}
+                activeTitle={props.b.activeTab()?.title ?? ""}
+                activeFavicon={props.b.activeTab()?.favicon}
+                onNavigate={props.open}
+            />
+        </Show>
+    );
+}
 
-    const handleReorder = (tabId: string, newIndex: number) => {
-        tabManager.moveTab(tabId, newIndex);
-    };
+function Viewport(props: { b: Browser }) {
+    const chii = () => props.b.chii;
+    return (
+        <div class={s.browserViewport}>
+            <Frames
+                ids={props.b.state.iframeIds()}
+                activeId={props.b.state.activeId()}
+                register={props.b.frames.registerIframe}
+            />
+            <Show when={props.b.state.tabStore.tabs.length === 0}>
+                <EmptyViewport />
+            </Show>
+            <Show when={chii().chiiOpen() && props.b.activeIframe()}>
+                <ChiiPanel
+                    targetIframe={props.b.activeIframe()!}
+                    onClose={() => {
+                        chii().cleanup();
+                        chii().setChiiOpen(false);
+                    }}
+                    onDetach={url => {
+                        chii().cleanup();
+                        window.open(url, "_blank", "width=1000,height=700");
+                        chii().setChiiOpen(false);
+                    }}
+                />
+            </Show>
+        </div>
+    );
+}
+
+function ChromeTop(props: {
+    b: Browser;
+    actions: Actions;
+    tabWidth: number;
+    draggingId: string | null;
+    setDraggingId: (id: string | null) => void;
+    stripRef: (el: HTMLDivElement) => void;
+    getStrip: () => HTMLDivElement | undefined;
+    onTabSearch: () => void;
+}) {
+    return (
+        <div class={s.browserChrome}>
+            <TabStrip
+                tabs={props.b.state.tabStore.tabs}
+                activeId={props.b.state.activeId()}
+                width={props.tabWidth}
+                draggingId={props.draggingId}
+                setDraggingId={props.setDraggingId}
+                stripRef={props.stripRef}
+                getStrip={props.getStrip}
+            />
+            <UrlbarRow
+                b={props.b}
+                actions={props.actions}
+                onTabSearch={() => props.onTabSearch()}
+            />
+            <ChromeBookmarks b={props.b} open={props.actions.open} />
+        </div>
+    );
+}
+
+export default function BrowserChrome() {
+    const ctx = useContextMenu();
+
+    const [draggingId, setDraggingId] = createSignal<string | null>(null);
+    const [showSearch, setShowSearch] = createSignal(false);
+
+    const b = useBrowserState();
+    const { tabStore, activeId } = b.state;
+    const strip = useTabStripWidth(() => tabStore.tabs.length);
+
+    let tabStripRef: HTMLDivElement | undefined;
+    let browserRootRef: HTMLDivElement | undefined;
+
+    onSettled(() => {
+        if (tabStripRef) strip.observe(tabStripRef);
+        const releaseTabMonitor = registerTabMonitor({ setDraggingId });
+        openStartupTabs(b.state.adopt);
+        return releaseTabMonitor;
+    });
+    useBrowserEvents({
+        navigateIframe: b.frames.navigateIframe,
+        toggleSearch: () => setShowSearch(v => !v),
+    });
+
+    const actions = browserActions(b);
+    const openMenu = (e: MouseEvent) =>
+        ctx.open(
+            e,
+            chromeMenu({
+                isInput: isTextTarget(e.target as HTMLElement),
+                ...actions,
+            }),
+        );
 
     return (
-        <div
-            class={s.browser}
-            ref={browserRootRef}
-            onContextMenu={e => {
-                const target = e.target as HTMLElement;
-                const isInput =
-                    target.tagName === "INPUT" ||
-                    target.tagName === "TEXTAREA" ||
-                    target.isContentEditable;
-                ctx.open(e, [
-                    {
-                        label: "New Tab",
-                        icon: <IconPlus size={14} />,
-                        action: () => {
-                            const t = tabManager.createTab("browser:newtab");
-                            tabManager.activateTab(t.id);
-                        },
-                    },
-                    { type: "separator" },
-                    {
-                        label: "Extensions",
-                        icon: <IconPuzzle size={14} />,
-                        action: openExtensions,
-                    },
-                    {
-                        label: "History",
-                        action: () => {
-                            const id = activeId();
-                            if (id) navigate(id, "browser:history");
-                        },
-                    },
-                    {
-                        label: "Bookmarks",
-                        action: () => {
-                            const id = activeId();
-                            if (id) navigate(id, "browser:bookmarks");
-                        },
-                    },
-                    {
-                        label: "Apps",
-                        action: () => {
-                            const id = activeId();
-                            if (id) navigate(id, "browser:apps");
-                        },
-                    },
-                    {
-                        label: "Settings",
-                        icon: <IconSliders size={14} />,
-                        action: openSettings,
-                    },
-                    { type: "separator" },
-                    ...(isInput
-                        ? [
-                              {
-                                  label: "Cut",
-                                  shortcut: "⌘X",
-                                  action: () => {
-                                      const active = document.activeElement as
-                                          | HTMLInputElement
-                                          | HTMLTextAreaElement
-                                          | null;
-                                      if (active && "setRangeText" in active) {
-                                          const start =
-                                              active.selectionStart ?? 0;
-                                          const end = active.selectionEnd ?? 0;
-                                          const cut = active.value.slice(
-                                              start,
-                                              end,
-                                          );
-                                          if (cut) {
-                                              navigator.clipboard.writeText(
-                                                  cut,
-                                              );
-                                              active.setRangeText(
-                                                  "",
-                                                  start,
-                                                  end,
-                                                  "end",
-                                              );
-                                              active.dispatchEvent(
-                                                  new Event("input", {
-                                                      bubbles: true,
-                                                  }),
-                                              );
-                                          }
-                                      }
-                                  },
-                              },
-                              {
-                                  label: "Copy",
-                                  shortcut: "⌘C",
-                                  action: () => {
-                                      const sel =
-                                          window.getSelection()?.toString() ??
-                                          "";
-                                      if (sel)
-                                          navigator.clipboard.writeText(sel);
-                                  },
-                              },
-                              {
-                                  label: "Paste",
-                                  shortcut: "⌘V",
-                                  action: () => {
-                                      navigator.clipboard
-                                          .readText()
-                                          .then(text => {
-                                              const el =
-                                                  document.activeElement as
-                                                      | HTMLInputElement
-                                                      | HTMLTextAreaElement
-                                                      | null;
-                                              if (el && "setRangeText" in el) {
-                                                  el.setRangeText(
-                                                      text,
-                                                      el.selectionStart ?? 0,
-                                                      el.selectionEnd ?? 0,
-                                                      "end",
-                                                  );
-                                                  el.dispatchEvent(
-                                                      new Event("input", {
-                                                          bubbles: true,
-                                                      }),
-                                                  );
-                                              }
-                                          });
-                                  },
-                              },
-                              { type: "separator" as const },
-                          ]
-                        : []),
-                    {
-                        label: "Inspect",
-                        action: () => {
-                            const id = activeId();
-                            if (!id) return;
-                            const iframe = iframeMap.get(id);
-                            if (!iframe) return;
-                            if (isInternalUrl(activeUrl())) return;
-                            setChiiOpen(true);
-                        },
-                    },
-                    { type: "separator" },
-                    {
-                        label: "Close Tab",
-                        danger: true,
-                        action: () => {
-                            const id = activeId();
-                            if (id) tabManager.removeTab(id);
-                        },
-                    },
-                ]);
-            }}
-        >
-            <div class={s.browserChrome}>
-                <div
-                    class={s.browserTabstrip}
-                    ref={tabStripRef}
-                    role="tablist"
-                    aria-label="Browser tabs"
-                >
-                    <For each={tabStore.tabs} keyed={false}>
-                        {tab => (
-                            <TabPill
-                                tab={tab()}
-                                active={tab().id === activeId()}
-                                width={tabWidth()}
-                                isDragging={tab().id === draggingId()}
-                                onClose={() => tabManager.removeTab(tab().id)}
-                                setDraggingId={setDraggingId}
-                                getTabs={() => tabStore.tabs}
-                                getStrip={() => tabStripRef}
-                                onReorder={handleReorder}
-                            />
-                        )}
-                    </For>
-                    <button
-                        type="button"
-                        class={s.tabNew}
-                        title="New tab"
-                        onClick={() => {
-                            const t = tabManager.createTab("browser:newtab");
-                            tabManager.activateTab(t.id);
-                        }}
-                    >
-                        <IconPlus size={15} />
-                    </button>
-                </div>
+        <div class={s.browser} ref={browserRootRef} onContextMenu={openMenu}>
+            <ChromeTop
+                b={b}
+                actions={actions}
+                tabWidth={strip.tabWidth()}
+                draggingId={draggingId()}
+                setDraggingId={setDraggingId}
+                stripRef={el => (tabStripRef = el)}
+                getStrip={() => tabStripRef}
+                onTabSearch={() => setShowSearch(true)}
+            />
 
-                <div class={s.urlbarRow}>
-                    <UrlBar
-                        value={activeUrl()}
-                        canBack={canBack(activeId())}
-                        canForward={canForward(activeId())}
-                        isNewtab={activeTabIsNewtab()}
-                        onTabSearch={() => setShowSearch(true)}
-                        onNavigate={url => {
-                            const id = activeId();
-                            if (id) navigate(id, url);
-                        }}
-                        onBack={() => {
-                            const id = activeId();
-                            const url = back(id);
-                            if (id && url) navigateIframe(id, url);
-                        }}
-                        onForward={() => {
-                            const id = activeId();
-                            const url = forward(id);
-                            if (id && url) navigateIframe(id, url);
-                        }}
-                        onRefresh={() => {
-                            const id = activeId();
-                            if (!id) return;
-                            const tab = tabStore.tabs.find(t => t.id === id);
-                            if (!tab) return;
-                            const iframe = iframeMap.get(id);
-                            if (!iframe) return;
-                            tabManager.updateTab(id, { isLoading: true });
-                            if (isInternalUrl(tab.url)) {
-                                iframe.src = tab.url;
-                            } else {
-                                bar.emit("submit", iframe, tab.url);
-                            }
-                        }}
-                    />
-                    <ExtensionIconBar />
-                    <button
-                        type="button"
-                        class={s.extensionsBtn}
-                        title="Extensions"
-                        onClick={openExtensions}
-                    >
-                        <IconPuzzle size={15} />
-                    </button>
-                    <button
-                        type="button"
-                        class={s.extensionsBtn}
-                        title="Settings"
-                        onClick={openSettings}
-                    >
-                        <IconSliders size={15} />
-                    </button>
-                </div>
-
-                <Show when={showBookmarksBar()}>
-                    <BookmarksBar
-                        activeUrl={activeUrl()}
-                        activeTitle={activeTab()?.title ?? ""}
-                        activeFavicon={activeTab()?.favicon}
-                        onNavigate={url => {
-                            const id = activeId();
-                            if (id) navigate(id, url);
-                        }}
-                    />
-                </Show>
-            </div>
-
-            <div class={s.browserViewport}>
-                {/*
-                 * Keyed by tab id, unlike the lists around it: a frame is a
-                 * live page that has to stay with its tab. Keyed by index,
-                 * closing a tab handed its frame to the tab on its right,
-                 * which then showed the closed page.
-                 */}
-                <For each={iframeIds()}>
-                    {id => (
-                        <iframe
-                            title="Proxied browser-in-browser webpage"
-                            class={[
-                                s.browserFrame,
-                                { [s.browserFrameActive]: id === activeId() },
-                            ]}
-                            ref={el => registerIframe(id, el)}
-                        />
-                    )}
-                </For>
-                <Show when={tabStore.tabs.length === 0}>
-                    <div class={s.browserEmpty}>
-                        <Specimen icon={IconWorld} size={64} />
-                        <p>No tabs open</p>
-                        <button
-                            type="button"
-                            class={s.browserEmptyButton}
-
-                            onClick={() => {
-                                const t =
-                                    tabManager.createTab("browser:newtab");
-                                tabManager.activateTab(t.id);
-                            }}
-                        >
-                            Open a tab
-                        </button>
-                    </div>
-                </Show>
-                <Show when={chiiOpen() && activeIframe()}>
-                    <ChiiPanel
-                        targetIframe={activeIframe()!}
-                        onClose={() => {
-                            cleanupActiveChii();
-                            setChiiOpen(false);
-                        }}
-                        onDetach={url => {
-                            cleanupActiveChii();
-                            window.open(url, "_blank", "width=1000,height=700");
-                            setChiiOpen(false);
-                        }}
-                    />
-                </Show>
-            </div>
+            <Viewport b={b} />
 
             <Show when={showSearch()}>
                 <TabSearch
                     tabs={tabStore.tabs}
                     activeId={activeId()}
-                    onActivate={tabId => {
-                        tabManager.activateTab(tabId);
-                    }}
+                    onActivate={tabId => tabManager.activateTab(tabId)}
                     onClose={() => setShowSearch(false)}
                 />
             </Show>

@@ -2,8 +2,9 @@ import { createSignal } from "solid-js";
 
 import {
     ContributionActions,
+    ContributionField,
     ContributionHeader,
-    submitContribution,
+    useContributionSubmit,
 } from "~/components/ContributionToast";
 
 import * as s from "~/styles/GoGuardianManifestToast.css";
@@ -15,35 +16,34 @@ interface Props {
     onSubmit: (gatewayHost: string) => void;
 }
 
+async function submitGateway(
+    contribution: ReturnType<typeof useContributionSubmit>,
+    props: Props,
+    gatewayHost: string,
+    securityKey: string,
+) {
+    const host = gatewayHost.trim();
+    if (!host) return;
+    await contribution.submit<{ gatewayHost: string }>(
+        "/api/iboss/submit-gateway",
+        {
+            gatewayHost: host,
+            securityKey: securityKey.trim() || undefined,
+            leaId: props.leaId,
+            districtName: props.districtName,
+            source: "manual",
+        },
+        data => props.onSubmit(data.gatewayHost),
+    );
+}
+
 export default function IbossGatewayToast(props: Props) {
     const [gatewayHost, setGatewayHost] = createSignal("");
     const [securityKey, setSecurityKey] = createSignal("");
-    const [submitting, setSubmitting] = createSignal(false);
-    const [error, setError] = createSignal<string | null>(null);
+    const contribution = useContributionSubmit();
 
-    const handleSubmit = async () => {
-        const host = gatewayHost().trim();
-        if (!host) return;
-        setSubmitting(true);
-        setError(null);
-        try {
-            const data = await submitContribution<{ gatewayHost: string }>(
-                "/api/iboss/submit-gateway",
-                {
-                    gatewayHost: host,
-                    securityKey: securityKey().trim() || undefined,
-                    leaId: props.leaId,
-                    districtName: props.districtName,
-                    source: "manual",
-                },
-            );
-            props.onSubmit(data.gatewayHost);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : "Network error");
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    const handleSubmit = () =>
+        submitGateway(contribution, props, gatewayHost(), securityKey());
 
     return (
         <div
@@ -66,28 +66,24 @@ export default function IbossGatewayToast(props: Props) {
 
             <span class={s.orDivider}>gateway host</span>
 
-            <textarea
-                class={s.textarea}
+            <ContributionField
                 placeholder="cn…-vnsg….ibosscloud.com"
                 value={gatewayHost()}
-                onInput={e => setGatewayHost(e.currentTarget.value)}
-                spellcheck="false"
+                onInput={setGatewayHost}
             />
 
             <span class={s.orDivider}>security key (optional)</span>
 
-            <textarea
-                class={s.textarea}
+            <ContributionField
                 placeholder="Account web security key - enables live categorization"
                 value={securityKey()}
-                onInput={e => setSecurityKey(e.currentTarget.value)}
-                spellcheck="false"
+                onInput={setSecurityKey}
             />
 
             <ContributionActions
-                error={error()}
+                error={contribution.error()}
                 canSubmit={!!gatewayHost().trim()}
-                submitting={submitting()}
+                submitting={contribution.submitting()}
                 onSkip={props.onDismiss}
                 onSubmit={() => void handleSubmit()}
             />

@@ -68,6 +68,36 @@ function blockIframes(): () => void {
     };
 }
 
+const disabledStyle = (item: ContextMenuItem): JSX.CSSProperties =>
+    item.disabled ? { opacity: "0.4", "pointer-events": "none" } : {};
+
+const itemClass = (item: ContextMenuItem) => [
+    s.menuItem,
+    { [s.menuItemDanger]: !!item.danger },
+];
+
+function SubmenuItem(props: { item: ContextMenuItem }) {
+    return (
+        <div class={s.subMenuWrap}>
+            <div
+                class={itemClass(props.item)}
+                style={disabledStyle(props.item)}
+            >
+                <span class={s.menuItemIcon} aria-hidden="true">
+                    {props.item.icon}
+                </span>
+                <span class={s.menuItemLabel}>{props.item.label}</span>
+                <span class={s.subMenuArrow}>›</span>
+            </div>
+            <div class={s.subMenu}>
+                <For each={props.item.children} keyed={false}>
+                    {child => <RenderItem item={child()} />}
+                </For>
+            </div>
+        </div>
+    );
+}
+
 function RenderItem(props: { item: ContextMenuItem }) {
     const ctx = useContextMenu();
 
@@ -76,42 +106,13 @@ function RenderItem(props: { item: ContextMenuItem }) {
     }
 
     if (props.item.type === "submenu" && props.item.children) {
-        return (
-            <div class={s.subMenuWrap}>
-                <div
-                    class={[
-                        s.menuItem,
-                        { [s.menuItemDanger]: !!props.item.danger },
-                    ]}
-                    style={
-                        props.item.disabled
-                            ? { opacity: "0.4", "pointer-events": "none" }
-                            : {}
-                    }
-                >
-                    <span class={s.menuItemIcon} aria-hidden="true">
-                        {props.item.icon}
-                    </span>
-                    <span class={s.menuItemLabel}>{props.item.label}</span>
-                    <span class={s.subMenuArrow}>›</span>
-                </div>
-                <div class={s.subMenu}>
-                    <For each={props.item.children} keyed={false}>
-                        {child => <RenderItem item={child()} />}
-                    </For>
-                </div>
-            </div>
-        );
+        return <SubmenuItem item={props.item} />;
     }
 
     return (
         <div
-            class={[s.menuItem, { [s.menuItemDanger]: !!props.item.danger }]}
-            style={
-                props.item.disabled
-                    ? { opacity: "0.4", "pointer-events": "none" }
-                    : {}
-            }
+            class={itemClass(props.item)}
+            style={disabledStyle(props.item)}
             onMouseDown={e => e.stopPropagation()}
             onClick={() => {
                 if (props.item.disabled) return;
@@ -130,6 +131,40 @@ function RenderItem(props: { item: ContextMenuItem }) {
     );
 }
 
+/** Closes the menu on a press outside it, Escape, or any scroll; returns
+ *  the cleanup. */
+function listenForDismiss(
+    menu: () => HTMLDivElement | undefined,
+    onClose: () => void,
+): () => void {
+    const restoreIframes = blockIframes();
+
+    const onPointerDown = (e: PointerEvent) => {
+        const menuRef = menu();
+        if (menuRef && !menuRef.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onClose();
+    };
+    const onScroll = () => onClose();
+
+    document.addEventListener("pointerdown", onPointerDown, { capture: true });
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, {
+        capture: true,
+        passive: true,
+    });
+
+    return () => {
+        restoreIframes();
+        document.removeEventListener("pointerdown", onPointerDown, {
+            capture: true,
+        });
+        document.removeEventListener("keydown", onKey);
+        window.removeEventListener("scroll", onScroll, { capture: true });
+    };
+}
+
 function ContextMenuPopup(props: { state: MenuState; onClose: () => void }) {
     let menuRef: HTMLDivElement | undefined;
     const [pos, setPos] = createSignal({ x: props.state.x, y: props.state.y });
@@ -142,37 +177,7 @@ function ContextMenuPopup(props: { state: MenuState; onClose: () => void }) {
             );
         }
 
-        const restoreIframes = blockIframes();
-
-        const onPointerDown = (e: PointerEvent) => {
-            if (menuRef && !menuRef.contains(e.target as Node)) {
-                props.onClose();
-            }
-        };
-
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") props.onClose();
-        };
-
-        const onScroll = () => props.onClose();
-
-        document.addEventListener("pointerdown", onPointerDown, {
-            capture: true,
-        });
-        document.addEventListener("keydown", onKey);
-        window.addEventListener("scroll", onScroll, {
-            capture: true,
-            passive: true,
-        });
-
-        return () => {
-            restoreIframes();
-            document.removeEventListener("pointerdown", onPointerDown, {
-                capture: true,
-            });
-            document.removeEventListener("keydown", onKey);
-            window.removeEventListener("scroll", onScroll, { capture: true });
-        };
+        return listenForDismiss(() => menuRef, props.onClose);
     });
 
     return (

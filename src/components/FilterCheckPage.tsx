@@ -106,40 +106,206 @@ async function checkFilter(
     }
 }
 
-export default function FilterCheckPage() {
-    const [email, setEmail] = createSignal("");
-    const [url, setUrl] = createSignal("");
-    const [results, setResults] = createSignal<FilterResult[]>([]);
-    const [loading, setLoading] = createSignal(false);
-    const [checked, setChecked] = createSignal(false);
-    /**
-     * The rate limit is per person, not per vendor, so it belongs above the
-     * ledger rather than repeated down every row.
-     */
-    const [retryAfter, setRetryAfter] = createSignal<number | null>(null);
+function readDetectedFilters(): string[] {
+    try {
+        const raw = localStorage.getItem("detectedFilters");
+        return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+        return [];
+    }
+}
 
-    const [detectedLeaId, setDetectedLeaId] = createSignal<string | null>(null);
-    const [detectedDistrictName, setDetectedDistrictName] = createSignal<
-        string | null
-    >(null);
-    const [showManifestToast, setShowManifestToast] = createSignal(false);
-    const [goguardianExtensionId, setGoguardianExtensionId] = createSignal<
-        string | null
-    >(null);
-    const [manifestKeyFetched, setManifestKeyFetched] = createSignal(false);
+interface District {
+    leaId: string;
+    name: string;
+}
 
-    const [showIbossToast, setShowIbossToast] = createSignal(false);
-    const [ibossGatewayFetched, setIbossGatewayFetched] = createSignal(false);
-
-    const readDetectedFilters = (): string[] => {
-        try {
-            const raw = localStorage.getItem("detectedFilters");
-            return raw ? (JSON.parse(raw) as string[]) : [];
-        } catch {
-            return [];
-        }
+async function fetchDistrict(): Promise<District | null> {
+    const locRes = await fetch("/api/ip-location");
+    if (!locRes.ok) return null;
+    const { lat, lon } = (await locRes.json()) as {
+        lat: number;
+        lon: number;
     };
 
+    const distRes = await fetch(
+        `/api/school-districts/nearest?lat=${lat}&lon=${lon}`,
+    );
+    if (!distRes.ok) return null;
+    return (await distRes.json()) as District;
+}
+
+async function submitAutoGateway(
+    gateway: { host: string; port: number },
+    leaId: string,
+    districtName: string | null,
+) {
+    await fetch("/api/iboss/submit-gateway", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            gatewayHost: gateway.host,
+            port: gateway.port,
+            leaId,
+            districtName: districtName ?? undefined,
+            source: "auto",
+        }),
+    });
+}
+
+async function lookupIbossGateway(
+    leaId: string,
+    districtName: () => string | null,
+    onMissing: () => void,
+) {
+    const gwRes = await fetch(
+        `/api/iboss/gateway?leaId=${encodeURIComponent(leaId)}`,
+    );
+    if (gwRes.ok) return;
+    if (gwRes.status !== 404) return;
+
+    const detected = await detectIbossGateway();
+    if (detected) {
+        await submitAutoGateway(detected, leaId, districtName());
+    } else {
+        onMissing();
+    }
+}
+
+async function lookupManifestKey(
+    leaId: string,
+    onFound: (extensionId: string) => void,
+    onMissing: () => void,
+) {
+    const keyRes = await fetch(
+        `/api/goguardian/manifest-key?leaId=${encodeURIComponent(leaId)}`,
+    );
+    if (keyRes.ok) {
+        const { extensionId } = (await keyRes.json()) as {
+            extensionId: string;
+        };
+        onFound(extensionId);
+    } else if (keyRes.status === 404) {
+        onMissing();
+    }
+}
+
+interface CheckRequest {
+    configs: [string, FilterConfig][];
+    rawUrl: string;
+    email: string;
+    ggExtId: string | null;
+    leaId: string | null;
+}
+
+function payloadFor(key: string, config: FilterConfig, req: CheckRequest) {
+    if (key === "goguardian" && req.ggExtId)
+        return {
+            ...config.buildPayload(req.rawUrl, req.email),
+            orgRands: [req.ggExtId],
+        };
+    if (key === "iboss")
+        return {
+            ...config.buildPayload(req.rawUrl, req.email),
+            leaId: req.leaId,
+        };
+    return undefined;
+}
+
+function hostnameOf(rawUrl: string) {
+    try {
+        return new URL(rawUrl).hostname;
+    } catch {
+        /* keep raw */
+        return rawUrl;
+    }
+}
+
+const isProd = () => window.location.host === "civil.quartinal.me";
+
+function settledResults(
+    settled: PromiseSettledResult<FilterResult>[],
+    configs: [string, FilterConfig][],
+): FilterResult[] {
+    return settled.map((r, i) => {
+        if (r.status === "fulfilled") return r.value;
+        const [key, config] = configs[i]!;
+        if (isProd()) {
+            window.posthog?.captureException(
+                new Error(`filter_check_rejected: ${key}`),
+                { extra: { filter: key, reason: r.reason } },
+            );
+        }
+        return {
+            filterKey: key,
+            filterName: config.name,
+            status: "error" as FilterStatus,
+            detail: "Request failed",
+        };
+    });
+}
+
+function reportCompleted(
+    mapped: FilterResult[],
+    urlHostname: string,
+    durationMs: number,
+) {
+    for (const result of mapped) {
+        if (result.status === "error") {
+            window.posthog?.captureException(
+                new Error(`filter_check_error: ${result.filterKey}`),
+                { extra: { detail: result.detail } },
+            );
+        }
+    }
+
+    window.posthog?.capture("filter_check_completed", {
+        url_hostname: urlHostname,
+        duration_ms: durationMs,
+        results: mapped.map(r => ({
+            filter: r.filterKey,
+            status: r.status,
+        })),
+    });
+}
+
+async function runFilterCheck(
+    req: CheckRequest,
+    detectedFilters: string[],
+): Promise<FilterResult[]> {
+    const urlHostname = hostnameOf(req.rawUrl);
+    const emailDomain = req.email.includes("@")
+        ? req.email.split("@")[1]
+        : undefined;
+
+    if (isProd())
+        window.posthog?.capture("filter_check_submitted", {
+            url_hostname: urlHostname,
+            email_domain: emailDomain,
+            active_filters: req.configs.map(([k]) => k),
+            detected_filters: detectedFilters,
+        });
+
+    const startMs = Date.now();
+    const settled = await Promise.allSettled(
+        req.configs.map(([key, config]) =>
+            checkFilter(
+                key,
+                config,
+                req.rawUrl,
+                req.email,
+                payloadFor(key, config, req),
+            ),
+        ),
+    );
+    const durationMs = Date.now() - startMs;
+
+    const mapped = settledResults(settled, req.configs);
+    if (isProd()) reportCompleted(mapped, urlHostname, durationMs);
+    return mapped;
+}
+
+function useDetectedFilters() {
     const [detectedFilters, setDetectedFilters] = createSignal<string[]>(
         readDetectedFilters(),
     );
@@ -155,61 +321,6 @@ export default function FilterCheckPage() {
         }
     };
 
-    createTrackedEffect(() => {
-        const leaId = detectedLeaId();
-        const hasGG = detectedFilters().includes("goguardian");
-        if (!leaId || !hasGG || manifestKeyFetched()) return;
-        setManifestKeyFetched(true);
-        void (async () => {
-            try {
-                const keyRes = await fetch(
-                    `/api/goguardian/manifest-key?leaId=${encodeURIComponent(leaId)}`,
-                );
-                if (keyRes.ok) {
-                    const { extensionId } = (await keyRes.json()) as {
-                        extensionId: string;
-                    };
-                    setGoguardianExtensionId(extensionId);
-                } else if (keyRes.status === 404) {
-                    setShowManifestToast(true);
-                }
-            } catch {}
-        })();
-    });
-
-    createTrackedEffect(() => {
-        const leaId = detectedLeaId();
-        const hasIboss = detectedFilters().includes("iboss");
-        if (!leaId || !hasIboss || ibossGatewayFetched()) return;
-        setIbossGatewayFetched(true);
-        void (async () => {
-            try {
-                const gwRes = await fetch(
-                    `/api/iboss/gateway?leaId=${encodeURIComponent(leaId)}`,
-                );
-                if (gwRes.ok) return;
-                if (gwRes.status !== 404) return;
-
-                const detected = await detectIbossGateway();
-                if (detected) {
-                    await fetch("/api/iboss/submit-gateway", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            gatewayHost: detected.host,
-                            port: detected.port,
-                            leaId,
-                            districtName: detectedDistrictName() ?? undefined,
-                            source: "auto",
-                        }),
-                    });
-                } else {
-                    setShowIbossToast(true);
-                }
-            } catch {}
-        })();
-    });
-
     onSettled(() => {
         const handler = (e: Event) => {
             setDetectedFilters(
@@ -220,50 +331,109 @@ export default function FilterCheckPage() {
 
         void checkFiltersNow();
 
-        void (async () => {
-            try {
-                const locRes = await fetch("/api/ip-location");
-                if (!locRes.ok) return;
-                const { lat, lon } = (await locRes.json()) as {
-                    lat: number;
-                    lon: number;
-                };
-
-                const distRes = await fetch(
-                    `/api/school-districts/nearest?lat=${lat}&lon=${lon}`,
-                );
-                if (!distRes.ok) return;
-                const { leaId, name } = (await distRes.json()) as {
-                    leaId: string;
-                    name: string;
-                };
-                setDetectedLeaId(leaId);
-                setDetectedDistrictName(name);
-            } catch {}
-        })();
-
         return () =>
             window.removeEventListener("detectedFiltersUpdated", handler);
     });
 
-    const activeConfigs = createMemo<[string, FilterConfig][]>(() => {
-        const found: [string, FilterConfig][] = [];
-        for (const f of detectedFilters()) {
-            const match = findFilterConfig(f);
-            if (match && !found.some(([k]) => k === match[0])) {
-                found.push(match);
-            }
-        }
-        return found;
+    return { detectedFilters, rescanning, handleRescan };
+}
+
+function useDistrict() {
+    const [detectedLeaId, setDetectedLeaId] = createSignal<string | null>(null);
+    const [detectedDistrictName, setDetectedDistrictName] = createSignal<
+        string | null
+    >(null);
+
+    onSettled(() => {
+        void (async () => {
+            try {
+                const district = await fetchDistrict();
+                if (!district) return;
+                setDetectedLeaId(district.leaId);
+                setDetectedDistrictName(district.name);
+            } catch {}
+        })();
     });
 
-    const unsupportedFilters = createMemo(() =>
-        detectedFilters().filter(f => !findFilterConfig(f)),
-    );
+    return { detectedLeaId, detectedDistrictName };
+}
 
-    const needsEmail = createMemo(() =>
-        activeConfigs().some(([, c]) => c.needsEmail),
-    );
+type DistrictState = ReturnType<typeof useDistrict>;
+
+function useGoGuardianKey(
+    district: DistrictState,
+    detectedFilters: () => string[],
+) {
+    const [showManifestToast, setShowManifestToast] = createSignal(false);
+    const [goguardianExtensionId, setGoguardianExtensionId] = createSignal<
+        string | null
+    >(null);
+    const [manifestKeyFetched, setManifestKeyFetched] = createSignal(false);
+
+    createTrackedEffect(() => {
+        const leaId = district.detectedLeaId();
+        const hasGG = detectedFilters().includes("goguardian");
+        if (!leaId || !hasGG || manifestKeyFetched()) return;
+        setManifestKeyFetched(true);
+        void lookupManifestKey(leaId, setGoguardianExtensionId, () =>
+            setShowManifestToast(true),
+        ).catch(() => {});
+    });
+
+    return {
+        showManifestToast,
+        setShowManifestToast,
+        goguardianExtensionId,
+        setGoguardianExtensionId,
+    };
+}
+
+function useIbossGateway(
+    district: DistrictState,
+    detectedFilters: () => string[],
+) {
+    const [showIbossToast, setShowIbossToast] = createSignal(false);
+    const [ibossGatewayFetched, setIbossGatewayFetched] = createSignal(false);
+
+    createTrackedEffect(() => {
+        const leaId = district.detectedLeaId();
+        const hasIboss = detectedFilters().includes("iboss");
+        if (!leaId || !hasIboss || ibossGatewayFetched()) return;
+        setIbossGatewayFetched(true);
+        void lookupIbossGateway(leaId, district.detectedDistrictName, () =>
+            setShowIbossToast(true),
+        ).catch(() => {});
+    });
+
+    return { showIbossToast, setShowIbossToast };
+}
+
+function activeConfigsOf(detectedFilters: string[]) {
+    const found: [string, FilterConfig][] = [];
+    for (const f of detectedFilters) {
+        const match = findFilterConfig(f);
+        if (match && !found.some(([k]) => k === match[0])) {
+            found.push(match);
+        }
+    }
+    return found;
+}
+
+function useFilterCheck(
+    activeConfigs: () => [string, FilterConfig][],
+    detectedFilters: () => string[],
+    context: () => { ggExtId: string | null; leaId: string | null },
+) {
+    const [email, setEmail] = createSignal("");
+    const [url, setUrl] = createSignal("");
+    const [results, setResults] = createSignal<FilterResult[]>([]);
+    const [loading, setLoading] = createSignal(false);
+    const [checked, setChecked] = createSignal(false);
+    /**
+     * The rate limit is per person, not per vendor, so it belongs above the
+     * ledger rather than repeated down every row.
+     */
+    const [retryAfter, setRetryAfter] = createSignal<number | null>(null);
 
     const handleCheck = async () => {
         const rawUrl = url().trim();
@@ -272,92 +442,15 @@ export default function FilterCheckPage() {
         setChecked(false);
         setResults([]);
 
-        const configs = activeConfigs();
-        const emailVal = email().trim();
-
-        let urlHostname = rawUrl;
-        try {
-            urlHostname = new URL(rawUrl).hostname;
-        } catch {
-            /* keep raw */
-        }
-        const emailDomain = emailVal.includes("@")
-            ? emailVal.split("@")[1]
-            : undefined;
-
-        const isProd = window.location.host === "civil.quartinal.me";
-
-        if (isProd)
-            window.posthog?.capture("filter_check_submitted", {
-                url_hostname: urlHostname,
-                email_domain: emailDomain,
-                active_filters: configs.map(([k]) => k),
-                detected_filters: detectedFilters(),
-            });
-
-        const startMs = Date.now();
-        const ggExtId = goguardianExtensionId();
-        const settled = await Promise.allSettled(
-            configs.map(([key, config]) => {
-                const payloadOverride =
-                    key === "goguardian" && ggExtId
-                        ? {
-                              ...config.buildPayload(rawUrl, emailVal),
-                              orgRands: [ggExtId],
-                          }
-                        : key === "iboss"
-                          ? {
-                                ...config.buildPayload(rawUrl, emailVal),
-                                leaId: detectedLeaId(),
-                            }
-                          : undefined;
-                return checkFilter(
-                    key,
-                    config,
-                    rawUrl,
-                    emailVal,
-                    payloadOverride,
-                );
-            }),
+        const mapped = await runFilterCheck(
+            {
+                configs: activeConfigs(),
+                rawUrl,
+                email: email().trim(),
+                ...context(),
+            },
+            detectedFilters(),
         );
-        const durationMs = Date.now() - startMs;
-
-        const mapped = settled.map((r, i) => {
-            if (r.status === "fulfilled") return r.value;
-            const [key, config] = configs[i]!;
-            if (isProd) {
-                window.posthog?.captureException(
-                    new Error(`filter_check_rejected: ${key}`),
-                    { extra: { filter: key, reason: r.reason } },
-                );
-            }
-            return {
-                filterKey: key,
-                filterName: config.name,
-                status: "error" as FilterStatus,
-                detail: "Request failed",
-            };
-        });
-
-        if (isProd) {
-            for (const result of mapped) {
-                if (result.status === "error") {
-                    window.posthog?.captureException(
-                        new Error(`filter_check_error: ${result.filterKey}`),
-                        { extra: { detail: result.detail } },
-                    );
-                }
-            }
-
-            window.posthog?.capture("filter_check_completed", {
-                url_hostname: urlHostname,
-                duration_ms: durationMs,
-                results: mapped.map(r => ({
-                    filter: r.filterKey,
-                    status: r.status,
-                })),
-            });
-        }
 
         setRetryAfter(
             mapped.find(r => r.retryAfterSeconds)?.retryAfterSeconds ?? null,
@@ -367,84 +460,221 @@ export default function FilterCheckPage() {
         setChecked(true);
     };
 
+    return {
+        email,
+        setEmail,
+        url,
+        setUrl,
+        results,
+        loading,
+        checked,
+        retryAfter,
+        handleCheck,
+    };
+}
+
+function ContributionToasts(props: {
+    district: DistrictState;
+    gg: ReturnType<typeof useGoGuardianKey>;
+    iboss: ReturnType<typeof useIbossGateway>;
+}) {
+    const district = () => props.district;
     return (
         <>
-            <Show when={showManifestToast() && detectedDistrictName()}>
+            <Show
+                when={
+                    props.gg.showManifestToast() &&
+                    district().detectedDistrictName()
+                }
+            >
                 <GoGuardianManifestToast
-                    districtName={detectedDistrictName()!}
-                    leaId={detectedLeaId()!}
-                    onDismiss={() => setShowManifestToast(false)}
+                    districtName={district().detectedDistrictName()!}
+                    leaId={district().detectedLeaId()!}
+                    onDismiss={() => props.gg.setShowManifestToast(false)}
                     onSubmit={extId => {
-                        setGoguardianExtensionId(extId);
-                        setShowManifestToast(false);
+                        props.gg.setGoguardianExtensionId(extId);
+                        props.gg.setShowManifestToast(false);
                     }}
                 />
             </Show>
-            <Show when={showIbossToast() && detectedDistrictName()}>
+            <Show
+                when={
+                    props.iboss.showIbossToast() &&
+                    district().detectedDistrictName()
+                }
+            >
                 <IbossGatewayToast
-                    districtName={detectedDistrictName()!}
-                    leaId={detectedLeaId()!}
+                    districtName={district().detectedDistrictName()!}
+                    leaId={district().detectedLeaId()!}
                     onDismiss={() => {
-                        setShowIbossToast(false);
+                        props.iboss.setShowIbossToast(false);
                         // Last resort: no host from scanning or the user, so race
                         // the known-good gateways and contribute the fastest.
                         void (async () => {
-                            const leaId = detectedLeaId();
+                            const leaId = district().detectedLeaId();
                             if (!leaId) return;
                             const best = await raceIbossGateways();
                             if (!best) return;
                             try {
-                                await fetch("/api/iboss/submit-gateway", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        gatewayHost: best.host,
-                                        port: best.port,
-                                        leaId,
-                                        districtName:
-                                            detectedDistrictName() ?? undefined,
-                                        source: "auto",
-                                    }),
-                                });
+                                await submitAutoGateway(
+                                    best,
+                                    leaId,
+                                    district().detectedDistrictName(),
+                                );
                             } catch {}
                         })();
                     }}
-                    onSubmit={() => setShowIbossToast(false)}
+                    onSubmit={() => props.iboss.setShowIbossToast(false)}
                 />
             </Show>
+        </>
+    );
+}
+
+function TitleActions(props: { rescanning: boolean; onRescan: () => void }) {
+    return (
+        <div class={schematic.titleBlockActions}>
+            <PatreonLoginButton />
+            <button
+                type="button"
+                class={s.rescan}
+                onClick={() => props.onRescan()}
+                disabled={props.rescanning}
+            >
+                <Show when={props.rescanning} fallback="Scan again">
+                    <IconLoaderDots size={13} class={s.spinner} /> Scanning…
+                </Show>
+            </button>
+        </div>
+    );
+}
+
+function DetectedFilters(props: { detected: string[] }) {
+    const unsupported = createMemo(() =>
+        props.detected.filter(f => !findFilterConfig(f)),
+    );
+    return (
+        <>
+            <Rule label="Filters on this network" />
+            <div class={s.specimenRow}>
+                <Show
+                    when={props.detected.length > 0}
+                    fallback={<Anno muted>None detected</Anno>}
+                >
+                    <For each={props.detected} keyed={false}>
+                        {f => <span class={s.specimenChip}>{f()}</span>}
+                    </For>
+                </Show>
+            </div>
+
+            <Show when={unsupported().length > 0}>
+                <div class={s.unsupported}>
+                    <For each={unsupported()} keyed={false}>
+                        {f => (
+                            <Anno muted>
+                                Can't check {prettifyFilterName(f())} yet
+                            </Anno>
+                        )}
+                    </For>
+                </div>
+            </Show>
+        </>
+    );
+}
+
+function RateLimitNotice(props: { retryAfter: number }) {
+    return (
+        <div class={s.rateLimit}>
+            <Anno>
+                Daily check limit reached. You can check again{" "}
+                {formatRetryAfter(props.retryAfter)}. Signing in with Patreon
+                raises the limit.
+            </Anno>
+        </div>
+    );
+}
+
+function CheckOutcome(props: { check: ReturnType<typeof useFilterCheck> }) {
+    return (
+        <>
+            <Show when={props.check.retryAfter() !== null}>
+                <RateLimitNotice retryAfter={props.check.retryAfter()!} />
+            </Show>
+
+            <Show when={props.check.checked()}>
+                <Rule label="Results" weight="major" class={s.resultsRule} />
+                <FilterCheckResults results={props.check.results()} />
+            </Show>
+        </>
+    );
+}
+
+function usePageCheck(
+    filters: ReturnType<typeof useDetectedFilters>,
+    district: DistrictState,
+    gg: ReturnType<typeof useGoGuardianKey>,
+) {
+    const activeConfigs = createMemo<[string, FilterConfig][]>(() =>
+        activeConfigsOf(filters.detectedFilters()),
+    );
+
+    const needsEmail = createMemo(() =>
+        activeConfigs().some(([, c]) => c.needsEmail),
+    );
+
+    const check = useFilterCheck(
+        activeConfigs,
+        filters.detectedFilters,
+        () => ({
+            ggExtId: gg.goguardianExtensionId(),
+            leaId: district.detectedLeaId(),
+        }),
+    );
+
+    return { needsEmail, check };
+}
+
+function FilterCheckTitle(props: {
+    rescanning: boolean;
+    onRescan: () => void;
+}) {
+    return (
+        <TitleBlock
+            title="Filter check"
+            icon={IconSearch}
+            tint="stone"
+            actions={
+                // PatreonLoginButton lives here because this page is
+                // its only host in the app. Patreon entitlement is what
+                // raises the filter-check rate limit (see
+                // misc/filters/sharedMiddleware.ts), so dropping it
+                // leaves supporters silently capped at the free tier
+                // with nowhere to sign in.
+                <TitleActions
+                    rescanning={props.rescanning}
+                    onRescan={() => props.onRescan()}
+                />
+            }
+        />
+    );
+}
+
+export default function FilterCheckPage() {
+    const filters = useDetectedFilters();
+    const district = useDistrict();
+    const gg = useGoGuardianKey(district, filters.detectedFilters);
+    const iboss = useIbossGateway(district, filters.detectedFilters);
+
+    const { needsEmail, check } = usePageCheck(filters, district, gg);
+
+    return (
+        <>
+            <ContributionToasts district={district} gg={gg} iboss={iboss} />
 
             <Sheet>
-                <TitleBlock
-                    title="Filter check"
-                    icon={IconSearch}
-                    tint="stone"
-                    actions={
-                        // PatreonLoginButton lives here because this page is
-                        // its only host in the app. Patreon entitlement is what
-                        // raises the filter-check rate limit (see
-                        // misc/filters/sharedMiddleware.ts), so dropping it
-                        // leaves supporters silently capped at the free tier
-                        // with nowhere to sign in.
-                        <div class={schematic.titleBlockActions}>
-                            <PatreonLoginButton />
-                            <button
-                                type="button"
-                                class={s.rescan}
-                                onClick={handleRescan}
-                                disabled={rescanning()}
-                            >
-                                <Show when={rescanning()} fallback="Scan again">
-                                    <IconLoaderDots
-                                        size={13}
-                                        class={s.spinner}
-                                    />{" "}
-                                    Scanning…
-                                </Show>
-                            </button>
-                        </div>
-                    }
+                <FilterCheckTitle
+                    rescanning={filters.rescanning()}
+                    onRescan={() => void filters.handleRescan()}
                 />
 
                 {/* The one page where Civil's voice has a direct target. The
@@ -458,58 +688,19 @@ export default function FilterCheckPage() {
                     address to check.
                 </p>
 
-                <Rule label="Filters on this network" />
-                <div class={s.specimenRow}>
-                    <Show
-                        when={detectedFilters().length > 0}
-                        fallback={<Anno muted>None detected</Anno>}
-                    >
-                        <For each={detectedFilters()} keyed={false}>
-                            {f => <span class={s.specimenChip}>{f()}</span>}
-                        </For>
-                    </Show>
-                </div>
-
-                <Show when={unsupportedFilters().length > 0}>
-                    <div class={s.unsupported}>
-                        <For each={unsupportedFilters()} keyed={false}>
-                            {f => (
-                                <Anno muted>
-                                    Can't check {prettifyFilterName(f())} yet
-                                </Anno>
-                            )}
-                        </For>
-                    </div>
-                </Show>
+                <DetectedFilters detected={filters.detectedFilters()} />
 
                 <FilterCheckForm
                     needsEmail={needsEmail()}
-                    email={email()}
-                    url={url()}
-                    loading={loading()}
-                    onEmail={setEmail}
-                    onUrl={setUrl}
-                    onSubmit={() => void handleCheck()}
+                    email={check.email()}
+                    url={check.url()}
+                    loading={check.loading()}
+                    onEmail={check.setEmail}
+                    onUrl={check.setUrl}
+                    onSubmit={() => void check.handleCheck()}
                 />
 
-                <Show when={retryAfter() !== null}>
-                    <div class={s.rateLimit}>
-                        <Anno>
-                            Daily check limit reached. You can check again{" "}
-                            {formatRetryAfter(retryAfter()!)}. Signing in with
-                            Patreon raises the limit.
-                        </Anno>
-                    </div>
-                </Show>
-
-                <Show when={checked()}>
-                    <Rule
-                        label="Results"
-                        weight="major"
-                        class={s.resultsRule}
-                    />
-                    <FilterCheckResults results={results()} />
-                </Show>
+                <CheckOutcome check={check} />
             </Sheet>
         </>
     );
