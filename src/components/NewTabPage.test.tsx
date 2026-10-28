@@ -55,7 +55,9 @@ describe("NewTabPage", () => {
         expect(entry).toBeDefined();
         unmount();
     });
+});
 
+describe("NewTabPage navigation", () => {
     it("hands shortcut navigation to the parent without hijacking modified clicks", () => {
         vi.spyOn(window, "top", "get").mockReturnValue(null);
         const postMessage = vi
@@ -90,7 +92,9 @@ describe("NewTabPage", () => {
         expect(postMessage).not.toHaveBeenCalled();
         unmount();
     });
+});
 
+describe("NewTabPage omnibox", () => {
     it("hands an omnibox search to the parent", async () => {
         vi.spyOn(window, "top", "get").mockReturnValue(null);
         // The omnibox stays disabled without a service worker.

@@ -24,9 +24,9 @@ async function relay(
     } as unknown as AppEnv["Bindings"]);
 }
 
-describe("usePosthogProxy", () => {
-    afterEach(() => vi.restoreAllMocks());
+afterEach(() => vi.restoreAllMocks());
 
+describe("usePosthogProxy", () => {
     it("routes /static/ requests to the assets host", async () => {
         const fetchMock = vi
             .fn()
@@ -66,7 +66,9 @@ describe("usePosthogProxy", () => {
             "payload",
         );
     });
+});
 
+describe("usePosthogProxy forwarded headers", () => {
     it("strips cookie and authorization from forwarded headers", async () => {
         const fetchMock = vi
             .fn()
@@ -89,7 +91,9 @@ describe("usePosthogProxy", () => {
         expect(headers.get("authorization")).toBeNull();
         expect(headers.get("content-type")).toBe("text/plain");
     });
+});
 
+describe("usePosthogProxy responses", () => {
     it("relays upstream status but drops stale encoding headers", async () => {
         vi.stubGlobal(
             "fetch",
@@ -113,7 +117,9 @@ describe("usePosthogProxy", () => {
         expect(res.headers.get("content-length")).not.toBe("999");
         expect(await res.text()).toBe("body");
     });
+});
 
+describe("usePosthogProxy cached and failed responses", () => {
     it("relays a 304 for a cached bundle without a body", async () => {
         vi.stubGlobal(
             "fetch",
@@ -154,7 +160,9 @@ describe("usePosthogProxy", () => {
 
         expect(res.headers.get("set-cookie")).toBeNull();
     });
+});
 
+describe("usePosthogProxy guards", () => {
     it("404s a path outside the allowlist instead of relaying it", async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal("fetch", fetchMock);

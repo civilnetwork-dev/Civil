@@ -47,7 +47,9 @@ describe("Field", () => {
         expect(onInput).toHaveBeenCalledWith("typed");
         unmount();
     });
+});
 
+describe("Field keys and hints", () => {
     it("calls onEnter when Enter is pressed", () => {
         const onEnter = vi.fn();
         const { container, unmount } = renderSolid(() => (
@@ -102,7 +104,9 @@ describe("Field", () => {
         ).toBe(false);
         unmount();
     });
+});
 
+describe("Field input type and submit", () => {
     it("defaults to a text input and honours an override", () => {
         const asText = renderSolid(() => (
             <Field label="l" value="" onInput={() => {}} />

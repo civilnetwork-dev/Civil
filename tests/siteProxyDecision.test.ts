@@ -121,7 +121,9 @@ describe("recordCompatFeedback", () => {
             expect.objectContaining({ transport: "libcurl" }),
         );
     });
+});
 
+describe("recordCompatFeedback transport and reason", () => {
     it("uses the reported transport over the stored one", async () => {
         existingRow = row({ transport: "libcurl" });
         await recordCompatFeedback("example.com", "bare", 90);
@@ -159,17 +161,17 @@ describe("recordCompatFeedback", () => {
     });
 });
 
-describe("probeSite", () => {
-    function stubFetch(res: Response | null) {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(async () => {
-                if (!res) throw new Error("network down");
-                return res;
-            }),
-        );
-    }
+function stubFetch(res: Response | null) {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+            if (!res) throw new Error("network down");
+            return res;
+        }),
+    );
+}
 
+describe("probeSite", () => {
     it("always resolves to scramjet -- the only proxy engine Civil ships", async () => {
         stubFetch(fakeResponse({ "x-frame-options": "DENY" }));
         const strict = await probeSite("https://example.com/");
@@ -199,7 +201,9 @@ describe("probeSite", () => {
         expect(d.reason).toContain("x-frame-options");
         expect(d.reason).toContain("strict-csp");
     });
+});
 
+describe("probeSite security headers", () => {
     it("counts COOP and COEP toward the reason", async () => {
         stubFetch(
             fakeResponse({
@@ -245,7 +249,9 @@ describe("probeSite", () => {
         const d = await probeSite("https://example.com/");
         expect(d.reason.length).toBeGreaterThan(0);
     });
+});
 
+describe("probeSite fallbacks", () => {
     /**
      * KNOWN GAP, pinned so a fix is a deliberate act.
      *
@@ -280,7 +286,9 @@ describe("probeSite", () => {
         expect(failed.reason).not.toContain("no-probe");
         expect(simple.reason).not.toContain("plain-response");
     });
+});
 
+describe("probeSite output bounds", () => {
     it("clamps the score to 0..100", async () => {
         const cases: Record<string, string>[] = [
             {},

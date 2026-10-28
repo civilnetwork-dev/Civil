@@ -76,7 +76,9 @@ describe("AppsPage", () => {
         expect(container.querySelectorAll("[data-ghost]").length).toBe(0);
         unmount();
     });
+});
 
+describe("AppsPage list", () => {
     it("rejects input that is not a hostname", async () => {
         const { container, unmount } = renderSolid(() => <AppsPage />);
         const input = container.querySelector("input") as HTMLInputElement;

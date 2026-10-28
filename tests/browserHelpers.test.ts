@@ -119,59 +119,59 @@ describe("displayUrl", () => {
     });
 });
 
-describe("createTabHistory", () => {
-    /**
-     * createSignal needs an owner, so the history is built inside a root —
-     * but Solid 2.0 forbids synchronous writes inside an owned scope, and
-     * every history mutation is a write. So the root only creates the
-     * signal; `fn` runs after it returns, once we're no longer inside it.
-     * This mirrors production: BrowserChrome creates the history in its
-     * component body, but pushHistory is only ever called later, from an
-     * iframe load handler.
-     *
-     * Writing from outside a root no longer throws, but it also no longer
-     * lands synchronously: Solid 2.0 queues a write made with no active
-     * computation and only commits it on the next scheduler flush, so a
-     * bare read immediately after `pushHistory`/`back`/`forward` would see
-     * the pre-write value. Production doesn't notice because the reads
-     * that matter happen in components, which re-render on the following
-     * flush anyway. These tests assert synchronously in plain functions,
-     * so each mutator is wrapped to flush right after it runs, keeping
-     * every test body a plain, synchronous read-after-write.
-     */
-    function withHistory(fn: (h: ReturnType<typeof createTabHistory>) => void) {
-        let history!: ReturnType<typeof createTabHistory>;
-        let dispose!: () => void;
-        createRoot(d => {
-            dispose = d;
-            history = createTabHistory();
-        });
-        // Only the three mutators need wrapping; getters like `version` and
-        // `getHistory` never write, so they stay untouched and synchronous.
-        const flushing: typeof history = {
-            ...history,
-            pushHistory: (id, url) => {
-                history.pushHistory(id, url);
-                flush();
-            },
-            back: id => {
-                const result = history.back(id);
-                flush();
-                return result;
-            },
-            forward: id => {
-                const result = history.forward(id);
-                flush();
-                return result;
-            },
-        };
-        try {
-            fn(flushing);
-        } finally {
-            dispose();
-        }
+/**
+ * createSignal needs an owner, so the history is built inside a root —
+ * but Solid 2.0 forbids synchronous writes inside an owned scope, and
+ * every history mutation is a write. So the root only creates the
+ * signal; `fn` runs after it returns, once we're no longer inside it.
+ * This mirrors production: BrowserChrome creates the history in its
+ * component body, but pushHistory is only ever called later, from an
+ * iframe load handler.
+ *
+ * Writing from outside a root no longer throws, but it also no longer
+ * lands synchronously: Solid 2.0 queues a write made with no active
+ * computation and only commits it on the next scheduler flush, so a
+ * bare read immediately after `pushHistory`/`back`/`forward` would see
+ * the pre-write value. Production doesn't notice because the reads
+ * that matter happen in components, which re-render on the following
+ * flush anyway. These tests assert synchronously in plain functions,
+ * so each mutator is wrapped to flush right after it runs, keeping
+ * every test body a plain, synchronous read-after-write.
+ */
+function withHistory(fn: (h: ReturnType<typeof createTabHistory>) => void) {
+    let history!: ReturnType<typeof createTabHistory>;
+    let dispose!: () => void;
+    createRoot(d => {
+        dispose = d;
+        history = createTabHistory();
+    });
+    // Only the three mutators need wrapping; getters like `version` and
+    // `getHistory` never write, so they stay untouched and synchronous.
+    const flushing: typeof history = {
+        ...history,
+        pushHistory: (id, url) => {
+            history.pushHistory(id, url);
+            flush();
+        },
+        back: id => {
+            const result = history.back(id);
+            flush();
+            return result;
+        },
+        forward: id => {
+            const result = history.forward(id);
+            flush();
+            return result;
+        },
+    };
+    try {
+        fn(flushing);
+    } finally {
+        dispose();
     }
+}
 
+describe("createTabHistory", () => {
     it("starts with no navigation available", () => {
         withHistory(h => {
             expect(h.canBack("t1")).toBe(false);
@@ -219,7 +219,9 @@ describe("createTabHistory", () => {
             expect(h.getHistory("t1").stack).toEqual(["a", "b", "d"]);
         });
     });
+});
 
+describe("createTabHistory dedupe", () => {
     it("dedupes a push of the URL already at the cursor", () => {
         // Load events fire for the same URL during back/forward; without this
         // the stack would grow and the cursor would drift.
@@ -252,7 +254,9 @@ describe("createTabHistory", () => {
             expect(h.getHistory("t1").stack).toEqual(["a", "b", "a"]);
         });
     });
+});
 
+describe("createTabHistory per tab", () => {
     it("keeps tabs independent", () => {
         withHistory(h => {
             h.pushHistory("t1", "a");

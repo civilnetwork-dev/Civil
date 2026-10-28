@@ -284,11 +284,11 @@ target[method](...args, () => { chrome.storage.session.set({ __fired: true }); }
 // runtime.onMessage listener arity
 // ---------------------------------------------------------------------------
 
-describe("runtime.onMessage listeners", () => {
-    const threeArg = FILTER_NAMES.filter(
-        name => FILTERS[name]!.maxMessageListenerArity >= 3,
-    );
+const threeArg = FILTER_NAMES.filter(
+    name => FILTERS[name]!.maxMessageListenerArity >= 3,
+);
 
+describe("runtime.onMessage listeners", () => {
     it("are written for Chrome's three arguments across the corpus", () => {
         // Twenty of the twenty-eight. Not a stylistic detail: a listener
         // declared `(message, sender, sendResponse)` and dispatched with two
@@ -298,7 +298,9 @@ describe("runtime.onMessage listeners", () => {
         // broken rather than the host's dispatch being wrong.
         expect(threeArg.length).toBeGreaterThan(FILTER_NAMES.length / 2);
     });
+});
 
+describe("runtime.onMessage self-delivery", () => {
     it(
         "do not hear the background's own runtime.sendMessage",
         async () => {
@@ -344,7 +346,9 @@ chrome.runtime.sendMessage({ startup: true });
         },
         DOM_LOAD_TIMEOUT,
     );
+});
 
+describe("runtime.onMessage argument order", () => {
     it("receive (message, sender, sendResponse) in that order", async () => {
         const dir = writeExtension({
             "manifest.json": JSON.stringify({
@@ -401,7 +405,9 @@ describe("background entry points", () => {
             "service_worker",
         ]);
     });
+});
 
+describe("background entry points: pages and scripts", () => {
     it("runs an MV3 service worker", async () => {
         const dir = writeExtension({
             "manifest.json": JSON.stringify({
@@ -439,7 +445,9 @@ describe("background entry points", () => {
         },
         DOM_LOAD_TIMEOUT,
     );
+});
 
+describe("background entry points: classic pages", () => {
     it(
         "runs the scripts an MV2 background page pulls in",
         async () => {
@@ -728,6 +736,65 @@ const KNOWN_ASYNC_FAILURES: Record<string, RegExp> = {
 };
 
 /**
+ * Loads one bundle and collects everything that went wrong, including
+ * what surfaced after startup returned.
+ *
+ * Vitest installs its own `unhandledRejection`/`uncaughtException`
+ * handlers and fails the run on either. That is right for test code and
+ * wrong here: a vendor bundle's stray rejection is the *subject* of this
+ * test, not an accident in it. So the handlers are swapped out for the
+ * duration of one load and restored immediately after.
+ */
+async function startupProblems(
+    dir: string,
+    setup?: (typeof VENDOR_SETUP)[string],
+): Promise<string[]> {
+    const problems: string[] = [];
+    const describeError = (error: unknown) =>
+        error instanceof Error
+            ? `${error.name}: ${error.message.split("\n")[0]}`
+            : String(error);
+
+    const saved = {
+        rejection: process.listeners("unhandledRejection"),
+        exception: process.listeners("uncaughtException"),
+    };
+    process.removeAllListeners("unhandledRejection");
+    process.removeAllListeners("uncaughtException");
+    const onRejection = (reason: unknown) =>
+        problems.push(describeError(reason));
+    const onException = (error: Error) => problems.push(describeError(error));
+    process.on("unhandledRejection", onRejection);
+    process.on("uncaughtException", onException);
+
+    let handle: Awaited<ReturnType<typeof loadExtension>> | undefined;
+    try {
+        handle = await loadExtension({
+            dir,
+            extensionId: "a".repeat(32),
+            ...setup,
+        });
+    } catch (error) {
+        problems.push(describeError(error));
+    }
+    // Microtasks first, then one real turn: a rejection is only
+    // *unhandled* once the microtask queue has drained without anyone
+    // attaching a catch.
+    await flushMicrotasks(50);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    handle?.dispose();
+
+    process.off("unhandledRejection", onRejection);
+    process.off("uncaughtException", onException);
+    for (const listener of saved.rejection)
+        process.on("unhandledRejection", listener);
+    for (const listener of saved.exception)
+        process.on("uncaughtException", listener);
+
+    return [...new Set(problems)];
+}
+
+/**
  * Everything above runs off the committed scan, which is what lets it run
  * anywhere. This block runs against the bundles themselves when a checkout of
  * them happens to be present.
@@ -741,66 +808,6 @@ const KNOWN_ASYNC_FAILURES: Record<string, RegExp> = {
  * than on anything to do with the extension API.
  */
 describe.skipIf(!haveBundles)("real vendor bundles", () => {
-    /**
-     * Loads one bundle and collects everything that went wrong, including
-     * what surfaced after startup returned.
-     *
-     * Vitest installs its own `unhandledRejection`/`uncaughtException`
-     * handlers and fails the run on either. That is right for test code and
-     * wrong here: a vendor bundle's stray rejection is the *subject* of this
-     * test, not an accident in it. So the handlers are swapped out for the
-     * duration of one load and restored immediately after.
-     */
-    async function startupProblems(
-        dir: string,
-        setup?: (typeof VENDOR_SETUP)[string],
-    ): Promise<string[]> {
-        const problems: string[] = [];
-        const describeError = (error: unknown) =>
-            error instanceof Error
-                ? `${error.name}: ${error.message.split("\n")[0]}`
-                : String(error);
-
-        const saved = {
-            rejection: process.listeners("unhandledRejection"),
-            exception: process.listeners("uncaughtException"),
-        };
-        process.removeAllListeners("unhandledRejection");
-        process.removeAllListeners("uncaughtException");
-        const onRejection = (reason: unknown) =>
-            problems.push(describeError(reason));
-        const onException = (error: Error) =>
-            problems.push(describeError(error));
-        process.on("unhandledRejection", onRejection);
-        process.on("uncaughtException", onException);
-
-        let handle: Awaited<ReturnType<typeof loadExtension>> | undefined;
-        try {
-            handle = await loadExtension({
-                dir,
-                extensionId: "a".repeat(32),
-                ...setup,
-            });
-        } catch (error) {
-            problems.push(describeError(error));
-        }
-        // Microtasks first, then one real turn: a rejection is only
-        // *unhandled* once the microtask queue has drained without anyone
-        // attaching a catch.
-        await flushMicrotasks(50);
-        await new Promise(resolve => setTimeout(resolve, 50));
-        handle?.dispose();
-
-        process.off("unhandledRejection", onRejection);
-        process.off("uncaughtException", onException);
-        for (const listener of saved.rejection)
-            process.on("unhandledRejection", listener);
-        for (const listener of saved.exception)
-            process.on("uncaughtException", listener);
-
-        return [...new Set(problems)];
-    }
-
     it.each(FILTER_NAMES)(
         "%s starts up",
         async name => {

@@ -48,7 +48,9 @@ describe("loadExtension end-to-end", () => {
         const result = await ext.sendMessage("nobody-listens-for-this");
         expect(result.handled).toBe(false);
     });
+});
 
+describe("loadExtension storage, alarms and DNR", () => {
     it("seeds and reads chrome.storage.local", async () => {
         const ext = await loadExtension({
             dir: FIXTURE_DIR,
@@ -98,7 +100,9 @@ describe("loadExtension end-to-end", () => {
         });
         expect(unrelated.action).toBe("none");
     });
+});
 
+describe("loadExtension network access", () => {
     it("answers fetch offline by default so loading an extension can't reach the network", async () => {
         const NETWORK_DIR = join(__dirname, "fixtures", "network-extension");
         const ext = await loadExtension({ dir: NETWORK_DIR });

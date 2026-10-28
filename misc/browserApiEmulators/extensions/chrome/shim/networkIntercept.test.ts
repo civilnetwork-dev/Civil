@@ -71,7 +71,9 @@ describe("applyDnrRules", () => {
         expect(blocks("a|b", "https://a.test/?q=a|b")).toBe(true);
         expect(blocks("a|b", "https://b.test/")).toBe(false);
     });
+});
 
+describe("applyDnrRules redirects", () => {
     it("redirects to a fixed URL or a transformed one", () => {
         expect(
             run([
@@ -119,7 +121,9 @@ describe("applyDnrRules", () => {
         ]);
         expect(result.redirectUrl).toBe("https://mirror.test/api/data?x=1");
     });
+});
 
+describe("applyDnrRules upgrades and headers", () => {
     it("upgrades http to https and leaves https alone", () => {
         const upgrade = [rule(1, { type: "upgradeScheme" })];
         expect(run(upgrade).redirectUrl).toBe(

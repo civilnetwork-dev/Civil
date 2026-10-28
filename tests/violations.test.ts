@@ -136,7 +136,9 @@ describe("recordViolation", () => {
         // User counter is now 1, IP counter is 4 → effective count is 4.
         expect(violations).toBe(4);
     });
+});
 
+describe("recordViolation banning", () => {
     it("does not ban before the limit", async () => {
         for (let i = 1; i < VIOLATION_LIMIT; i++) {
             const { banned } = await recordViolation("user-1", "203.0.113.5");
@@ -172,7 +174,9 @@ describe("recordViolation", () => {
             expect.stringContaining("restricted domains"),
         );
     });
+});
 
+describe("recordViolation across identities", () => {
     it("resists ban evasion by creating a fresh anonymous account", async () => {
         const ip = "203.0.113.5";
 

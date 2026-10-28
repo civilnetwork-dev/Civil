@@ -208,11 +208,13 @@ describe("sites left out of history", () => {
     });
 });
 
+function fillHalfMegabyte() {
+    setSetting("historyLimitKb", 512);
+    localStorage.setItem("civil-history", JSON.stringify(heavy()));
+}
+
 describe("when space runs out", () => {
-    beforeEach(() => {
-        setSetting("historyLimitKb", 512);
-        localStorage.setItem("civil-history", JSON.stringify(heavy()));
-    });
+    beforeEach(fillHalfMegabyte);
 
     it("removes the oldest pages", async () => {
         await visit();
@@ -250,6 +252,10 @@ describe("when space runs out", () => {
             location: historyGetMethod(),
         });
     });
+});
+
+describe("when space runs out in one place", () => {
+    beforeEach(fillHalfMegabyte);
 
     it("continues in the other place, keeping everything", async () => {
         setSetting("historyWhenFull", "spill");
@@ -296,6 +302,10 @@ describe("when space runs out", () => {
             removed: 0,
         });
     });
+});
+
+describe("when space runs out everywhere", () => {
+    beforeEach(fillHalfMegabyte);
 
     it("stops saving and touches nothing", async () => {
         setSetting("historyWhenFull", "stop");

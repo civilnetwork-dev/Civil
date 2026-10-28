@@ -96,6 +96,39 @@ describe("jsDecode error handling", () => {
     });
 });
 
+type XorModule = {
+    getInBuf(n: number): number;
+    getOutBuf(): number;
+    outLen(): number;
+    encodeBuf(n: number): void;
+    decodeBuf(n: number): void;
+    HEAPU8: Uint8Array;
+};
+
+async function loadWasmCodec(): Promise<XorModule | null> {
+    try {
+        const factory = (await import("../config/encoder/xor_encoder.js"))
+            .default as () => Promise<XorModule>;
+        return await factory();
+    } catch {
+        return null;
+    }
+}
+
+const mod = await loadWasmCodec();
+
+const run = (m: XorModule, str: string, decode: boolean): string => {
+    const bytes = new TextEncoder().encode(str);
+    const ptr = m.getInBuf(bytes.length);
+    m.HEAPU8.set(bytes, ptr);
+    if (decode) m.decodeBuf(bytes.length);
+    else m.encodeBuf(bytes.length);
+    const outPtr = m.getOutBuf();
+    return new TextDecoder().decode(
+        m.HEAPU8.subarray(outPtr, outPtr + m.outLen()),
+    );
+};
+
 /**
  * Cross-check against the real WASM encoder. This is the test that actually
  * matters: the two implementations must agree, or a URL encoded before WASM
@@ -105,37 +138,7 @@ describe("jsDecode error handling", () => {
  * Node (it's an Emscripten browser build), so this suite stays useful without
  * needing `bun run build:encoder` first.
  */
-describe("JS codec agrees with the WASM codec", async () => {
-    type XorModule = {
-        getInBuf(n: number): number;
-        getOutBuf(): number;
-        outLen(): number;
-        encodeBuf(n: number): void;
-        decodeBuf(n: number): void;
-        HEAPU8: Uint8Array;
-    };
-
-    let mod: XorModule | null = null;
-    try {
-        const factory = (await import("../config/encoder/xor_encoder.js"))
-            .default as () => Promise<XorModule>;
-        mod = await factory();
-    } catch {
-        mod = null;
-    }
-
-    const run = (m: XorModule, str: string, decode: boolean): string => {
-        const bytes = new TextEncoder().encode(str);
-        const ptr = m.getInBuf(bytes.length);
-        m.HEAPU8.set(bytes, ptr);
-        if (decode) m.decodeBuf(bytes.length);
-        else m.encodeBuf(bytes.length);
-        const outPtr = m.getOutBuf();
-        return new TextDecoder().decode(
-            m.HEAPU8.subarray(outPtr, outPtr + m.outLen()),
-        );
-    };
-
+describe("JS codec agrees with the WASM codec", () => {
     it("could load the WASM module (informational)", () => {
         // Not an assertion about correctness — just makes it visible in the
         // report whether the cross-check below actually ran.
@@ -152,44 +155,42 @@ describe("JS codec agrees with the WASM codec", async () => {
             expect(jsDecode(run(mod as XorModule, url, false))).toBe(url);
         },
     );
+});
 
-    /**
-     * KNOWN DIVERGENCE, pinned deliberately.
-     *
-     * Given a bare search term rather than a URL, the WASM encoder applies the
-     * configured search-engine template (see `setSearchEngine` /
-     * `setSearchTemplate` in wasmDencode.ts) and encodes the resulting search
-     * URL. The JS fallback has no such template and encodes the term literally.
-     *
-     * In the normal path this is unreachable: SearchBar.normalizeTerm() turns a
-     * search term into a full URL *before* calling encodeUrl, so the codec only
-     * ever sees URLs — which is why the suites above pass.
-     *
-     * It becomes reachable only if something calls encode() with a bare term
-     * during the window before the WASM module has loaded. Then the two produce
-     * different output and navigation breaks.
-     *
-     * These tests assert the divergence so that changing either implementation
-     * surfaces here rather than as a mystery bug. If the JS fallback is ever
-     * taught the search template, delete this suite.
-     */
-    describe("bare search terms: WASM templates, JS does not", () => {
-        it.skipIf(!mod).each(BARE_TERMS)(
-            "%s encodes differently in JS and WASM",
-            term => {
-                expect(run(mod as XorModule, term, false)).not.toBe(
-                    jsEncode(term),
-                );
-            },
-        );
+/**
+ * KNOWN DIVERGENCE, pinned deliberately.
+ *
+ * Given a bare search term rather than a URL, the WASM encoder applies the
+ * configured search-engine template (see `setSearchEngine` /
+ * `setSearchTemplate` in wasmDencode.ts) and encodes the resulting search
+ * URL. The JS fallback has no such template and encodes the term literally.
+ *
+ * In the normal path this is unreachable: SearchBar.normalizeTerm() turns a
+ * search term into a full URL *before* calling encodeUrl, so the codec only
+ * ever sees URLs — which is why the suites above pass.
+ *
+ * It becomes reachable only if something calls encode() with a bare term
+ * during the window before the WASM module has loaded. Then the two produce
+ * different output and navigation breaks.
+ *
+ * These tests assert the divergence so that changing either implementation
+ * surfaces here rather than as a mystery bug. If the JS fallback is ever
+ * taught the search template, delete this suite.
+ */
+describe("bare search terms: WASM templates, JS does not", () => {
+    it.skipIf(!mod).each(BARE_TERMS)(
+        "%s encodes differently in JS and WASM",
+        term => {
+            expect(run(mod as XorModule, term, false)).not.toBe(jsEncode(term));
+        },
+    );
 
-        it.skipIf(!mod)("WASM expands a bare term into a search URL", () => {
-            const encoded = run(mod as XorModule, "abc", false);
-            expect(jsDecode(encoded)).toMatch(/^https?:\/\/.+abc$/);
-        });
+    it.skipIf(!mod)("WASM expands a bare term into a search URL", () => {
+        const encoded = run(mod as XorModule, "abc", false);
+        expect(jsDecode(encoded)).toMatch(/^https?:\/\/.+abc$/);
+    });
 
-        it.skipIf(!mod)("JS encodes a bare term literally", () => {
-            expect(jsDecode(jsEncode("abc"))).toBe("abc");
-        });
+    it.skipIf(!mod)("JS encodes a bare term literally", () => {
+        expect(jsDecode(jsEncode("abc"))).toBe("abc");
     });
 });

@@ -98,7 +98,9 @@ describe("pickTunnelDomain", () => {
         const after = createCache({ cacheId: CACHE_ID, cacheDir });
         expect(after.keys()).toEqual(["blocked.com"]);
     });
+});
 
+describe("pickTunnelDomain choice", () => {
     it("randomises the pick among survivors", async () => {
         const domains = [dom("a.com", 1), dom("b.com", 2), dom("c.com", 3)];
         const low = await pickTunnelDomain({
@@ -128,7 +130,9 @@ describe("pickTunnelDomain", () => {
             pickTunnelDomain({ client, classify, cacheDir: tmp() }),
         ).rejects.toThrow(/blocked/);
     });
+});
 
+describe("pickTunnelDomain batches", () => {
     it("tries the next batch when the first is entirely blocked", async () => {
         // A block cache accumulated over many runs can make an early batch
         // come back fully blocked even though clean domains exist further

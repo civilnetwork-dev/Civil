@@ -75,7 +75,9 @@ describe("FilterCheckResults", () => {
         expect(found[2].textContent).toBe("0");
         unmount();
     });
+});
 
+describe("FilterCheckResults rows", () => {
     it("keeps detail text in the DOM but hides its region while collapsed", () => {
         const { container, unmount } = mount(RESULTS);
         const li = rows(container)[1];
@@ -108,7 +110,9 @@ describe("FilterCheckResults", () => {
         expect(rows(container).length).toBe(0);
         unmount();
     });
+});
 
+describe("FilterCheckResults glyphs", () => {
     it("renders a distinct glyph for allowed, unknown and blocked", () => {
         const { container, unmount } = mount(RESULTS);
         const found = rows(container).map(

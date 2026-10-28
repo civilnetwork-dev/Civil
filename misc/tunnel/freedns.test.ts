@@ -134,8 +134,7 @@ describe("login (real xior transport, not the clientWith stub)", () => {
     });
 });
 
-describe("getRegistry", () => {
-    const REGISTRY_HTML = `
+const REGISTRY_HTML = `
 <html><body>
   <font size="2">Showing 1-2 of 1,234 total</font>
   <td width="33%" align="center"><input value="1"> of 3</td>
@@ -155,6 +154,7 @@ describe("getRegistry", () => {
   </table>
 </body></html>`;
 
+describe("getRegistry", () => {
     it("parses the summary, pager and every domain row", async () => {
         const client = clientWith(({ path }) => {
             expect(path).toContain("/domain/registry/");

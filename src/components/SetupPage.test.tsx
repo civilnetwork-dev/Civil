@@ -69,7 +69,9 @@ describe("SetupPage", () => {
         replace.mockRestore();
         unmount();
     });
+});
 
+describe("SetupPage with earlier choices", () => {
     it("keeps a choice the visitor made and picks only what they skipped", async () => {
         const { container, unmount } = renderSolid(() => <SetupPage />);
 

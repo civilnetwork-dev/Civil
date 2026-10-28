@@ -38,9 +38,9 @@ async function run(
     return { blocked: res.status === 403, status: res.status };
 }
 
-describe("createFilterBlockerMiddleware", () => {
-    const allDomains = Object.values(filterVendorDomains).flat();
+const allDomains = Object.values(filterVendorDomains).flat();
 
+describe("createFilterBlockerMiddleware", () => {
     it("blocks every tracked vendor domain and their subdomains", async () => {
         for (const domain of allDomains) {
             expect((await run(domain)).status, domain).toBe(403);
@@ -63,7 +63,9 @@ describe("createFilterBlockerMiddleware", () => {
         expect((await run("notsecurly.com")).blocked).toBe(false);
         expect((await run("securly.com.evil.test")).blocked).toBe(false);
     });
+});
 
+describe("createFilterBlockerMiddleware hosts", () => {
     it("reads x-forwarded-host only when told to trust it", async () => {
         // With trust on, the forwarded header decides.
         expect(

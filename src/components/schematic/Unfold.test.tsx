@@ -97,7 +97,9 @@ describe("Unfold", () => {
         expect(region(container).id).toBe(controls);
         unmount();
     });
+});
 
+describe("Unfold naming and hover", () => {
     // Was "labels the trigger for screen readers", asserting
     // `aria-label === props.label`. That is now the bug: an `aria-label`
     // replaces the accessible name outright, discarding the visible summary
@@ -127,7 +129,9 @@ describe("Unfold", () => {
         expect(region(container).getAttribute("aria-hidden")).toBe("true");
         unmount();
     });
+});
 
+describe("Unfold focus", () => {
     // Was dispatching `focusin` on a closed region and expecting it to open.
     // Under the new model, focus alone never opens anything (that was
     // Defect 2) — it only holds a region open once something else already
@@ -153,7 +157,9 @@ describe("Unfold", () => {
 
         unmount();
     });
+});
 
+describe("Unfold focus leaving", () => {
     // Was opening via a bare `focusin` (the same problem as above), then
     // proving nothing: with `pinned` never set, "collapses when focus
     // leaves" and "was never really open" are indistinguishable. Opening via
@@ -196,7 +202,9 @@ describe("Unfold", () => {
         expect(region(container).getAttribute("aria-hidden")).toBe("false");
         unmount();
     });
+});
 
+describe("Unfold touch", () => {
     // Regression test for the Critical defect: mobile browsers synthesise a
     // `mouseenter`-equivalent pointer event before a tap's `click`, and no
     // `pointerleave` until the user touches elsewhere. Under the old model
@@ -228,7 +236,9 @@ describe("Unfold", () => {
 
         unmount();
     });
+});
 
+describe("Unfold keyboard", () => {
     it("does not expand when focus merely tabs to the trigger", () => {
         const { container, unmount } = mount();
         const root = container.firstElementChild as HTMLElement;

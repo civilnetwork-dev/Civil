@@ -97,10 +97,10 @@ describe("navConditionMatches", () => {
     });
 });
 
-describe("navRedirectTarget", () => {
-    const origin = "https://civil.test";
-    const userScript = "https://example.com/scripts/foo.user.js";
+const origin = "https://civil.test";
+const userScript = "https://example.com/scripts/foo.user.js";
 
+describe("navRedirectTarget", () => {
     it("returns an absolute redirect URL as given", () => {
         expect(
             navRedirectTarget(
@@ -135,7 +135,9 @@ describe("navRedirectTarget", () => {
         };
         expect(navRedirectTarget(rule, "ext", userScript, origin)).toBeNull();
     });
+});
 
+describe("navRedirectTarget extension paths", () => {
     it("resolves an extension path under /civil-ext/ with its placeholders filled", () => {
         const rule: DnrNavRule = {
             action: {
