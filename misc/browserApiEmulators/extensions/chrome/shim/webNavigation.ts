@@ -1,133 +1,94 @@
 import { CivilEvent } from "./event";
 import { getCivilBus, resolved } from "./util";
 
-export function buildWebNavigationAPI(extId?: string) {
-    const onBeforeNavigate = new CivilEvent<
-        (details: chrome.webNavigation.WebNavigationBaseCallbackDetails) => void
-    >();
-    const onCommitted = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationTransitionCallbackDetails,
-        ) => void
-    >();
-    const onDOMContentLoaded = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationFramedCallbackDetails,
-        ) => void
-    >();
-    const onCompleted = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationFramedCallbackDetails,
-        ) => void
-    >();
-    const onErrorOccurred = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationFramedErrorCallbackDetails,
-        ) => void
-    >();
-    const onCreatedNavigationTarget = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationSourceCallbackDetails,
-        ) => void
-    >();
-    const onReferenceFragmentUpdated = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationTransitionCallbackDetails,
-        ) => void
-    >();
-    const onTabReplaced = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationReplacementCallbackDetails,
-        ) => void
-    >();
-    const onHistoryStateUpdated = new CivilEvent<
-        (
-            details: chrome.webNavigation.WebNavigationTransitionCallbackDetails,
-        ) => void
-    >();
+type Listener<T> = CivilEvent<(details: T) => void>;
+type Nav = typeof chrome.webNavigation;
+type Base = chrome.webNavigation.WebNavigationBaseCallbackDetails;
+type Transition = chrome.webNavigation.WebNavigationTransitionCallbackDetails;
+type Framed = chrome.webNavigation.WebNavigationFramedCallbackDetails;
+type FramedError = chrome.webNavigation.WebNavigationFramedErrorCallbackDetails;
+type Source = chrome.webNavigation.WebNavigationSourceCallbackDetails;
+type Replacement = chrome.webNavigation.WebNavigationReplacementCallbackDetails;
 
-    if (extId) {
-        getCivilBus(extId).addEventListener("message", event => {
-            const data = event.data as {
-                kind?: string;
-                event?: string;
-                args?: unknown[];
-            };
-            if (data?.kind !== "browserEvent") return;
-            const details = data.args?.[0] as never;
-            switch (data.event) {
-                case "webNavigation.onBeforeNavigate":
-                    onBeforeNavigate.dispatch(details);
-                    break;
-                case "webNavigation.onCommitted":
-                    onCommitted.dispatch(details);
-                    break;
-                case "webNavigation.onDOMContentLoaded":
-                    onDOMContentLoaded.dispatch(details);
-                    break;
-                case "webNavigation.onCompleted":
-                    onCompleted.dispatch(details);
-                    break;
-                case "webNavigation.onErrorOccurred":
-                    onErrorOccurred.dispatch(details);
-                    break;
-                case "webNavigation.onHistoryStateUpdated":
-                    onHistoryStateUpdated.dispatch(details);
-                    break;
-                case "webNavigation.onReferenceFragmentUpdated":
-                    onReferenceFragmentUpdated.dispatch(details);
-                    break;
-            }
-        });
-    }
-
-    function getFrame(
-        _details: { tabId: number; frameId: number; processId?: number },
-        cb?: (
-            details: chrome.webNavigation.GetFrameResultDetails | null,
-        ) => void,
-    ) {
-        return resolved(null, cb);
-    }
-
-    function getAllFrames(
-        _details: { tabId: number },
-        cb?: (
-            details: chrome.webNavigation.GetAllFrameResultDetails[] | null,
-        ) => void,
-    ) {
-        return resolved(
-            [
-                {
-                    errorOccurred: false,
-                    processId: -1,
-                    frameId: 0,
-                    parentFrameId: -1,
-                    url:
-                        typeof window !== "undefined"
-                            ? window.location.href
-                            : "",
-                    documentId: "",
-                    documentLifecycle: "active",
-                    frameType: "outermost_frame",
-                    tabId: -1,
-                } as chrome.webNavigation.GetAllFrameResultDetails,
-            ],
-            cb,
-        );
-    }
-
+function navigationEvents() {
     return {
-        onBeforeNavigate,
-        onCommitted,
-        onDOMContentLoaded,
-        onCompleted,
-        onErrorOccurred,
-        onCreatedNavigationTarget,
-        onReferenceFragmentUpdated,
-        onTabReplaced,
-        onHistoryStateUpdated,
-        getFrame,
-        getAllFrames,
-    };
+        onBeforeNavigate: new CivilEvent() as Listener<Base>,
+        onCommitted: new CivilEvent() as Listener<Transition>,
+        onDOMContentLoaded: new CivilEvent() as Listener<Framed>,
+        onCompleted: new CivilEvent() as Listener<Framed>,
+        onErrorOccurred: new CivilEvent() as Listener<FramedError>,
+        onCreatedNavigationTarget: new CivilEvent() as Listener<Source>,
+        onReferenceFragmentUpdated: new CivilEvent() as Listener<Transition>,
+        onTabReplaced: new CivilEvent() as Listener<Replacement>,
+        onHistoryStateUpdated: new CivilEvent() as Listener<Transition>,
+    } satisfies Partial<Record<keyof Nav, unknown>>;
+}
+
+/** The events the browser relays over the bus; the rest never fire. */
+const RELAYED = new Set([
+    "onBeforeNavigate",
+    "onCommitted",
+    "onDOMContentLoaded",
+    "onCompleted",
+    "onErrorOccurred",
+    "onHistoryStateUpdated",
+    "onReferenceFragmentUpdated",
+]);
+
+function relayBrowserEvents(
+    extId: string,
+    events: ReturnType<typeof navigationEvents>,
+): void {
+    getCivilBus(extId).addEventListener("message", event => {
+        const data = event.data as {
+            kind?: string;
+            event?: string;
+            args?: unknown[];
+        };
+        if (data?.kind !== "browserEvent") return;
+        const name = data.event?.replace(/^webNavigation\./, "");
+        if (!data.event?.startsWith("webNavigation.") || !RELAYED.has(name!))
+            return;
+        const target = events[name as keyof typeof events] as CivilEvent<
+            (details: never) => void
+        >;
+        target.dispatch(data.args?.[0] as never);
+    });
+}
+
+function getFrame(
+    _details: { tabId: number; frameId: number; processId?: number },
+    cb?: (details: chrome.webNavigation.GetFrameResultDetails | null) => void,
+) {
+    return resolved(null, cb);
+}
+
+function getAllFrames(
+    _details: { tabId: number },
+    cb?: (
+        details: chrome.webNavigation.GetAllFrameResultDetails[] | null,
+    ) => void,
+) {
+    return resolved(
+        [
+            {
+                errorOccurred: false,
+                processId: -1,
+                frameId: 0,
+                parentFrameId: -1,
+                url: typeof window !== "undefined" ? window.location.href : "",
+                documentId: "",
+                documentLifecycle: "active",
+                frameType: "outermost_frame",
+                tabId: -1,
+            } as chrome.webNavigation.GetAllFrameResultDetails,
+        ],
+        cb,
+    );
+}
+
+export function buildWebNavigationAPI(extId?: string) {
+    const events = navigationEvents();
+    if (extId) relayBrowserEvents(extId, events);
+    return { ...events, getFrame, getAllFrames };
 }
