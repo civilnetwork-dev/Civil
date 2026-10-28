@@ -68,7 +68,9 @@ describe("pickSetupDefaults", () => {
         expect(saving.navTimeout?.value).toBe(30);
         expect(saving.suggestLive?.value).toBe(false);
     });
+});
 
+describe("pickSetupDefaults device limits", () => {
     it("reduces motion on a light device or when the device asks", async () => {
         expect(
             (await pickSetupDefaults(device({ cores: 2 }))).motion?.value,

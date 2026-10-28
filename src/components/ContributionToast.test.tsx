@@ -42,13 +42,13 @@ function stubFetch(response: Response) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("IbossGatewayToast", () => {
-    const props = { districtName: "Knox County", leaId: "4702220" };
+const ibossProps = { districtName: "Knox County", leaId: "4702220" };
 
+describe("IbossGatewayToast", () => {
     it("keeps Submit disabled until a gateway host is entered", async () => {
         const { container, unmount } = renderSolid(() => (
             <IbossGatewayToast
-                {...props}
+                {...ibossProps}
                 onDismiss={() => {}}
                 onSubmit={() => {}}
             />
@@ -67,7 +67,7 @@ describe("IbossGatewayToast", () => {
         const onSubmit = vi.fn();
         const { container, unmount } = renderSolid(() => (
             <IbossGatewayToast
-                {...props}
+                {...ibossProps}
                 onDismiss={() => {}}
                 onSubmit={onSubmit}
             />
@@ -90,13 +90,15 @@ describe("IbossGatewayToast", () => {
         expect(onSubmit).toHaveBeenCalledWith("cn1-vnsg2.ibosscloud.com");
         unmount();
     });
+});
 
+describe("IbossGatewayToast refusals", () => {
     it("shows the server's reason when it refuses", async () => {
         stubFetch(new Response("Invalid iboss gateway host", { status: 400 }));
         const onSubmit = vi.fn();
         const { container, unmount } = renderSolid(() => (
             <IbossGatewayToast
-                {...props}
+                {...ibossProps}
                 onDismiss={() => {}}
                 onSubmit={onSubmit}
             />
@@ -116,7 +118,7 @@ describe("IbossGatewayToast", () => {
         const onDismiss = vi.fn();
         const { container, unmount } = renderSolid(() => (
             <IbossGatewayToast
-                {...props}
+                {...ibossProps}
                 onDismiss={onDismiss}
                 onSubmit={() => {}}
             />

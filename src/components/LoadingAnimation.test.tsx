@@ -43,7 +43,9 @@ describe("LoadingAnimation", () => {
         expect(letter).toBeGreaterThan(lastNode);
         unmount();
     });
+});
 
+describe("LoadingAnimation accessibility and timing", () => {
     it("hides the mark from assistive tech and announces status as text", () => {
         const { container, unmount } = renderSolid(() => <LoadingAnimation />);
         expect(

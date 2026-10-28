@@ -108,7 +108,9 @@ describe("detectFlagging", () => {
         expect(verdict.flagged).toBe(true);
         expect(verdict.signal).toEqual({ kind: "marker", marker });
     });
+});
 
+describe("detectFlagging attribution and failures", () => {
     it("flags an in-place block that names the vendor", () => {
         const verdict = detectFlagging(
             observe({
@@ -156,7 +158,9 @@ describe("detectFlagging", () => {
             detectFlagging(observe({ status: 502 }), "securly").flagged,
         ).toBe(false);
     });
+});
 
+describe("detectFlagging declarativeNetRequest", () => {
     it("flags a declarativeNetRequest block rule directly, no page needed", () => {
         const verdict = detectFlagging(
             observe({ dnrMatch: { action: "block", matchedRuleId: 7 } }),
@@ -206,7 +210,9 @@ describe("detectFlagging", () => {
             finalHost: "new-block-host.example",
         });
     });
+});
 
+describe("detectFlagging page shrinkage", () => {
     it("flags a page that collapsed to a short fraction of what was served, even with no known marker", () => {
         const pageText = "Access is not permitted here.";
         const verdict = detectFlagging(
@@ -279,7 +285,9 @@ describe("predictFix", () => {
         expect(files.some(f => f.includes("securly"))).toBe(true);
         expect(files.some(f => f.includes("useIframeManager"))).toBe(true);
     });
+});
 
+describe("predictFix gaps and DNR", () => {
     it("flags the absence of a handler for a vendor that has none", () => {
         // loilo has no misc/filters/loilo — the prediction should say so.
         const verdict = detectFlagging(
@@ -351,7 +359,9 @@ describe("sandbox observeRoute", () => {
         );
         expect(detectFlagging(observation, "securly").flagged).toBe(true);
     });
+});
 
+describe("sandbox observeRoute verdicts", () => {
     it("reports the loaded filter's own declarativeNetRequest verdict for the page URL", async () => {
         const dir = join(import.meta.dirname, "fixtures", "dnr-extension");
         const observation = await observeRoute({

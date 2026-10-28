@@ -34,7 +34,9 @@ describe("isPrivateHost", () => {
         expect(isPrivateHost("db.internal")).toBe(true);
         expect(isPrivateHost("app.localhost")).toBe(true);
     });
+});
 
+describe("isPrivateHost IPv6 and public hosts", () => {
     it("blocks IPv6 loopback and private ranges", () => {
         expect(isPrivateHost("::1")).toBe(true);
         expect(isPrivateHost("fe80::1")).toBe(true);

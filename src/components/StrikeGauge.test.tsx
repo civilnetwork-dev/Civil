@@ -60,7 +60,9 @@ describe("StrikeGauge", () => {
             expect(tone, el.className).toBe(true);
         }
     });
+});
 
+describe("StrikeGauge severity", () => {
     /**
      * Severity is relative to the cap. One strike out of three is a different
      * situation from one out of ten, so a fixed "warn at 2" threshold would be

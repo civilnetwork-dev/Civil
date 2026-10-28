@@ -73,7 +73,9 @@ describe("SettingsPage", () => {
         expect(localStorage.getItem("civil:history-enabled")).toBeNull();
         unmount();
     });
+});
 
+describe("SettingsPage search", () => {
     it("refuses a custom search address without %s", async () => {
         const { container, unmount } = renderSolid(() => <SettingsPage />);
         choose(
@@ -100,7 +102,9 @@ describe("SettingsPage", () => {
         );
         unmount();
     });
+});
 
+describe("SettingsPage history", () => {
     it("leaves a site out of history and offers to delete what it saved", async () => {
         localStorage.setItem(
             "civil-history",
@@ -146,7 +150,9 @@ describe("SettingsPage", () => {
         );
         unmount();
     });
+});
 
+describe("SettingsPage transfer", () => {
     it("restores settings from pasted text", async () => {
         const { container, unmount } = renderSolid(() => <SettingsPage />);
         const button = (text: string) =>
@@ -172,7 +178,9 @@ describe("SettingsPage", () => {
         );
         unmount();
     });
+});
 
+describe("SettingsPage site rules", () => {
     it("adds a site rule under its bare hostname and removes it", async () => {
         const { container, unmount } = renderSolid(() => <SettingsPage />);
         const site = container.querySelector(

@@ -57,7 +57,9 @@ describe("settings", () => {
             "discord.com": "libcurl",
         });
     });
+});
 
+describe("settings writes and resets", () => {
     it("round-trips every kind of value and announces the write", () => {
         const heard = vi.fn();
         const stop = onLsChange("civil:history-enabled", heard);

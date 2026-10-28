@@ -39,35 +39,37 @@ describe("openTunnel", () => {
     });
 });
 
+/** FreeDNS's real wording for a wrong guess — it never says "captcha". */
+const wrongCodeError = () =>
+    new FreeDnsError(
+        "Failed to create subdomain: The security code was incorrect, please try again.",
+    );
+
+const captchaRecord = {
+    recordType: "CNAME" as const,
+    subdomain: "abc123",
+    domainId: 1,
+    destination: "tunnel.trycloudflare.com",
+};
+
+/** A stub client whose `createSubdomain` behavior is driven by `attempt`
+ *  (1-indexed), so a test can fail the first N calls and succeed after. */
+function stubCaptchaClient(
+    onAttempt: (attempt: number) => void,
+): FreeDnsClient {
+    let attempt = 0;
+    return Object.assign(new FreeDnsClient(), {
+        getCaptcha: async () => new Uint8Array(),
+        createSubdomain: async () => {
+            attempt++;
+            onAttempt(attempt);
+        },
+    });
+}
+
 describe("createSubdomainWithCaptcha", () => {
-    /** FreeDNS's real wording for a wrong guess — it never says "captcha". */
-    const wrongCodeError = () =>
-        new FreeDnsError(
-            "Failed to create subdomain: The security code was incorrect, please try again.",
-        );
-
-    const record = {
-        recordType: "CNAME" as const,
-        subdomain: "abc123",
-        domainId: 1,
-        destination: "tunnel.trycloudflare.com",
-    };
-
-    /** A stub client whose `createSubdomain` behavior is driven by `attempt`
-     *  (1-indexed), so a test can fail the first N calls and succeed after. */
-    function stubClient(onAttempt: (attempt: number) => void): FreeDnsClient {
-        let attempt = 0;
-        return Object.assign(new FreeDnsClient(), {
-            getCaptcha: async () => new Uint8Array(),
-            createSubdomain: async () => {
-                attempt++;
-                onAttempt(attempt);
-            },
-        });
-    }
-
     it("retries a wrong security code with a fresh guess, and stops once one lands", async () => {
-        const client = stubClient(attempt => {
+        const client = stubCaptchaClient(attempt => {
             if (attempt < 3) throw wrongCodeError();
         });
         let solves = 0;
@@ -83,14 +85,14 @@ describe("createSubdomainWithCaptcha", () => {
                 },
                 captchaAttempts: 5,
             },
-            record,
+            captchaRecord,
         );
 
         expect(solves).toBe(3);
     });
 
     it("gives up after captchaAttempts wrong guesses", async () => {
-        const client = stubClient(() => {
+        const client = stubCaptchaClient(() => {
             throw wrongCodeError();
         });
         let solves = 0;
@@ -107,103 +109,103 @@ describe("createSubdomainWithCaptcha", () => {
                     },
                     captchaAttempts: 5,
                 },
-                record,
+                captchaRecord,
             ),
         ).rejects.toThrow(/security code/i);
         expect(solves).toBe(5);
     });
 });
 
+/** A logged-in account's records: one real leaked tunnel orphan among the
+ *  kinds of records a person legitimately keeps and must never lose. */
+const accountRecords: Subdomain[] = [
+    // The orphan: random 12-char label, CNAME to a dead trycloudflare host.
+    {
+        id: "26630865",
+        type: "CNAME",
+        subdomain: "tpv47fuc8cg4.rbarkersw.com",
+        destination: "oem-appears-spin-yeah.trycloudflare.com",
+    },
+    // A user's own A records — different type, must be spared.
+    {
+        id: "24903100",
+        type: "A",
+        subdomain: "quartinal.developer.li",
+        destination: "77.37.62.243",
+    },
+    {
+        id: "22926828",
+        type: "A",
+        subdomain: "kahoot.v0id.nl",
+        destination: "76.76.21.21",
+    },
+    // A CNAME the user parked on a real host — trycloudflare check spares it.
+    {
+        id: "30000001",
+        type: "CNAME",
+        subdomain: "www.example.org",
+        destination: "cdn.example.net",
+    },
+    // A trycloudflare CNAME whose label isn't the random tunnel format —
+    // someone named it by hand, so it isn't ours to delete.
+    {
+        id: "30000002",
+        type: "CNAME",
+        subdomain: "demo.example.org",
+        destination: "my-quick-tunnel.trycloudflare.com",
+    },
+    // A second real orphan, with FreeDNS's own subdomain-list page
+    // truncation applied to its destination (a real captured value —
+    // the exact way this bug was found live): still a match.
+    {
+        id: "26632056",
+        type: "CNAME",
+        subdomain: "xrsutqkvk229.gap-peace.org",
+        destination: "karl-atmospheric-belly-pad.trycloudflare...",
+    },
+    // A third real orphan whose truncation cut *inside* "trycloudflare"
+    // (another real captured value). No substring of what the list page
+    // shows identifies this as a tunnel, so the sweep has to read the
+    // details page — this one went unswept and wedged the next run at
+    // "no more subdomain capacity".
+    {
+        id: "26658004",
+        type: "CNAME",
+        subdomain: "ho32y39nq9ar.fourvirtues.net",
+        destination: "guitar-usgs-bangkok-planets.trycloudflar...",
+    },
+];
+
+/** What the details page reports, against which the sweep confirms: the
+ *  whole destination, never the list page's truncation of it. */
+const fullDestinations: Record<string, string> = {
+    "26630865": "oem-appears-spin-yeah.trycloudflare.com",
+    "30000001": "cdn.example.net",
+    "30000002": "my-quick-tunnel.trycloudflare.com",
+    "26632056": "karl-atmospheric-belly-pad.trycloudflare.com",
+    "26658004": "guitar-usgs-bangkok-planets.trycloudflare.com",
+};
+
+function stubSweepClient(records: Subdomain[]): {
+    client: FreeDnsClient;
+    deleted: string[];
+} {
+    const deleted: string[] = [];
+    const client = Object.assign(new FreeDnsClient(), {
+        getSubdomains: async () => records,
+        getSubdomainDetails: async (id: string) => ({
+            destination: fullDestinations[id] ?? "",
+        }),
+        deleteSubdomain: async (id: string) => {
+            deleted.push(id);
+        },
+    });
+    return { client, deleted };
+}
+
 describe("sweepTunnelOrphans", () => {
-    /** A logged-in account's records: one real leaked tunnel orphan among the
-     *  kinds of records a person legitimately keeps and must never lose. */
-    const accountRecords: Subdomain[] = [
-        // The orphan: random 12-char label, CNAME to a dead trycloudflare host.
-        {
-            id: "26630865",
-            type: "CNAME",
-            subdomain: "tpv47fuc8cg4.rbarkersw.com",
-            destination: "oem-appears-spin-yeah.trycloudflare.com",
-        },
-        // A user's own A records — different type, must be spared.
-        {
-            id: "24903100",
-            type: "A",
-            subdomain: "quartinal.developer.li",
-            destination: "77.37.62.243",
-        },
-        {
-            id: "22926828",
-            type: "A",
-            subdomain: "kahoot.v0id.nl",
-            destination: "76.76.21.21",
-        },
-        // A CNAME the user parked on a real host — trycloudflare check spares it.
-        {
-            id: "30000001",
-            type: "CNAME",
-            subdomain: "www.example.org",
-            destination: "cdn.example.net",
-        },
-        // A trycloudflare CNAME whose label isn't the random tunnel format —
-        // someone named it by hand, so it isn't ours to delete.
-        {
-            id: "30000002",
-            type: "CNAME",
-            subdomain: "demo.example.org",
-            destination: "my-quick-tunnel.trycloudflare.com",
-        },
-        // A second real orphan, with FreeDNS's own subdomain-list page
-        // truncation applied to its destination (a real captured value —
-        // the exact way this bug was found live): still a match.
-        {
-            id: "26632056",
-            type: "CNAME",
-            subdomain: "xrsutqkvk229.gap-peace.org",
-            destination: "karl-atmospheric-belly-pad.trycloudflare...",
-        },
-        // A third real orphan whose truncation cut *inside* "trycloudflare"
-        // (another real captured value). No substring of what the list page
-        // shows identifies this as a tunnel, so the sweep has to read the
-        // details page — this one went unswept and wedged the next run at
-        // "no more subdomain capacity".
-        {
-            id: "26658004",
-            type: "CNAME",
-            subdomain: "ho32y39nq9ar.fourvirtues.net",
-            destination: "guitar-usgs-bangkok-planets.trycloudflar...",
-        },
-    ];
-
-    /** What the details page reports, against which the sweep confirms: the
-     *  whole destination, never the list page's truncation of it. */
-    const fullDestinations: Record<string, string> = {
-        "26630865": "oem-appears-spin-yeah.trycloudflare.com",
-        "30000001": "cdn.example.net",
-        "30000002": "my-quick-tunnel.trycloudflare.com",
-        "26632056": "karl-atmospheric-belly-pad.trycloudflare.com",
-        "26658004": "guitar-usgs-bangkok-planets.trycloudflare.com",
-    };
-
-    function stubClient(records: Subdomain[]): {
-        client: FreeDnsClient;
-        deleted: string[];
-    } {
-        const deleted: string[] = [];
-        const client = Object.assign(new FreeDnsClient(), {
-            getSubdomains: async () => records,
-            getSubdomainDetails: async (id: string) => ({
-                destination: fullDestinations[id] ?? "",
-            }),
-            deleteSubdomain: async (id: string) => {
-                deleted.push(id);
-            },
-        });
-        return { client, deleted };
-    }
-
     it("deletes only the random-labelled CNAMEs to trycloudflare, sparing everything else", async () => {
-        const { client, deleted } = stubClient(accountRecords);
+        const { client, deleted } = stubSweepClient(accountRecords);
         const count = await sweepTunnelOrphans(client);
         expect(count).toBe(3);
         expect(deleted.toSorted()).toEqual([
@@ -215,7 +217,7 @@ describe("sweepTunnelOrphans", () => {
 
     it("is a no-op on an account with no tunnel orphans", async () => {
         const orphanIds = new Set(["26630865", "26632056", "26658004"]);
-        const { client, deleted } = stubClient(
+        const { client, deleted } = stubSweepClient(
             accountRecords.filter(r => !orphanIds.has(r.id)),
         );
         expect(await sweepTunnelOrphans(client)).toBe(0);

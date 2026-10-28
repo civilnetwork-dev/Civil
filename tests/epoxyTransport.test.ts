@@ -73,6 +73,45 @@ function wispPacket(type: number, stream: number, payload: Uint8Array) {
     return frame.buffer;
 }
 
+/** A Wisp server that refuses every WebSocket upgrade with a 400. */
+class RefusingWispSocket {
+    readyState = 0;
+    binaryType = "blob";
+    onopen: ((event: Event) => void) | null = null;
+    onmessage: ((event: { data: ArrayBuffer }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    onclose: (() => void) | null = null;
+
+    constructor() {
+        setTimeout(() => {
+            this.readyState = 1;
+            this.onopen?.(new Event("open"));
+            // Version 1 servers open with the stream buffer size.
+            const size = new Uint8Array(4);
+            new DataView(size.buffer).setUint32(0, 128, true);
+            this.onmessage?.({ data: wispPacket(3, 0, size) });
+        }, 0);
+    }
+
+    send(data: Uint8Array) {
+        // epoxy sends a view into wasm memory, so copy it first.
+        const frame = new Uint8Array(data);
+        const stream = new DataView(frame.buffer).getUint32(1, true);
+        // The first DATA frame on a stream is the upgrade request.
+        if (frame[0] !== 2) return;
+        const refusal = new TextEncoder().encode(
+            "HTTP/1.1 400 Bad Request\r\ncontent-length: 0\r\n\r\n",
+        );
+        setTimeout(() =>
+            this.onmessage?.({
+                data: wispPacket(2, stream, refusal),
+            }),
+        );
+    }
+
+    close() {}
+}
+
 /**
  * A proxied page's WebSocket goes out over a Wisp stream, and the remote
  * site answers the upgrade itself. Sites that refuse it (400, 404) used to
@@ -85,50 +124,7 @@ describe("epoxy transport when a site refuses a WebSocket", () => {
         const onUnhandled = (reason: unknown) => unhandled.push(reason);
         process.on("unhandledRejection", onUnhandled);
 
-        vi.stubGlobal(
-            "WebSocket",
-            class {
-                readyState = 0;
-                binaryType = "blob";
-                onopen: ((event: Event) => void) | null = null;
-                onmessage: ((event: { data: ArrayBuffer }) => void) | null =
-                    null;
-                onerror: (() => void) | null = null;
-                onclose: (() => void) | null = null;
-
-                constructor() {
-                    setTimeout(() => {
-                        this.readyState = 1;
-                        this.onopen?.(new Event("open"));
-                        // Version 1 servers open with the stream buffer size.
-                        const size = new Uint8Array(4);
-                        new DataView(size.buffer).setUint32(0, 128, true);
-                        this.onmessage?.({ data: wispPacket(3, 0, size) });
-                    }, 0);
-                }
-
-                send(data: Uint8Array) {
-                    // epoxy sends a view into wasm memory, so copy it first.
-                    const frame = new Uint8Array(data);
-                    const stream = new DataView(frame.buffer).getUint32(
-                        1,
-                        true,
-                    );
-                    // The first DATA frame on a stream is the upgrade request.
-                    if (frame[0] !== 2) return;
-                    const refusal = new TextEncoder().encode(
-                        "HTTP/1.1 400 Bad Request\r\ncontent-length: 0\r\n\r\n",
-                    );
-                    setTimeout(() =>
-                        this.onmessage?.({
-                            data: wispPacket(2, stream, refusal),
-                        }),
-                    );
-                }
-
-                close() {}
-            },
-        );
+        vi.stubGlobal("WebSocket", RefusingWispSocket);
 
         const { default: EpoxyTransport } =
             await import("@mercuryworkshop/epoxy-transport");

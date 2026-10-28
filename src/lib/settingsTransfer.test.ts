@@ -53,7 +53,9 @@ describe("settings transfer", () => {
         expect(localStorage.getItem("civil:startup-url")).toBeNull();
         expect(localStorage.getItem("civil:search-template")).toBeNull();
     });
+});
 
+describe("settings transfer rejection", () => {
     it("refuses something that isn't a settings file", () => {
         expect(importSettings("not json").ok).toBe(false);
         expect(importSettings(JSON.stringify({ settings: {} })).ok).toBe(false);

@@ -45,7 +45,9 @@ describe("extractSessionTokenFromRequest", () => {
             }),
         ).toBe("abc123");
     });
+});
 
+describe("extractSessionTokenFromRequest edge cases", () => {
     it("preserves '=' inside the token value", () => {
         // Regression guard: `split("=")[1]` truncates base64 padding.
         expect(
