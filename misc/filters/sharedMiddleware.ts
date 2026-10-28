@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { Hono, MiddlewareHandler } from "hono";
+import type { Context, Hono, MiddlewareHandler } from "hono";
 import {
     type Oauth2StoredToken,
     PatreonUserClient,
@@ -145,6 +145,79 @@ async function getPatreonDollars(userId: string): Promise<number> {
     ).catch(() => 0);
 }
 
+type QuotaCaller = { ip: string | undefined; userId: string | null };
+
+/**
+ * Spends one of the caller's daily checks and returns the headers that report
+ * what is left. Fills in `caller.userId` as soon as the session resolves, so a
+ * failure later on is still attributed to the account.
+ */
+async function consumeQuota(
+    c: Context<AppEnv>,
+    caller: QuotaCaller,
+): Promise<Record<string, string>> {
+    const session = await resolveSessionFromHeaders(c.req.raw.headers);
+    caller.userId = session?.user ? (session.user as { id: string }).id : null;
+
+    const dollarsPaid = caller.userId
+        ? await getPatreonDollars(caller.userId)
+        : 0;
+    const points = calculateLimit(dollarsPaid);
+    const limiter = getLimiter(points);
+    const key = caller.userId
+        ? `user:${caller.userId}`
+        : `ip:${caller.ip ?? "unknown"}`;
+
+    const result = await limiter.consume(key, 1);
+
+    return {
+        "RateLimit-Limit": String(points),
+        "RateLimit-Remaining": String(result.remainingPoints),
+        "RateLimit-Reset": String(
+            Math.ceil((Date.now() + result.msBeforeNext) / 1000),
+        ),
+    };
+}
+
+/** Answers 429 when the quota ran out; rethrows anything else. */
+function rejectQuotaFailure(
+    c: Context<AppEnv>,
+    { ip, userId }: QuotaCaller,
+    route: `/${string}`,
+    error: unknown,
+): Response {
+    const rateLimitError = error as RateLimiterRes;
+
+    if (typeof rateLimitError.msBeforeNext === "number") {
+        const retryAfterSeconds = Math.ceil(rateLimitError.msBeforeNext / 1000);
+        posthog.capture({
+            distinctId: userId ?? ip ?? "unknown",
+            event: "filter_rate_limited",
+            properties: {
+                userId,
+                ip,
+                route,
+                retryAfterSeconds,
+            },
+        });
+        c.header("Retry-After", String(retryAfterSeconds));
+        c.header("RateLimit-Remaining", "0");
+        return c.json({ error: "Too many requests", retryAfterSeconds }, 429);
+    }
+
+    posthog.capture({
+        distinctId: userId ?? ip ?? "unknown",
+        event: "filter_middleware_error",
+        properties: {
+            userId,
+            ip,
+            route,
+            error: String(error),
+        },
+    });
+    throw error;
+}
+
 function createSharedFilterMiddleware(
     route: `/${string}`,
 ): MiddlewareHandler<AppEnv> {
@@ -153,63 +226,12 @@ function createSharedFilterMiddleware(
             return next();
         }
 
-        const ip = clientIp(c);
-        let userId: string | null = null;
+        const caller: QuotaCaller = { ip: clientIp(c), userId: null };
         let rateLimitHeaders: Record<string, string>;
         try {
-            const session = await resolveSessionFromHeaders(c.req.raw.headers);
-            userId = session?.user ? (session.user as { id: string }).id : null;
-
-            const dollarsPaid = userId ? await getPatreonDollars(userId) : 0;
-            const points = calculateLimit(dollarsPaid);
-            const limiter = getLimiter(points);
-            const key = userId ? `user:${userId}` : `ip:${ip ?? "unknown"}`;
-
-            const result = await limiter.consume(key, 1);
-
-            rateLimitHeaders = {
-                "RateLimit-Limit": String(points),
-                "RateLimit-Remaining": String(result.remainingPoints),
-                "RateLimit-Reset": String(
-                    Math.ceil((Date.now() + result.msBeforeNext) / 1000),
-                ),
-            };
+            rateLimitHeaders = await consumeQuota(c, caller);
         } catch (error) {
-            const rateLimitError = error as RateLimiterRes;
-
-            if (typeof rateLimitError.msBeforeNext === "number") {
-                const retryAfterSeconds = Math.ceil(
-                    rateLimitError.msBeforeNext / 1000,
-                );
-                posthog.capture({
-                    distinctId: userId ?? ip ?? "unknown",
-                    event: "filter_rate_limited",
-                    properties: {
-                        userId,
-                        ip,
-                        route,
-                        retryAfterSeconds,
-                    },
-                });
-                c.header("Retry-After", String(retryAfterSeconds));
-                c.header("RateLimit-Remaining", "0");
-                return c.json(
-                    { error: "Too many requests", retryAfterSeconds },
-                    429,
-                );
-            }
-
-            posthog.capture({
-                distinctId: userId ?? ip ?? "unknown",
-                event: "filter_middleware_error",
-                properties: {
-                    userId,
-                    ip,
-                    route,
-                    error: String(error),
-                },
-            });
-            throw error;
+            return rejectQuotaFailure(c, caller, route, error);
         }
 
         // Outside the try: a failure in the filter check itself is that

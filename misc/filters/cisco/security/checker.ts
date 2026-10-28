@@ -188,6 +188,119 @@ function buildDnsQuery(hostname: string): Uint8Array {
     return new Uint8Array(bytes);
 }
 
+function ensureAvailable(
+    bytes: Uint8Array,
+    offset: number,
+    length: number,
+): void {
+    if (offset + length > bytes.length) {
+        throw new Error("DNS response ended unexpectedly.");
+    }
+}
+
+/**
+ * Reads a possibly compressed name at `startOffset`. `nextOffset` is where
+ * the record continues: just past the first compression pointer, or past the
+ * terminating zero when the name was not compressed.
+ */
+function readDnsName(
+    bytes: Uint8Array,
+    startOffset: number,
+): { name: string; nextOffset: number } {
+    const labels: string[] = [];
+    let currentOffset = startOffset;
+    let nextOffset: number | undefined;
+    let jumps = 0;
+
+    while (true) {
+        if (currentOffset >= bytes.length) {
+            throw new Error("DNS name pointer is out of bounds.");
+        }
+
+        const length = bytes[currentOffset];
+
+        if ((length & 0xc0) === 0xc0) {
+            if (currentOffset + 1 >= bytes.length) {
+                throw new Error("Incomplete DNS compression pointer.");
+            }
+
+            nextOffset ??= currentOffset + 2;
+            currentOffset = ((length & 0x3f) << 8) | bytes[currentOffset + 1];
+
+            if (++jumps > 20) {
+                throw new Error("Too many DNS compression jumps.");
+            }
+
+            continue;
+        }
+
+        if (length === 0) {
+            return {
+                name: labels.join("."),
+                nextOffset: nextOffset ?? currentOffset + 1,
+            };
+        }
+
+        const start = currentOffset + 1;
+        const end = start + length;
+
+        if (end > bytes.length) {
+            throw new Error("DNS label exceeds response length.");
+        }
+
+        labels.push(Buffer.from(bytes.slice(start, end)).toString("ascii"));
+        currentOffset = end;
+    }
+}
+
+function readRecordData(
+    bytes: Uint8Array,
+    offset: number,
+    type: number,
+    rdLength: number,
+): string {
+    if (type === 1 && rdLength === 4) {
+        return Array.from(bytes.slice(offset, offset + 4)).join(".");
+    }
+    if (type === 5) {
+        return readDnsName(bytes, offset).name;
+    }
+    return Buffer.from(bytes.slice(offset, offset + rdLength)).toString("hex");
+}
+
+function readDnsAnswer(
+    bytes: Uint8Array,
+    view: DataView,
+    startOffset: number,
+): { answer: CiscoDnsAnswer; nextOffset: number } {
+    const answerName = readDnsName(bytes, startOffset);
+    let offset = answerName.nextOffset;
+
+    ensureAvailable(bytes, offset, 10);
+
+    const type = view.getUint16(offset);
+    // Type, then class, which is always IN here.
+    offset += 4;
+
+    const TTL = view.getUint32(offset);
+    offset += 4;
+
+    const rdLength = view.getUint16(offset);
+    offset += 2;
+
+    ensureAvailable(bytes, offset, rdLength);
+
+    return {
+        answer: {
+            name: answerName.name,
+            type,
+            TTL,
+            data: readRecordData(bytes, offset, type, rdLength),
+        },
+        nextOffset: offset + rdLength,
+    };
+}
+
 function parseDnsResponse(data: ArrayBuffer): CiscoDnsResponse {
     const bytes = new Uint8Array(data);
     const view = new DataView(data);
@@ -202,124 +315,18 @@ function parseDnsResponse(data: ArrayBuffer): CiscoDnsResponse {
 
     let offset = 12;
 
-    function ensureAvailable(length: number): void {
-        if (offset + length > bytes.length) {
-            throw new Error("DNS response ended unexpectedly.");
-        }
-    }
-
-    function readName(startOffset = offset): {
-        name: string;
-        nextOffset: number;
-    } {
-        const labels: string[] = [];
-        let currentOffset = startOffset;
-        let nextOffset = currentOffset;
-        let jumped = false;
-        let jumps = 0;
-
-        while (true) {
-            if (currentOffset >= bytes.length) {
-                throw new Error("DNS name pointer is out of bounds.");
-            }
-
-            const length = bytes[currentOffset];
-
-            if ((length & 0xc0) === 0xc0) {
-                if (currentOffset + 1 >= bytes.length) {
-                    throw new Error("Incomplete DNS compression pointer.");
-                }
-
-                const pointer =
-                    ((length & 0x3f) << 8) | bytes[currentOffset + 1];
-
-                if (!jumped) {
-                    nextOffset = currentOffset + 2;
-                }
-
-                currentOffset = pointer;
-                jumped = true;
-
-                if (++jumps > 20) {
-                    throw new Error("Too many DNS compression jumps.");
-                }
-
-                continue;
-            }
-
-            if (length === 0) {
-                if (!jumped) {
-                    nextOffset = currentOffset + 1;
-                }
-
-                break;
-            }
-
-            const start = currentOffset + 1;
-            const end = start + length;
-
-            if (end > bytes.length) {
-                throw new Error("DNS label exceeds response length.");
-            }
-
-            labels.push(Buffer.from(bytes.slice(start, end)).toString("ascii"));
-            currentOffset = end;
-        }
-
-        return {
-            name: labels.join("."),
-            nextOffset,
-        };
-    }
-
     for (let i = 0; i < qdCount; i++) {
-        const question = readName();
-        offset = question.nextOffset;
-        ensureAvailable(4);
+        offset = readDnsName(bytes, offset).nextOffset;
+        ensureAvailable(bytes, offset, 4);
         offset += 4;
     }
 
     const Answer: CiscoDnsAnswer[] = [];
 
     for (let i = 0; i < anCount; i++) {
-        const answerName = readName();
-        offset = answerName.nextOffset;
-
-        ensureAvailable(10);
-
-        const type = view.getUint16(offset);
-        offset += 2;
-
-        offset += 2;
-
-        const TTL = view.getUint32(offset);
-        offset += 4;
-
-        const rdLength = view.getUint16(offset);
-        offset += 2;
-
-        ensureAvailable(rdLength);
-
-        let recordData: string;
-
-        if (type === 1 && rdLength === 4) {
-            recordData = Array.from(bytes.slice(offset, offset + 4)).join(".");
-        } else if (type === 5) {
-            recordData = readName(offset).name;
-        } else {
-            recordData = Buffer.from(
-                bytes.slice(offset, offset + rdLength),
-            ).toString("hex");
-        }
-
-        offset += rdLength;
-
-        Answer.push({
-            name: answerName.name,
-            type,
-            TTL,
-            data: recordData,
-        });
+        const { answer, nextOffset } = readDnsAnswer(bytes, view, offset);
+        Answer.push(answer);
+        offset = nextOffset;
     }
 
     return {
@@ -422,6 +429,81 @@ function policyToCheckResult(
     };
 }
 
+function queryDns(
+    client: XiorInstance,
+    dohServer: string,
+    hostname: string,
+): ResultAsync<CiscoDnsResponse, CiscoCheckerError> {
+    let dnsQuery: Uint8Array;
+
+    try {
+        dnsQuery = buildDnsQuery(hostname);
+    } catch (cause) {
+        return ResultAsync.fromSafePromise(
+            Promise.resolve(
+                err({
+                    type: "PARSE_ERROR" as const,
+                    message: "Failed to build DNS query.",
+                    cause,
+                }),
+            ),
+        ).andThen(result => result);
+    }
+
+    return ResultAsync.fromPromise(
+        client.post<ArrayBuffer>(dohServer, dnsQuery, {
+            responseType: "arraybuffer",
+            headers: {
+                Accept: "application/dns-message",
+                "Content-Type": "application/dns-message",
+            },
+        }),
+        (cause): CiscoCheckerError => ({
+            type: "NETWORK_ERROR",
+            message: "Cisco DoH request failed.",
+            cause,
+        }),
+    ).andThen(response => {
+        try {
+            return ok(parseDnsResponse(response.data));
+        } catch (cause) {
+            return err({
+                type: "PARSE_ERROR" as const,
+                message: "Failed to parse Cisco DNS response.",
+                cause,
+                raw: response.data,
+            });
+        }
+    });
+}
+
+function queryPolicy(
+    config: CiscoCheckerConfig,
+    normalizedUrl: URL,
+): ResultAsync<CiscoPolicyCheckResult | undefined, CiscoCheckerError> {
+    if (!config.policyIdentity || !config.policyChecker) {
+        return ResultAsync.fromSafePromise(Promise.resolve(undefined));
+    }
+
+    return ResultAsync.fromPromise(
+        config.policyChecker(normalizedUrl.toString(), config.policyIdentity),
+        (cause): CiscoCheckerError => ({
+            type: "POLICY_ERROR",
+            message: "Authenticated Cisco policy check failed.",
+            cause,
+        }),
+    );
+}
+
+function cacheKeyFor(hostname: string, config: CiscoCheckerConfig): string {
+    return [
+        hostname,
+        config.policyIdentity?.organizationId ?? "no-org",
+        config.policyIdentity?.deviceId ?? "no-device",
+        config.policyChecker ? "policy" : "dns",
+    ].join(":");
+}
+
 export function createCiscoSecurityChecker(config: CiscoCheckerConfig = {}) {
     const dohServer = config.dohServer ?? DEFAULT_DOH_SERVER;
     const timeoutMs = config.timeoutMs ?? 10_000;
@@ -433,72 +515,6 @@ export function createCiscoSecurityChecker(config: CiscoCheckerConfig = {}) {
     });
 
     const cache = createMemoryCache<CiscoCheckResult>();
-
-    function queryDns(
-        hostname: string,
-    ): ResultAsync<CiscoDnsResponse, CiscoCheckerError> {
-        let dnsQuery: Uint8Array;
-
-        try {
-            dnsQuery = buildDnsQuery(hostname);
-        } catch (cause) {
-            return ResultAsync.fromSafePromise(
-                Promise.resolve(
-                    err({
-                        type: "PARSE_ERROR" as const,
-                        message: "Failed to build DNS query.",
-                        cause,
-                    }),
-                ),
-            ).andThen(result => result);
-        }
-
-        return ResultAsync.fromPromise(
-            client.post<ArrayBuffer>(dohServer, dnsQuery, {
-                responseType: "arraybuffer",
-                headers: {
-                    Accept: "application/dns-message",
-                    "Content-Type": "application/dns-message",
-                },
-            }),
-            (cause): CiscoCheckerError => ({
-                type: "NETWORK_ERROR",
-                message: "Cisco DoH request failed.",
-                cause,
-            }),
-        ).andThen(response => {
-            try {
-                return ok(parseDnsResponse(response.data));
-            } catch (cause) {
-                return err({
-                    type: "PARSE_ERROR" as const,
-                    message: "Failed to parse Cisco DNS response.",
-                    cause,
-                    raw: response.data,
-                });
-            }
-        });
-    }
-
-    function queryPolicy(
-        normalizedUrl: URL,
-    ): ResultAsync<CiscoPolicyCheckResult | undefined, CiscoCheckerError> {
-        if (!config.policyIdentity || !config.policyChecker) {
-            return ResultAsync.fromSafePromise(Promise.resolve(undefined));
-        }
-
-        return ResultAsync.fromPromise(
-            config.policyChecker(
-                normalizedUrl.toString(),
-                config.policyIdentity,
-            ),
-            (cause): CiscoCheckerError => ({
-                type: "POLICY_ERROR",
-                message: "Authenticated Cisco policy check failed.",
-                cause,
-            }),
-        );
-    }
 
     function checkUrl(
         url: string,
@@ -513,22 +529,15 @@ export function createCiscoSecurityChecker(config: CiscoCheckerConfig = {}) {
 
         const normalizedUrl = normalized.value;
         const hostname = normalizedUrl.hostname.toLowerCase();
-
-        const cacheKey = [
-            hostname,
-            config.policyIdentity?.organizationId ?? "no-org",
-            config.policyIdentity?.deviceId ?? "no-device",
-            config.policyChecker ? "policy" : "dns",
-        ].join(":");
-
+        const cacheKey = cacheKeyFor(hostname, config);
         const cached = cache.get(cacheKey);
 
         if (cached) {
             return ResultAsync.fromSafePromise(Promise.resolve(cached));
         }
 
-        return queryDns(hostname).andThen(dns =>
-            queryPolicy(normalizedUrl).map(policy => {
+        return queryDns(client, dohServer, hostname).andThen(dns =>
+            queryPolicy(config, normalizedUrl).map(policy => {
                 const result = policy
                     ? policyToCheckResult(url, normalizedUrl, policy, dns)
                     : dnsToCheckResult(url, normalizedUrl, dns, blockIpSet);

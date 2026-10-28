@@ -1,76 +1,56 @@
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 
-import { type AppEnv, clientIp, readJsonBody } from "../../http";
-import { posthog } from "../posthog";
+import { type AppEnv, readJsonBody } from "../../http";
+import { captureFilterCheck, captureFilterError } from "../utils/captureFilter";
 import { createAutoLinewizeFilterChecker as createLinewizeFilterChecker } from "./checker";
 
-export function useLinewizeMiddleware(app: Hono<AppEnv>) {
-    app.post("/filterCheck/linewize", async c => {
-        const { url, identity } = (await readJsonBody(c)) as {
-            url: string;
-            identity: string;
-        };
+async function checkLinewize(c: Context<AppEnv>) {
+    const { url, identity } = (await readJsonBody(c)) as {
+        url: string;
+        identity: string;
+    };
 
-        const linewizeCheckerResult = await createLinewizeFilterChecker({
-            identity,
-        });
-
-        if (linewizeCheckerResult.isErr()) {
-            posthog.capture({
-                distinctId: clientIp(c) ?? "unknown",
-                event: "filter_error",
-                properties: {
-                    filter: "linewize",
-                    url,
-                    errorType: linewizeCheckerResult.error.type,
-                    errorMessage: linewizeCheckerResult.error.message,
-                    phase: "checker_init",
-                },
-            });
-            return c.text(
-                `Internal Server Error - ${linewizeCheckerResult.error.type}: ${linewizeCheckerResult.error.message}`,
-                500,
-            );
-        } else {
-            const checkResult = await linewizeCheckerResult.value.checkUrl({
-                url,
-            });
-
-            if (checkResult.isOk()) {
-                posthog.capture({
-                    distinctId: clientIp(c) ?? "unknown",
-                    event: "filter_check",
-                    properties: {
-                        filter: "linewize",
-                        url,
-                        blocked: checkResult.value.verdict === "BLOCK",
-                        verdictIsKnown: checkResult.value.verdict !== "UNKNOWN",
-                        categories: checkResult.value.categories,
-                    },
-                });
-                return c.json({
-                    blocked: checkResult.value.verdict === "BLOCK",
-                    verdictIsKnown: checkResult.value.verdict !== "UNKNOWN",
-                    categories: checkResult.value.categories,
-                    raw: checkResult.value.raw,
-                });
-            } else {
-                posthog.capture({
-                    distinctId: clientIp(c) ?? "unknown",
-                    event: "filter_error",
-                    properties: {
-                        filter: "linewize",
-                        url,
-                        errorType: checkResult.error.type,
-                        errorMessage: checkResult.error.message,
-                        phase: "url_check",
-                    },
-                });
-                return c.text(
-                    `Internal server error: ${checkResult.error.type} - ${checkResult.error.message}`,
-                    500,
-                );
-            }
-        }
+    const linewizeCheckerResult = await createLinewizeFilterChecker({
+        identity,
     });
+
+    if (linewizeCheckerResult.isErr()) {
+        const { error } = linewizeCheckerResult;
+        captureFilterError(c, "linewize", url, error, {
+            phase: "checker_init",
+        });
+        return c.text(
+            `Internal Server Error - ${error.type}: ${error.message}`,
+            500,
+        );
+    }
+
+    const checkResult = await linewizeCheckerResult.value.checkUrl({ url });
+
+    if (checkResult.isErr()) {
+        const { error } = checkResult;
+        captureFilterError(c, "linewize", url, error, { phase: "url_check" });
+        return c.text(
+            `Internal server error: ${error.type} - ${error.message}`,
+            500,
+        );
+    }
+
+    const { verdict, categories, raw } = checkResult.value;
+    const verdictIsKnown = verdict !== "UNKNOWN";
+    captureFilterCheck(c, "linewize", url, {
+        blocked: verdict === "BLOCK",
+        verdictIsKnown,
+        categories,
+    });
+    return c.json({
+        blocked: verdict === "BLOCK",
+        verdictIsKnown,
+        categories,
+        raw,
+    });
+}
+
+export function useLinewizeMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/linewize", checkLinewize);
 }

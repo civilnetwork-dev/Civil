@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 
-import { type AppEnv, clientIp } from "../../http";
-import { posthog } from "../posthog";
+import type { AppEnv } from "../../http";
+import { captureFilterError } from "./captureFilter";
 
 /**
  * Reports a failed vendor check and answers with a status that says whose
@@ -14,16 +14,7 @@ export function respondFilterError(
     url: string,
     error: { type: string; message: string },
 ): Response {
-    posthog.capture({
-        distinctId: clientIp(c) ?? "unknown",
-        event: "filter_error",
-        properties: {
-            filter,
-            url,
-            errorType: error.type,
-            errorMessage: error.message,
-        },
-    });
+    captureFilterError(c, filter, url, error);
 
     const statusCode =
         error.type === "INVALID_URL"

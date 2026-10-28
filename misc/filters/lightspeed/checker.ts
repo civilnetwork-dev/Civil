@@ -136,28 +136,47 @@ function fetchLightspeedTaxonomy(
     });
 }
 
+type HostLookupReply = {
+    action?: string;
+    request?: { host?: string };
+    cat?: number;
+    cats?: number[];
+};
+
+/** The category ids in a reply to our lookup of `host`, or null for any other message. */
+function categoryIdsFor(raw: WebSocket.RawData, host: string): number[] | null {
+    const msg = JSON.parse(raw.toString()) as HostLookupReply;
+    if (msg.action !== "host_lookup" || msg.request?.host !== host) return null;
+
+    const ids = new Set<number>();
+    if (typeof msg.cat === "number") ids.add(msg.cat);
+    if (Array.isArray(msg.cats)) {
+        for (const c of msg.cats) {
+            if (typeof c === "number") ids.add(c);
+        }
+    }
+    return [...ids];
+}
+
 function relayLookupHost(
     host: string,
     relay: LightspeedRelayConfig,
     timeoutMs: number,
 ): Promise<number[]> {
     return new Promise<number[]>(resolve => {
-        const uri = relay.uri ?? RELAY_URI;
-        const auth = relay.auth ?? RELAY_AUTH;
         const customerId = relay.customerId ?? RELAY_CUSTOMER_ID;
         const agentVersion = relay.agentVersion ?? AGENT_VERSION;
-        const agentType = relay.agentType ?? AGENT_TYPE;
 
         const qs = new URLSearchParams({
-            a: auth,
+            a: relay.auth ?? RELAY_AUTH,
             customer_id: customerId,
-            agentType,
+            agentType: relay.agentType ?? AGENT_TYPE,
             agentVersion,
         });
 
         let ws: WebSocket;
         try {
-            ws = new WebSocket(`${uri}/?${qs.toString()}`);
+            ws = new WebSocket(`${relay.uri ?? RELAY_URI}/?${qs.toString()}`);
         } catch {
             return resolve([]);
         }
@@ -174,43 +193,25 @@ function relayLookupHost(
         };
         const timer = setTimeout(() => finish([]), timeoutMs);
 
+        const lookup = JSON.stringify({
+            action: "dy_lookup",
+            host,
+            customerId,
+            agentVersion,
+            os: "cros",
+            noCache: false,
+        });
         ws.on("open", () => {
             try {
-                ws.send(
-                    JSON.stringify({
-                        action: "dy_lookup",
-                        host,
-                        customerId,
-                        agentVersion,
-                        os: "cros",
-                        noCache: false,
-                    }),
-                );
+                ws.send(lookup);
             } catch {
                 finish([]);
             }
         });
         ws.on("message", data => {
             try {
-                const msg = JSON.parse(data.toString()) as {
-                    action?: string;
-                    request?: { host?: string };
-                    cat?: number;
-                    cats?: number[];
-                };
-                if (
-                    msg.action === "host_lookup" &&
-                    msg.request?.host === host
-                ) {
-                    const ids = new Set<number>();
-                    if (typeof msg.cat === "number") ids.add(msg.cat);
-                    if (Array.isArray(msg.cats)) {
-                        for (const c of msg.cats) {
-                            if (typeof c === "number") ids.add(c);
-                        }
-                    }
-                    finish([...ids]);
-                }
+                const ids = categoryIdsFor(data, host);
+                if (ids) finish(ids);
             } catch {}
         });
         ws.on("error", () => finish([]));
@@ -312,40 +313,48 @@ export function checkLightspeedFilter(
               }))
         : (u: string) => relayCategorize(u, options);
 
-    return categorize(normalizedUrl).map(
-        ({ categories: rawCats, categoryId }) => {
-            const categories = [...new Set(rawCats.map(c => c.toUpperCase()))];
-
-            let matchedCategory: string | null = null;
-            for (const cat of categories) {
-                const lower = cat.toLowerCase();
-                if (blockList.some(b => lower.includes(b))) {
-                    matchedCategory = cat;
-                    break;
-                }
-            }
-
-            const verdict: LightspeedVerdict = matchedCategory
-                ? "BLOCKED"
-                : categories.length > 0
-                  ? "ALLOWED"
-                  : "UNKNOWN";
-
-            return {
-                inputUrl: input.url,
-                normalizedUrl,
-                hostname,
-                verdict,
-                blocked: verdict === "BLOCKED",
-                categories,
-                categoryId,
-                matchedCategory,
-                reason: matchedCategory
-                    ? `Blocked category: ${matchedCategory}`
-                    : categories.length > 0
-                      ? `Allowed (categories: ${categories.join(", ")})`
-                      : "Relay returned no category (uncategorized or unreachable)",
-            } satisfies LightspeedCheckResult;
-        },
+    return categorize(normalizedUrl).map(({ categories, categoryId }) =>
+        judgeCategories(input.url, normalizedUrl, hostname, blockList, {
+            categories,
+            categoryId,
+        }),
     );
+}
+
+function judgeCategories(
+    inputUrl: string,
+    normalizedUrl: string,
+    hostname: string,
+    blockList: string[],
+    found: { categories: string[]; categoryId: number | null },
+): LightspeedCheckResult {
+    const categories = [...new Set(found.categories.map(c => c.toUpperCase()))];
+
+    const matchedCategory =
+        categories.find(cat => {
+            const lower = cat.toLowerCase();
+            return blockList.some(b => lower.includes(b));
+        }) ?? null;
+
+    const verdict: LightspeedVerdict = matchedCategory
+        ? "BLOCKED"
+        : categories.length > 0
+          ? "ALLOWED"
+          : "UNKNOWN";
+
+    return {
+        inputUrl,
+        normalizedUrl,
+        hostname,
+        verdict,
+        blocked: verdict === "BLOCKED",
+        categories,
+        categoryId: found.categoryId,
+        matchedCategory,
+        reason: matchedCategory
+            ? `Blocked category: ${matchedCategory}`
+            : categories.length > 0
+              ? `Allowed (categories: ${categories.join(", ")})`
+              : "Relay returned no category (uncategorized or unreachable)",
+    };
 }

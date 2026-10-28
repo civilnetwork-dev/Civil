@@ -49,6 +49,52 @@ const DEFAULT_SECRET =
 const AUTH_KEY = "aristotle-chrome-agent";
 const CONNECT_TIMEOUT_MS = 10_000;
 
+function authenticateMessage(secret: string): string {
+    return JSON.stringify({
+        cmd: CMD.AUTHENTICATE,
+        auth: true,
+        key: AUTH_KEY,
+        secret,
+        guid: randomUUID(),
+        os: "win",
+        user_id: "civil-probe",
+        connect_time: new Date().toUTCString(),
+        version: "1.0.0",
+    });
+}
+
+/** Moves the exchange on by one reply: authenticated, then a verdict. */
+function onReply(
+    ws: WebSocket,
+    raw: WebSocket.RawData,
+    target: string,
+    finish: (verdict: DomainVerdict) => void,
+): void {
+    try {
+        const data = JSON.parse(raw.toString());
+
+        if (data.authenticated === false) return finish("UNKNOWN");
+
+        if (data.authenticated === true) {
+            ws.send(
+                JSON.stringify({
+                    cmd: CMD.CHECK_URL,
+                    url: target,
+                    type: "main_frame",
+                }),
+            );
+            return;
+        }
+
+        // A FilterResult reply: only a definite `block` is actionable.
+        if (typeof data.block === "boolean") {
+            finish(data.block ? "BLOCK" : "ALLOW");
+        }
+    } catch {
+        finish("UNKNOWN");
+    }
+}
+
 export async function checkAristotleDomain(
     domain: string,
 ): Promise<DomainVerdict> {
@@ -71,48 +117,8 @@ export async function checkAristotleDomain(
         const ws = new WebSocket(`wss://${host}/wss/wf?ssId=${randomUUID()}`);
         const timer = setTimeout(() => finish("UNKNOWN"), CONNECT_TIMEOUT_MS);
 
-        ws.on("open", () => {
-            ws.send(
-                JSON.stringify({
-                    cmd: CMD.AUTHENTICATE,
-                    auth: true,
-                    key: AUTH_KEY,
-                    secret,
-                    guid: randomUUID(),
-                    os: "win",
-                    user_id: "civil-probe",
-                    connect_time: new Date().toUTCString(),
-                    version: "1.0.0",
-                }),
-            );
-        });
-
-        ws.on("message", raw => {
-            try {
-                const data = JSON.parse(raw.toString());
-
-                if (data.authenticated === false) return finish("UNKNOWN");
-
-                if (data.authenticated === true) {
-                    ws.send(
-                        JSON.stringify({
-                            cmd: CMD.CHECK_URL,
-                            url: target,
-                            type: "main_frame",
-                        }),
-                    );
-                    return;
-                }
-
-                // A FilterResult reply: only a definite `block` is actionable.
-                if (typeof data.block === "boolean") {
-                    finish(data.block ? "BLOCK" : "ALLOW");
-                }
-            } catch {
-                finish("UNKNOWN");
-            }
-        });
-
+        ws.on("open", () => ws.send(authenticateMessage(secret)));
+        ws.on("message", raw => onReply(ws, raw, target, finish));
         ws.on("error", () => finish("UNKNOWN"));
         ws.on("close", () => finish("UNKNOWN"));
     });

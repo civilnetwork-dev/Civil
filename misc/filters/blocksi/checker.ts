@@ -450,6 +450,19 @@ function extractCategoryId(response: BlocksiRatingResponse): number | null {
     return Number.isInteger(parsed) ? parsed : null;
 }
 
+function byAction(
+    action: BlocksiAction,
+    block: string,
+    warn: string,
+    allow: string,
+): string {
+    return action === BlocksiAction.Block
+        ? block
+        : action === BlocksiAction.Warn
+          ? warn
+          : allow;
+}
+
 function createDecision(params: {
     url: URL;
     action: BlocksiAction;
@@ -543,48 +556,51 @@ class BlocksiFilterChecker {
             return ResultAsync.fromSafePromise(Promise.resolve(localDecision));
         }
 
-        return this.getRemoteCategory(url.href).map(categoryId => {
-            filterQueue.push("Web Filter");
+        return this.getRemoteCategory(url.href).map(categoryId =>
+            this.categoryDecision(url, categoryId, filterQueue),
+        );
+    }
 
-            if (categoryId == null || categoryId < 0) {
-                return createDecision({
-                    url,
-                    action: BlocksiAction.Allow,
-                    matchedFilter: "Web Filter",
-                    filterQueue,
-                    reason: "No category was returned.",
-                });
-            }
+    private categoryDecision(
+        url: URL,
+        categoryId: number | null,
+        filterQueue: string[],
+    ): BlocksiDecision {
+        filterQueue.push("Web Filter");
 
-            const category = this.options.categories?.[categoryId];
-
-            const action =
-                this.options.categoryActions?.[categoryId] ??
-                category?.action ??
-                BlocksiAction.Allow;
-
+        if (categoryId == null || categoryId < 0) {
             return createDecision({
                 url,
-
-                action,
-
-                categoryId,
-
-                categoryName: category?.name ?? `Category ${categoryId}`,
-
-                categoryGroup: category?.categoryGroup,
-
+                action: BlocksiAction.Allow,
                 matchedFilter: "Web Filter",
-
                 filterQueue,
-
-                reason:
-                    action === BlocksiAction.Block
-                        ? `Blocked by category: ${category?.name ?? categoryId}.`
-                        : action === BlocksiAction.Warn
-                          ? `Warned by category: ${category?.name ?? categoryId}.`
-                          : `Allowed by category: ${category?.name ?? categoryId}.`,
+                reason: "No category was returned.",
             });
+        }
+
+        const category = this.options.categories?.[categoryId];
+
+        const action =
+            this.options.categoryActions?.[categoryId] ??
+            category?.action ??
+            BlocksiAction.Allow;
+
+        const label = category?.name ?? categoryId;
+
+        return createDecision({
+            url,
+            action,
+            categoryId,
+            categoryName: category?.name ?? `Category ${categoryId}`,
+            categoryGroup: category?.categoryGroup,
+            matchedFilter: "Web Filter",
+            filterQueue,
+            reason: byAction(
+                action,
+                `Blocked by category: ${label}.`,
+                `Warned by category: ${label}.`,
+                `Allowed by category: ${label}.`,
+            ),
         });
     }
 
@@ -613,85 +629,76 @@ class BlocksiFilterChecker {
         url: URL,
         filterQueue: string[],
     ): BlocksiDecision | null {
+        return (
+            this.checkRuleLists(url, filterQueue) ??
+            this.checkCustomCategories(url, filterQueue)
+        );
+    }
+
+    private checkRuleLists(
+        url: URL,
+        filterQueue: string[],
+    ): BlocksiDecision | null {
         const checks: Array<{
             name: string;
             rules: UrlListRule[];
         }> = [
-            {
-                name: "Class session",
-                rules: this.options.classList ?? [],
-            },
-
-            {
-                name: "Exception List",
-                rules: this.options.exceptionList ?? [],
-            },
-
-            {
-                name: "Student List",
-                rules: this.options.studentList ?? [],
-            },
+            { name: "Class session", rules: this.options.classList ?? [] },
+            { name: "Exception List", rules: this.options.exceptionList ?? [] },
+            { name: "Student List", rules: this.options.studentList ?? [] },
         ];
 
         for (const check of checks) {
             filterQueue.push(check.name);
 
-            for (const rule of check.rules) {
-                if (!urlMatches(url, rule.Url)) {
-                    continue;
-                }
+            const rule = check.rules.find(candidate =>
+                urlMatches(url, candidate.Url),
+            );
+            if (!rule) continue;
 
-                const action = toAction(rule.Action);
+            const action = toAction(rule.Action);
 
-                return createDecision({
-                    url,
-
+            return createDecision({
+                url,
+                action,
+                matchedFilter: check.name,
+                matchedRule: rule.Url,
+                filterQueue,
+                reason: byAction(
                     action,
-
-                    matchedFilter: check.name,
-
-                    matchedRule: rule.Url,
-
-                    filterQueue,
-
-                    reason:
-                        action === BlocksiAction.Block
-                            ? `URL matched block rule: ${rule.Url}.`
-                            : action === BlocksiAction.Warn
-                              ? `URL matched warning rule: ${rule.Url}.`
-                              : `URL matched allow rule: ${rule.Url}.`,
-                });
-            }
+                    `URL matched block rule: ${rule.Url}.`,
+                    `URL matched warning rule: ${rule.Url}.`,
+                    `URL matched allow rule: ${rule.Url}.`,
+                ),
+            });
         }
 
+        return null;
+    }
+
+    private checkCustomCategories(
+        url: URL,
+        filterQueue: string[],
+    ): BlocksiDecision | null {
         filterQueue.push("Custom Category Filter");
 
         for (const category of this.options.customCategories ?? []) {
-            for (const ruleUrl of category.Urls) {
-                if (!urlMatches(url, ruleUrl)) {
-                    continue;
-                }
+            const ruleUrl = category.Urls.find(candidate =>
+                urlMatches(url, candidate),
+            );
+            if (ruleUrl === undefined) continue;
 
-                return createDecision({
-                    url,
-
-                    action: category.Action,
-
-                    matchedFilter: "Custom Category Filter",
-
-                    matchedRule: ruleUrl,
-
-                    categoryId: 800,
-
-                    categoryName: category.Name,
-
-                    categoryGroup: "Custom",
-
-                    filterQueue,
-
-                    reason: `URL matched custom category "${category.Name}" rule: ${ruleUrl}.`,
-                });
-            }
+            return createDecision({
+                url,
+                action: category.Action,
+                matchedFilter: "Custom Category Filter",
+                matchedRule: ruleUrl,
+                categoryId: 800,
+                categoryName: category.Name,
+                categoryGroup: "Custom",
+                filterQueue,
+                reason: `URL matched custom category "${category.Name}" rule: ${ruleUrl}.`,
+            });
         }
 
         return null;
