@@ -208,7 +208,7 @@ fn timestampSeed(allocator: std.mem.Allocator) f64 {
 
 fn parseTree(allocator: std.mem.Allocator, source: SourceInfo) !ast.Tree {
     if (source.factory_tree) |original| {
-        var tree = ast.Tree.initEmpty(allocator);
+        var tree = ast.Tree.init(allocator, "");
         errdefer tree.deinit();
         tree.source = try tree.allocator().dupe(u8, original.source);
         tree.strings.source = tree.source;
@@ -747,7 +747,7 @@ pub fn protect(
     @memset(module_declarations, .empty);
     var virtual_declarations: lexical.DeclarationMap = .empty;
     var virtual_scope = lexical.Scope{ .parent = null, .node = .null, .declarations = &virtual_declarations };
-    var separate_tree = ast.Tree.initEmpty(allocator);
+    var separate_tree = ast.Tree.init(allocator, "");
     defer separate_tree.deinit();
     separate_tree.root = try separate_tree.addNode(.{ .program = .{ .source_type = .script, .body = .empty } }, span);
     var first_non_module: ?usize = null;

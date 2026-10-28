@@ -480,7 +480,7 @@ pub const State = struct {
         try object.put(
             self.alloc(),
             "protectionLog",
-            .{ .array = .{ .items = self.logs.items, .capacity = self.logs.capacity, .allocator = self.alloc() } },
+            .{ .array = self.logs.toManaged(self.alloc()) },
         );
         try object.put(self.alloc(), "randomSeed", .{ .float = seed });
         return std.json.Stringify.valueAlloc(allocator, std.json.Value{ .object = object }, .{});

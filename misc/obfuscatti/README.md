@@ -1,7 +1,7 @@
 # Obfuscatti
 
 Obfuscatti implements the 18 transformation stages recovered from **JSDefender
-Core 2.12.0** in Zig, using yuku 0.19.0 for parsing, scope analysis and code
+Core 2.12.0** in Zig, using yuku 0.24.1 for parsing, scope analysis and code
 generation. Its pipeline is `src/jsdefender/engine.zig`.
 
 The shared runtime is emitted as JavaScript for the protected program. The
@@ -16,28 +16,17 @@ The reference artifact is JSDefender Core 2.12.0 `package/index.js`, SHA-256
 
 ## Build
 
-The development toolchain used for this port is
-`0.17.0-dev.1756+613c03321`. Pinned yuku and napi-zig dependencies require two
-compatibility fixes under that toolchain. The preparation script validates both
-files before changing either, retains backups and can be run repeatedly. It
-changes the existing local dependency cache without editing `build.zig.zon` or
-downloading packages.
+Build with Zig 0.17.0. `zig build` fetches the pinned yuku and napi-zig
+packages into `zig-pkg/` on first run. From this directory:
 
-From this directory, with the pinned dependencies already in `zig-pkg/`:
-
-```powershell
-pwsh -File prepare-deps.ps1 -CheckOnly
-pwsh -File prepare-deps.ps1
+```sh
 zig build test
 zig build test-jsdefender
 zig build -Doptimize=ReleaseFast
-node test.cjs
 ```
 
 The addon is installed at `zig-out/lib/obfuscatti.node`. `zig build run` prints
-protected JavaScript for the CLI sample. The preparation script accepts
-`-DependencyRoot <directory>` for another cache containing the exact pinned
-packages and reports missing or unexpected dependencies.
+protected JavaScript for the CLI sample.
 
 ## Node API
 

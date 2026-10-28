@@ -5,7 +5,6 @@
     // per-vendor examples are listed because nothing imports them - they are
     // invoked as `bun <file>` or reached through a glob inside bundle.js.
     "entry": [
-        "run.ts",
         "src/entry-client.tsx",
         "src/entry-server.tsx",
         "misc/config/bundle.js",
@@ -51,11 +50,10 @@
 
     // Real dependencies that no import statement names, so fallow cannot see
     // the edge: the Mercury Workshop transports are served to the browser
-    // straight out of node_modules by run.ts; drizzle-kit is a CLI the
-    // container's start command runs; @types/stack-trace types the untyped
-    // stack-trace import inside @terbiumos/tfs, whose declarations point tsc
-    // at its TypeScript source; the rest are build- and test-time tools that
-    // get inlined into their output, which is why they stay in
+    // straight out of node_modules by run.ts; @types/stack-trace types the
+    // untyped stack-trace import inside @terbiumos/tfs, whose declarations
+    // point tsc at its TypeScript source; the rest are build- and test-time
+    // tools that get inlined into their output, which is why they stay in
     // devDependencies even though a non-test entry reaches them.
     "ignoreDependencies": [
         "@types/stack-trace",
@@ -63,15 +61,12 @@
         "@mercuryworkshop/epoxy-transport",
         "@mercuryworkshop/libcurl-transport",
         "@mercuryworkshop/scramjet-controller",
-        "drizzle-kit",
         "@rollup/plugin-alias",
         "@rollup/plugin-commonjs",
         "@rollup/plugin-node-resolve",
         "@rollup/plugin-terser",
         "fake-indexeddb",
         "fast-glob",
-        "obscura-rs",
-        "oxc-transform",
         "rollup-plugin-polyfill-node",
         "rollup-plugin-visualizer"
     ],

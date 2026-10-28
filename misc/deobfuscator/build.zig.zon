@@ -33,8 +33,8 @@
     // internet connectivity.
     .dependencies = .{
         .yuku = .{
-            .url = "git+https://github.com/yuku-toolchain/yuku.git?ref=v0.19.0#f8496bd8dfd52ae528ade3bfe4c1ea57d1bde635",
-            .hash = "yuku-0.19.0-m6ranuYbEgDKEWKLhPKoNKdPgLoB5X6vElY2wFZXqh6m",
+            .url = "git+https://github.com/yuku-toolchain/yuku.git?ref=v0.24.1#24dad1265233f485d1638e7eb6342e87de909138",
+            .hash = "yuku-0.24.1-m6ransiIEgDTkxduDAuzN30thy7V11jWrqrT9J7-SBJZ",
         },
     },
     .paths = .{

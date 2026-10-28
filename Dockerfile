@@ -32,10 +32,10 @@ COPY . .
 ARG OBFUSCATE_ENGINE=obscura
 ENV OBFUSCATE_ENGINE=${OBFUSCATE_ENGINE}
 RUN if [ "$OBFUSCATE_ENGINE" = "obfuscatti" ]; then \
-        curl -sSfL https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz -o /tmp/zig.tar.xz && \
+        curl -sSfL https://ziglang.org/download/0.17.0/zig-x86_64-linux-0.17.0.tar.xz -o /tmp/zig.tar.xz && \
         tar -xf /tmp/zig.tar.xz -C /usr/local && \
         rm /tmp/zig.tar.xz && \
-        cd misc/obfuscatti && /usr/local/zig-x86_64-linux-0.16.0/zig build && cd /app; \
+        cd misc/obfuscatti && /usr/local/zig-x86_64-linux-0.17.0/zig build && cd /app; \
     fi
 
 RUN bun run build:wisp-native

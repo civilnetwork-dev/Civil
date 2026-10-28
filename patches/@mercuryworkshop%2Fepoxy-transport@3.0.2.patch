@@ -1,8 +1,8 @@
 diff --git a/dist/index.mjs b/dist/index.mjs
-index c2f8e435ae7ac3c50a6f572c51bad413300a2d5a..45dd617d96f6f5b057ee4886246173c8b654caf3 100644
---- a/dist/index.mjs	
+index 867dd5f4dce161a41f834e9902b0daed492fe41e..b321e92f10a8d78eb0ae356c79a5341077bfd11e 100644
+--- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -179,6 +179,9 @@ function isLikeNone(x) {
+@@ -179,6 +179,9 @@ function makeMutClosure(arg0, arg1, dtor, f) {
  function makeClosure(arg0, arg1, dtor, f) {
    const state = { a: arg0, b: arg1, cnt: 1, dtor };
    const real = (...args) => {
@@ -12,7 +12,7 @@ index c2f8e435ae7ac3c50a6f572c51bad413300a2d5a..45dd617d96f6f5b057ee4886246173c8
      state.cnt++;
      try {
        return f(state.a, state.b, ...args);
-@@ -1620,6 +1623,9 @@ var EpoxyTransport = class {
+@@ -1558,6 +1561,9 @@ var EpoxyTransport = class {
        protocols,
        headersObj
      );

@@ -72,7 +72,7 @@ pub fn apply(allocator: Allocator, tree: *ast.Tree, options: Options, random: *s
 fn analyze(tree: *ast.Tree, allow_generated_errors: bool) Error!Semantic {
     if (tree.lang != .js) return error.UnsupportedLanguage;
     if (!allow_generated_errors and tree.hasErrors()) return error.AnalysisFailed;
-    const semantic = try parser.semantic.analyze(tree);
+    const semantic = try parser.semantic.analyze(tree, .{ .check = true });
     if (!allow_generated_errors and tree.hasErrors()) return error.AnalysisFailed;
     return semantic;
 }
@@ -275,8 +275,8 @@ const Exclusions = struct {
     }
 };
 
-fn isTopLevel(semantic: Semantic, symbol: parser.traverser.semantic.Symbol) bool {
-    return switch (semantic.scope(symbol.scope).kind) {
+fn isTopLevel(semantic: Semantic, symbol: parser.semantic.Symbol) bool {
+    return switch (semantic.scopes.get(symbol.scope).kind) {
         .global, .module => true,
         else => false,
     };
@@ -433,10 +433,10 @@ pub fn applyLocal(
     defer names.deinit();
     for (reserved_words) |name| try names.reserve(name);
     for (semantic.symbols, 0..) |symbol, i| {
-        if (symbol.flags.class or symbol.flags.import or symbol.flags.type_import or !symbol.flags.inValueSpace()) continue;
+        if (symbol.flags.class or symbol.flags.import or symbol.flags.type_import or !symbol.flags.intersects(parser.semantic.Symbol.value_space)) continue;
         const old_name = tree.string(symbol.name);
         if (options.protector_name) |protector| if (std.mem.eql(u8, protector, old_name)) continue;
-        const symbol_id: parser.traverser.semantic.SymbolId = @fromBackingInt(@intCast(i));
+        const symbol_id: parser.semantic.SymbolId = @fromBackingInt(@intCast(i));
         const declarations = semantic.decls(symbol_id);
         if (declarations.len == 0) continue;
         const selected = localOptionsFor(options, declarations[0]) orelse continue;
@@ -811,7 +811,7 @@ test "jsdefender declarations keep import and export interfaces" {
     try std.testing.expect(std.mem.indexOf(u8, generated.code, "input as original") != null);
     var reparsed = try parser.parse(allocator, generated.code, .{});
     defer reparsed.deinit();
-    _ = try parser.semantic.analyze(&reparsed);
+    _ = try parser.semantic.analyze(&reparsed, .{ .check = true });
     try std.testing.expect(!reparsed.hasErrors());
 }
 

@@ -17,7 +17,7 @@ const Stream = struct {
     stream_type: u8,
     buffer_size: i32,
     open: bool,
-    send_buffer: std.ArrayListUnmanaged([]u8),
+    send_buffer: std.ArrayList([]u8),
 
     fn deinit(self: *Stream, alloc: std.mem.Allocator) void {
         alloc.free(self.hostname);
@@ -54,7 +54,7 @@ const Connection = struct {
 };
 
 const MAX_CONNECTIONS: usize = 256;
-var conn_table: [MAX_CONNECTIONS]?*Connection = [_]?*Connection{null} ** MAX_CONNECTIONS;
+var conn_table: [MAX_CONNECTIONS]?*Connection = @splat(null);
 
 fn find_free_slot() ?usize {
     for (conn_table, 0..) |entry, i| {
@@ -108,11 +108,11 @@ pub fn on_ws_data(alloc: std.mem.Allocator, conn_id: u32, data: []const u8) !voi
                     conn.udp_enabled = exts.udp_enabled;
                     if (exts.motd) |motd| conn.motd = try alloc.dupe(u8, motd);
 
-                    var ext_buf = std.ArrayList(u8){};
+                    var ext_buf = std.ArrayList(u8).empty;
                     defer ext_buf.deinit(alloc);
                     try extensions.write_client_extensions(&ext_buf, alloc);
 
-                    var buf = std.ArrayList(u8){};
+                    var buf = std.ArrayList(u8).empty;
                     defer buf.deinit(alloc);
                     try packet.write_info_packet(&buf, alloc, 2, 0, ext_buf.items);
                     ws_send_buf(conn_id, &buf);
@@ -150,7 +150,7 @@ pub fn on_ws_data(alloc: std.mem.Allocator, conn_id: u32, data: []const u8) !voi
                 while (stream.buffer_size > 0 and stream.send_buffer.items.len > 0) {
                     const queued = stream.send_buffer.orderedRemove(0);
                     defer alloc.free(queued);
-                    var buf = std.ArrayList(u8){};
+                    var buf = std.ArrayList(u8).empty;
                     defer buf.deinit(alloc);
                     try packet.write_data_packet(&buf, alloc, pkt.stream_id, queued);
                     ws_send_buf(conn_id, &buf);
@@ -211,11 +211,11 @@ pub fn stream_create(
         .stream_type = stream_type,
         .buffer_size = @intCast(conn.max_buffer_size),
         .open = conn.phase == .done,
-        .send_buffer = .{},
+        .send_buffer = .empty,
     };
     try conn.streams.put(alloc, stream_id, stream);
 
-    var buf = std.ArrayList(u8){};
+    var buf = std.ArrayList(u8).empty;
     defer buf.deinit(alloc);
     try packet.write_connect_packet(&buf, alloc, stream_id, stream_type, port, hostname);
     ws_send_buf(conn_id, &buf);
@@ -233,7 +233,7 @@ pub fn stream_send(
     const stream = conn.streams.get(stream_id) orelse return;
 
     if (stream.buffer_size > 0 or !stream.open or stream.stream_type == packet.STREAM_UDP) {
-        var buf = std.ArrayList(u8){};
+        var buf = std.ArrayList(u8).empty;
         defer buf.deinit(alloc);
         try packet.write_data_packet(&buf, alloc, stream_id, data);
         ws_send_buf(conn_id, &buf);
@@ -253,7 +253,7 @@ pub fn stream_close(
     const stream = conn.streams.get(stream_id) orelse return;
     if (!stream.open) return;
 
-    var buf = std.ArrayList(u8){};
+    var buf = std.ArrayList(u8).empty;
     defer buf.deinit(alloc);
     try packet.write_close_packet(&buf, alloc, stream_id, reason);
     ws_send_buf(conn_id, &buf);
