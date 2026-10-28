@@ -165,19 +165,54 @@ function matchesPattern(pattern: string, url: string): boolean {
     return pathRe.test(u.pathname + u.search);
 }
 
+const noopEvent = {
+    addListener: () => {},
+    removeListener: () => {},
+    hasListener: () => false,
+};
+
+const universalStub: unknown = new Proxy(() => undefined, {
+    get: (_t, p) => (p === "then" ? undefined : universalStub),
+    apply: () => undefined,
+});
+
+// Anything not listed answers as the universal stub, same as the outer
+// surface below: a missing method is "does nothing", never a TypeError
+// that kills the content script at whatever point it first reaches it.
+function stubbed(target: Record<string, unknown>) {
+    return new Proxy(target, {
+        get: (t, prop) =>
+            typeof prop === "string" && prop in t ? t[prop] : universalStub,
+    });
+}
+
+/** runtime.sendMessage from a content script, delivered to the background. */
+function contentSendMessage(handle: ExtensionHandle) {
+    return (...args: unknown[]) => {
+        const message =
+            typeof args[0] === "string" && args.length > 1 ? args[1] : args[0];
+        const cb = args.find(a => typeof a === "function") as
+            | ((r: unknown) => void)
+            | undefined;
+        // A background listener that throws is Chrome's problem to log,
+        // not the content script's to crash on — swallow it to undefined,
+        // the same result Chrome gives the sender when a listener errors.
+        const p = handle
+            .sendMessage(message)
+            .then(r => r.response)
+            .catch(() => undefined);
+        if (cb) {
+            void p.then(cb);
+            return undefined;
+        }
+        return p;
+    };
+}
+
 /** A minimal content-script `chrome`, bridged to the loaded background for
  *  messaging and answering everything else the way the extension host's
  *  universal stub does — do nothing, never throw. */
 function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
-    const noopEvent = {
-        addListener: () => {},
-        removeListener: () => {},
-        hasListener: () => false,
-    };
-    const stub: unknown = new Proxy(() => undefined, {
-        get: (_t, p) => (p === "then" ? undefined : stub),
-        apply: () => undefined,
-    });
     const port = {
         name: "",
         postMessage: () => {},
@@ -185,14 +220,6 @@ function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
         onMessage: noopEvent,
         onDisconnect: noopEvent,
     };
-    // Anything not listed answers as the universal stub, same as the outer
-    // surface below: a missing method is "does nothing", never a TypeError
-    // that kills the content script at whatever point it first reaches it.
-    const stubbed = (target: Record<string, unknown>) =>
-        new Proxy(target, {
-            get: (t, prop) =>
-                typeof prop === "string" && prop in t ? t[prop] : stub,
-        });
     const runtime = stubbed({
         id: extensionId,
         getURL: (path: string) =>
@@ -200,27 +227,7 @@ function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
         // Read for its result, so a stub's `undefined` won't do — bundles
         // pull `version` and `name` off it during startup (mobileguardian).
         getManifest: () => handle.manifest,
-        sendMessage: (...args: unknown[]) => {
-            const message =
-                typeof args[0] === "string" && args.length > 1
-                    ? args[1]
-                    : args[0];
-            const cb = args.find(a => typeof a === "function") as
-                | ((r: unknown) => void)
-                | undefined;
-            // A background listener that throws is Chrome's problem to log,
-            // not the content script's to crash on — swallow it to undefined,
-            // the same result Chrome gives the sender when a listener errors.
-            const p = handle
-                .sendMessage(message)
-                .then(r => r.response)
-                .catch(() => undefined);
-            if (cb) {
-                void p.then(cb);
-                return undefined;
-            }
-            return p;
-        },
+        sendMessage: contentSendMessage(handle),
         onMessage: noopEvent,
         connect: () => port,
         lastError: undefined,
@@ -232,61 +239,46 @@ function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
     });
 }
 
-/** Load one filter over one proxied route and report what the page became. */
-export async function observeRoute(
-    options: SandboxOptions,
-): Promise<PageObservation> {
-    const {
-        extensionDir,
-        baseUrl,
-        route,
-        proxyTarget,
-        waitMs = 15_000,
-        allowNetwork = false,
-    } = options;
-    const doFetch = options.fetchImpl ?? fetch;
+type ExecuteScriptCall = { func?: string; files?: string[]; args?: unknown[] };
 
-    // The URL the page is fetched from: for the proxy route, the third-party
-    // target routed through Civil; otherwise Civil's own page.
-    const pageUrl = proxyTarget
-        ? `${baseUrl.replace(/\/$/, "")}${route}${encodeURIComponent(proxyTarget)}`
-        : `${baseUrl.replace(/\/$/, "")}${route}`;
+/** Where an injected script runs: filled in as the observation progresses. */
+type InjectionTarget = {
+    win?: Record<string, unknown>;
+    extId: string;
+    extensionDir: string;
+};
 
-    // One filter installed: its background, headless. Best-effort — a filter
-    // whose background can't fully start still has content scripts, which are
-    // what render block pages; the point of the run is the page, not the
-    // worker. The emulation (vendorEmulation.ts) — matched by the bundle's
-    // own folder name — is what lets a vendor's real, configured code path
-    // run rather than its unconfigured one.
-    const emulation = VENDOR_EMULATION[basename(extensionDir)];
-    let extId = "a".repeat(32);
-    // Filled in once the page window exists, below — a filter's background
-    // can call chrome.scripting.executeScript in reaction to a message from
-    // its own content script (the normal "content script announces the page,
-    // background decides, background injects the block" shape), which can
-    // only happen after that content script is running, i.e. after `window`
-    // exists. A call before then (rare — genuine startup-time injection has
-    // no specific page to target anyway) fails safe to a no-op, same as
-    // Chrome resolving no frames.
-    let win: Record<string, unknown> | undefined;
-    const runScript = async (call: {
-        func?: string;
-        files?: string[];
-        args?: unknown[];
-    }): Promise<unknown[]> => {
+async function injectionSource(
+    call: ExecuteScriptCall,
+    extensionDir: string,
+): Promise<string> {
+    if (call.func) {
+        return `(${call.func})(${(call.args ?? []).map(a => JSON.stringify(a)).join(",")})`;
+    }
+    const files = await Promise.all(
+        (call.files ?? []).map(f =>
+            readFile(join(extensionDir, f), "utf8").catch(() => ""),
+        ),
+    );
+    return files.join(";\n");
+}
+
+/**
+ * chrome.scripting.executeScript for the background. The page window is
+ * filled in once it exists — a filter's background can call executeScript in
+ * reaction to a message from its own content script (the normal "content
+ * script announces the page, background decides, background injects the
+ * block" shape), which can only happen after that content script is running,
+ * i.e. after `window` exists. A call before then (rare — genuine
+ * startup-time injection has no specific page to target anyway) fails safe to
+ * a no-op, same as Chrome resolving no frames.
+ */
+function createScriptRunner(target: InjectionTarget) {
+    return async (call: ExecuteScriptCall): Promise<unknown[]> => {
+        const { win, extId, extensionDir } = target;
         if (!win) return [];
         try {
-            const source = call.func
-                ? `(${call.func})(${(call.args ?? []).map(a => JSON.stringify(a)).join(",")})`
-                : (
-                      await Promise.all(
-                          (call.files ?? []).map(f =>
-                              readFile(join(extensionDir, f), "utf8").catch(
-                                  () => "",
-                              ),
-                          ),
-                      )
-                  ).join(";\n");
+            const source = await injectionSource(call, extensionDir);
             if (!source) return [];
             const compiled = await compileScript(
                 source,
@@ -305,10 +297,24 @@ export async function observeRoute(
             return [];
         }
     };
+}
 
-    let handle: ExtensionHandle | undefined;
+/**
+ * One filter installed: its background, headless. Best-effort — a filter
+ * whose background can't fully start still has content scripts, which are
+ * what render block pages; the point of the run is the page, not the
+ * worker. The emulation (vendorEmulation.ts) — matched by the bundle's own
+ * folder name — is what lets a vendor's real, configured code path run
+ * rather than its unconfigured one.
+ */
+async function loadFilterBackground(
+    extensionDir: string,
+    emulation: (typeof VENDOR_EMULATION)[string] | undefined,
+    runScript: ReturnType<typeof createScriptRunner>,
+    allowNetwork: boolean,
+): Promise<ExtensionHandle | undefined> {
     try {
-        handle = await loadExtension({
+        return await loadExtension({
             dir: extensionDir,
             managedStorage: emulation?.managedStorage,
             initialStorage: emulation?.initialStorage,
@@ -318,30 +324,28 @@ export async function observeRoute(
             allowNetwork,
         });
     } catch {
-        handle = undefined;
+        return undefined;
     }
-    extId = handle?.id ?? extId;
+}
 
-    const { html, status, fetchError } = await fetchPageWithRetry(
-        doFetch,
-        pageUrl,
-    );
-
-    // A real `console`, not happy-dom's VirtualConsole (a content script
-    // that logs from a deferred timer would otherwise reach the virtual
-    // console after the window is closed and throw on its freed printer),
-    // but a fresh one per observation, not the shared global object itself —
-    // see `buildFreshConsole`'s own comment for why that distinction is load
-    // bearing, not cosmetic.
-    //
-    // The settings match api/platform.ts's happy-dom usage: this document's
-    // own markup must not trigger real loads of its own (a `<link href>`/
-    // `<script src>` the fetched page happens to carry), the same reasoning
-    // that made that comment — "happy-dom must not also try to evaluate or
-    // fetch anything the document references" — apply here too. Content
-    // scripts still run: they're injected by `runInContext` below, entirely
-    // outside happy-dom's own script pipeline, which these settings don't gate.
-    const window = new Window({
+/**
+ * A real `console`, not happy-dom's VirtualConsole (a content script that
+ * logs from a deferred timer would otherwise reach the virtual console after
+ * the window is closed and throw on its freed printer), but a fresh one per
+ * observation, not the shared global object itself — see
+ * `buildFreshConsole`'s own comment for why that distinction is load
+ * bearing, not cosmetic.
+ *
+ * The settings match api/platform.ts's happy-dom usage: this document's own
+ * markup must not trigger real loads of its own (a `<link href>`/`<script
+ * src>` the fetched page happens to carry), the same reasoning that made
+ * that comment — "happy-dom must not also try to evaluate or fetch anything
+ * the document references" — apply here too. Content scripts still run:
+ * they're injected by `runInContext` below, entirely outside happy-dom's own
+ * script pipeline, which these settings don't gate.
+ */
+function createPageWindow(pageUrl: string): Window {
+    return new Window({
         url: pageUrl,
         console: buildFreshConsole(),
         settings: {
@@ -355,21 +359,32 @@ export async function observeRoute(
             // admin.js _reRun, scheduled off a chrome.storage stub call).
         },
     });
-    win = window as unknown as Record<string, unknown>;
-    // A content script's own fetch()/XMLHttpRequest()/WebSocket() calls go
-    // through happy-dom's real, working implementations by default — none of
-    // the settings above gate a direct JS call the way they gate the
-    // document's own tag-driven loads. Content scripts get the same
-    // containment background scripts already have (api/platform.ts):
-    // offline-but-emulated by default (`emulation.network` answers a vendor's
-    // own endpoints — see vendorEmulation.ts), genuinely live only when a
-    // caller opts in via `allowNetwork`. A content script's own
-    // extension-relative fetches (its bundled WASM, config, etc.) still
-    // resolve for real, off `extensionDir`, either way.
-    // XMLHttpRequest has no toggle: Node never implemented a real one (it
-    // predates fetch as a browser-only API), so api/platform.ts's own
-    // `allowNetwork` handling doesn't branch on it either — the offline,
-    // local-file-serving version is what both paths use regardless.
+}
+
+/**
+ * A content script's own fetch()/XMLHttpRequest()/WebSocket() calls go
+ * through happy-dom's real, working implementations by default — none of the
+ * window settings gate a direct JS call the way they gate the document's own
+ * tag-driven loads. Content scripts get the same containment background
+ * scripts already have (api/platform.ts): offline-but-emulated by default
+ * (`emulation.network` answers a vendor's own endpoints — see
+ * vendorEmulation.ts), genuinely live only when a caller opts in via
+ * `allowNetwork`. A content script's own extension-relative fetches (its
+ * bundled WASM, config, etc.) still resolve for real, off `extensionDir`,
+ * either way.
+ *
+ * XMLHttpRequest has no toggle: Node never implemented a real one (it
+ * predates fetch as a browser-only API), so api/platform.ts's own
+ * `allowNetwork` handling doesn't branch on it either — the offline,
+ * local-file-serving version is what both paths use regardless.
+ */
+function containPageNetwork(
+    win: Record<string, unknown>,
+    extId: string,
+    extensionDir: string,
+    emulation: (typeof VENDOR_EMULATION)[string] | undefined,
+    allowNetwork: boolean,
+): void {
     win.fetch = allowNetwork
         ? fetch
         : buildFetch(extId, extensionDir, emulation?.network);
@@ -380,13 +395,18 @@ export async function observeRoute(
     // into the next observation would be its own false-positive risk.
     win.indexedDB = new IDBFactory();
     win.IDBKeyRange = IDBKeyRange;
-    // happy-dom's navigator is missing members content scripts read unguarded,
-    // so a startup TypeError could kill a filter's script before it ever got
-    // to block anything -- and this harness would have read that crash as
-    // "not flagged". Seen live: `navigator.getBattery is not a function`
-    // (imtlazarus, lanschoolStudent). Background scripts already get these
-    // from api/platform.ts's buildNavigator; fill in only what happy-dom
-    // lacks, rather than replacing a navigator its own internals use.
+}
+
+/**
+ * happy-dom's navigator is missing members content scripts read unguarded,
+ * so a startup TypeError could kill a filter's script before it ever got to
+ * block anything -- and this harness would have read that crash as "not
+ * flagged". Seen live: `navigator.getBattery is not a function` (imtlazarus,
+ * lanschoolStudent). Background scripts already get these from
+ * api/platform.ts's buildNavigator; fill in only what happy-dom lacks,
+ * rather than replacing a navigator its own internals use.
+ */
+function fillNavigator(window: Window): void {
     const emulatedNavigator = buildNavigator("chrome");
     const navigator = window.navigator as unknown as Record<string, unknown>;
     for (const [key, value] of Object.entries(emulatedNavigator)) {
@@ -397,97 +417,191 @@ export async function observeRoute(
             enumerable: true,
         });
     }
+}
+
+/** Runs one content script file in the page; a throw is the script's own. */
+async function runContentScript(
+    window: Window,
+    filePath: string,
+    extId: string,
+    extensionDir: string,
+): Promise<void> {
+    const code = await readFile(filePath, "utf8").catch(() => "");
+    if (!code) return;
     try {
-        window.document.write(html);
-        // The served page's own rendered-text length, before any content
-        // script has had a chance to touch it — the dom-replaced heuristic's
-        // baseline (detect.ts).
-        const originalLength = window.document.body?.textContent?.length ?? 0;
+        // compileScript (extensionHost/host.ts) gives dynamic import() a real
+        // resolver and bundles a script through esbuild when a plain
+        // vm.Script can't compile it at all (an ES module, or a static import
+        // statement). window.eval() has neither and dies on any of the three;
+        // this is the same path background scripts already use, reused
+        // rather than reimplemented.
+        const compiled = await compileScript(code, filePath, {
+            context: window as unknown as vm.Context,
+            extensionId: extId,
+            extensionDir,
+        });
+        compiled.runInContext(window as unknown as vm.Context);
+    } catch {
+        // A content script that throws in this reduced environment has still
+        // had its chance to redirect or rewrite; keep going.
+    }
+}
 
-        // The content scripts that match this URL, in manifest order.
-        const manifest = handle?.manifest ?? (await readManifest(extensionDir));
-        const scripts = (manifest.content_scripts ?? []) as ContentScript[];
-        const chrome = handle ? contentChrome(handle, handle.id) : undefined;
-        if (chrome) {
-            (window as unknown as Record<string, unknown>).chrome = chrome;
-            (window as unknown as Record<string, unknown>).browser = chrome;
+/** The content scripts that match this URL, run in manifest order. */
+async function runContentScripts(
+    window: Window,
+    handle: ExtensionHandle | undefined,
+    extensionDir: string,
+    extId: string,
+    pageUrl: string,
+): Promise<void> {
+    const manifest = handle?.manifest ?? (await readManifest(extensionDir));
+    const scripts = (manifest.content_scripts ?? []) as ContentScript[];
+    const chrome = handle ? contentChrome(handle, handle.id) : undefined;
+    if (chrome) {
+        (window as unknown as Record<string, unknown>).chrome = chrome;
+        (window as unknown as Record<string, unknown>).browser = chrome;
+    }
+
+    for (const script of scripts) {
+        if (!script.matches?.some(p => matchesPattern(p, pageUrl))) continue;
+        for (const file of script.js ?? []) {
+            await runContentScript(
+                window,
+                join(extensionDir, file),
+                extId,
+                extensionDir,
+            );
         }
+    }
+}
 
-        for (const script of scripts) {
-            if (!script.matches?.some(p => matchesPattern(p, pageUrl)))
-                continue;
-            for (const file of script.js ?? []) {
-                const filePath = join(extensionDir, file);
-                const code = await readFile(filePath, "utf8").catch(() => "");
-                if (!code) continue;
-                try {
-                    // compileScript (extensionHost/host.ts) gives dynamic
-                    // import() a real resolver and bundles a script through
-                    // esbuild when a plain vm.Script can't compile it at all
-                    // (an ES module, or a static import statement). window.
-                    // eval() has neither and dies on any of the three; this
-                    // is the same path background scripts already use,
-                    // reused rather than reimplemented.
-                    const compiled = await compileScript(code, filePath, {
-                        context: window as unknown as vm.Context,
-                        extensionId: extId,
-                        extensionDir,
-                    });
-                    compiled.runInContext(window as unknown as vm.Context);
-                } catch {
-                    // A content script that throws in this reduced environment
-                    // has still had its chance to redirect or rewrite; keep
-                    // going.
-                }
-            }
-        }
+/**
+ * Where the tab ended up. Some filters (lanschoolWebHelper, mobileguardian)
+ * block from their background via chrome.tabs.update({url}) rather than a
+ * content script writing location.href — invisible to a real browser's
+ * address bar only in the sense that this host never re-navigates the
+ * happy-dom window to render it. A real tab would already be showing that
+ * URL, so it's what a redirect check should see too.
+ */
+function finalUrlOf(handle: ExtensionHandle | undefined, window: Window) {
+    return handle && handle.tabUrl !== "about:blank"
+        ? handle.tabUrl
+        : String(window.location.href);
+}
 
-        await new Promise(resolve => setTimeout(resolve, waitMs));
+/**
+ * Cancels happy-dom's pending timers/microtasks before closing, so a content
+ * script's deferred callback can't fire against a freed window. `abort`
+ * exists on happy-dom's control object; guard it in case the shape changes.
+ */
+async function closePageWindow(
+    window: Window,
+    handle: ExtensionHandle | undefined,
+): Promise<void> {
+    const control = (
+        window as unknown as { happyDOM?: { abort?: () => Promise<void> } }
+    ).happyDOM;
+    try {
+        await control?.abort?.();
+    } catch {
+        // best-effort teardown
+    }
+    window.close();
+    handle?.dispose();
+}
 
-        // Some filters (lanschoolWebHelper, mobileguardian) block from their
-        // background via chrome.tabs.update({url}) rather than a content
-        // script writing location.href — invisible to a real browser's
-        // address bar only in the sense that this host never re-navigates
-        // the happy-dom window to render it. A real tab would already be
-        // showing that URL, so it's what a redirect check should see too.
-        const finalUrl =
-            handle && handle.tabUrl !== "about:blank"
-                ? handle.tabUrl
-                : String(window.location.href);
+/** The URL the page is fetched from: for the proxy route, the third-party
+ *  target routed through Civil; otherwise Civil's own page. */
+function pageUrlFor({ baseUrl, route, proxyTarget }: SandboxOptions): string {
+    return proxyTarget
+        ? `${baseUrl.replace(/\/$/, "")}${route}${encodeURIComponent(proxyTarget)}`
+        : `${baseUrl.replace(/\/$/, "")}${route}`;
+}
 
+/** Writes the served page, lets the filter act on it, and reads the result. */
+async function observePage(
+    window: Window,
+    handle: ExtensionHandle | undefined,
+    page: { html: string; pageUrl: string; extId: string },
+    options: SandboxOptions,
+): Promise<Omit<PageObservation, "status" | "fetchError">> {
+    const { extensionDir, route, waitMs = 15_000 } = options;
+    window.document.write(page.html);
+    // The served page's own rendered-text length, before any content script
+    // has had a chance to touch it — the dom-replaced heuristic's baseline
+    // (detect.ts).
+    const originalLength = window.document.body?.textContent?.length ?? 0;
+
+    await runContentScripts(
+        window,
+        handle,
+        extensionDir,
+        page.extId,
+        page.pageUrl,
+    );
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+
+    return {
+        route,
+        finalUrl: finalUrlOf(handle, window),
+        pageText: extractRichText(window),
+        originalLength,
         // The filter's own configured block rules, asked directly whether
         // they'd block this exact page URL — a real, deterministic check
         // that needed none of the rendering above. Only meaningful when the
         // background actually loaded far enough to register rules.
-        const dnrMatch = handle?.matchRequest(pageUrl, {
+        dnrMatch: handle?.matchRequest(page.pageUrl, {
             resourceType: "main_frame",
             method: "GET",
-        });
+        }),
+    };
+}
 
-        return {
-            route,
-            finalUrl,
-            pageText: extractRichText(window),
-            originalLength,
-            status,
-            fetchError,
-            dnrMatch,
-        };
+/** Load one filter over one proxied route and report what the page became. */
+export async function observeRoute(
+    options: SandboxOptions,
+): Promise<PageObservation> {
+    const { extensionDir, allowNetwork = false } = options;
+    const doFetch = options.fetchImpl ?? fetch;
+    const pageUrl = pageUrlFor(options);
+
+    const emulation = VENDOR_EMULATION[basename(extensionDir)];
+    const target: InjectionTarget = { extId: "a".repeat(32), extensionDir };
+    const handle = await loadFilterBackground(
+        extensionDir,
+        emulation,
+        createScriptRunner(target),
+        allowNetwork,
+    );
+    target.extId = handle?.id ?? target.extId;
+    const extId = target.extId;
+
+    const { html, status, fetchError } = await fetchPageWithRetry(
+        doFetch,
+        pageUrl,
+    );
+
+    const window = createPageWindow(pageUrl);
+    target.win = window as unknown as Record<string, unknown>;
+    containPageNetwork(
+        target.win,
+        extId,
+        extensionDir,
+        emulation,
+        allowNetwork,
+    );
+    fillNavigator(window);
+    try {
+        const observed = await observePage(
+            window,
+            handle,
+            { html, pageUrl, extId },
+            options,
+        );
+        return { ...observed, status, fetchError };
     } finally {
-        // Cancel happy-dom's pending timers/microtasks before closing, so a
-        // content script's deferred callback can't fire against a freed
-        // window. `abort` exists on happy-dom's control object; guard it in
-        // case the shape changes.
-        const control = (
-            window as unknown as { happyDOM?: { abort?: () => Promise<void> } }
-        ).happyDOM;
-        try {
-            await control?.abort?.();
-        } catch {
-            // best-effort teardown
-        }
-        window.close();
-        handle?.dispose();
+        await closePageWindow(window, handle);
     }
 }
 

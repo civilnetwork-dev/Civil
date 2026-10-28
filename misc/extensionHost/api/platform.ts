@@ -236,6 +236,89 @@ function buildWebAssembly(): unknown {
     };
 }
 
+class OfflineXMLHttpRequestBase extends EventTarget {
+    static readonly UNSENT = 0;
+    static readonly OPENED = 1;
+    static readonly HEADERS_RECEIVED = 2;
+    static readonly LOADING = 3;
+    static readonly DONE = 4;
+
+    readyState = 0;
+    status = 0;
+    statusText = "";
+    responseText = "";
+    response: unknown = "";
+    responseType = "";
+    responseURL = "";
+    timeout = 0;
+    withCredentials = false;
+    onreadystatechange: (() => void) | null = null;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    onloadend: (() => void) | null = null;
+
+    #async = true;
+
+    /** The packaged file at `url`, or null for anything else. */
+    protected readLocal(_url: string): string | null {
+        return null;
+    }
+
+    open(_method: string, url: string, isAsync = true): void {
+        this.responseURL = String(url);
+        this.#async = isAsync;
+        this.readyState = 1;
+    }
+    setRequestHeader(): void {}
+    getAllResponseHeaders(): string {
+        return "";
+    }
+    getResponseHeader(): null {
+        return null;
+    }
+    overrideMimeType(): void {}
+    abort(): void {}
+
+    #fail(): void {
+        this.status = 503;
+        this.statusText = "Service Unavailable";
+        this.responseText = "";
+        this.response = this.responseType === "json" ? null : "";
+        this.onreadystatechange?.();
+        this.onerror?.();
+        this.dispatchEvent(new Event("error"));
+    }
+
+    #succeed(body: string): void {
+        this.status = 200;
+        this.statusText = "OK";
+        this.responseText = body;
+        this.response =
+            this.responseType === "json"
+                ? JSON.parse(body)
+                : this.responseType === "arraybuffer"
+                  ? new TextEncoder().encode(body).buffer
+                  : body;
+        this.onreadystatechange?.();
+        this.onload?.();
+        this.dispatchEvent(new Event("load"));
+    }
+
+    #settle(): void {
+        const body = this.readLocal(this.responseURL);
+        this.readyState = 4;
+        if (body === null) this.#fail();
+        else this.#succeed(body);
+        this.onloadend?.();
+        this.dispatchEvent(new Event("loadend"));
+    }
+
+    send(): void {
+        if (this.#async) queueMicrotask(() => this.#settle());
+        else this.#settle();
+    }
+}
+
 /**
  * `XMLHttpRequest`. Node has none at all, and bundles reach for it
  * unconditionally — MV2 code especially, plus the Emscripten runtimes a
@@ -256,86 +339,16 @@ export function buildXMLHttpRequest(
 ): unknown {
     const prefix = `chrome-extension://${extensionId}/`;
 
-    const readLocal = (url: string): string | null => {
-        if (!url.startsWith(prefix)) return null;
-        const file = extensionFile(url.slice(prefix.length), extensionDir);
-        if (!file) return null;
-        try {
-            return readFileSync(file.path, "utf-8");
-        } catch {
-            return null;
-        }
-    };
-    return class OfflineXMLHttpRequest extends EventTarget {
-        static readonly UNSENT = 0;
-        static readonly OPENED = 1;
-        static readonly HEADERS_RECEIVED = 2;
-        static readonly LOADING = 3;
-        static readonly DONE = 4;
-
-        readyState = 0;
-        status = 0;
-        statusText = "";
-        responseText = "";
-        response: unknown = "";
-        responseType = "";
-        responseURL = "";
-        timeout = 0;
-        withCredentials = false;
-        onreadystatechange: (() => void) | null = null;
-        onload: (() => void) | null = null;
-        onerror: (() => void) | null = null;
-        onloadend: (() => void) | null = null;
-
-        #async = true;
-
-        open(_method: string, url: string, isAsync = true): void {
-            this.responseURL = String(url);
-            this.#async = isAsync;
-            this.readyState = 1;
-        }
-        setRequestHeader(): void {}
-        getAllResponseHeaders(): string {
-            return "";
-        }
-        getResponseHeader(): null {
-            return null;
-        }
-        overrideMimeType(): void {}
-        abort(): void {}
-
-        #settle(): void {
-            const body = readLocal(this.responseURL);
-            this.readyState = 4;
-            if (body === null) {
-                this.status = 503;
-                this.statusText = "Service Unavailable";
-                this.responseText = "";
-                this.response = this.responseType === "json" ? null : "";
-                this.onreadystatechange?.();
-                this.onerror?.();
-                this.dispatchEvent(new Event("error"));
-            } else {
-                this.status = 200;
-                this.statusText = "OK";
-                this.responseText = body;
-                this.response =
-                    this.responseType === "json"
-                        ? JSON.parse(body)
-                        : this.responseType === "arraybuffer"
-                          ? new TextEncoder().encode(body).buffer
-                          : body;
-                this.onreadystatechange?.();
-                this.onload?.();
-                this.dispatchEvent(new Event("load"));
+    return class OfflineXMLHttpRequest extends OfflineXMLHttpRequestBase {
+        protected override readLocal(url: string): string | null {
+            if (!url.startsWith(prefix)) return null;
+            const file = extensionFile(url.slice(prefix.length), extensionDir);
+            if (!file) return null;
+            try {
+                return readFileSync(file.path, "utf-8");
+            } catch {
+                return null;
             }
-            this.onloadend?.();
-            this.dispatchEvent(new Event("loadend"));
-        }
-
-        send(): void {
-            if (this.#async) queueMicrotask(() => this.#settle());
-            else this.#settle();
         }
     };
 }
@@ -441,6 +454,99 @@ function pickUserAgent(target: ExtensionTarget): UserAgent {
     }
 }
 
+type AgentData = {
+    appName: string;
+    language: string;
+    platform: string;
+    vendor: string;
+    deviceCategory: string;
+    connection?: Record<string, unknown>;
+};
+
+/** `navigator.userAgentData`, all of it read off the same UA string so the
+ *  set stays consistent with what `userAgent` itself claims. */
+function buildUserAgentData(
+    target: ExtensionTarget,
+    userAgent: string,
+    data: AgentData,
+) {
+    const chromeFull = /Chrome\/([\d.]+)/.exec(userAgent)?.[1];
+    const chromeMajor = chromeFull?.split(".")[0];
+    // "CrOS x86_64 16093.57.0" — the OS build, which is what Chrome reports
+    // as platformVersion on a Chromebook.
+    const crosVersion = /CrOS \S+ ([\d.]+)/.exec(userAgent)?.[1];
+    const lowEntropy = {
+        platform: target === "safari" ? "macOS" : "Chrome OS",
+        mobile: data.deviceCategory === "mobile",
+        brands: chromeMajor
+            ? [{ brand: "Chromium", version: chromeMajor }]
+            : [],
+    };
+
+    return {
+        ...lowEntropy,
+        // Chrome answers with the low-entropy fields plus whichever
+        // high-entropy hints were asked for; answering `{}` left
+        // gopherbuddy calling `.split` on an `uaFullVersion` it never
+        // got.
+        getHighEntropyValues: async () => ({
+            ...lowEntropy,
+            architecture: "x86",
+            bitness: "64",
+            model: "",
+            uaFullVersion: chromeFull ?? "",
+            fullVersionList: lowEntropy.brands.map(b => ({
+                brand: b.brand,
+                version: chromeFull ?? b.version,
+            })),
+            platformVersion: crosVersion ?? "",
+            wow64: false,
+        }),
+    };
+}
+
+/**
+ * A managed Chromebook is typically on AC power in a classroom cart — full
+ * and charging is the honest default, not a placeholder. An EventTarget for
+ * the same reason `connection` is one: imtlazarus and lanschoolStudent both
+ * call `getBattery().then(b => b.addEventListener(...))`.
+ */
+function buildBattery() {
+    return Object.assign(
+        new EventTarget() as EventTarget & Record<string, unknown>,
+        {
+            charging: true,
+            chargingTime: 0,
+            dischargingTime: Number.POSITIVE_INFINITY,
+            level: 1,
+            onchargingchange: null,
+            onchargingtimechange: null,
+            ondischargingtimechange: null,
+            onlevelchange: null,
+        },
+    );
+}
+
+/** The storage, permission, beacon, clipboard and battery members. */
+function navigatorDeviceApis() {
+    return {
+        storage: {
+            estimate: async () => ({ quota: 2 ** 31, usage: 0 }),
+            persisted: async () => false,
+            persist: async () => false,
+        },
+        permissions: {
+            query: async () => ({ state: "granted", onchange: null }),
+        },
+        sendBeacon: () => false,
+        clipboard: {
+            readText: async () => "",
+            writeText: async () => {},
+        },
+        getBattery: async () => buildBattery(),
+    };
+}
+
 /**
  * `navigator` as the chosen device reports it.
  *
@@ -448,31 +554,25 @@ function pickUserAgent(target: ExtensionTarget): UserAgent {
  * guarding — haparahighlights calls `self.navigator.appVersion.match(...)`
  * and securlyClassroom calls `navigator.connection.addEventListener(...)`
  * during startup, and an absent property is a TypeError in both.
+ *
+ * Real device data rather than a hand-written string, from the same
+ * `user-agents` package and the same `/CrOS/` filter that
+ * misc/filters/securly/cluster.ts uses to talk to Securly. A hardcoded UA
+ * goes stale silently — this one shipped claiming Chrome 128 while the
+ * package's current Chrome OS entries are on 150 — and it drags `platform`,
+ * `vendor`, `language` and `connection` along with it, all of which the
+ * package already carries as a *consistent set*. Inventing those four
+ * independently is how you end up with a navigator no real device ever
+ * reported.
+ *
+ * Each load picks a different real device, which is deliberate: a bundle
+ * that behaves differently across two loads is reacting to the device rather
+ * than to the extension API, and that is worth surfacing rather than
+ * freezing out.
  */
 export function buildNavigator(target: ExtensionTarget) {
-    // Real device data rather than a hand-written string, from the same
-    // `user-agents` package and the same `/CrOS/` filter that
-    // misc/filters/securly/cluster.ts uses to talk to Securly. A hardcoded
-    // UA goes stale silently — this one shipped claiming Chrome 128 while
-    // the package's current Chrome OS entries are on 150 — and it drags
-    // `platform`, `vendor`, `language` and `connection` along with it, all
-    // of which the package already carries as a *consistent set*. Inventing
-    // those four independently is how you end up with a navigator no real
-    // device ever reported.
-    //
-    // Each load picks a different real device, which is deliberate: a bundle
-    // that behaves differently across two loads is reacting to the device
-    // rather than to the extension API, and that is worth surfacing rather
-    // than freezing out.
     const agent = pickUserAgent(target);
-    const data = agent.data as unknown as {
-        appName: string;
-        language: string;
-        platform: string;
-        vendor: string;
-        deviceCategory: string;
-        connection?: Record<string, unknown>;
-    };
+    const data = agent.data as unknown as AgentData;
     const userAgent = agent.toString();
 
     // The package's own connection record, made live: securlyClassroom calls
@@ -484,19 +584,7 @@ export function buildNavigator(target: ExtensionTarget) {
         data.connection ?? {},
     );
 
-    const chromeFull = /Chrome\/([\d.]+)/.exec(userAgent)?.[1];
-    const chromeMajor = chromeFull?.split(".")[0];
-    // "CrOS x86_64 16093.57.0" — the OS build, which is what Chrome reports
-    // as platformVersion on a Chromebook.
-    const crosVersion = /CrOS \S+ ([\d.]+)/.exec(userAgent)?.[1];
     const primaryLanguage = data.language.split("-")[0] ?? data.language;
-    const userAgentData = {
-        platform: target === "safari" ? "macOS" : "Chrome OS",
-        mobile: data.deviceCategory === "mobile",
-        brands: chromeMajor
-            ? [{ brand: "Chromium", version: chromeMajor }]
-            : [],
-    };
 
     return {
         userAgent,
@@ -515,59 +603,8 @@ export function buildNavigator(target: ExtensionTarget) {
         deviceMemory: 4,
         maxTouchPoints: 0,
         connection,
-        userAgentData: {
-            ...userAgentData,
-            // Chrome answers with the low-entropy fields plus whichever
-            // high-entropy hints were asked for; answering `{}` left
-            // gopherbuddy calling `.split` on an `uaFullVersion` it never
-            // got. All of it comes from the same UA string, so the set
-            // stays consistent with what `userAgent` itself claims.
-            getHighEntropyValues: async () => ({
-                ...userAgentData,
-                architecture: "x86",
-                bitness: "64",
-                model: "",
-                uaFullVersion: chromeFull ?? "",
-                fullVersionList: userAgentData.brands.map(b => ({
-                    brand: b.brand,
-                    version: chromeFull ?? b.version,
-                })),
-                platformVersion: crosVersion ?? "",
-                wow64: false,
-            }),
-        },
-        storage: {
-            estimate: async () => ({ quota: 2 ** 31, usage: 0 }),
-            persisted: async () => false,
-            persist: async () => false,
-        },
-        permissions: {
-            query: async () => ({ state: "granted", onchange: null }),
-        },
-        sendBeacon: () => false,
-        clipboard: {
-            readText: async () => "",
-            writeText: async () => {},
-        },
-        // A managed Chromebook is typically on AC power in a classroom cart —
-        // full and charging is the honest default, not a placeholder. An
-        // EventTarget for the same reason `connection` above is one:
-        // imtlazarus and lanschoolStudent both call
-        // `getBattery().then(b => b.addEventListener(...))`.
-        getBattery: async () =>
-            Object.assign(
-                new EventTarget() as EventTarget & Record<string, unknown>,
-                {
-                    charging: true,
-                    chargingTime: 0,
-                    dischargingTime: Number.POSITIVE_INFINITY,
-                    level: 1,
-                    onchargingchange: null,
-                    onchargingtimechange: null,
-                    ondischargingtimechange: null,
-                    onlevelchange: null,
-                },
-            ),
+        userAgentData: buildUserAgentData(target, userAgent, data),
+        ...navigatorDeviceApis(),
     };
 }
 
@@ -719,26 +756,30 @@ export function buildFreshConsole(): Console {
     return { ...methods } as unknown as Console;
 }
 
-export async function buildPlatform(
-    options: PlatformOptions,
-): Promise<Platform> {
-    const { timers } = options;
+/**
+ * Real timers, tracked. `chrome.alarms` is virtual (see api/alarms.ts) but
+ * `setInterval` is not, and vendor bundles install polling intervals at
+ * startup as a matter of course. An untracked one keeps Node's event loop
+ * alive for as long as the process runs, which turns "load every filter and
+ * check it starts" into a test run that never exits. `dispose()` clears
+ * whatever is still outstanding.
+ *
+ * These are real Node timers, not happy-dom's — so unlike a content script's
+ * timers (filterProbe/sandbox.ts) or this same background page's own DOM
+ * timers, nothing else already contains a callback that throws. A vendor
+ * bundle's polling loop firing after its synchronous startup has finished is
+ * routine, not exceptional, so an error from it must not take down the
+ * whole host process — logged instead, the same as happy-dom's own default
+ * handles a caught timer error. Logged to the vendor's own console, not the
+ * process's: the error is the vendor's (imtlazarus reads a `BLOCK_RULE_ID`
+ * its bundle never declares), so it belongs with the rest of that vendor's
+ * output.
+ */
+function trackedTimers(timers: Set<TimerHandle>, vendorConsole: Console) {
     const track = <T extends TimerHandle>(handle: T): T => {
         timers.add(handle);
         return handle;
     };
-    // These are real Node timers (see the comment below), not happy-dom's —
-    // so unlike a content script's timers (filterProbe/sandbox.ts) or this
-    // same background page's own DOM timers, nothing else already contains a
-    // callback that throws. A vendor bundle's polling loop firing after its
-    // synchronous startup has finished is routine, not exceptional (that's
-    // the whole reason `setInterval` needs tracking below), so an error from
-    // it must not take down the whole host process — logged instead, the
-    // same as happy-dom's own default handles a caught timer error. Logged
-    // to the vendor's own console, not the process's: the error is the
-    // vendor's (imtlazarus reads a `BLOCK_RULE_ID` its bundle never
-    // declares), so it belongs with the rest of that vendor's output.
-    const vendorConsole = buildFreshConsole();
     const runTimerCallback = (
         fn: (...args: unknown[]) => void,
         args: unknown[],
@@ -750,15 +791,7 @@ export async function buildPlatform(
         }
     };
 
-    const globals: Record<string, unknown> = {
-        ...nodeWebGlobals(),
-        console: vendorConsole,
-        // Real timers, tracked. `chrome.alarms` is virtual (see api/alarms.ts)
-        // but `setInterval` is not, and vendor bundles install polling
-        // intervals at startup as a matter of course. An untracked one keeps
-        // Node's event loop alive for as long as the process runs, which
-        // turns "load every filter and check it starts" into a test run that
-        // never exits. `dispose()` clears whatever is still outstanding.
+    return {
         setTimeout: (fn: () => void, ms?: number, ...args: unknown[]) =>
             track(setTimeout(() => runTimerCallback(fn, args), ms)),
         clearTimeout: (handle: TimerHandle) => {
@@ -771,14 +804,22 @@ export async function buildPlatform(
             timers.delete(handle);
             clearInterval(handle);
         },
-        // Overrides nodeWebGlobals()'s bare queueMicrotask above for the same
+        // Overrides nodeWebGlobals()'s bare queueMicrotask for the same
         // reason as the timers: a microtask callback is exactly as deferred
         // and exactly as uncontained.
         queueMicrotask: (fn: () => void) =>
             queueMicrotask(() => runTimerCallback(fn, [])),
+    };
+}
+
+/** The browser members a background has that Node lacks, contained the same
+ *  way as the rest of this host: offline unless the caller opts in. */
+function browserGlobals(options: PlatformOptions) {
+    const { extensionId, extensionDir } = options;
+    return {
         navigator: buildNavigator(options.target),
-        location: buildLocation(options.extensionId, options.backgroundPath),
-        origin: `chrome-extension://${options.extensionId}`,
+        location: buildLocation(extensionId, options.backgroundPath),
+        origin: `chrome-extension://${extensionId}`,
         isSecureContext: true,
         // Neither Node nor happy-dom implements IndexedDB — Node has no native
         // version at all, unlike Response/Blob/EventTarget in nodeWebGlobals.
@@ -789,11 +830,7 @@ export async function buildPlatform(
         IDBKeyRange,
         fetch: options.allowNetwork
             ? fetch
-            : buildFetch(
-                  options.extensionId,
-                  options.extensionDir,
-                  options.network,
-              ),
+            : buildFetch(extensionId, extensionDir, options.network),
         // Not in Node, and not in happy-dom's Window either, yet a background
         // page really does have them.
         alert: () => {},
@@ -801,50 +838,28 @@ export async function buildPlatform(
         prompt: () => null,
         WebSocket: options.allowNetwork ? WebSocket : buildOfflineWebSocket(),
         WebAssembly: buildWebAssembly(),
-        XMLHttpRequest: buildXMLHttpRequest(
-            options.extensionId,
-            options.extensionDir,
-        ),
+        XMLHttpRequest: buildXMLHttpRequest(extensionId, extensionDir),
     };
+}
 
-    if (!options.dom) {
-        Object.assign(globals, buildServiceWorkerScope());
-        return { globals, addScriptElement: () => {}, dispose: () => {} };
-    }
-
-    // happy-dom is imported here rather than at module scope so a build that
-    // never loads an MV2 extension never pulls a DOM implementation in at
-    // all. It is a devDependency, which is the right classification: this
-    // host is analysis tooling, not shipped product code.
-    const { Window } = await import("happy-dom");
-    const window = new Window({
-        url: `chrome-extension://${options.extensionId}/_generated_background_page.html`,
-        // The host runs the background code itself, in the vm, with the
-        // chrome API in scope. happy-dom must not also try to evaluate or
-        // fetch anything the document references.
-        settings: {
-            disableJavaScriptEvaluation: true,
-            disableJavaScriptFileLoading: true,
-            // errorCapture left at the default ("tryAndCatch"): a background
-            // page's own deferred timer callback (setTimeout/setInterval/…)
-            // throwing is then caught and logged via console.error instead of
-            // crashing this process — "disabled" here is the same trap fixed
-            // in filterProbe/sandbox.ts's matching happy-dom usage.
-        },
-    });
-    const dom = window as unknown as Record<string, unknown>;
-
-    // Every constructor and helper the document brings with it — DOMParser,
-    // Element, MutationObserver, localStorage, alert, ... — copied onto the
-    // sandbox global rather than hand-listed, because the point of using a
-    // DOM implementation is not having to guess which parts a minified
-    // bundle reaches for.
-    //
-    // Walking the prototype chain, not just own properties: happy-dom
-    // defines `alert`, `getComputedStyle`, `matchMedia` and most other
-    // *methods* on Window.prototype, so an own-properties-only copy silently
-    // leaves them out — which is how contentkeeper's background page still
-    // died on `alert is not defined` after being handed a whole DOM.
+/**
+ * Every constructor and helper the document brings with it — DOMParser,
+ * Element, MutationObserver, localStorage, alert, ... — copied onto the
+ * sandbox global rather than hand-listed, because the point of using a DOM
+ * implementation is not having to guess which parts a minified bundle
+ * reaches for.
+ *
+ * Walking the prototype chain, not just own properties: happy-dom defines
+ * `alert`, `getComputedStyle`, `matchMedia` and most other *methods* on
+ * Window.prototype, so an own-properties-only copy silently leaves them out
+ * — which is how contentkeeper's background page still died on `alert is
+ * not defined` after being handed a whole DOM.
+ */
+function copyWindowGlobals(
+    window: object,
+    globals: Record<string, unknown>,
+): void {
+    const dom = window as Record<string, unknown>;
     const skip = new Set(["self", "globalThis", "window", "constructor"]);
     for (
         let level: object | null = window;
@@ -870,6 +885,35 @@ export async function buildPlatform(
             }
         }
     }
+}
+
+/** An MV2 background page: the same globals, plus a real DOM. */
+async function buildBackgroundPage(
+    options: PlatformOptions,
+    globals: Record<string, unknown>,
+): Promise<Platform> {
+    // happy-dom is imported here rather than at module scope so a build that
+    // never loads an MV2 extension never pulls a DOM implementation in at
+    // all. It is a devDependency, which is the right classification: this
+    // host is analysis tooling, not shipped product code.
+    const { Window } = await import("happy-dom");
+    const window = new Window({
+        url: `chrome-extension://${options.extensionId}/_generated_background_page.html`,
+        // The host runs the background code itself, in the vm, with the
+        // chrome API in scope. happy-dom must not also try to evaluate or
+        // fetch anything the document references.
+        settings: {
+            disableJavaScriptEvaluation: true,
+            disableJavaScriptFileLoading: true,
+            // errorCapture left at the default ("tryAndCatch"): a background
+            // page's own deferred timer callback (setTimeout/setInterval/…)
+            // throwing is then caught and logged via console.error instead of
+            // crashing this process — "disabled" here is the same trap fixed
+            // in filterProbe/sandbox.ts's matching happy-dom usage.
+        },
+    });
+
+    copyWindowGlobals(window, globals);
     // `window` is deliberately NOT set here. In a real page `window` *is* the
     // global object, so the caller aliases it to the sandbox itself — which
     // matters concretely: goguardian's background page walks
@@ -889,4 +933,23 @@ export async function buildPlatform(
         // unless the window is closed.
         dispose: () => void window.close(),
     };
+}
+
+export async function buildPlatform(
+    options: PlatformOptions,
+): Promise<Platform> {
+    const vendorConsole = buildFreshConsole();
+    const globals: Record<string, unknown> = {
+        ...nodeWebGlobals(),
+        console: vendorConsole,
+        ...trackedTimers(options.timers, vendorConsole),
+        ...browserGlobals(options),
+    };
+
+    if (!options.dom) {
+        Object.assign(globals, buildServiceWorkerScope());
+        return { globals, addScriptElement: () => {}, dispose: () => {} };
+    }
+
+    return buildBackgroundPage(options, globals);
 }

@@ -81,6 +81,46 @@ function resolveSpecifier(
     return undefined;
 }
 
+function emptyModule(identifier: string, context: vm.Context): vm.Module {
+    return new SourceTextModuleCtor("export default undefined;", {
+        identifier,
+        context,
+    });
+}
+
+/** Reads, links and evaluates one module file; a missing file is empty. */
+async function instantiateModule(
+    filePath: string | undefined,
+    key: string,
+    options: ModuleLoaderOptions,
+    load: (filePath: string | undefined) => Promise<vm.Module>,
+): Promise<vm.Module> {
+    const { context, extensionId, extensionDir } = options;
+    const source = filePath
+        ? await readFile(filePath, "utf8").catch(() => undefined)
+        : undefined;
+    if (source === undefined) return emptyModule(key, context);
+
+    const module: vm.Module = new SourceTextModuleCtor(source, {
+        // Non-null: `source` only resolves past the check above when
+        // `filePath` was truthy (see its own conditional, three lines
+        // up) — the two are never independent.
+        identifier: filePath!,
+        context,
+    });
+    await module.link(async (specifier: string) => {
+        const resolved = resolveSpecifier(
+            specifier,
+            filePath!,
+            extensionId,
+            extensionDir,
+        );
+        return load(resolved);
+    });
+    await module.evaluate();
+    return module;
+}
+
 /** Builds the `importModuleDynamically` callback for one script/context. */
 export function createModuleLoader(
     options: ModuleLoaderOptions,
@@ -88,46 +128,15 @@ export function createModuleLoader(
     specifier: string,
     referencer: vm.Script | vm.Module,
 ) => Promise<vm.Module> {
-    const { context, extensionId, extensionDir, entryPath } = options;
+    const { extensionId, extensionDir, entryPath } = options;
     const cache = new Map<string, Promise<vm.Module>>();
 
-    function emptyModule(identifier: string): vm.Module {
-        return new SourceTextModuleCtor("export default undefined;", {
-            identifier,
-            context,
-        });
-    }
-
-    async function load(filePath: string | undefined): Promise<vm.Module> {
+    function load(filePath: string | undefined): Promise<vm.Module> {
         const key = filePath ?? `unresolved:${cache.size}`;
         const cached = cache.get(key);
         if (cached) return cached;
 
-        const promise = (async () => {
-            const source = filePath
-                ? await readFile(filePath, "utf8").catch(() => undefined)
-                : undefined;
-            if (source === undefined) return emptyModule(key);
-
-            const module: vm.Module = new SourceTextModuleCtor(source, {
-                // Non-null: `source` only resolves past the check above when
-                // `filePath` was truthy (see its own conditional, three lines
-                // up) — the two are never independent.
-                identifier: filePath!,
-                context,
-            });
-            await module.link(async (specifier: string) => {
-                const resolved = resolveSpecifier(
-                    specifier,
-                    filePath!,
-                    extensionId,
-                    extensionDir,
-                );
-                return load(resolved);
-            });
-            await module.evaluate();
-            return module;
-        })();
+        const promise = instantiateModule(filePath, key, options, load);
         cache.set(key, promise);
         return promise;
     }

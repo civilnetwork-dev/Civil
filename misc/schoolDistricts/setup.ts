@@ -41,56 +41,47 @@ function centroidOfGeometry(geom: GeoJSON.Geometry): Coord | null {
     return null;
 }
 
-export async function setupSchoolDistricts(): Promise<void> {
-    const row = districtDb
-        .query<{ n: number }, []>("SELECT COUNT(*) AS n FROM districts")
-        .get();
-    if (row && row.n > 0) return;
-
-    console.log("[school-districts] Downloading NCES shapefile (~210 MB)…");
-
-    const tmpDir = resolve(import.meta.dirname, "data", "tmp");
-    mkdirSync(tmpDir, { recursive: true });
-
-    const zipPath = resolve(tmpDir, "districts.zip");
-    if (!existsSync(zipPath)) {
-        console.log(
-            "[school-districts] Fetching zip (this may take a few minutes)…",
-        );
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 min
-        let res: Response;
-        try {
-            res = await fetch(NCES_ZIP_URL, { signal: controller.signal });
-        } finally {
-            clearTimeout(timeout);
-        }
-        if (!res!.ok)
-            throw new Error(`Failed to download NCES zip: ${res!.status}`);
-        const contentLength = res!.headers.get("content-length");
-        console.log(
-            `[school-districts] Streaming ${contentLength ? `${(+contentLength / 1e6).toFixed(0)} MB` : "unknown size"} to disk…`,
-        );
-        const { createWriteStream } = await import("node:fs");
-        const { pipeline } = await import("node:stream/promises");
-        const { Readable } = await import("node:stream");
-        // Written beside the cache and renamed only once complete: an
-        // interrupted download left a truncated districts.zip behind, and
-        // every later start reused it and failed with "invalid zip data".
-        const partPath = `${zipPath}.part`;
-        const writer = createWriteStream(partPath);
-        await pipeline(
-            Readable.fromWeb(
-                res!.body as unknown as Parameters<typeof Readable.fromWeb>[0],
-            ),
-            writer,
-        );
-        renameSync(partPath, zipPath);
-        console.log("[school-districts] Download complete.");
-    } else {
-        console.log("[school-districts] Using cached zip…");
+async function downloadZip(zipPath: string): Promise<void> {
+    console.log(
+        "[school-districts] Fetching zip (this may take a few minutes)…",
+    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 min
+    let res: Response;
+    try {
+        res = await fetch(NCES_ZIP_URL, { signal: controller.signal });
+    } finally {
+        clearTimeout(timeout);
     }
+    if (!res!.ok)
+        throw new Error(`Failed to download NCES zip: ${res!.status}`);
+    const contentLength = res!.headers.get("content-length");
+    console.log(
+        `[school-districts] Streaming ${contentLength ? `${(+contentLength / 1e6).toFixed(0)} MB` : "unknown size"} to disk…`,
+    );
+    const { createWriteStream } = await import("node:fs");
+    const { pipeline } = await import("node:stream/promises");
+    const { Readable } = await import("node:stream");
+    // Written beside the cache and renamed only once complete: an
+    // interrupted download left a truncated districts.zip behind, and
+    // every later start reused it and failed with "invalid zip data".
+    const partPath = `${zipPath}.part`;
+    const writer = createWriteStream(partPath);
+    await pipeline(
+        Readable.fromWeb(
+            res!.body as unknown as Parameters<typeof Readable.fromWeb>[0],
+        ),
+        writer,
+    );
+    renameSync(partPath, zipPath);
+    console.log("[school-districts] Download complete.");
+}
 
+/** Unpacks the shapefile beside the zip and returns its path and entry name. */
+async function extractShapefile(
+    zipPath: string,
+    tmpDir: string,
+): Promise<{ shpPath: string; shpName: string }> {
     console.log("[school-districts] Extracting…");
     const zipBytes = new Uint8Array(await Bun.file(zipPath).arrayBuffer());
     let extracted: ReturnType<typeof unzipSync>;
@@ -115,39 +106,49 @@ export async function setupSchoolDistricts(): Promise<void> {
     const dbfPath = resolve(tmpDir, "districts.dbf");
     writeFileSync(shpPath, extracted[shpName]!);
     if (extracted[dbfName]) writeFileSync(dbfPath, extracted[dbfName]!);
-    console.log(`[school-districts] Parsing ${shpName}…`);
+    return { shpPath, shpName };
+}
 
+type DistrictRow = [string, string, number, number];
+
+function toDistrictRow(feature: GeoJSON.Feature): DistrictRow | null {
+    const props = feature.properties as Record<string, unknown>;
+    const leaId = String(props["GEOID"] ?? props["GEOID10"] ?? "");
+    const name = String(props["NAME"] ?? props["NAMELSAD"] ?? "Unknown");
+    const geom = feature.geometry;
+
+    if (!leaId || !geom) return null;
+
+    const centroid = centroidOfGeometry(geom);
+    if (!centroid) return null;
+
+    return [leaId, name, centroid[0], centroid[1]];
+}
+
+/** Streams every district into the table in batches; returns the count. */
+async function loadDistricts(shpPath: string): Promise<number> {
     const insert = districtDb.prepare(
         "INSERT OR IGNORE INTO districts (lea_id, name, lat, lon) VALUES (?, ?, ?, ?)",
     );
 
-    const insertBatch = districtDb.transaction(
-        (rows: [string, string, number, number][]) => {
-            for (const [leaId, name, lat, lon] of rows) {
-                insert.run(leaId, name, lat, lon);
-            }
-        },
-    );
+    const insertBatch = districtDb.transaction((rows: DistrictRow[]) => {
+        for (const [leaId, name, lat, lon] of rows) {
+            insert.run(leaId, name, lat, lon);
+        }
+    });
 
     const source = await openShapefile(shpPath);
-    const batch: [string, string, number, number][] = [];
+    const batch: DistrictRow[] = [];
     let count = 0;
 
     while (true) {
         const { done, value } = await source.read();
         if (done) break;
 
-        const props = value.properties as Record<string, unknown>;
-        const leaId = String(props["GEOID"] ?? props["GEOID10"] ?? "");
-        const name = String(props["NAME"] ?? props["NAMELSAD"] ?? "Unknown");
-        const geom = value.geometry;
+        const row = toDistrictRow(value);
+        if (!row) continue;
 
-        if (!leaId || !geom) continue;
-
-        const centroid = centroidOfGeometry(geom);
-        if (!centroid) continue;
-
-        batch.push([leaId, name, centroid[0], centroid[1]]);
+        batch.push(row);
 
         if (batch.length >= 500) {
             insertBatch(batch.splice(0));
@@ -156,6 +157,30 @@ export async function setupSchoolDistricts(): Promise<void> {
     }
 
     if (batch.length) insertBatch(batch);
+    return count;
+}
 
+export async function setupSchoolDistricts(): Promise<void> {
+    const row = districtDb
+        .query<{ n: number }, []>("SELECT COUNT(*) AS n FROM districts")
+        .get();
+    if (row && row.n > 0) return;
+
+    console.log("[school-districts] Downloading NCES shapefile (~210 MB)…");
+
+    const tmpDir = resolve(import.meta.dirname, "data", "tmp");
+    mkdirSync(tmpDir, { recursive: true });
+
+    const zipPath = resolve(tmpDir, "districts.zip");
+    if (!existsSync(zipPath)) {
+        await downloadZip(zipPath);
+    } else {
+        console.log("[school-districts] Using cached zip…");
+    }
+
+    const { shpPath, shpName } = await extractShapefile(zipPath, tmpDir);
+    console.log(`[school-districts] Parsing ${shpName}…`);
+
+    const count = await loadDistricts(shpPath);
     console.log(`[school-districts] Loaded ${count} districts.`);
 }

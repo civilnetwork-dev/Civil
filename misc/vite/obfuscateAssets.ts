@@ -121,6 +121,79 @@ async function walkJs(dir: string): Promise<string[]> {
     return results;
 }
 
+type Outcome = "passed" | "failed" | "skipped";
+
+async function obfuscateFile(
+    file: string,
+    engine: ObfuscateEngine,
+    maxFileBytes: number,
+    minify: ObfuscateAssetsOptions["minify"],
+): Promise<Outcome> {
+    try {
+        const { size } = await stat(file);
+
+        if (size > maxFileBytes) return "skipped";
+
+        const source = await readFile(file, "utf-8");
+        const obfuscated = await obfuscateCode(source, engine, minify);
+
+        await writeFile(file, obfuscated, "utf-8");
+        return "passed";
+    } catch (error) {
+        console.warn("[obfuscate-assets] failed:", file, error);
+        return "failed";
+    }
+}
+
+async function obfuscateAll(options: ObfuscateAssetsOptions): Promise<void> {
+    const maxFileBytes = options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
+    const engine: ObfuscateEngine =
+        options.engine ??
+        (process.env.OBFUSCATE_ENGINE as ObfuscateEngine | undefined) ??
+        "obscura";
+
+    // Resolved once, outside the per-file try/catch below: a missing
+    // binding means every file would fail identically, and an
+    // explicitly-requested engine silently skipping obfuscation
+    // (shipping code the caller believes was obfuscated) is worse
+    // than failing the build loudly.
+    if (engine === "obfuscatti") {
+        loadObfuscatti();
+    }
+
+    const assetsDir =
+        options.assetsDir ??
+        join(process.cwd(), "dist", "client", "_build", "assets");
+
+    const files = await walkJs(assetsDir);
+
+    if (files.length === 0) {
+        console.log("[obfuscate-assets] no JS assets found");
+        return;
+    }
+
+    const counts = { passed: 0, failed: 0, skipped: 0 };
+
+    for (const file of files) {
+        const outcome = await obfuscateFile(
+            file,
+            engine,
+            maxFileBytes,
+            options.minify,
+        );
+        counts[outcome]++;
+    }
+
+    const { passed, failed, skipped } = counts;
+    console.log(
+        `[obfuscate-assets] obfuscated ${passed}/${files.length} JS asset files (engine: ${engine})` +
+            (skipped
+                ? ` (${skipped} skipped: >${Math.round(maxFileBytes / 1024)} kB)`
+                : "") +
+            (failed ? ` (${failed} errors)` : ""),
+    );
+}
+
 export function obfuscateAssets(options: ObfuscateAssetsOptions = {}): Plugin {
     let didRun = false;
 
@@ -132,68 +205,7 @@ export function obfuscateAssets(options: ObfuscateAssetsOptions = {}): Plugin {
         async closeBundle() {
             if (didRun) return;
             didRun = true;
-
-            const maxFileBytes = options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
-            const engine: ObfuscateEngine =
-                options.engine ??
-                (process.env.OBFUSCATE_ENGINE as ObfuscateEngine | undefined) ??
-                "obscura";
-
-            // Resolved once, outside the per-file try/catch below: a missing
-            // binding means every file would fail identically, and an
-            // explicitly-requested engine silently skipping obfuscation
-            // (shipping code the caller believes was obfuscated) is worse
-            // than failing the build loudly.
-            if (engine === "obfuscatti") {
-                loadObfuscatti();
-            }
-
-            const assetsDir =
-                options.assetsDir ??
-                join(process.cwd(), "dist", "client", "_build", "assets");
-
-            const files = await walkJs(assetsDir);
-
-            if (files.length === 0) {
-                console.log("[obfuscate-assets] no JS assets found");
-                return;
-            }
-
-            let passed = 0;
-            let failed = 0;
-            let skipped = 0;
-
-            for (const file of files) {
-                try {
-                    const { size } = await stat(file);
-
-                    if (size > maxFileBytes) {
-                        skipped++;
-                        continue;
-                    }
-
-                    const source = await readFile(file, "utf-8");
-                    const obfuscated = await obfuscateCode(
-                        source,
-                        engine,
-                        options.minify,
-                    );
-
-                    await writeFile(file, obfuscated, "utf-8");
-                    passed++;
-                } catch (error) {
-                    failed++;
-                    console.warn("[obfuscate-assets] failed:", file, error);
-                }
-            }
-
-            console.log(
-                `[obfuscate-assets] obfuscated ${passed}/${files.length} JS asset files (engine: ${engine})` +
-                    (skipped
-                        ? ` (${skipped} skipped: >${Math.round(maxFileBytes / 1024)} kB)`
-                        : "") +
-                    (failed ? ` (${failed} errors)` : ""),
-            );
+            await obfuscateAll(options);
         },
     };
 }

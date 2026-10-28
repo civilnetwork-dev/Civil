@@ -221,30 +221,29 @@ async function readBackgroundSources(
     return sources;
 }
 
-export async function loadExtension(
-    options: LoadOptions,
-): Promise<ExtensionHandle> {
-    const manifest = await loadManifest(options.dir);
-    const background = resolveBackground(manifest);
-    const target = options.target ?? "chrome";
-    const extensionId = options.extensionId ?? randomExtensionId();
+type Manifest = Awaited<ReturnType<typeof loadManifest>>;
 
+function createState(options: LoadOptions): ExtensionState {
     const state = new ExtensionState();
     if (options.initialStorage)
         state.seedStorage("local", options.initialStorage);
     if (options.managedStorage)
         state.seedStorage("managed", options.managedStorage);
+    return state;
+}
 
-    // The extension's own translations, when it ships them — see buildI18n.
-    // Absent `_locales` is normal and not an error.
-    const messages = await readFile(
-        join(options.dir, "_locales", "en", "messages.json"),
-        "utf-8",
-    )
-        .then(raw => JSON.parse(raw.replace(/^﻿/, "")))
+/** The extension's own translations, when it ships them — see buildI18n.
+ *  Absent `_locales` is normal and not an error. */
+type Messages = Parameters<typeof buildI18n>[0];
+
+function readMessages(dir: string): Promise<Messages> {
+    return readFile(join(dir, "_locales", "en", "messages.json"), "utf-8")
+        .then(raw => JSON.parse(raw.replace(/^\uFEFF/, "")))
         .catch(() => ({}));
+}
 
-    const tab: SyntheticTab = {
+function createSyntheticTab(): SyntheticTab {
+    return {
         id: 1,
         index: 0,
         windowId: 1,
@@ -257,100 +256,99 @@ export async function loadExtension(
         incognito: false,
         groupId: -1,
     };
+}
 
-    // Wrapped in withFallback: real vendor extensions reach for dozens of
-    // chrome.* namespaces this host doesn't implement (chrome.windows,
-    // chrome.webRequest, chrome.identity, ...). Without the fallback, the
-    // first access to one of them throws and kills the whole background
-    // script before it reaches the declarativeNetRequest calls this host
-    // exists to observe — see api/stub.ts.
-    // Each namespace is wrapped individually, not just the top-level object:
-    // real bundles have crashed on missing *members* of a namespace this
-    // host does implement (chrome.tabs.onCreated, chrome.runtime.onInstalled
-    // before it was added above) just as often as on a whole missing
-    // namespace (chrome.windows). Both need the same fallback.
-    // withCallbacks wraps each implemented namespace before withFallback so
-    // both calling conventions work: promise style (MV3) and trailing
-    // callback (MV2's only style, and still widely used in MV3 bundles) —
-    // see api/callbacks.ts for how much of this corpus depends on the
-    // latter. Order matters: the fallback proxy has to be outermost so it
-    // still sees, and can stub, whatever withCallbacks didn't produce.
-    const api = withFallback({
-        runtime: withFallback(
-            withCallbacks(buildRuntime({ extensionId, manifest, state })),
-        ),
-        storage: withFallback(withCallbacks(buildStorage(state))),
-        alarms: withFallback(withCallbacks(buildAlarms(state))),
-        action: withFallback(withCallbacks(buildAction(state.actionCalls))),
-        browserAction: withFallback(
-            withCallbacks(buildAction(state.actionCalls)),
-        ),
-        tabs: withFallback(withCallbacks(buildTabs(() => tab))),
-        bookmarks: withFallback(
-            withCallbacks(buildBookmarks(options.initialBookmarks)),
-        ),
-        scripting: withFallback(
-            withCallbacks(buildScripting(options.runScript)),
-        ),
-        // Not stubbed, because bundles read these results rather than only
-        // calling them — see api/deviceApis.ts.
-        windows: withFallback(withCallbacks(buildWindows(() => tab))),
-        identity: withFallback(withCallbacks(buildIdentity())),
-        management: withFallback(
-            withCallbacks(buildManagement(extensionId, manifest)),
-        ),
-        i18n: withFallback(withCallbacks(buildI18n(messages))),
-        system: withFallback(withCallbacks(buildSystem())),
-        sockets: withFallback(withCallbacks(buildSockets())),
+/** Both calling conventions, then the fallback outermost — see buildChromeApi. */
+function namespace<T extends object>(api: T) {
+    return withFallback(withCallbacks(api));
+}
+
+type ApiContext = {
+    extensionId: string;
+    manifest: Manifest;
+    state: ExtensionState;
+    tab: SyntheticTab;
+    options: LoadOptions;
+    messages: Messages;
+};
+
+/** Namespaces whose results bundles read rather than only calling them —
+ *  so they are emulated, not stubbed. See api/deviceApis.ts. */
+function readableNamespaces({
+    extensionId,
+    manifest,
+    tab,
+    messages,
+}: ApiContext) {
+    return {
+        windows: namespace(buildWindows(() => tab)),
+        identity: namespace(buildIdentity()),
+        management: namespace(buildManagement(extensionId, manifest)),
+        i18n: namespace(buildI18n(messages)),
+        system: namespace(buildSystem()),
+        sockets: namespace(buildSockets()),
         enterprise: withFallback({
-            deviceAttributes: withFallback(
-                withCallbacks(buildDeviceAttributes()),
-            ),
-            networkingAttributes: withFallback(
-                withCallbacks(buildNetworkingAttributes()),
-            ),
+            deviceAttributes: namespace(buildDeviceAttributes()),
+            networkingAttributes: namespace(buildNetworkingAttributes()),
         }),
-        extension: withFallback(
-            withCallbacks(
-                buildExtensionAlias(path => extensionUrl(extensionId, path)),
-            ),
+        extension: namespace(
+            buildExtensionAlias(path => extensionUrl(extensionId, path)),
         ),
         ...Object.fromEntries(
             Object.entries(buildEmptyCollections()).map(([name, empty]) => [
                 name,
-                withFallback(withCallbacks(empty)),
+                namespace(empty),
             ]),
         ),
-        declarativeNetRequest: withFallback(
-            withCallbacks(buildDeclarativeNetRequest(state)),
-        ),
+    };
+}
+
+/**
+ * Wrapped in withFallback: real vendor extensions reach for dozens of
+ * chrome.* namespaces this host doesn't implement (chrome.windows,
+ * chrome.webRequest, chrome.identity, ...). Without the fallback, the first
+ * access to one of them throws and kills the whole background script before
+ * it reaches the declarativeNetRequest calls this host exists to observe —
+ * see api/stub.ts.
+ *
+ * Each namespace is wrapped individually, not just the top-level object:
+ * real bundles have crashed on missing *members* of a namespace this host
+ * does implement (chrome.tabs.onCreated, chrome.runtime.onInstalled before it
+ * was added above) just as often as on a whole missing namespace
+ * (chrome.windows). Both need the same fallback.
+ *
+ * withCallbacks wraps each implemented namespace before withFallback so both
+ * calling conventions work: promise style (MV3) and trailing callback (MV2's
+ * only style, and still widely used in MV3 bundles) — see api/callbacks.ts
+ * for how much of this corpus depends on the latter. Order matters: the
+ * fallback proxy has to be outermost so it still sees, and can stub,
+ * whatever withCallbacks didn't produce.
+ */
+function buildChromeApi(ctx: ApiContext) {
+    const { extensionId, manifest, state, tab, options } = ctx;
+    return withFallback({
+        runtime: namespace(buildRuntime({ extensionId, manifest, state })),
+        storage: namespace(buildStorage(state)),
+        alarms: namespace(buildAlarms(state)),
+        action: namespace(buildAction(state.actionCalls)),
+        browserAction: namespace(buildAction(state.actionCalls)),
+        tabs: namespace(buildTabs(() => tab)),
+        bookmarks: namespace(buildBookmarks(options.initialBookmarks)),
+        scripting: namespace(buildScripting(options.runScript)),
+        ...readableNamespaces(ctx),
+        declarativeNetRequest: namespace(buildDeclarativeNetRequest(state)),
     });
+}
 
-    const timers = new Set<TimerHandle>();
-    const sources = await readBackgroundSources(options.dir, background);
-    // `importScripts` and `self.location` both resolve against the background
-    // entry's own directory, not the extension root — a worker at
-    // `js/worker.js` calling `importScripts("base64.js")` means
-    // `js/base64.js`. Resolving from the root instead is what made
-    // lanschoolWebHelper fail on a file that is right there next to its
-    // worker.
-    const entryPath = background.files[0] ?? "background.js";
-    const entryDir = dirname(entryPath);
+type ChromeApi = ReturnType<typeof buildChromeApi>;
 
-    const platform = await buildPlatform({
-        manifestVersion: manifest.manifest_version as 2 | 3,
-        extensionId,
-        extensionDir: options.dir,
-        dom: background.type === "scripts" || background.type === "page",
-        allowNetwork: options.allowNetwork ?? false,
-        network: options.network,
-        target,
-        backgroundPath: entryPath,
-        timers,
-    });
-
+function createSandbox(
+    globals: Record<string, unknown>,
+    api: ChromeApi,
+    background: ResolvedBackground,
+): Record<string, unknown> {
     const sandbox: Record<string, unknown> = {
-        ...platform.globals,
+        ...globals,
         chrome: api,
         // Safari Web Extensions (and Firefox) expose the identical
         // WebExtensions surface as `browser`, promise-only. Every method
@@ -370,33 +368,58 @@ export async function loadExtension(
     // setting a bare `foo` depends on that identity.
     if (background.type === "scripts" || background.type === "page")
         sandbox.window = sandbox;
-    const context = vm.createContext(sandbox);
+    return sandbox;
+}
 
-    // A service worker global: a bundle that splits its worker across files
-    // pulls the rest in with `importScripts`, synchronously, into the same
-    // global. Assigned after `createContext` because it needs the context it
-    // runs code in. A path may be written relative to the worker, absolute
-    // from the extension root, or as a full chrome-extension:// URL.
+/**
+ * A service worker global: a bundle that splits its worker across files
+ * pulls the rest in with `importScripts`, synchronously, into the same
+ * global. Assigned after `createContext` because it needs the context it
+ * runs code in. A path may be written relative to the worker, absolute from
+ * the extension root, or as a full chrome-extension:// URL.
+ */
+function installImportScripts(
+    sandbox: Record<string, unknown>,
+    context: vm.Context,
+    extensionDir: string,
+    entryDir: string,
+): void {
     sandbox.importScripts = (...paths: string[]): void => {
         for (const path of paths) {
             const stripped = path.replace(/^chrome-extension:\/\/[^/]+\//, "/");
             const file = stripped.startsWith("/")
                 ? stripped.slice(1)
                 : join(entryDir, stripped);
-            const code = readFileSync(join(options.dir, file), "utf-8");
+            const code = readFileSync(join(extensionDir, file), "utf-8");
             new vm.Script(code, { filename: file }).runInContext(context);
         }
     };
+}
 
+async function runBackground({
+    sources,
+    platform,
+    context,
+    state,
+    extensionId,
+    extensionDir,
+}: {
+    sources: [string, string][];
+    platform: Awaited<ReturnType<typeof buildPlatform>>;
+    context: vm.Context;
+    state: ExtensionState;
+    extensionId: string;
+    extensionDir: string;
+}): Promise<void> {
     // Populate the generated background page with the script tags Chrome
     // would have put there, before any of them runs.
     for (const [filename] of sources) platform.addScriptElement(filename);
 
     for (const [filename, code] of sources) {
-        const script = await compileScript(code, join(options.dir, filename), {
+        const script = await compileScript(code, join(extensionDir, filename), {
             context,
             extensionId,
-            extensionDir: options.dir,
+            extensionDir,
         });
         script.runInContext(context);
     }
@@ -407,22 +430,32 @@ export async function loadExtension(
     // install, which loading it into this host is the closest equivalent of.
     for (const listener of state.installedListeners)
         listener({ reason: "install" });
+}
 
+type HandleParts = {
+    extensionId: string;
+    manifest: Manifest;
+    target: ExtensionHandle["target"];
+    state: ExtensionState;
+    api: ChromeApi;
+    tab: SyntheticTab;
+    timers: Set<TimerHandle>;
+    platform: Awaited<ReturnType<typeof buildPlatform>>;
+};
+
+function createHandle(parts: HandleParts): ExtensionHandle {
+    const { state, tab, timers, platform } = parts;
     return {
-        id: extensionId,
-        manifest,
-        target,
-
+        id: parts.extensionId,
+        manifest: parts.manifest,
+        target: parts.target,
         advanceTime(ms) {
             state.advanceTo(state.now + ms);
         },
-
         getStorage(area = "local") {
             return state.snapshotStorage(area);
         },
-
-        storage: api.storage,
-
+        storage: parts.api.storage,
         async sendMessage(message) {
             const result = await dispatchMessage(state, message);
             const captured = {
@@ -433,23 +466,18 @@ export async function loadExtension(
             state.capturedMessages.push(captured);
             return captured;
         },
-
         matchRequest(url, opts) {
             return matchUrl(state, url, opts);
         },
-
         get tabUrl() {
             return tab.url;
         },
-
         get actionCalls() {
             return state.actionCalls;
         },
-
         get sentMessages() {
             return state.sentMessages;
         },
-
         dispose() {
             // The virtual clock owns no real timers, but the sandbox's
             // `setTimeout`/`setInterval` do, and a vendor bundle's startup
@@ -461,4 +489,63 @@ export async function loadExtension(
             platform.dispose();
         },
     };
+}
+
+export async function loadExtension(
+    options: LoadOptions,
+): Promise<ExtensionHandle> {
+    const manifest = await loadManifest(options.dir);
+    const background = resolveBackground(manifest);
+    const target = options.target ?? "chrome";
+    const extensionId = options.extensionId ?? randomExtensionId();
+
+    const state = createState(options);
+    const tab = createSyntheticTab();
+    const messages = await readMessages(options.dir);
+    const ctx = { extensionId, manifest, state, tab, options, messages };
+    const api = buildChromeApi(ctx);
+
+    const timers = new Set<TimerHandle>();
+    const sources = await readBackgroundSources(options.dir, background);
+    const entryPath = background.files[0] ?? "background.js";
+    const platform = await buildPlatform({
+        manifestVersion: manifest.manifest_version as 2 | 3,
+        extensionId,
+        extensionDir: options.dir,
+        dom: background.type === "scripts" || background.type === "page",
+        allowNetwork: options.allowNetwork ?? false,
+        network: options.network,
+        target,
+        backgroundPath: entryPath,
+        timers,
+    });
+
+    const sandbox = createSandbox(platform.globals, api, background);
+    const context = vm.createContext(sandbox);
+    // `importScripts` and `self.location` both resolve against the background
+    // entry's own directory, not the extension root — a worker at
+    // `js/worker.js` calling `importScripts("base64.js")` means
+    // `js/base64.js`. Resolving from the root instead is what made
+    // lanschoolWebHelper fail on a file that is right there next to its
+    // worker.
+    installImportScripts(sandbox, context, options.dir, dirname(entryPath));
+    await runBackground({
+        sources,
+        platform,
+        context,
+        state,
+        extensionId,
+        extensionDir: options.dir,
+    });
+
+    return createHandle({
+        extensionId,
+        manifest,
+        target,
+        state,
+        api,
+        tab,
+        timers,
+        platform,
+    });
 }

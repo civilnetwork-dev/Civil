@@ -243,104 +243,7 @@ export class FreeDnsClient {
         const response = await this.get(
             `/domain/registry/?page=${page}&sort=${sort}${q}`,
         );
-        const doc = parseDocument(response.data);
-
-        const summary = textContent(
-            findOne(
-                el =>
-                    isTag(el) && el.name === "font" && attr(el, "size") === "2",
-                doc.children,
-                true,
-            ) ?? doc,
-        );
-        const counts = /Showing (\S+)-(\S+) of (\S+) total/.exec(summary) ?? [];
-        const num = (value: string | undefined) =>
-            Number((value ?? "0").replace(/,/g, ""));
-
-        const pager = findOne(
-            el =>
-                isTag(el) &&
-                el.name === "td" &&
-                attr(el, "width") === "33%" &&
-                attr(el, "align") === "center",
-            doc.children,
-            true,
-        );
-        const currentPage = pager
-            ? Number(
-                  attr(
-                      findOne(
-                          el => isTag(el) && el.name === "input",
-                          [pager],
-                          true,
-                      ),
-                      "value",
-                  ) ?? "1",
-              )
-            : 1;
-        const totalPages = pager
-            ? Number(textContent(pager).trim().split(/\s+/).pop() ?? "1")
-            : 1;
-
-        const rows = findAll(
-            el =>
-                isTag(el) &&
-                el.name === "tr" &&
-                (attr(el, "class") === "trl" || attr(el, "class") === "trd"),
-            doc.children,
-        );
-
-        const domains: RegistryDomain[] = [];
-        for (const row of rows) {
-            const cells = childElements(row);
-            if (cells.length < 4) continue;
-
-            const domainLink = childElements(cells[0]!)[0];
-            const domain = domainLink ? textContent(domainLink).trim() : "";
-            const domainId = Number(
-                (attr(domainLink, "href") ?? "").split("=").pop(),
-            );
-
-            // Comma-tolerant: FreeDNS writes large host counts as "1,000
-            // hosts", and a bare `\d+` would stop at the comma and read 1.
-            const hostsText = textContent(
-                childElements(cells[0]!).at(-1) ?? cells[0]!,
-            );
-            const hosts = num(/([\d,]+)/.exec(hostsText)?.[1]);
-
-            const ownerLink = childElements(cells[2]!)[0];
-            const ownerName = ownerLink ? textContent(ownerLink).trim() : "";
-            const ownerId = Number(
-                /user_id=(\d+)&subject/.exec(
-                    attr(ownerLink, "href") ?? "",
-                )?.[1] ?? "0",
-            );
-
-            const ageMatch = /(\d+) days? ago \((\S+)\)/.exec(
-                textContent(cells[3]!),
-            );
-
-            domains.push({
-                domain,
-                id: domainId,
-                hosts,
-                status: textContent(cells[1]!).trim(),
-                ownerName,
-                ownerId,
-                age: Number(ageMatch?.[1] ?? "0"),
-                created: ageMatch?.[2] ?? "",
-            });
-        }
-
-        return {
-            domainsInfo: {
-                pageStart: num(counts[1]),
-                pageEnd: num(counts[2]),
-                total: num(counts[3]),
-            },
-            pagesInfo: { currentPage, totalPages },
-            domains,
-        };
+        return parseRegistry(parseDocument(response.data));
     }
 
     /** The subdomains on the logged-in account. Needed to find a subdomain's
@@ -503,6 +406,96 @@ export class FreeDnsClient {
             );
         }
     }
+}
+
+/** FreeDNS writes counts with thousands separators. */
+function num(value: string | undefined): number {
+    return Number((value ?? "0").replace(/,/g, ""));
+}
+
+function parseRegistry(doc: ReturnType<typeof parseDocument>): Registry {
+    const summary = textContent(
+        findOne(
+            el => isTag(el) && el.name === "font" && attr(el, "size") === "2",
+            doc.children,
+            true,
+        ) ?? doc,
+    );
+    const counts = /Showing (\S+)-(\S+) of (\S+) total/.exec(summary) ?? [];
+
+    const rows = findAll(
+        el =>
+            isTag(el) &&
+            el.name === "tr" &&
+            (attr(el, "class") === "trl" || attr(el, "class") === "trd"),
+        doc.children,
+    );
+
+    return {
+        domainsInfo: {
+            pageStart: num(counts[1]),
+            pageEnd: num(counts[2]),
+            total: num(counts[3]),
+        },
+        pagesInfo: parseRegistryPager(doc),
+        domains: rows.flatMap(row => parseRegistryRow(row) ?? []),
+    };
+}
+
+function parseRegistryPager(doc: ReturnType<typeof parseDocument>) {
+    const pager = findOne(
+        el =>
+            isTag(el) &&
+            el.name === "td" &&
+            attr(el, "width") === "33%" &&
+            attr(el, "align") === "center",
+        doc.children,
+        true,
+    );
+    if (!pager) return { currentPage: 1, totalPages: 1 };
+
+    const input = findOne(
+        el => isTag(el) && el.name === "input",
+        [pager],
+        true,
+    );
+    return {
+        currentPage: Number(attr(input, "value") ?? "1"),
+        totalPages: Number(textContent(pager).trim().split(/\s+/).pop() ?? "1"),
+    };
+}
+
+function parseRegistryRow(row: Element): RegistryDomain | null {
+    const cells = childElements(row);
+    if (cells.length < 4) return null;
+
+    const domainLink = childElements(cells[0]!)[0];
+    const domain = domainLink ? textContent(domainLink).trim() : "";
+    const domainId = Number((attr(domainLink, "href") ?? "").split("=").pop());
+
+    // Comma-tolerant: FreeDNS writes large host counts as "1,000
+    // hosts", and a bare `\d+` would stop at the comma and read 1.
+    const hostsText = textContent(childElements(cells[0]!).at(-1) ?? cells[0]!);
+    const hosts = num(/([\d,]+)/.exec(hostsText)?.[1]);
+
+    const ownerLink = childElements(cells[2]!)[0];
+    const ownerName = ownerLink ? textContent(ownerLink).trim() : "";
+    const ownerId = Number(
+        /user_id=(\d+)&subject/.exec(attr(ownerLink, "href") ?? "")?.[1] ?? "0",
+    );
+
+    const ageMatch = /(\d+) days? ago \((\S+)\)/.exec(textContent(cells[3]!));
+
+    return {
+        domain,
+        id: domainId,
+        hosts,
+        status: textContent(cells[1]!).trim(),
+        ownerName,
+        ownerId,
+        age: Number(ageMatch?.[1] ?? "0"),
+        created: ageMatch?.[2] ?? "",
+    };
 }
 
 /** `getAttributeValue` typed for the predicate callsites, which hand it
