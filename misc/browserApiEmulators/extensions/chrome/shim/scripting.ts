@@ -94,139 +94,195 @@ function runInjection(
     return results;
 }
 
-export function buildScriptingAPI(contextType = "content", extId = "unknown") {
-    const _registeredScripts = new Map<
-        string,
-        chrome.scripting.RegisteredContentScript
-    >();
-    const bus = getCivilBus(extId);
+type RegisteredScript = chrome.scripting.RegisteredContentScript;
+type InjectionResult = chrome.scripting.InjectionResult<unknown>;
 
-    // Background: store registered content scripts and replay to new content
-    // pages that send "contentReady". Also broadcast immediately for pages
-    // already active.
-    if (contextType === "background") {
-        bus.addEventListener("message", (e: MessageEvent) => {
-            const d = e.data as { kind?: string };
-            if (d?.kind !== "contentReady") return;
-            const scripts = [..._registeredScripts.values()];
-            if (scripts.length) {
-                bus.postMessage({
-                    kind: "contentScriptRegister",
-                    scripts,
-                } satisfies ExecBusMsg);
-            }
-        });
-    }
+function toInjectionResult(result: unknown): InjectionResult {
+    return { frameId: 0, result, documentId: "" } as InjectionResult;
+}
 
-    // Content page: receive contentScriptRegister and inject matching scripts.
-    if (contextType !== "background") {
-        bus.addEventListener("message", (e: MessageEvent) => {
-            const data = e.data as ExecBusMsg;
-
-            if (data?.kind === "contentScriptRegister") {
-                injectRegisteredScripts(extId, data.scripts);
-                return;
-            }
-
-            if (data?.kind !== "executeScript") return;
+/** Background: store registered content scripts and replay them to new
+ *  content pages that send "contentReady". */
+function replayToNewPages(
+    bus: BroadcastChannel,
+    registered: Map<string, RegisteredScript>,
+): void {
+    bus.addEventListener("message", (e: MessageEvent) => {
+        const d = e.data as { kind?: string };
+        if (d?.kind !== "contentReady") return;
+        const scripts = [...registered.values()];
+        if (scripts.length) {
             bus.postMessage({
-                kind: "executeScriptResult",
-                reqId: data.reqId,
-                results: runInjection(extId, data),
+                kind: "contentScriptRegister",
+                scripts,
             } satisfies ExecBusMsg);
-        });
+        }
+    });
+}
+
+/** Content page: inject registered scripts and run the background's
+ *  executeScript requests, answering each with its results. */
+function serveBackgroundRequests(bus: BroadcastChannel, extId: string): void {
+    bus.addEventListener("message", (e: MessageEvent) => {
+        const data = e.data as ExecBusMsg;
+
+        if (data?.kind === "contentScriptRegister") {
+            injectRegisteredScripts(extId, data.scripts);
+            return;
+        }
+
+        if (data?.kind !== "executeScript") return;
+        bus.postMessage({
+            kind: "executeScriptResult",
+            reqId: data.reqId,
+            results: runInjection(extId, data),
+        } satisfies ExecBusMsg);
+    });
+}
+
+/** Background: asks the pages over the bus and waits up to 3 s for one to answer. */
+function executeViaBus(
+    bus: BroadcastChannel,
+    inj: Record<string, unknown>,
+    tabId: number | null,
+): Promise<InjectionResult[]> {
+    const reqId = Math.random().toString(36).slice(2);
+    const funcStr =
+        typeof inj.func === "function"
+            ? (inj.func as () => unknown).toString()
+            : undefined;
+    return new Promise<InjectionResult[]>(resolve => {
+        const onResult = (e: MessageEvent) => {
+            const d = e.data as ExecBusMsg;
+            if (d?.kind === "executeScriptResult" && d.reqId === reqId) {
+                bus.removeEventListener("message", onResult);
+                resolve(d.results.map(toInjectionResult));
+            }
+        };
+        bus.addEventListener("message", onResult);
+        bus.postMessage({
+            kind: "executeScript",
+            reqId,
+            tabId,
+            code: inj.code as string | undefined,
+            files: inj.files as string[] | undefined,
+            funcStr,
+            args: inj.args as unknown[] | undefined,
+        } satisfies ExecBusMsg);
+        setTimeout(() => {
+            bus.removeEventListener("message", onResult);
+            resolve([]);
+        }, 3000);
+    });
+}
+
+/** Content/popup context: execute locally. */
+async function executeLocally(
+    inj: Record<string, unknown>,
+    extId: string,
+): Promise<InjectionResult[]> {
+    if (typeof inj.func === "function") {
+        try {
+            const args = (inj.args ?? []) as unknown[];
+            const result = await (inj.func as (...a: unknown[]) => unknown)(
+                ...args,
+            );
+            return [toInjectionResult(result)];
+        } catch (e) {
+            console.warn(
+                "[civil-ext-shim] scripting.executeScript func threw:",
+                e,
+            );
+            return [];
+        }
     }
+    for (const file of (inj.files as string[] | undefined) ?? []) {
+        try {
+            const script = document.createElement("script");
+            // Resolve relative paths to extension URL
+            script.src = extensionAssetUrl(extId, file);
+            document.head?.appendChild(script);
+        } catch {}
+    }
+    return [];
+}
+
+/** chrome.scripting's dynamic content script registrations. */
+class ContentScriptRegistry {
+    readonly scripts = new Map<string, RegisteredScript>();
+
+    constructor(
+        private readonly bus: BroadcastChannel,
+        private readonly isBackground: boolean,
+    ) {}
+
+    register(scripts: RegisteredScript[], cb?: () => void) {
+        for (const s of scripts) {
+            if (s.id) this.scripts.set(s.id, s);
+        }
+        // Background: broadcast so active content pages inject immediately;
+        // new content pages will get them via the contentReady handshake.
+        if (this.isBackground) {
+            this.bus.postMessage({
+                kind: "contentScriptRegister",
+                scripts,
+            } satisfies ExecBusMsg);
+        }
+        return resolved(undefined, cb);
+    }
+
+    unregister(filter?: { ids?: string[] }, cb?: () => void) {
+        if (!filter?.ids) {
+            this.scripts.clear();
+        } else {
+            for (const id of filter.ids) this.scripts.delete(id);
+        }
+        return resolved(undefined, cb);
+    }
+
+    get(
+        filter?: { ids?: string[] } | ((s: RegisteredScript[]) => void),
+        cb?: (scripts: RegisteredScript[]) => void,
+    ) {
+        if (typeof filter === "function") {
+            cb = filter;
+            filter = undefined;
+        }
+        const all = [...this.scripts.values()];
+        const ids = filter?.ids;
+        const result = ids ? all.filter(s => ids.includes(s.id ?? "")) : all;
+        return resolved(result, cb);
+    }
+
+    update(scripts: RegisteredScript[], cb?: () => void) {
+        for (const s of scripts) {
+            if (s.id && this.scripts.has(s.id)) {
+                this.scripts.set(s.id, { ...this.scripts.get(s.id)!, ...s });
+            }
+        }
+        return resolved(undefined, cb);
+    }
+}
+
+export function buildScriptingAPI(contextType = "content", extId = "unknown") {
+    const bus = getCivilBus(extId);
+    const isBackground = contextType === "background";
+    const registry = new ContentScriptRegistry(bus, isBackground);
+
+    if (isBackground) replayToNewPages(bus, registry.scripts);
+    else serveBackgroundRequests(bus, extId);
 
     function executeScript(
         injection: chrome.scripting.ScriptInjection<unknown[], unknown>,
-        cb?: (results: chrome.scripting.InjectionResult<unknown>[]) => void,
-    ): Promise<chrome.scripting.InjectionResult<unknown>[]> {
-        return (async () => {
-            const inj = injection as unknown as Record<string, unknown>;
-            const tabId =
-                (inj.target as { tabId?: number } | undefined)?.tabId ?? null;
-
-            // If background, broadcast to page contexts
-            if (contextType === "background") {
-                const reqId = Math.random().toString(36).slice(2);
-                let funcStr: string | undefined;
-                if (typeof inj.func === "function") {
-                    funcStr = (inj.func as () => unknown).toString();
-                }
-                return new Promise<chrome.scripting.InjectionResult<unknown>[]>(
-                    resolve => {
-                        const onResult = (e: MessageEvent) => {
-                            const d = e.data as ExecBusMsg;
-                            if (
-                                d?.kind === "executeScriptResult" &&
-                                d.reqId === reqId
-                            ) {
-                                bus.removeEventListener("message", onResult);
-                                resolve(
-                                    d.results.map(
-                                        result =>
-                                            ({
-                                                frameId: 0,
-                                                result,
-                                                documentId: "",
-                                            }) as chrome.scripting.InjectionResult<unknown>,
-                                    ),
-                                );
-                            }
-                        };
-                        bus.addEventListener("message", onResult);
-                        bus.postMessage({
-                            kind: "executeScript",
-                            reqId,
-                            tabId,
-                            code: inj.code as string | undefined,
-                            files: inj.files as string[] | undefined,
-                            funcStr,
-                            args: inj.args as unknown[] | undefined,
-                        } satisfies ExecBusMsg);
-                        setTimeout(() => {
-                            bus.removeEventListener("message", onResult);
-                            resolve([]);
-                        }, 3000);
-                    },
-                );
-            }
-
-            // Content/popup context: execute locally
-            if (typeof inj.func === "function") {
-                try {
-                    const args = (inj.args ?? []) as unknown[];
-                    const result = await (
-                        inj.func as (...a: unknown[]) => unknown
-                    )(...args);
-                    return [
-                        {
-                            frameId: 0,
-                            result,
-                            documentId: "",
-                        } as chrome.scripting.InjectionResult<unknown>,
-                    ];
-                } catch (e) {
-                    console.warn(
-                        "[civil-ext-shim] scripting.executeScript func threw:",
-                        e,
-                    );
-                    return [];
-                }
-            }
-            const files = inj.files as string[] | undefined;
-            if (files) {
-                for (const file of files) {
-                    try {
-                        const script = document.createElement("script");
-                        // Resolve relative paths to extension URL
-                        script.src = extensionAssetUrl(extId, file);
-                        document.head?.appendChild(script);
-                    } catch {}
-                }
-            }
-            return [];
-        })().then(r => {
+        cb?: (results: InjectionResult[]) => void,
+    ): Promise<InjectionResult[]> {
+        const inj = injection as unknown as Record<string, unknown>;
+        const tabId =
+            (inj.target as { tabId?: number } | undefined)?.tabId ?? null;
+        const run = isBackground
+            ? executeViaBus(bus, inj, tabId)
+            : executeLocally(inj, extId);
+        return run.then(r => {
             if (cb) cb(r);
             return r;
         });
@@ -245,87 +301,17 @@ export function buildScriptingAPI(contextType = "content", extId = "unknown") {
         return resolved(undefined, cb);
     }
 
-    function removeCSS(
-        _injection: chrome.scripting.CSSInjection,
-        cb?: () => void,
-    ) {
-        return resolved(undefined, cb);
-    }
-
-    function registerContentScripts(
-        scripts: chrome.scripting.RegisteredContentScript[],
-        cb?: () => void,
-    ) {
-        for (const s of scripts) {
-            if (s.id) _registeredScripts.set(s.id, s);
-        }
-        // Background: broadcast so active content pages inject immediately;
-        // new content pages will get them via the contentReady handshake.
-        if (contextType === "background") {
-            bus.postMessage({
-                kind: "contentScriptRegister",
-                scripts,
-            } satisfies ExecBusMsg);
-        }
-        return resolved(undefined, cb);
-    }
-
-    function unregisterContentScripts(
-        filter?: { ids?: string[] },
-        cb?: () => void,
-    ) {
-        if (!filter?.ids) {
-            _registeredScripts.clear();
-        } else {
-            for (const id of filter.ids) _registeredScripts.delete(id);
-        }
-        return resolved(undefined, cb);
-    }
-
-    function getRegisteredContentScripts(
-        filter?:
-            | { ids?: string[] }
-            | ((s: chrome.scripting.RegisteredContentScript[]) => void),
-        cb?: (scripts: chrome.scripting.RegisteredContentScript[]) => void,
-    ) {
-        if (typeof filter === "function") {
-            cb = filter;
-            filter = undefined;
-        }
-        const all = [..._registeredScripts.values()];
-        const result = (filter as { ids?: string[] } | undefined)?.ids
-            ? all.filter(s =>
-                  ((filter as { ids?: string[] }).ids ?? []).includes(
-                      s.id ?? "",
-                  ),
-              )
-            : all;
-        return resolved(result, cb);
-    }
-
-    function updateContentScripts(
-        scripts: chrome.scripting.RegisteredContentScript[],
-        cb?: () => void,
-    ) {
-        for (const s of scripts) {
-            if (s.id && _registeredScripts.has(s.id)) {
-                _registeredScripts.set(s.id, {
-                    ..._registeredScripts.get(s.id)!,
-                    ...s,
-                });
-            }
-        }
-        return resolved(undefined, cb);
-    }
-
     return {
         executeScript,
         insertCSS,
-        removeCSS,
-        registerContentScripts,
-        unregisterContentScripts,
-        getRegisteredContentScripts,
-        updateContentScripts,
+        removeCSS: (
+            _injection: chrome.scripting.CSSInjection,
+            cb?: () => void,
+        ) => resolved(undefined, cb),
+        registerContentScripts: registry.register.bind(registry),
+        unregisterContentScripts: registry.unregister.bind(registry),
+        getRegisteredContentScripts: registry.get.bind(registry),
+        updateContentScripts: registry.update.bind(registry),
         ExecutionWorld: {
             ISOLATED: "ISOLATED",
             MAIN: "MAIN",

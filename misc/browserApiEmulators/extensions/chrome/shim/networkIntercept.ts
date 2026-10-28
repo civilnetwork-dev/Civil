@@ -502,6 +502,351 @@ function _buildInitWithHeaders(
     return { ...init, headers: newHeaders };
 }
 
+type Header = { name: string; value: string };
+type FetchFn = typeof window.fetch;
+
+/** One request's identity, and the URL it currently resolves to. */
+type InterceptedRequest = {
+    requestId: string;
+    url: string;
+    method: string;
+    timeStamp: number;
+};
+
+/** One webRequest event's details for this request, as it stands. */
+function requestDetails(
+    req: InterceptedRequest,
+    extra: Partial<WebRequestDetails>,
+): WebRequestDetails {
+    return {
+        requestId: req.requestId,
+        url: req.url,
+        method: req.method,
+        frameId: 0,
+        parentFrameId: -1,
+        tabId: -1,
+        type: "xmlhttprequest",
+        timeStamp: Date.now(),
+        ...extra,
+    };
+}
+
+const blockedByClient = () =>
+    new DOMException("net::ERR_BLOCKED_BY_CLIENT", "AbortError");
+
+/**
+ * DNR first, then onBeforeRequest, onBeforeSendHeaders and onSendHeaders.
+ * Throws as Chrome does for a request any of them cancels; otherwise
+ * updates `req.url` and returns the headers to send.
+ */
+function runRequestStage(
+    events: WebRequestEventSet,
+    getDNRRules: () => DNRRule[],
+    req: InterceptedRequest,
+    init: RequestInit | undefined,
+): { headers: Header[]; headersRewritten: boolean } {
+    const { timeStamp } = req;
+    const dnrResult = applyDnrRules(
+        req.url,
+        req.method,
+        _headersFromInit(init),
+        getDNRRules(),
+    );
+    if (dnrResult.blocked) {
+        events.onErrorOccurred._dispatch(
+            requestDetails(req, {
+                timeStamp,
+                error: "net::ERR_BLOCKED_BY_CLIENT",
+            }),
+        );
+        throw blockedByClient();
+    }
+    req.url = dnrResult.redirectUrl ?? req.url;
+    let headers = dnrResult.requestHeaders;
+
+    const beforeReq = events.onBeforeRequest._dispatch(
+        requestDetails(req, { timeStamp, requestHeaders: headers }),
+    );
+    if (beforeReq.cancel) throw blockedByClient();
+    if (beforeReq.redirectUrl) req.url = beforeReq.redirectUrl;
+
+    const beforeSend = events.onBeforeSendHeaders._dispatch(
+        requestDetails(req, { requestHeaders: headers }),
+    );
+    if (beforeSend.cancel) throw blockedByClient();
+    if (beforeSend.requestHeaders) headers = beforeSend.requestHeaders;
+
+    events.onSendHeaders._dispatch(
+        requestDetails(req, { requestHeaders: headers }),
+    );
+    return { headers, headersRewritten: Boolean(beforeSend.requestHeaders) };
+}
+
+/** Reports the response's arrival and completion, with any rewritten headers. */
+async function finishResponse(
+    events: WebRequestEventSet,
+    req: InterceptedRequest,
+    response: Response,
+    modifiedHeaders: Header[] | undefined,
+    originalHeaders: Header[],
+): Promise<Response> {
+    const finalResponse = modifiedHeaders
+        ? await _withResponseHeaders(response, modifiedHeaders)
+        : response;
+    const responseHeaders = modifiedHeaders ?? originalHeaders;
+    events.onResponseStarted._dispatch(
+        requestDetails(req, {
+            statusCode: response.status,
+            fromCache: false,
+            responseHeaders,
+        }),
+    );
+    events.onCompleted._dispatch(
+        requestDetails(req, {
+            statusCode: response.status,
+            statusLine: `HTTP/1.1 ${response.status} ${response.statusText}`,
+            fromCache: false,
+            responseHeaders,
+        }),
+    );
+    return finalResponse;
+}
+
+/**
+ * onHeadersReceived: throws for a cancel, and otherwise returns the redirect
+ * to follow (after onBeforeRedirect) or the headers to answer with.
+ */
+function headersReceivedRedirect(
+    events: WebRequestEventSet,
+    req: InterceptedRequest,
+    response: Response,
+): { redirectUrl?: string; responseHeaders?: Header[]; original: Header[] } {
+    const original = _headersFromResponse(response);
+    const received = events.onHeadersReceived._dispatch(
+        requestDetails(req, {
+            statusCode: response.status,
+            statusLine: `HTTP/1.1 ${response.status} ${response.statusText}`,
+            responseHeaders: original,
+            fromCache: false,
+        }),
+    );
+    if (received.cancel) throw blockedByClient();
+    if (received.redirectUrl) {
+        events.onBeforeRedirect._dispatch(
+            requestDetails(req, {
+                statusCode: response.status,
+                redirectUrl: received.redirectUrl,
+            }),
+        );
+    }
+    return {
+        redirectUrl: received.redirectUrl,
+        responseHeaders: received.responseHeaders,
+        original,
+    };
+}
+
+function requestUrlOf(input: RequestInfo | URL): string {
+    return typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : (input as Request).url;
+}
+
+/** window.fetch with the webRequest lifecycle and DNR rules applied. */
+function interceptFetch(
+    origFetch: FetchFn,
+    events: WebRequestEventSet,
+    getDNRRules: () => DNRRule[],
+): FetchFn {
+    const patchedFetch = async (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+    ): Promise<Response> => {
+        const url = requestUrlOf(input);
+        const req: InterceptedRequest = {
+            requestId: _nextId(),
+            url,
+            method:
+                init?.method ??
+                (input instanceof Request ? input.method : "GET"),
+            timeStamp: Date.now(),
+        };
+        const { headers, headersRewritten } = runRequestStage(
+            events,
+            getDNRRules,
+            req,
+            init,
+        );
+
+        let response: Response;
+        try {
+            const fetchInput =
+                input instanceof Request && (init?.headers || headersRewritten)
+                    ? new Request(input, _buildInitWithHeaders(init, headers))
+                    : input;
+            response = await origFetch(
+                req.url !== url ? req.url : fetchInput,
+                _buildInitWithHeaders(init, headers),
+            );
+        } catch (err) {
+            events.onErrorOccurred._dispatch(
+                requestDetails(req, { error: String(err) }),
+            );
+            throw err;
+        }
+
+        const redirect = headersReceivedRedirect(events, req, response);
+        if (redirect.redirectUrl)
+            return patchedFetch(redirect.redirectUrl, init);
+        return finishResponse(
+            events,
+            req,
+            response,
+            redirect.responseHeaders,
+            redirect.original,
+        );
+    };
+    return patchedFetch as FetchFn;
+}
+
+type XhrRequest = InterceptedRequest & { headers: Header[] };
+
+function parseXhrHeaders(raw: string): Header[] {
+    const headers: Header[] = [];
+    for (const line of raw.split("\r\n")) {
+        const idx = line.indexOf(": ");
+        if (idx > 0) {
+            headers.push({
+                name: line.slice(0, idx),
+                value: line.slice(idx + 2),
+            });
+        }
+    }
+    return headers;
+}
+
+/** DNR and onBeforeRequest for an XHR; false when either blocks it. */
+function admitXhr(
+    events: WebRequestEventSet,
+    getDNRRules: () => DNRRule[],
+    req: XhrRequest,
+): boolean {
+    const blocked = () =>
+        events.onErrorOccurred._dispatch(
+            requestDetails(req, {
+                timeStamp: req.timeStamp,
+                error: "net::ERR_BLOCKED_BY_CLIENT",
+            }),
+        );
+    const dnrResult = applyDnrRules(
+        req.url,
+        req.method,
+        req.headers,
+        getDNRRules(),
+    );
+    if (dnrResult.blocked) {
+        blocked();
+        return false;
+    }
+    const beforeResp = events.onBeforeRequest._dispatch(
+        requestDetails(req, {
+            timeStamp: req.timeStamp,
+            requestHeaders: dnrResult.requestHeaders,
+        }),
+    );
+    if (beforeResp.cancel) {
+        blocked();
+        return false;
+    }
+    return true;
+}
+
+function observeXhr(
+    xhr: XMLHttpRequest,
+    events: WebRequestEventSet,
+    req: XhrRequest,
+): void {
+    xhr.addEventListener("load", () => {
+        let responseHeaders: Header[] = [];
+        try {
+            responseHeaders = parseXhrHeaders(xhr.getAllResponseHeaders());
+        } catch {}
+        events.onCompleted._dispatch(
+            requestDetails(req, {
+                statusCode: xhr.status,
+                statusLine: `HTTP/1.1 ${xhr.status} ${xhr.statusText}`,
+                fromCache: false,
+                responseHeaders,
+            }),
+        );
+    });
+    xhr.addEventListener("error", () => {
+        events.onErrorOccurred._dispatch(
+            requestDetails(req, { error: "net::ERR_FAILED" }),
+        );
+    });
+}
+
+/** XMLHttpRequest with the same lifecycle as the patched fetch. */
+function interceptXHR(
+    OrigXHR: typeof XMLHttpRequest,
+    events: WebRequestEventSet,
+    getDNRRules: () => DNRRule[],
+): typeof XMLHttpRequest {
+    return class PatchedXHR extends OrigXHR {
+        private _civ: XhrRequest = {
+            requestId: "",
+            url: "",
+            method: "GET",
+            timeStamp: 0,
+            headers: [],
+        };
+
+        open(
+            method: string,
+            url: string | URL,
+            async?: boolean,
+            username?: string | null,
+            password?: string | null,
+        ): void {
+            this._civ.method = method;
+            this._civ.url = url.toString();
+            this._civ.requestId = _nextId();
+            super.open(
+                method,
+                this._civ.url,
+                async !== false,
+                username,
+                password,
+            );
+        }
+
+        setRequestHeader(name: string, value: string): void {
+            this._civ.headers.push({ name, value });
+            super.setRequestHeader(name, value);
+        }
+
+        send(body?: Document | XMLHttpRequestBodyInit | null): void {
+            const req = { ...this._civ, timeStamp: Date.now() };
+            if (!admitXhr(events, getDNRRules, req)) {
+                this.abort();
+                return;
+            }
+            observeXhr(this, events, req);
+            super.send(body);
+        }
+    };
+}
+
+/**
+ * Patches this window's fetch and XMLHttpRequest. The third parameter used
+ * to route background requests through UV's page-side encoder, which was a
+ * no-op in practice: UV only ever set `__uv$config` on the service worker's
+ * own `self` (misc/config/service/sw.ts), never on `window`. UV is gone, and
+ * requests go out unchanged.
+ */
 export function installNetworkInterceptor(
     events: WebRequestEventSet,
     getDNRRules: () => DNRRule[],
@@ -511,346 +856,14 @@ export function installNetworkInterceptor(
     if (w.__civil_net_intercepted) return;
     w.__civil_net_intercepted = true;
 
-    const _origFetch = window.fetch.bind(window);
-    const _OrigXHR = window.XMLHttpRequest;
-
-    // This used to read `window.top.__uv$config` (UV's page-side prefix and
-    // encoder) and rewrite the URL through it when the caller (a background
-    // context, via installNetworkInterceptor's now-unused third parameter)
-    // opted in. That was already a no-op in practice before UV was removed:
-    // UV only ever set `__uv$config` on the *service worker's* own `self`
-    // (misc/config/service/sw.ts), a different global than `window` -- a
-    // page-context `window.top.__uv$config` read was never going to find
-    // anything there. Passes the URL through unchanged, same outcome as
-    // that dead lookup always produced.
-    const toNetworkUrl = (url: string): string => url;
-
-    const fetchViaXHR = (
-        url: string,
-        method: string,
-        headers: { name: string; value: string }[],
-        init?: RequestInit,
-    ): Promise<Response> =>
-        new Promise((resolve, reject) => {
-            const xhr = new _OrigXHR();
-            xhr.open(method, url, true);
-            for (const header of headers) {
-                try {
-                    xhr.setRequestHeader(header.name, header.value);
-                } catch {}
-            }
-            xhr.onload = () => {
-                const responseHeaders = new Headers();
-                for (const line of xhr.getAllResponseHeaders().split("\r\n")) {
-                    const separator = line.indexOf(":");
-                    if (separator <= 0) continue;
-                    try {
-                        responseHeaders.append(
-                            line.slice(0, separator).trim(),
-                            line.slice(separator + 1).trim(),
-                        );
-                    } catch {}
-                }
-                resolve(
-                    new Response(xhr.responseText, {
-                        status: xhr.status,
-                        statusText: xhr.statusText,
-                        headers: responseHeaders,
-                    }),
-                );
-            };
-            xhr.onerror = () => reject(new TypeError("Failed to fetch"));
-            xhr.onabort = () =>
-                reject(
-                    new DOMException("The operation was aborted", "AbortError"),
-                );
-            init?.signal?.addEventListener("abort", () => xhr.abort(), {
-                once: true,
-            });
-            xhr.send((init?.body as XMLHttpRequestBodyInit | null) ?? null);
-        });
-
-    // Patch fetch
-    const _patchedFetch = async (
-        input: RequestInfo | URL,
-        init?: RequestInit,
-    ): Promise<Response> => {
-        const url =
-            typeof input === "string"
-                ? input
-                : input instanceof URL
-                  ? input.toString()
-                  : (input as Request).url;
-        const method =
-            init?.method ?? (input instanceof Request ? input.method : "GET");
-        const requestId = _nextId();
-        const timeStamp = Date.now();
-        let reqHeaders = _headersFromInit(init);
-        let finalUrl = url;
-
-        /** One webRequest event's details for this request, as it stands. */
-        const details = (extra: Partial<WebRequestDetails>) => ({
-            requestId,
-            url: finalUrl,
-            method,
-            frameId: 0,
-            parentFrameId: -1,
-            tabId: -1,
-            type: "xmlhttprequest",
-            timeStamp: Date.now(),
-            ...extra,
-        });
-        const blockedByClient = () =>
-            new DOMException("net::ERR_BLOCKED_BY_CLIENT", "AbortError");
-
-        // Apply DNR rules first
-        const dnrResult = applyDnrRules(url, method, reqHeaders, getDNRRules());
-        if (dnrResult.blocked) {
-            events.onErrorOccurred._dispatch(
-                details({ timeStamp, error: "net::ERR_BLOCKED_BY_CLIENT" }),
-            );
-            throw blockedByClient();
-        }
-
-        finalUrl = dnrResult.redirectUrl ?? url;
-        reqHeaders = dnrResult.requestHeaders;
-
-        // onBeforeRequest
-        const beforeReqResp = events.onBeforeRequest._dispatch(
-            details({ timeStamp, requestHeaders: reqHeaders }),
-        );
-        if (beforeReqResp.cancel) throw blockedByClient();
-        if (beforeReqResp.redirectUrl) {
-            finalUrl = beforeReqResp.redirectUrl;
-        }
-
-        // onBeforeSendHeaders
-        const beforeSendResp = events.onBeforeSendHeaders._dispatch(
-            details({ requestHeaders: reqHeaders }),
-        );
-        if (beforeSendResp.cancel) throw blockedByClient();
-        if (beforeSendResp.requestHeaders) {
-            reqHeaders = beforeSendResp.requestHeaders;
-        }
-
-        // onSendHeaders
-        events.onSendHeaders._dispatch(details({ requestHeaders: reqHeaders }));
-
-        let response: Response;
-        try {
-            const networkUrl = toNetworkUrl(finalUrl);
-            const fetchInput =
-                input instanceof Request &&
-                (init?.headers || beforeSendResp.requestHeaders)
-                    ? new Request(
-                          input,
-                          _buildInitWithHeaders(init, reqHeaders),
-                      )
-                    : input;
-            response =
-                networkUrl !== finalUrl
-                    ? await fetchViaXHR(networkUrl, method, reqHeaders, init)
-                    : await _origFetch(
-                          finalUrl !== url ? finalUrl : fetchInput,
-                          reqHeaders !== _headersFromInit(init)
-                              ? _buildInitWithHeaders(init, reqHeaders)
-                              : init,
-                      );
-        } catch (err) {
-            events.onErrorOccurred._dispatch(details({ error: String(err) }));
-            throw err;
-        }
-
-        const respHeaders = _headersFromResponse(response);
-        const statusLine = `HTTP/1.1 ${response.status} ${response.statusText}`;
-
-        // onHeadersReceived
-        const headersReceivedResp = events.onHeadersReceived._dispatch(
-            details({
-                statusCode: response.status,
-                statusLine,
-                responseHeaders: respHeaders,
-                fromCache: false,
-            }),
-        );
-        if (headersReceivedResp.cancel) throw blockedByClient();
-        if (headersReceivedResp.redirectUrl) {
-            // follow redirect
-            events.onBeforeRedirect._dispatch(
-                details({
-                    statusCode: response.status,
-                    redirectUrl: headersReceivedResp.redirectUrl,
-                }),
-            );
-            return _patchedFetch(headersReceivedResp.redirectUrl, init);
-        }
-
-        // Build potentially modified response
-        const modifiedRespHeaders = headersReceivedResp.responseHeaders;
-        const finalResponse = modifiedRespHeaders
-            ? await _withResponseHeaders(response, modifiedRespHeaders)
-            : response;
-        const responseHeaders = modifiedRespHeaders ?? respHeaders;
-
-        // onResponseStarted
-        events.onResponseStarted._dispatch(
-            details({
-                statusCode: response.status,
-                fromCache: false,
-                responseHeaders,
-            }),
-        );
-
-        // onCompleted
-        events.onCompleted._dispatch(
-            details({
-                statusCode: response.status,
-                statusLine,
-                fromCache: false,
-                responseHeaders,
-            }),
-        );
-
-        return finalResponse;
-    };
-
-    window.fetch = _patchedFetch as typeof window.fetch;
-
-    // Patch XMLHttpRequest
-    class PatchedXHR extends _OrigXHR {
-        private _civMethod = "GET";
-        private _civUrl = "";
-        private _civReqId = "";
-        private _civHeaders: { name: string; value: string }[] = [];
-
-        open(
-            method: string,
-            url: string | URL,
-            async?: boolean,
-            username?: string | null,
-            password?: string | null,
-        ): void {
-            this._civMethod = method;
-            this._civUrl = url.toString();
-            this._civReqId = _nextId();
-            super.open(
-                method,
-                toNetworkUrl(this._civUrl),
-                async !== false,
-                username,
-                password,
-            );
-        }
-
-        setRequestHeader(name: string, value: string): void {
-            this._civHeaders.push({ name, value });
-            super.setRequestHeader(name, value);
-        }
-
-        send(body?: Document | XMLHttpRequestBodyInit | null): void {
-            const url = this._civUrl;
-            const method = this._civMethod;
-            const requestId = this._civReqId;
-            const timeStamp = Date.now();
-
-            // Apply DNR rules
-            const dnrResult = applyDnrRules(
-                url,
-                method,
-                this._civHeaders,
-                getDNRRules(),
-            );
-            if (dnrResult.blocked) {
-                events.onErrorOccurred._dispatch({
-                    requestId,
-                    url,
-                    method,
-                    frameId: 0,
-                    parentFrameId: -1,
-                    tabId: -1,
-                    type: "xmlhttprequest",
-                    timeStamp,
-                    error: "net::ERR_BLOCKED_BY_CLIENT",
-                });
-                this.abort();
-                return;
-            }
-
-            // onBeforeRequest
-            const beforeResp = events.onBeforeRequest._dispatch({
-                requestId,
-                url,
-                method,
-                frameId: 0,
-                parentFrameId: -1,
-                tabId: -1,
-                type: "xmlhttprequest",
-                timeStamp,
-                requestHeaders: dnrResult.requestHeaders,
-            });
-            if (beforeResp.cancel) {
-                events.onErrorOccurred._dispatch({
-                    requestId,
-                    url,
-                    method,
-                    frameId: 0,
-                    parentFrameId: -1,
-                    tabId: -1,
-                    type: "xmlhttprequest",
-                    timeStamp,
-                    error: "net::ERR_BLOCKED_BY_CLIENT",
-                });
-                this.abort();
-                return;
-            }
-
-            this.addEventListener("load", () => {
-                const respHeaders: { name: string; value: string }[] = [];
-                try {
-                    const raw = this.getAllResponseHeaders();
-                    for (const line of raw.split("\r\n")) {
-                        const idx = line.indexOf(": ");
-                        if (idx > 0) {
-                            respHeaders.push({
-                                name: line.slice(0, idx),
-                                value: line.slice(idx + 2),
-                            });
-                        }
-                    }
-                } catch {}
-                events.onCompleted._dispatch({
-                    requestId,
-                    url,
-                    method,
-                    frameId: 0,
-                    parentFrameId: -1,
-                    tabId: -1,
-                    type: "xmlhttprequest",
-                    timeStamp: Date.now(),
-                    statusCode: this.status,
-                    statusLine: `HTTP/1.1 ${this.status} ${this.statusText}`,
-                    fromCache: false,
-                    responseHeaders: respHeaders,
-                });
-            });
-
-            this.addEventListener("error", () => {
-                events.onErrorOccurred._dispatch({
-                    requestId,
-                    url,
-                    method,
-                    frameId: 0,
-                    parentFrameId: -1,
-                    tabId: -1,
-                    type: "xmlhttprequest",
-                    timeStamp: Date.now(),
-                    error: "net::ERR_FAILED",
-                });
-            });
-
-            super.send(body);
-        }
-    }
-
-    window.XMLHttpRequest = PatchedXHR as unknown as typeof XMLHttpRequest;
+    window.fetch = interceptFetch(
+        window.fetch.bind(window),
+        events,
+        getDNRRules,
+    );
+    window.XMLHttpRequest = interceptXHR(
+        window.XMLHttpRequest,
+        events,
+        getDNRRules,
+    );
 }

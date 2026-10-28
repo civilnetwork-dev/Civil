@@ -2,29 +2,35 @@ import type { Alarm, AlarmCreateInfo } from "../types";
 import { CivilEvent } from "./event";
 import { dual } from "./util";
 
-export function buildAlarmsAPI() {
-    const _alarms = new Map<
-        string,
-        { alarm: Alarm; timerId: ReturnType<typeof setTimeout> }
-    >();
+type Scheduled = { alarm: Alarm; timerId: ReturnType<typeof setTimeout> };
 
-    const onAlarm = new CivilEvent<(alarm: Alarm) => void>();
+function scheduledTimeFor(info: AlarmCreateInfo): number {
+    if (info.when) return info.when;
+    if (info.delayInMinutes != null)
+        return Date.now() + info.delayInMinutes * 60_000;
+    return Date.now() + 60_000;
+}
 
-    function _fire(alarm: Alarm): void {
-        onAlarm.dispatch({ ...alarm });
+/** Real timers behind chrome.alarms, rescheduled after each periodic fire. */
+class AlarmScheduler {
+    readonly alarms = new Map<string, Scheduled>();
+    readonly onAlarm = new CivilEvent<(alarm: Alarm) => void>();
+
+    private fire(alarm: Alarm): void {
+        this.onAlarm.dispatch({ ...alarm });
         if (!alarm.periodInMinutes) {
-            _alarms.delete(alarm.name);
+            this.alarms.delete(alarm.name);
         }
     }
 
-    function _schedule(alarm: Alarm): void {
-        const existing = _alarms.get(alarm.name);
+    schedule(alarm: Alarm): void {
+        const existing = this.alarms.get(alarm.name);
         if (existing) clearTimeout(existing.timerId);
 
         const delayMs = Math.max(0, alarm.scheduledTime - Date.now());
 
         const fire = () => {
-            _fire(alarm);
+            this.fire(alarm);
             if (alarm.periodInMinutes) {
                 alarm.scheduledTime =
                     Date.now() + alarm.periodInMinutes * 60_000;
@@ -32,14 +38,33 @@ export function buildAlarmsAPI() {
                     fire,
                     alarm.periodInMinutes * 60_000,
                 );
-                const existing2 = _alarms.get(alarm.name);
-                if (existing2) existing2.timerId = newTimer;
+                const current = this.alarms.get(alarm.name);
+                if (current) current.timerId = newTimer;
             }
         };
 
         const timerId = setTimeout(fire, delayMs);
-        _alarms.set(alarm.name, { alarm, timerId });
+        this.alarms.set(alarm.name, { alarm, timerId });
     }
+
+    clear(name: string): boolean {
+        const entry = this.alarms.get(name);
+        if (!entry) return false;
+        clearTimeout(entry.timerId);
+        this.alarms.delete(name);
+        return true;
+    }
+
+    clearAll(): boolean {
+        for (const { timerId } of this.alarms.values()) clearTimeout(timerId);
+        const had = this.alarms.size > 0;
+        this.alarms.clear();
+        return had;
+    }
+}
+
+export function buildAlarmsAPI() {
+    const scheduler = new AlarmScheduler();
 
     function create(
         nameOrInfo: string | AlarmCreateInfo,
@@ -48,66 +73,37 @@ export function buildAlarmsAPI() {
         const name = typeof nameOrInfo === "string" ? nameOrInfo : "";
         const info: AlarmCreateInfo =
             typeof nameOrInfo === "object" ? nameOrInfo : (maybeInfo ?? {});
-
-        let scheduledTime: number;
-        if (info.when) {
-            scheduledTime = info.when;
-        } else if (info.delayInMinutes != null) {
-            scheduledTime = Date.now() + info.delayInMinutes * 60_000;
-        } else {
-            scheduledTime = Date.now() + 60_000;
-        }
-
-        const alarm: Alarm = {
+        scheduler.schedule({
             name,
-            scheduledTime,
+            scheduledTime: scheduledTimeFor(info),
             periodInMinutes: info.periodInMinutes,
-        };
-
-        _schedule(alarm);
+        });
     }
 
-    function get(
-        name: string,
-        cb?: (alarm: Alarm | undefined) => void,
-    ): Promise<Alarm | undefined> {
-        return dual(() => Promise.resolve(_alarms.get(name)?.alarm), cb);
-    }
-
-    function getAll(cb?: (alarms: Alarm[]) => void): Promise<Alarm[]> {
-        return dual(
-            () =>
-                Promise.resolve(
-                    [..._alarms.values()].map(v => ({ ...v.alarm })),
-                ),
-            cb,
-        );
-    }
-
-    function clear(
-        name?: string,
-        cb?: (wasCleared: boolean) => void,
-    ): Promise<boolean> {
-        return dual(() => {
-            const n = name ?? "";
-            const entry = _alarms.get(n);
-            if (entry) {
-                clearTimeout(entry.timerId);
-                _alarms.delete(n);
-                return Promise.resolve(true);
-            }
-            return Promise.resolve(false);
-        }, cb);
-    }
-
-    function clearAll(cb?: (wasCleared: boolean) => void): Promise<boolean> {
-        return dual(() => {
-            for (const { timerId } of _alarms.values()) clearTimeout(timerId);
-            const had = _alarms.size > 0;
-            _alarms.clear();
-            return Promise.resolve(had);
-        }, cb);
-    }
-
-    return { create, get, getAll, clear, clearAll, onAlarm };
+    return {
+        create,
+        get: (
+            name: string,
+            cb?: (alarm: Alarm | undefined) => void,
+        ): Promise<Alarm | undefined> =>
+            dual(() => Promise.resolve(scheduler.alarms.get(name)?.alarm), cb),
+        getAll: (cb?: (alarms: Alarm[]) => void): Promise<Alarm[]> =>
+            dual(
+                () =>
+                    Promise.resolve(
+                        [...scheduler.alarms.values()].map(v => ({
+                            ...v.alarm,
+                        })),
+                    ),
+                cb,
+            ),
+        clear: (
+            name?: string,
+            cb?: (wasCleared: boolean) => void,
+        ): Promise<boolean> =>
+            dual(() => Promise.resolve(scheduler.clear(name ?? "")), cb),
+        clearAll: (cb?: (wasCleared: boolean) => void): Promise<boolean> =>
+            dual(() => Promise.resolve(scheduler.clearAll()), cb),
+        onAlarm: scheduler.onAlarm,
+    };
 }
