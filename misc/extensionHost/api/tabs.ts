@@ -12,21 +12,24 @@
 
 import type { SyntheticTab } from "../../browserApiEmulators/extensions/chrome/types";
 
-export function buildTabs(getTab: () => SyntheticTab) {
-    const matches = (
-        tab: SyntheticTab,
-        query: Record<string, unknown>,
-    ): boolean => {
-        if ("active" in query && query.active !== tab.active) return false;
-        if (
-            "url" in query &&
-            typeof query.url === "string" &&
-            query.url !== tab.url
-        )
-            return false;
-        return true;
-    };
+function matches(tab: SyntheticTab, query: Record<string, unknown>): boolean {
+    if ("active" in query && query.active !== tab.active) return false;
+    if (
+        "url" in query &&
+        typeof query.url === "string" &&
+        query.url !== tab.url
+    )
+        return false;
+    return true;
+}
 
+const silentEvent = () => ({
+    addListener: () => {},
+    removeListener: () => {},
+    hasListener: () => false,
+});
+
+function tabQueries(getTab: () => SyntheticTab) {
     return {
         query: async (query: Record<string, unknown> = {}) => {
             const tab = getTab();
@@ -53,10 +56,17 @@ export function buildTabs(getTab: () => SyntheticTab) {
         executeScript: async () => [],
         insertCSS: async () => {},
         removeCSS: async () => {},
-        // Navigation and tab lifecycle: there is one synthetic tab and no
-        // browser to act on, so these record nothing and change nothing.
-        // They return the tab where Chrome returns a tab, so a caller that
-        // reads the result back gets an object rather than undefined.
+    };
+}
+
+/**
+ * Navigation and tab lifecycle: there is one synthetic tab and no browser to
+ * act on, so these record nothing and change nothing. They return the tab
+ * where Chrome returns a tab, so a caller that reads the result back gets an
+ * object rather than undefined.
+ */
+function tabLifecycle(getTab: () => SyntheticTab) {
+    return {
         create: async () => getTab(),
         // `update(tabId, props)` or `update(props)` for the active tab —
         // real Chrome accepts both shapes. A `url` is the one property this
@@ -86,25 +96,16 @@ export function buildTabs(getTab: () => SyntheticTab) {
         captureVisibleTab: async () => "",
         getZoom: async () => 1,
         setZoom: async () => {},
-        onCreated: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
-        onUpdated: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
-        onActivated: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
-        onRemoved: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
+    };
+}
+
+export function buildTabs(getTab: () => SyntheticTab) {
+    return {
+        ...tabQueries(getTab),
+        ...tabLifecycle(getTab),
+        onCreated: silentEvent(),
+        onUpdated: silentEvent(),
+        onActivated: silentEvent(),
+        onRemoved: silentEvent(),
     };
 }

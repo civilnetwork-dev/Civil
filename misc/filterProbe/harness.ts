@@ -79,7 +79,7 @@ import { type DockerStackHandle, startDockerStack } from "./dockerStack";
 import { checkGoGuardianRoute } from "./goguardianCheck";
 import { predictFix, type Suggestion } from "./predict";
 import { CIVIL_ROUTES, type CivilRoute } from "./routes";
-import { observeRoute } from "./sandbox";
+import { observeRoute, type SandboxOptions } from "./sandbox";
 import { VENDOR_PRIMARY_FOLDER, VENDORS } from "./vendors";
 
 interface Result {
@@ -302,6 +302,24 @@ const INFRA_RETRY_DELAY_MS = 1_000;
  *  doesn't also blow up the recheck's cost. */
 const RECHECK_EXTRA_WAIT_MS = 5_000;
 
+/** Observes the route, retrying a probe that never reached a real page. */
+async function observeWithRetries(
+    options: Omit<SandboxOptions, "waitMs">,
+    waitMs: number,
+): Promise<PageObservation> {
+    let infraError: string | undefined;
+    for (let attempt = 1; attempt <= INFRA_RETRY_ATTEMPTS; attempt++) {
+        const observation = await observeRoute({ ...options, waitMs });
+        infraError = isInfraFailure(observation);
+        if (!infraError) return observation;
+        if (attempt < INFRA_RETRY_ATTEMPTS)
+            await sleep(INFRA_RETRY_DELAY_MS * attempt);
+    }
+    throw new Error(
+        `probe never reached a real page after ${INFRA_RETRY_ATTEMPTS} attempts: ${infraError}`,
+    );
+}
+
 /**
  * One route×vendor check, made rigorous two ways beyond the original
  * single-shot `detectFlagging(await observeRoute(...), vendor)`:
@@ -358,21 +376,9 @@ async function probeVendorRoute(
         fetchImpl,
     };
 
-    let observation: PageObservation | undefined;
-    let infraError: string | undefined;
-    for (let attempt = 1; attempt <= INFRA_RETRY_ATTEMPTS; attempt++) {
-        observation = await observeRoute({ ...options, waitMs: ctx.waitMs });
-        infraError = isInfraFailure(observation);
-        if (!infraError) break;
-        if (attempt < INFRA_RETRY_ATTEMPTS)
-            await sleep(INFRA_RETRY_DELAY_MS * attempt);
-    }
-    if (infraError)
-        throw new Error(
-            `probe never reached a real page after ${INFRA_RETRY_ATTEMPTS} attempts: ${infraError}`,
-        );
+    const observation = await observeWithRetries(options, ctx.waitMs);
 
-    const first = detectFlagging(observation!, vendor);
+    const first = detectFlagging(observation, vendor);
     if (first.flagged) return first;
 
     // Clean so far — recheck once with a longer wait before trusting it. A
@@ -555,6 +561,39 @@ async function sweepRoutes(
     return { results, errors };
 }
 
+/** A logged-in FreeDNS client, cleared of leaked subdomains, and the domain
+ *  this run publishes under. */
+async function prepareFreeDns(): Promise<{
+    client: FreeDnsClient;
+    domain: { name: string; id: string | number };
+}> {
+    const client = new FreeDnsClient();
+    await client.login();
+
+    // A prior run killed before teardown leaks its FreeDNS subdomain, and
+    // the account quota is small — reclaim any such orphan before creating
+    // this run's, so a few interrupted runs can't wedge every later one
+    // behind "no more subdomain capacity".
+    const swept = await sweepTunnelOrphans(client);
+    if (swept > 0)
+        process.stdout.write(
+            `swept ${swept} leftover tunnel subdomain${swept === 1 ? "" : "s"} from prior runs\n`,
+        );
+
+    // CIVIL_TUNNEL_DOMAIN is now an optional pin: set it *and* its id to
+    // force a domain; otherwise auto-pick one no filter blocks. This is the
+    // slow step — it sweeps the FreeDNS registry past the reputation
+    // checkers — so it runs after the server is already coming up.
+    const pinnedName = process.env.CIVIL_TUNNEL_DOMAIN;
+    const pinnedId = process.env.CIVIL_TUNNEL_DOMAIN_ID;
+    const domain =
+        pinnedName && pinnedId
+            ? { name: pinnedName, id: pinnedId }
+            : await pickTunnelDomain({ client });
+    process.stdout.write(`using domain: ${domain.name}\n`);
+    return { client, domain };
+}
+
 async function main(): Promise<number> {
     const bundleRoot =
         process.env.CIVIL_FILTER_BUNDLES ??
@@ -581,30 +620,7 @@ async function main(): Promise<number> {
 
         // One logged-in client for both picking the domain and opening the
         // tunnel, so we authenticate to FreeDNS once.
-        const client = new FreeDnsClient();
-        await client.login();
-
-        // A prior run killed before teardown leaks its FreeDNS subdomain, and
-        // the account quota is small — reclaim any such orphan before creating
-        // this run's, so a few interrupted runs can't wedge every later one
-        // behind "no more subdomain capacity".
-        const swept = await sweepTunnelOrphans(client);
-        if (swept > 0)
-            process.stdout.write(
-                `swept ${swept} leftover tunnel subdomain${swept === 1 ? "" : "s"} from prior runs\n`,
-            );
-
-        // CIVIL_TUNNEL_DOMAIN is now an optional pin: set it *and* its id to
-        // force a domain; otherwise auto-pick one no filter blocks. This is the
-        // slow step — it sweeps the FreeDNS registry past the reputation
-        // checkers — so it runs after the server is already coming up.
-        const pinnedName = process.env.CIVIL_TUNNEL_DOMAIN;
-        const pinnedId = process.env.CIVIL_TUNNEL_DOMAIN_ID;
-        const domain =
-            pinnedName && pinnedId
-                ? { name: pinnedName, id: pinnedId }
-                : await pickTunnelDomain({ client });
-        process.stdout.write(`using domain: ${domain.name}\n`);
+        const { client, domain } = await prepareFreeDns();
 
         tunnel = await openReachableTunnel({
             port,

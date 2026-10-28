@@ -113,6 +113,40 @@ export interface Tunnel {
 }
 
 /**
+ * Tears a published tunnel down: the DNS record first, since it names the
+ * tunnel and a lingering record is worse than a lingering tunnel, then
+ * cloudflared regardless of whether that succeeded, so a failed delete never
+ * strands the tunnel process. Later calls do nothing.
+ */
+function closeOnce(
+    client: FreeDnsClient,
+    hostname: string,
+    tunnel: { close(): Promise<void> | void },
+): () => Promise<void> {
+    let closed = false;
+    return async () => {
+        if (closed) return;
+        closed = true;
+        try {
+            // Live runs show FreeDNS's own subdomain list can still be missing
+            // a record moments after `createSubdomain` redirected success —
+            // the same backend-replication lag that delays public DNS also
+            // delays this read, so a single un-retried lookup right after
+            // creation can find nothing and silently skip the delete.
+            // `sweepTunnelOrphans` (misc/filterProbe/harness.ts) catches
+            // anything that still gets through this at the next run's
+            // startup, but retrying here first is what makes close() itself
+            // reliable, not just eventually self-healing on someone else's
+            // next run.
+            const record = await findSubdomainWithRetry(client, hostname);
+            if (record) await client.deleteSubdomain(record.id);
+        } finally {
+            await tunnel.close();
+        }
+    };
+}
+
+/**
  * Open a cloudflared tunnel to `localhost:<port>` and publish it under a
  * random FreeDNS subdomain of `domain`.
  *
@@ -158,39 +192,12 @@ export async function openTunnel(options: OpenTunnelOptions): Promise<Tunnel> {
         });
 
         const hostname = `${subdomain}.${options.domain.name}`;
-        let closed = false;
 
         return {
             url: `https://${hostname}`,
             hostname,
             origin,
-            async close() {
-                if (closed) return;
-                closed = true;
-                // Delete the DNS record first: it names the tunnel, so a
-                // lingering record is worse than a lingering tunnel. Then
-                // stop cloudflared regardless of whether that succeeded — a
-                // failed delete must not strand the tunnel process.
-                try {
-                    // Live runs show FreeDNS's own subdomain list can still
-                    // be missing a record moments after `createSubdomain`
-                    // redirected success — the same backend-replication lag
-                    // that delays public DNS also delays this read, so a
-                    // single un-retried lookup right after creation can find
-                    // nothing and silently skip the delete. `sweepTunnelOrphans`
-                    // (misc/filterProbe/harness.ts) catches anything that still
-                    // gets through this at the next run's startup, but retrying
-                    // here first is what makes close() itself reliable, not
-                    // just eventually self-healing on someone else's next run.
-                    const record = await findSubdomainWithRetry(
-                        client,
-                        hostname,
-                    );
-                    if (record) await client.deleteSubdomain(record.id);
-                } finally {
-                    await tunnel.close();
-                }
-            },
+            close: closeOnce(client, hostname, tunnel),
         };
     } catch (error) {
         await tunnel.close();

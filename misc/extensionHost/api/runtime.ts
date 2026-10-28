@@ -72,6 +72,74 @@ function buildPort(name: string) {
     };
 }
 
+const silentEvent = () => ({
+    addListener: () => {},
+    removeListener: () => {},
+    hasListener: () => false,
+});
+
+function registry<T>(set: Set<T>) {
+    return {
+        addListener: (cb: T) => set.add(cb),
+        removeListener: (cb: T) => set.delete(cb),
+        hasListener: (cb: T) => set.has(cb),
+    };
+}
+
+function sendMessageFrom(state: RuntimeDeps["state"]) {
+    return (...args: unknown[]) => {
+        // Overloads: sendMessage(message), sendMessage(message, options),
+        // sendMessage(extId, message, ...). The extension id form is a
+        // no-op here (single-extension host). A trailing callback is not
+        // handled here — every method in this host gets that uniformly
+        // from `withCallbacks`, which strips it before this ever sees it.
+        const message =
+            typeof args[0] === "string" && args.length > 1 ? args[1] : args[0];
+        state.sentMessages.push(message);
+
+        // Delivered to nobody, deliberately. Chrome fires `onMessage` in
+        // every frame of the extension *except the frame that sent the
+        // message* — a background page that messages itself does not hear
+        // itself. This host has exactly one frame, so a `sendMessage`
+        // from inside it reaches no listener at all, and the reply is
+        // `undefined` (Chrome's answer when nothing responds).
+        //
+        // Echoing it back instead is not a harmless shortcut. It turns
+        // any `sendMessage` inside an `onMessage` handler — a completely
+        // ordinary shape, "tell everyone the state changed" — into
+        // unbounded recursion. mobileguardian's background page does
+        // exactly that, and re-entered its own listener 18,689 times
+        // before the stack gave out.
+        //
+        // Messages from *another* context still arrive, which is what
+        // `ExtensionHandle.sendMessage` is: a content script or popup
+        // talking to the background.
+        return Promise.resolve(undefined);
+    };
+}
+
+function runtimeEvents(state: RuntimeDeps["state"]) {
+    return {
+        onConnect: silentEvent(),
+        onConnectExternal: silentEvent(),
+        onMessage: registry<RuntimeMessageListener>(state.messageListeners),
+        // Real Chrome fires onInstalled once, the first time an extension is
+        // added. A surprising number of vendor bundles register their real
+        // DNR rules and webRequest listeners inside this handler rather than
+        // at the top of the script — host.ts fires it once after the
+        // background script's synchronous top-level body finishes running,
+        // so those handlers actually execute instead of sitting unused.
+        onInstalled: registry<(details: { reason: string }) => void>(
+            state.installedListeners,
+        ),
+        // onStartup/onSuspend are real registries (so addListener doesn't
+        // throw) but never fire: this host has no concept of "browser
+        // startup" or "background page unload" to trigger them from.
+        onStartup: silentEvent(),
+        onSuspend: silentEvent(),
+    };
+}
+
 export function buildRuntime(deps: RuntimeDeps) {
     const { extensionId, manifest, state } = deps;
     state.messageSender = {
@@ -84,39 +152,7 @@ export function buildRuntime(deps: RuntimeDeps) {
         getManifest: () => manifest,
         getURL: (path: string) => extensionUrl(extensionId, path),
         lastError: undefined as { message: string } | undefined,
-
-        sendMessage: (...args: unknown[]) => {
-            // Overloads: sendMessage(message), sendMessage(message, options),
-            // sendMessage(extId, message, ...). The extension id form is a
-            // no-op here (single-extension host). A trailing callback is not
-            // handled here — every method in this host gets that uniformly
-            // from `withCallbacks`, which strips it before this ever sees it.
-            const message =
-                typeof args[0] === "string" && args.length > 1
-                    ? args[1]
-                    : args[0];
-            state.sentMessages.push(message);
-
-            // Delivered to nobody, deliberately. Chrome fires `onMessage` in
-            // every frame of the extension *except the frame that sent the
-            // message* — a background page that messages itself does not hear
-            // itself. This host has exactly one frame, so a `sendMessage`
-            // from inside it reaches no listener at all, and the reply is
-            // `undefined` (Chrome's answer when nothing responds).
-            //
-            // Echoing it back instead is not a harmless shortcut. It turns
-            // any `sendMessage` inside an `onMessage` handler — a completely
-            // ordinary shape, "tell everyone the state changed" — into
-            // unbounded recursion. mobileguardian's background page does
-            // exactly that, and re-entered its own listener 18,689 times
-            // before the stack gave out.
-            //
-            // Messages from *another* context still arrive, which is what
-            // `ExtensionHandle.sendMessage` is: a content script or popup
-            // talking to the background.
-            return Promise.resolve(undefined);
-        },
-
+        sendMessage: sendMessageFrom(state),
         connect: (...args: unknown[]) => {
             // connect(connectInfo) or connect(extensionId, connectInfo).
             const info = (args.find(
@@ -125,7 +161,6 @@ export function buildRuntime(deps: RuntimeDeps) {
             return buildPort(info.name ?? "");
         },
         connectNative: (application: string) => buildPort(application),
-
         // Read for their contents, not just called: a bundle does
         // `getPlatformInfo(info => info.os)` and dies on the property access
         // if this falls through to a stub that resolves undefined.
@@ -142,52 +177,6 @@ export function buildRuntime(deps: RuntimeDeps) {
         setUninstallURL: async () => {},
         reload: () => {},
         requestUpdateCheck: async () => ({ status: "no_update" }),
-        onConnect: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
-        onConnectExternal: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
-
-        onMessage: {
-            addListener: (cb: RuntimeMessageListener) =>
-                state.messageListeners.add(cb),
-            removeListener: (cb: RuntimeMessageListener) =>
-                state.messageListeners.delete(cb),
-            hasListener: (cb: RuntimeMessageListener) =>
-                state.messageListeners.has(cb),
-        },
-
-        // Real Chrome fires onInstalled once, the first time an extension is
-        // added. A surprising number of vendor bundles register their real
-        // DNR rules and webRequest listeners inside this handler rather than
-        // at the top of the script — host.ts fires it once after the
-        // background script's synchronous top-level body finishes running,
-        // so those handlers actually execute instead of sitting unused.
-        onInstalled: {
-            addListener: (cb: (details: { reason: string }) => void) =>
-                state.installedListeners.add(cb),
-            removeListener: (cb: (details: { reason: string }) => void) =>
-                state.installedListeners.delete(cb),
-            hasListener: (cb: (details: { reason: string }) => void) =>
-                state.installedListeners.has(cb),
-        },
-        // onStartup/onSuspend are real registries (so addListener doesn't
-        // throw) but never fire: this host has no concept of "browser
-        // startup" or "background page unload" to trigger them from.
-        onStartup: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
-        onSuspend: {
-            addListener: () => {},
-            removeListener: () => {},
-            hasListener: () => false,
-        },
+        ...runtimeEvents(state),
     };
 }

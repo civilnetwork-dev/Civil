@@ -184,47 +184,30 @@ async function createTransport() {
     throw lastError ?? new Error("No usable proxy transport");
 }
 
-async function initScramjet() {
-    // Same check as registerSw in src/lib/swUtils.ts. Without it the first
-    // read of navigator.serviceWorker throws a TypeError.
-    if (!("serviceWorker" in navigator)) {
-        throw new Error(
-            "Service workers are not supported, so scramjet cannot start.",
-        );
-    }
-
-    await init()!;
-    setSearchEngine(localStorage.getItem("search")! || "google");
-
-    const [registration, transport] = await Promise.all([
-        navigator.serviceWorker.ready,
-        createTransport(),
-    ]);
-
-    if (!navigator.serviceWorker.controller) {
-        await new Promise<void>(resolve => {
-            const onChange = () => {
-                navigator.serviceWorker.removeEventListener(
-                    "controllerchange",
-                    onChange,
-                );
-                resolve();
-            };
-            navigator.serviceWorker.addEventListener(
+/** Resolves on the next controllerchange, or after `timeoutMs` regardless. */
+function controllerChange(timeoutMs: number): Promise<void> {
+    return new Promise<void>(resolve => {
+        const onChange = () => {
+            navigator.serviceWorker.removeEventListener(
                 "controllerchange",
                 onChange,
-                { once: true },
             );
-            setTimeout(resolve, 5000);
+            resolve();
+        };
+        navigator.serviceWorker.addEventListener("controllerchange", onChange, {
+            once: true,
         });
-    }
+        setTimeout(resolve, timeoutMs);
+    });
+}
 
-    const serviceworker =
-        navigator.serviceWorker.controller ?? registration.active!;
-
+function createController(
+    serviceworker: ServiceWorker,
+    transport: Awaited<ReturnType<typeof createTransport>>,
+) {
     const { defaultConfig } = $scramjet;
 
-    const controller = new Controller({
+    return new Controller({
         serviceworker,
         transport,
         config: {
@@ -250,6 +233,31 @@ async function initScramjet() {
             siteFlags: defaultConfig.siteFlags,
         },
     });
+}
+
+async function initScramjet() {
+    // Same check as registerSw in src/lib/swUtils.ts. Without it the first
+    // read of navigator.serviceWorker throws a TypeError.
+    if (!("serviceWorker" in navigator)) {
+        throw new Error(
+            "Service workers are not supported, so scramjet cannot start.",
+        );
+    }
+
+    await init()!;
+    setSearchEngine(localStorage.getItem("search")! || "google");
+
+    const [registration, transport] = await Promise.all([
+        navigator.serviceWorker.ready,
+        createTransport(),
+    ]);
+
+    if (!navigator.serviceWorker.controller) await controllerChange(5000);
+
+    const serviceworker =
+        navigator.serviceWorker.controller ?? registration.active!;
+
+    const controller = createController(serviceworker, transport);
 
     await controller.wait();
 

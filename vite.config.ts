@@ -87,117 +87,131 @@ const routeFiles = glob("src/routes/*.tsx").filter(
 const commitCounts = routeFiles.map(f => gitCommitCount(f));
 const maxCommits = Math.max(...commitCounts, 1);
 
+const resolveConfig = {
+    dedupe: [
+        "solid-js",
+        "@solidjs/web",
+        "@solidjs/router",
+        "@solidjs/signals",
+        "@solidjs/meta",
+    ],
+    alias: {
+        "solid-js/web": "@solidjs/web",
+        "solid-js/web/storage": "@solidjs/web/storage",
+        "solid-js/store": "solid-js",
+        "@terbiumos/tfs/browser": resolve(
+            "node_modules/@terbiumos/tfs/src/index.ts",
+        ),
+        tslib: resolve("node_modules/tslib/tslib.es6.mjs"),
+    },
+    tsconfigPaths: true,
+};
+
+const environments = {
+    client: {
+        resolve: {
+            conditions: ["solid", "browser"],
+            externalConditions: ["browser"],
+        },
+    },
+    ssr: {
+        resolve: {
+            conditions: ["solid", "node"],
+            externalConditions: ["solid", "node"],
+        },
+    },
+};
+
+const buildConfig = {
+    // run.ts serves dist/client/_build and 404s a bare /_build, and
+    // misc/vite/obfuscateAssets walks dist/client/_build/assets - the
+    // three have to agree on this path.
+    assetsDir: "_build/assets",
+    cssMinify: "lightningcss" as const,
+    rolldownOptions: {
+        output: {
+            minify: {
+                compress: {
+                    dropDebugger: true,
+                    dropConsole: false,
+                    unused: true,
+                    sequences: true,
+                    joinVars: true,
+                },
+                mangle: {
+                    toplevel: true,
+                },
+            },
+        },
+    },
+    sourcemap: true,
+};
+
+const cssConfig = {
+    transformer: "lightningcss" as const,
+    lightningcss: {
+        targets: cssTargets,
+        drafts: { customMedia: true },
+        minify: true,
+    },
+};
+
+function sitemapRoutes() {
+    return routeFiles.map((file, i) => {
+        const name = basename(file, ".tsx");
+        const commits = commitCounts[i];
+        return {
+            loc: name === "index" ? "/" : `/${name}`,
+            lastmod: stat(file).mtime.toISOString().split("T")[0],
+            changefreq: toChangefreq(commits),
+            priority:
+                Math.round((0.1 + (commits / maxCommits) * 0.9) * 10) / 10,
+        };
+    });
+}
+
+function plugins() {
+    return [
+        civilExtShimPlugin(),
+        tanstackRouter({ target: "solid", autoCodeSplitting: true }),
+        solid({ ssr: true, start: true }),
+        nitro({
+            preset: "node",
+            exportConditions: ["solid"],
+            output: {
+                dir: "dist",
+                serverDir: "dist/server",
+                publicDir: "dist/client",
+            },
+            buildDir: "dist/nitro",
+            rolldownConfig: {
+                external: ["@better-auth/kysely-adapter", "kysely"],
+            },
+        }),
+        vanillaExtract(),
+        sitemap({
+            hostname: "https://civil.quartinal.me",
+            routes: sitemapRoutes(),
+            outDir: "dist/client",
+        }),
+        robots({
+            content: BLOCK_AI_ALLOW_REST.replace(
+                /\n?User-agent:\s*ClaudeBot\s*\nDisallow:\s*\/\s*\n?/g,
+                "\n",
+            ),
+            sitemap: "https://civil.quartinal.me/sitemap.xml",
+        }),
+        devtoolsJson(),
+        obfuscateAssets(),
+    ];
+}
+
 export default defineConfig(() => {
     return {
-        resolve: {
-            dedupe: [
-                "solid-js",
-                "@solidjs/web",
-                "@solidjs/router",
-                "@solidjs/signals",
-                "@solidjs/meta",
-            ],
-            alias: {
-                "solid-js/web": "@solidjs/web",
-                "solid-js/web/storage": "@solidjs/web/storage",
-                "solid-js/store": "solid-js",
-                "@terbiumos/tfs/browser": resolve(
-                    "node_modules/@terbiumos/tfs/src/index.ts",
-                ),
-                tslib: resolve("node_modules/tslib/tslib.es6.mjs"),
-            },
-            tsconfigPaths: true,
-        },
-        environments: {
-            client: {
-                resolve: {
-                    conditions: ["solid", "browser"],
-                    externalConditions: ["browser"],
-                },
-            },
-            ssr: {
-                resolve: {
-                    conditions: ["solid", "node"],
-                    externalConditions: ["solid", "node"],
-                },
-            },
-        },
-        build: {
-            // run.ts serves dist/client/_build and 404s a bare /_build, and
-            // misc/vite/obfuscateAssets walks dist/client/_build/assets - the
-            // three have to agree on this path.
-            assetsDir: "_build/assets",
-            cssMinify: "lightningcss" as const,
-            rolldownOptions: {
-                output: {
-                    minify: {
-                        compress: {
-                            dropDebugger: true,
-                            dropConsole: false,
-                            unused: true,
-                            sequences: true,
-                            joinVars: true,
-                        },
-                        mangle: {
-                            toplevel: true,
-                        },
-                    },
-                },
-            },
-            sourcemap: true,
-        },
-        css: {
-            transformer: "lightningcss" as const,
-            lightningcss: {
-                targets: cssTargets,
-                drafts: { customMedia: true },
-                minify: true,
-            },
-        },
-        plugins: [
-            civilExtShimPlugin(),
-            tanstackRouter({ target: "solid", autoCodeSplitting: true }),
-            solid({ ssr: true, start: true }),
-            nitro({
-                preset: "node",
-                exportConditions: ["solid"],
-                output: {
-                    dir: "dist",
-                    serverDir: "dist/server",
-                    publicDir: "dist/client",
-                },
-                buildDir: "dist/nitro",
-                rolldownConfig: {
-                    external: ["@better-auth/kysely-adapter", "kysely"],
-                },
-            }),
-            vanillaExtract(),
-            sitemap({
-                hostname: "https://civil.quartinal.me",
-                routes: routeFiles.map((file, i) => {
-                    const name = basename(file, ".tsx");
-                    const commits = commitCounts[i];
-                    return {
-                        loc: name === "index" ? "/" : `/${name}`,
-                        lastmod: stat(file).mtime.toISOString().split("T")[0],
-                        changefreq: toChangefreq(commits),
-                        priority:
-                            Math.round(
-                                (0.1 + (commits / maxCommits) * 0.9) * 10,
-                            ) / 10,
-                    };
-                }),
-                outDir: "dist/client",
-            }),
-            robots({
-                content: BLOCK_AI_ALLOW_REST.replace(
-                    /\n?User-agent:\s*ClaudeBot\s*\nDisallow:\s*\/\s*\n?/g,
-                    "\n",
-                ),
-                sitemap: "https://civil.quartinal.me/sitemap.xml",
-            }),
-            devtoolsJson(),
-            obfuscateAssets(),
-        ],
+        resolve: resolveConfig,
+        environments,
+        build: buildConfig,
+        css: cssConfig,
+        plugins: plugins(),
     };
 });

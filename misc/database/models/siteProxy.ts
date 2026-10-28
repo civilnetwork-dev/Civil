@@ -101,15 +101,14 @@ export async function recordCompatFeedback(
     return "scramjet";
 }
 
-export async function probeSite(url: string): Promise<ProxyDecision> {
+async function fetchProbe(
+    url: string,
+): Promise<{ res: Response | null; latencyMs: number }> {
     const start = Date.now();
-    let res: Response | null = null;
-    let latencyMs: number | null = null;
-
     try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 3000);
-        res = await fetch(url, {
+        const res = await fetch(url, {
             method: "GET",
             redirect: "follow",
             signal: controller.signal,
@@ -119,12 +118,14 @@ export async function probeSite(url: string): Promise<ProxyDecision> {
             },
         });
         clearTimeout(timer);
-        latencyMs = Date.now() - start;
+        return { res, latencyMs: Date.now() - start };
     } catch {
-        latencyMs = Date.now() - start;
+        return { res: null, latencyMs: Date.now() - start };
     }
+}
 
-    const h = res?.headers;
+/** How defended the response is, with a reason for each defense found. */
+function scoreDefenses(h: Headers | undefined, reasons: string[]): number {
     const csp = h?.get("content-security-policy") ?? "";
     const xfo = (h?.get("x-frame-options") ?? "").toLowerCase();
     const coop = (h?.get("cross-origin-opener-policy") ?? "").toLowerCase();
@@ -132,7 +133,6 @@ export async function probeSite(url: string): Promise<ProxyDecision> {
     const ct = (h?.get("content-type") ?? "").toLowerCase();
 
     let scramjetPoints = 0;
-    const reasons: string[] = [];
 
     if (xfo.includes("deny") || xfo.includes("sameorigin")) {
         scramjetPoints += 2;
@@ -158,25 +158,41 @@ export async function probeSite(url: string): Promise<ProxyDecision> {
     if (ct.includes("text/html")) {
         scramjetPoints += 1;
     }
+    return scramjetPoints;
+}
 
-    const slow = (latencyMs ?? 9999) > 1200;
-
+function pickProbeTransport(
+    h: Headers | undefined,
+    latencyMs: number,
+    scramjetPoints: number,
+    reasons: string[],
+): TransportName {
     const server = (h?.get("server") ?? "").toLowerCase();
     const isCloudflare =
         Boolean(h?.get("cf-ray")) || server.includes("cloudflare");
-    let transport: TransportName;
-    if ((latencyMs ?? 0) > 900) {
-        transport = "libcurl";
+    if (latencyMs > 900) {
         reasons.push("slow>libcurl");
-    } else if (isCloudflare) {
-        transport = "epoxy";
-        reasons.push("cf>epoxy");
-    } else if (scramjetPoints <= 1) {
-        transport = "bare";
-        reasons.push("simple>bare");
-    } else {
-        transport = "epoxy";
+        return "libcurl";
     }
+    if (isCloudflare) {
+        reasons.push("cf>epoxy");
+        return "epoxy";
+    }
+    if (scramjetPoints <= 1) {
+        reasons.push("simple>bare");
+        return "bare";
+    }
+    return "epoxy";
+}
+
+export async function probeSite(url: string): Promise<ProxyDecision> {
+    const { res, latencyMs } = await fetchProbe(url);
+    const h = res?.headers;
+    const reasons: string[] = [];
+
+    const scramjetPoints = scoreDefenses(h, reasons);
+    const slow = latencyMs > 1200;
+    const transport = pickProbeTransport(h, latencyMs, scramjetPoints, reasons);
 
     // scramjetPoints no longer chooses *between* proxies -- scramjet is the
     // only one -- but it's still real signal about how defended this site

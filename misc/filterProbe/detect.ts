@@ -138,6 +138,99 @@ function vendorNamePhrase(
     return re.exec(text)?.[0]?.trim();
 }
 
+/** A probe that never actually loaded the page proves nothing. */
+function probeFailed(observation: PageObservation): boolean {
+    return Boolean(
+        observation.fetchError ||
+        (observation.status !== undefined &&
+            (observation.status === 0 || observation.status >= 500)),
+    );
+}
+
+/** 1. The filter's own declarativeNetRequest rules, asked directly — a match
+ *  here needed no rendered page and no wait at all. */
+function dnrSignal(
+    observation: PageObservation,
+    probe: VendorProbe,
+): FlagSignal | undefined {
+    if (!observation.dnrMatch) return undefined;
+    const { action, matchedRuleId, redirectUrl } = observation.dnrMatch;
+    if (action === "redirect" && redirectUrl) {
+        const finalHost = hostOf(redirectUrl);
+        // Prefer the canonical probe domain when the redirect lands under
+        // one; otherwise the host itself is the finding — a DNR redirect
+        // nobody's curated yet, which is exactly the top-ranked case
+        // predictFix already has a suggestion for.
+        const domain =
+            probe.domains.find(d => hostUnderDomain(finalHost, d)) ?? finalHost;
+        return { kind: "redirect", domain, finalHost };
+    }
+    if (action === "block" && matchedRuleId !== null) {
+        return { kind: "dnr-block", matchedRuleId };
+    }
+    return undefined;
+}
+
+/** 2. Redirected onto a vendor block-page host (content-script/background
+ *  driven — chrome.tabs.update or a location.href write). */
+function redirectSignal(
+    observation: PageObservation,
+    probe: VendorProbe,
+): FlagSignal | undefined {
+    const finalHost = hostOf(observation.finalUrl);
+    const domain = probe.domains.find(d => hostUnderDomain(finalHost, d));
+    return domain ? { kind: "redirect", domain, finalHost } : undefined;
+}
+
+/** 3. A vendor block marker in the page text. */
+function markerSignal(
+    observation: PageObservation,
+    probe: VendorProbe,
+): FlagSignal | undefined {
+    const haystack = observation.pageText.toLowerCase();
+    const marker = probe.blockMarkers.find(m =>
+        haystack.includes(m.toLowerCase()),
+    );
+    return marker === undefined ? undefined : { kind: "marker", marker };
+}
+
+/** 4. The vendor's name in a blocking phrase. */
+function vendorNameSignal(
+    observation: PageObservation,
+    probe: VendorProbe,
+): FlagSignal | undefined {
+    const phrase = vendorNamePhrase(observation.pageText, probe);
+    return phrase ? { kind: "vendor-name", phrase } : undefined;
+}
+
+/**
+ * 5. Generic, vendor-agnostic fallback: the page's own text collapsed to a
+ * short fraction of what was served, matching no specific marker — an
+ * in-place block whose exact wording isn't curated yet (a new release, or a
+ * vendor with no distinctive block text at all). Both conditions must hold,
+ * not just one: a real block page is both short in absolute terms and a
+ * small fraction of a real app shell.
+ */
+function domReplacedSignal(
+    observation: PageObservation,
+): FlagSignal | undefined {
+    // ponytail: thresholds picked by eyeball against the block pages already
+    // in probeData.json, not fit to a corpus — loosen/tighten if this misses
+    // a real block or trips on a legitimately terse route.
+    const finalLength = observation.pageText.length;
+    if (
+        observation.originalLength >= 200 &&
+        finalLength < observation.originalLength * 0.25 &&
+        finalLength < 400
+    )
+        return {
+            kind: "dom-replaced",
+            originalLength: observation.originalLength,
+            finalLength,
+        };
+    return undefined;
+}
+
 /**
  * The verdict for one observation under one vendor. `vendor` must be a key of
  * `probeData.json`; an unknown vendor is treated as "no data, not flagged"
@@ -152,105 +245,23 @@ export function detectFlagging(
     const base = { vendor, route: observation.route };
     if (!probe) return { ...base, flagged: false };
 
-    // A probe that never actually loaded the page proves nothing about the
-    // vendor — a broken/empty read must never pass as "clean". Checked before
-    // any other signal so a marker-shaped string that happens to survive a
+    // A broken/empty read must never pass as "clean". Checked before any
+    // other signal so a marker-shaped string that happens to survive a
     // failed fetch (an empty string can't match anything anyway, but this
     // stays correct even if that ever changes) can't sneak a flag through
     // either.
-    if (
-        observation.fetchError ||
-        (observation.status !== undefined &&
-            (observation.status === 0 || observation.status >= 500))
-    )
-        return { ...base, flagged: false };
+    if (probeFailed(observation)) return { ...base, flagged: false };
 
-    // 1. The filter's own declarativeNetRequest rules, asked directly — a
-    //    match here needed no rendered page and no wait at all.
-    if (observation.dnrMatch) {
-        const { action, matchedRuleId, redirectUrl } = observation.dnrMatch;
-        if (action === "redirect" && redirectUrl) {
-            const finalHost = hostOf(redirectUrl);
-            // Prefer the canonical probe domain when the redirect lands
-            // under one; otherwise the host itself is the finding — a DNR
-            // redirect nobody's curated yet, which is exactly the top-ranked
-            // case predictFix already has a suggestion for.
-            const domain =
-                probe.domains.find(d => hostUnderDomain(finalHost, d)) ??
-                finalHost;
-            return {
-                ...base,
-                flagged: true,
-                signal: { kind: "redirect", domain, finalHost },
-            };
-        }
-        if (action === "block" && matchedRuleId !== null) {
-            return {
-                ...base,
-                flagged: true,
-                signal: { kind: "dnr-block", matchedRuleId },
-            };
-        }
-    }
+    const signal =
+        dnrSignal(observation, probe) ??
+        redirectSignal(observation, probe) ??
+        markerSignal(observation, probe) ??
+        vendorNameSignal(observation, probe) ??
+        domReplacedSignal(observation);
 
-    // 2. Redirected onto a vendor block-page host (content-script/background
-    //    driven — chrome.tabs.update or a location.href write).
-    const finalHost = hostOf(observation.finalUrl);
-    for (const domain of probe.domains) {
-        if (hostUnderDomain(finalHost, domain))
-            return {
-                ...base,
-                flagged: true,
-                signal: { kind: "redirect", domain, finalHost },
-            };
-    }
-
-    // 3. A vendor block marker in the page text.
-    const haystack = observation.pageText.toLowerCase();
-    for (const marker of probe.blockMarkers) {
-        if (haystack.includes(marker.toLowerCase()))
-            return {
-                ...base,
-                flagged: true,
-                signal: { kind: "marker", marker },
-            };
-    }
-
-    // 4. The vendor's name in a blocking phrase.
-    const phrase = vendorNamePhrase(observation.pageText, probe);
-    if (phrase)
-        return {
-            ...base,
-            flagged: true,
-            signal: { kind: "vendor-name", phrase },
-        };
-
-    // 5. Generic, vendor-agnostic fallback: the page's own text collapsed to
-    //    a short fraction of what was served, matching no specific marker —
-    //    an in-place block whose exact wording isn't curated yet (a new
-    //    release, or a vendor with no distinctive block text at all). Both
-    //    conditions must hold, not just one: a real block page is both short
-    //    in absolute terms and a small fraction of a real app shell.
-    // ponytail: thresholds picked by eyeball against the block pages already
-    // in probeData.json, not fit to a corpus — loosen/tighten if this misses
-    // a real block or trips on a legitimately terse route.
-    const finalLength = observation.pageText.length;
-    if (
-        observation.originalLength >= 200 &&
-        finalLength < observation.originalLength * 0.25 &&
-        finalLength < 400
-    )
-        return {
-            ...base,
-            flagged: true,
-            signal: {
-                kind: "dom-replaced",
-                originalLength: observation.originalLength,
-                finalLength,
-            },
-        };
-
-    return { ...base, flagged: false };
+    return signal
+        ? { ...base, flagged: true, signal }
+        : { ...base, flagged: false };
 }
 
 export { PROBE_DATA };

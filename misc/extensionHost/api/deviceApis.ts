@@ -167,6 +167,50 @@ export function buildExtensionAlias(getURL: (path: string) => string) {
     };
 }
 
+function systemStorage() {
+    return {
+        getInfo: async () => [
+            {
+                id: "storage:0",
+                name: "Internal Storage",
+                type: "fixed",
+                capacity: 32 * 1024 ** 3,
+            },
+        ],
+        getAvailableCapacity: async () => ({
+            id: "storage:0",
+            availableCapacity: 16 * 1024 ** 3,
+        }),
+        ejectDevice: async () => "success",
+        onAttached: emptyEvent(),
+        onDetached: emptyEvent(),
+    };
+}
+
+/** The 1366x768 panel a typical school Chromebook has. */
+function systemDisplay() {
+    return {
+        getInfo: async () => [
+            {
+                id: "display:0",
+                name: "Built-in display",
+                isPrimary: true,
+                isInternal: true,
+                isEnabled: true,
+                dpiX: 96,
+                dpiY: 96,
+                rotation: 0,
+                bounds: { left: 0, top: 0, width: 1366, height: 768 },
+                overscan: { left: 0, top: 0, right: 0, bottom: 0 },
+                workArea: { left: 0, top: 0, width: 1366, height: 720 },
+            },
+        ],
+        getDisplayLayout: async () => [],
+        setDisplayProperties: async () => {},
+        onDisplayChanged: emptyEvent(),
+    };
+}
+
 /**
  * `chrome.system.*` — the device inventory fourteen of the tracked filters
  * ask for, and read straight into property accesses (`info.archName`,
@@ -195,43 +239,8 @@ export function buildSystem() {
                 availableCapacity: 2 * 1024 ** 3,
             }),
         },
-        storage: {
-            getInfo: async () => [
-                {
-                    id: "storage:0",
-                    name: "Internal Storage",
-                    type: "fixed",
-                    capacity: 32 * 1024 ** 3,
-                },
-            ],
-            getAvailableCapacity: async () => ({
-                id: "storage:0",
-                availableCapacity: 16 * 1024 ** 3,
-            }),
-            ejectDevice: async () => "success",
-            onAttached: emptyEvent(),
-            onDetached: emptyEvent(),
-        },
-        display: {
-            getInfo: async () => [
-                {
-                    id: "display:0",
-                    name: "Built-in display",
-                    isPrimary: true,
-                    isInternal: true,
-                    isEnabled: true,
-                    dpiX: 96,
-                    dpiY: 96,
-                    rotation: 0,
-                    bounds: { left: 0, top: 0, width: 1366, height: 768 },
-                    overscan: { left: 0, top: 0, right: 0, bottom: 0 },
-                    workArea: { left: 0, top: 0, width: 1366, height: 720 },
-                },
-            ],
-            getDisplayLayout: async () => [],
-            setDisplayProperties: async () => {},
-            onDisplayChanged: emptyEvent(),
-        },
+        storage: systemStorage(),
+        display: systemDisplay(),
         network: {
             getNetworkInterfaces: async () => [
                 { name: "eth0", address: "127.0.0.1", prefixLength: 8 },
@@ -240,29 +249,16 @@ export function buildSystem() {
     };
 }
 
-/**
- * Namespaces whose methods return *lists* of things this host has none of:
- * no browsing history, no downloads, no cookie jar, no closed sessions.
- * Chrome answers those with an empty array; the universal stub answers with
- * `undefined`, and a bundle doing
- * `(await chrome.history.search({})).forEach(...)` dies on the difference —
- * impero and securly both did.
- *
- * An empty list is not a placeholder here, it is the truth: nothing has been
- * browsed or downloaded inside this host. Bookmarks graduated out of this
- * group into their own file (api/bookmarks.ts) once a real vendor
- * (impero) turned out to read a value out of one rather than just iterate
- * an empty list — the same reason storage/managed storage aren't here
- * either.
- */
-export function buildEmptyCollections() {
-    const none = async () => [];
-    const listApi = (methods: string[], extra: Record<string, unknown> = {}) =>
-        Object.fromEntries([
-            ...methods.map(name => [name, none]),
-            ...Object.entries(extra),
-        ]);
+const none = async () => [];
 
+function listApi(methods: string[], extra: Record<string, unknown> = {}) {
+    return Object.fromEntries([
+        ...methods.map(name => [name, none]),
+        ...Object.entries(extra),
+    ]);
+}
+
+function browsingDataCollections() {
     return {
         history: listApi(["search", "getVisits"], {
             addUrl: async () => {},
@@ -294,6 +290,11 @@ export function buildEmptyCollections() {
             onChanged: emptyEvent(),
         }),
         topSites: { get: none },
+    };
+}
+
+function uiCollections() {
+    return {
         tabGroups: listApi(["query"], {
             get: async () => undefined,
             move: async () => undefined,
@@ -323,6 +324,25 @@ export function buildEmptyCollections() {
             onButtonClicked: emptyEvent(),
         }),
     };
+}
+
+/**
+ * Namespaces whose methods return *lists* of things this host has none of:
+ * no browsing history, no downloads, no cookie jar, no closed sessions.
+ * Chrome answers those with an empty array; the universal stub answers with
+ * `undefined`, and a bundle doing
+ * `(await chrome.history.search({})).forEach(...)` dies on the difference —
+ * impero and securly both did.
+ *
+ * An empty list is not a placeholder here, it is the truth: nothing has been
+ * browsed or downloaded inside this host. Bookmarks graduated out of this
+ * group into their own file (api/bookmarks.ts) once a real vendor
+ * (impero) turned out to read a value out of one rather than just iterate
+ * an empty list — the same reason storage/managed storage aren't here
+ * either.
+ */
+export function buildEmptyCollections() {
+    return { ...browsingDataCollections(), ...uiCollections() };
 }
 
 function emptyEvent() {

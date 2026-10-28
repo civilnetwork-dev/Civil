@@ -6,7 +6,7 @@ import { getRequestListener } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 import { start as startChii } from "chii";
-import { Hono, type MiddlewareHandler } from "hono";
+import { type Context, Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { compress } from "hono/compress";
 
@@ -70,7 +70,7 @@ import { createBareServer } from "@tomphttp/bare-server-node";
 import { XMLParser } from "fast-xml-parser";
 import { blue, yellow } from "picocolors";
 import { build } from "vite";
-import { WebSocketServer } from "ws";
+import { type WebSocket as WsSocket, WebSocketServer } from "ws";
 import xior from "xior";
 
 import { useBlocksiMiddleware } from "./misc/filters/blocksi/middleware";
@@ -296,6 +296,79 @@ app.get("/api/favicon", async c => {
 });
 
 const _proxyProbesInFlight = new Map<string, Promise<unknown>>();
+
+const FALLBACK_PROXY_DECISION = {
+    proxy: "scramjet",
+    transport: "epoxy",
+    wispVersion: 2,
+    score: 0,
+    cached: false,
+    fallback: true,
+};
+
+type ProxyPayload = {
+    proxy: string;
+    transport: string;
+    wispVersion: number;
+    score: number;
+};
+
+async function cacheProxyPayload(redisKey: string, payload: ProxyPayload) {
+    await redis
+        .set(redisKey, JSON.stringify(payload), "EX", 86400)
+        .catch(() => {});
+}
+
+/** Probes the host once, however many requests ask for it meanwhile. */
+function probeOnce(hostname: string, redisKey: string): Promise<unknown> {
+    let inflight = _proxyProbesInFlight.get(hostname);
+    if (!inflight) {
+        inflight = (async () => {
+            const decision = await probeSite(`https://${hostname}/`);
+            await upsertSiteProxyConfig(hostname, decision).catch(() => {});
+            const payload = {
+                proxy: decision.proxy,
+                transport: decision.transport,
+                wispVersion: decision.wispVersion,
+                score: decision.score,
+            };
+            await cacheProxyPayload(redisKey, payload);
+            return payload;
+        })().finally(() => _proxyProbesInFlight.delete(hostname));
+        _proxyProbesInFlight.set(hostname, inflight);
+    }
+    return inflight;
+}
+
+async function bestProxyFor(c: Context<AppEnv>, hostname: string) {
+    const redisKey = `siteproxy:${hostname}`;
+    const hit = await redis.get(redisKey).catch(() => null);
+    if (hit) {
+        return c.json({ ...JSON.parse(hit), cached: true });
+    }
+
+    const stored = await getSiteProxyConfig(hostname);
+    // A row from before UV was removed can still say proxy: "uv" (the
+    // proxy column has no DB-level enum, just text) -- treat that the
+    // same as no stored decision at all, so it falls through to a fresh
+    // probeSite() below and self-heals to "scramjet" via
+    // upsertSiteProxyConfig, rather than serving a recommendation for a
+    // proxy backend that no longer exists.
+    if (stored && stored.proxy === "scramjet") {
+        const payload = {
+            proxy: stored.proxy,
+            transport: stored.transport,
+            wispVersion: stored.wispVersion,
+            score: stored.score,
+        };
+        await cacheProxyPayload(redisKey, payload);
+        return c.json({ ...payload, cached: true });
+    }
+
+    const payload = await probeOnce(hostname, redisKey);
+    return c.json({ ...(payload as object), cached: false });
+}
+
 app.get("/api/best-proxy", async c => {
     const urlParam = c.req.query("url");
     const hostname = urlParam ? normalizeHostname(urlParam) : null;
@@ -305,72 +378,13 @@ app.get("/api/best-proxy", async c => {
 
     c.header("Cache-Control", "no-store");
     if (isPrivateHost(hostname)) {
-        return c.json({
-            proxy: "scramjet",
-            transport: "epoxy",
-            wispVersion: 2,
-            score: 0,
-            cached: false,
-            fallback: true,
-        });
+        return c.json(FALLBACK_PROXY_DECISION);
     }
 
-    const redisKey = `siteproxy:${hostname}`;
     try {
-        const hit = await redis.get(redisKey).catch(() => null);
-        if (hit) {
-            return c.json({ ...JSON.parse(hit), cached: true });
-        }
-
-        const stored = await getSiteProxyConfig(hostname);
-        // A row from before UV was removed can still say proxy: "uv" (the
-        // proxy column has no DB-level enum, just text) -- treat that the
-        // same as no stored decision at all, so it falls through to a fresh
-        // probeSite() below and self-heals to "scramjet" via
-        // upsertSiteProxyConfig, rather than serving a recommendation for a
-        // proxy backend that no longer exists.
-        if (stored && stored.proxy === "scramjet") {
-            const payload = {
-                proxy: stored.proxy,
-                transport: stored.transport,
-                wispVersion: stored.wispVersion,
-                score: stored.score,
-            };
-            await redis
-                .set(redisKey, JSON.stringify(payload), "EX", 86400)
-                .catch(() => {});
-            return c.json({ ...payload, cached: true });
-        }
-
-        let inflight = _proxyProbesInFlight.get(hostname);
-        if (!inflight) {
-            inflight = (async () => {
-                const decision = await probeSite(`https://${hostname}/`);
-                await upsertSiteProxyConfig(hostname, decision).catch(() => {});
-                const payload = {
-                    proxy: decision.proxy,
-                    transport: decision.transport,
-                    wispVersion: decision.wispVersion,
-                    score: decision.score,
-                };
-                await redis
-                    .set(redisKey, JSON.stringify(payload), "EX", 86400)
-                    .catch(() => {});
-                return payload;
-            })().finally(() => _proxyProbesInFlight.delete(hostname));
-            _proxyProbesInFlight.set(hostname, inflight);
-        }
-        const payload = await inflight;
-        return c.json({ ...(payload as object), cached: false });
+        return await bestProxyFor(c, hostname);
     } catch {
-        return c.json({
-            proxy: "scramjet",
-            transport: "epoxy",
-            wispVersion: 2,
-            score: 0,
-            cached: false,
-            fallback: true,
-        });
+        return c.json(FALLBACK_PROXY_DECISION);
     }
 });
 
@@ -544,71 +558,79 @@ function shouldRouteWisp(req: Request) {
     return req.url?.endsWith("/wisp/");
 }
 
+function toBuffer(data: Buffer | ArrayBuffer | Buffer[]): Buffer {
+    return Buffer.isBuffer(data)
+        ? data
+        : Array.isArray(data)
+          ? Buffer.concat(data)
+          : Buffer.from(data as ArrayBuffer);
+}
+
+/** Strikes the user for a blocked host, and drops the socket if that bans them. */
+function reportWispViolation(
+    ws: WsSocket,
+    userId: string | null,
+    clientIp: string | null,
+) {
+    if (!userId) return;
+    void recordViolation(userId, clientIp)
+        .then(({ banned }) => {
+            if (banned) {
+                try {
+                    ws.close(1008, "Banned for accessing restricted content");
+                } catch {}
+            }
+        })
+        .catch(() => {});
+}
+
+async function upgradeWisp(req: Request, socket: Socket, head: Buffer) {
+    const session = await resolveSessionFromRequest(req);
+    const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
+
+    if (userId && (await isUserBanned(userId))) {
+        socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+        socket.destroy();
+        return;
+    }
+
+    const wispVersion = req.headers["sec-websocket-protocol"] ? 2 : 1;
+    const clientIp = extractClientIp(req);
+
+    wispWss.handleUpgrade(req, socket, head, ws => {
+        const sessionId = routeUpgradeCallbacks(
+            Buffer.alloc(0),
+            clientIp ?? "",
+            req.socket?.remotePort ?? 0,
+            req.url ?? "/wisp/",
+            wispVersion,
+            "{}",
+            data => {
+                try {
+                    ws.send(data);
+                } catch {}
+            },
+            () => {
+                try {
+                    ws.close();
+                } catch {}
+            },
+            () => reportWispViolation(ws, userId, clientIp),
+        );
+
+        ws.on("message", data =>
+            feedWispData(sessionId, toBuffer(data as Buffer)),
+        );
+        ws.on("close", () => closeWispSession(sessionId));
+    });
+}
+
 server.on("upgrade", async (req: Request, socket: Socket, head: Buffer) => {
     try {
         if (bare.shouldRoute(req)) {
             bare.routeUpgrade(req, socket, head).catch(console.error);
         } else if (shouldRouteWisp(req)) {
-            const session = await resolveSessionFromRequest(req);
-            const userId =
-                (session?.user as { id?: string } | undefined)?.id ?? null;
-
-            if (userId && (await isUserBanned(userId))) {
-                socket.write(
-                    "HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n",
-                );
-                socket.destroy();
-                return;
-            }
-
-            const wispVersion = req.headers["sec-websocket-protocol"] ? 2 : 1;
-            const clientIp = extractClientIp(req);
-
-            wispWss.handleUpgrade(req, socket, head, ws => {
-                const sessionId = routeUpgradeCallbacks(
-                    Buffer.alloc(0),
-                    clientIp ?? "",
-                    req.socket?.remotePort ?? 0,
-                    req.url ?? "/wisp/",
-                    wispVersion,
-                    "{}",
-                    data => {
-                        try {
-                            ws.send(data);
-                        } catch {}
-                    },
-                    () => {
-                        try {
-                            ws.close();
-                        } catch {}
-                    },
-                    () => {
-                        if (!userId) return;
-                        void recordViolation(userId, clientIp)
-                            .then(({ banned }) => {
-                                if (banned) {
-                                    try {
-                                        ws.close(
-                                            1008,
-                                            "Banned for accessing restricted content",
-                                        );
-                                    } catch {}
-                                }
-                            })
-                            .catch(() => {});
-                    },
-                );
-
-                ws.on("message", data => {
-                    const buf = Buffer.isBuffer(data)
-                        ? data
-                        : Array.isArray(data)
-                          ? Buffer.concat(data)
-                          : Buffer.from(data as ArrayBuffer);
-                    feedWispData(sessionId, buf);
-                });
-                ws.on("close", () => closeWispSession(sessionId));
-            });
+            await upgradeWisp(req, socket, head);
         } else if (req.url?.endsWith("/suggestions")) {
             wss.handleUpgrade(req, socket, head, ws => {
                 wss.emit("connection", ws, req);

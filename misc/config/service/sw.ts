@@ -109,6 +109,58 @@ function proxyRedirectUrl(requestUrl: string, targetUrl: string): string {
     return targetUrl;
 }
 
+/** Puts `injection` first inside <head>, else <html>, else the document. */
+function injectAtTop(html: string, injection: string): string {
+    if (/<head[^>]*>/i.test(html)) {
+        return html.replace(
+            /<head([^>]*)>/i,
+            (_m, a: string) => `<head${a}>${injection}`,
+        );
+    }
+    if (/<html[^>]*>/i.test(html)) {
+        return html.replace(
+            /<html([^>]*)>/i,
+            (_m, a: string) => `<html${a}>${injection}`,
+        );
+    }
+    return injection + html;
+}
+
+const FRAME_SPOOF = `<script>
+(function(){
+  try {
+    Object.defineProperty(window,'top',{get:function(){return window;},configurable:true});
+    Object.defineProperty(window,'parent',{get:function(){return window;},configurable:true});
+    Object.defineProperty(window,'frameElement',{get:function(){return null;},configurable:true});
+  } catch(e){}
+})();
+</script>`;
+
+/** The extension's HTML page with the chrome.* shim and its options inlined. */
+async function withExtensionShim(
+    opfsRoot: FileSystemDirectoryHandle,
+    html: string,
+    extId: string,
+): Promise<string> {
+    try {
+        const shimDir = await opfsRoot.getDirectoryHandle("_civil_shim");
+
+        const shimJsHandle = await shimDir.getFileHandle("shim.js");
+        const shimSrc = await (await shimJsHandle.getFile()).text();
+
+        const optsHandle = await shimDir.getFileHandle(`${extId}_opts.json`);
+        const optsJson = await (await optsHandle.getFile()).text();
+
+        const safeOpts = optsJson.replace(/<\/script/gi, "<\\/script");
+        const safeShim = shimSrc.replace(/<\/script/gi, "<\\/script");
+
+        const injection = `${FRAME_SPOOF}<script>window.__CIVIL_SHIM_OPTIONS__=${safeOpts};</script><script>${safeShim}</script>`;
+        return injectAtTop(html, injection);
+    } catch {
+        return html;
+    }
+}
+
 async function serveCivilExt(request: Request): Promise<Response | null> {
     const url = new URL(request.url);
     const match = CIVIL_EXT_RE.exec(url.pathname);
@@ -124,50 +176,11 @@ async function serveCivilExt(request: Request): Promise<Response | null> {
             mime.getType(filePath) ?? "application/octet-stream";
 
         if (contentType === "text/html") {
-            let html = await file.text();
-            try {
-                const shimDir =
-                    await opfsRoot.getDirectoryHandle("_civil_shim");
-
-                const shimJsHandle = await shimDir.getFileHandle("shim.js");
-                const shimJsFile = await shimJsHandle.getFile();
-                const shimSrc = await shimJsFile.text();
-
-                const optsHandle = await shimDir.getFileHandle(
-                    `${extId}_opts.json`,
-                );
-                const optsFile = await optsHandle.getFile();
-                const optsJson = await optsFile.text();
-
-                const safeOpts = optsJson.replace(/<\/script/gi, "<\\/script");
-                const safeShim = shimSrc.replace(/<\/script/gi, "<\\/script");
-
-                const frameSpoof = `<script>
-(function(){
-  try {
-    Object.defineProperty(window,'top',{get:function(){return window;},configurable:true});
-    Object.defineProperty(window,'parent',{get:function(){return window;},configurable:true});
-    Object.defineProperty(window,'frameElement',{get:function(){return null;},configurable:true});
-  } catch(e){}
-})();
-</script>`;
-
-                const injection = `${frameSpoof}<script>window.__CIVIL_SHIM_OPTIONS__=${safeOpts};</script><script>${safeShim}</script>`;
-
-                if (/<head[^>]*>/i.test(html)) {
-                    html = html.replace(
-                        /<head([^>]*)>/i,
-                        (_m, a: string) => `<head${a}>${injection}`,
-                    );
-                } else if (/<html[^>]*>/i.test(html)) {
-                    html = html.replace(
-                        /<html([^>]*)>/i,
-                        (_m, a: string) => `<html${a}>${injection}`,
-                    );
-                } else {
-                    html = injection + html;
-                }
-            } catch {}
+            const html = await withExtensionShim(
+                opfsRoot,
+                await file.text(),
+                extId,
+            );
             return new Response(html, {
                 status: 200,
                 headers: {
@@ -493,26 +506,24 @@ const CIVIL_ERROR_COUNTER = `<script>
 })();
 </script>`;
 
-async function injectChiiPreamble(
-    response: Response,
-    originalUrl?: string,
-    requestMode?: RequestMode,
-): Promise<Response> {
-    try {
-        const ct = response.headers.get("content-type") || "";
-
-        const isUserScript =
-            requestMode === "navigate" &&
+function isUserScriptNavigation(
+    originalUrl: string | undefined,
+    requestMode: RequestMode | undefined,
+): boolean {
+    return Boolean(
+        requestMode === "navigate" &&
             originalUrl &&
-            /\.user\.(js|ts)(\?[^#]*)?$/i.test(originalUrl.split("#")[0]);
-        if (isUserScript) {
-            const js = await response.text();
-            if (js.includes("// ==UserScript==")) {
-                const escaped = js
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;");
-                const html = `<!DOCTYPE html>
+            /\.user\.(js|ts)(\?[^#]*)?$/i.test(originalUrl.split("#")[0]),
+    );
+}
+
+/** A page that shows a userscript's source, so the install flow can read it. */
+function userScriptInstallPage(js: string): Response {
+    const escaped = js
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    const html = `<!DOCTYPE html>
 <html>
 <head>
 ${CIVIL_CHII_PREAMBLE}
@@ -524,10 +535,24 @@ ${CIVIL_EXT_DETECT_STUB}
 <pre id="civil-userscript-source" style="white-space:pre-wrap;word-break:break-all;font-size:12px">${escaped}</pre>
 </body>
 </html>`;
-                const headers = new Headers();
-                headers.set("Content-Type", "text/html; charset=utf-8");
-                headers.set("Cache-Control", "no-store");
-                return new Response(html, { status: 200, headers });
+    const headers = new Headers();
+    headers.set("Content-Type", "text/html; charset=utf-8");
+    headers.set("Cache-Control", "no-store");
+    return new Response(html, { status: 200, headers });
+}
+
+async function injectChiiPreamble(
+    response: Response,
+    originalUrl?: string,
+    requestMode?: RequestMode,
+): Promise<Response> {
+    try {
+        const ct = response.headers.get("content-type") || "";
+
+        if (isUserScriptNavigation(originalUrl, requestMode)) {
+            const js = await response.text();
+            if (js.includes("// ==UserScript==")) {
+                return userScriptInstallPage(js);
             }
             return response;
         }
@@ -535,17 +560,10 @@ ${CIVIL_EXT_DETECT_STUB}
         if (!ct.toLowerCase().includes("text/html")) return response;
 
         const text = await response.text();
-
-        var injection =
-            CIVIL_CHII_PREAMBLE + CIVIL_ERROR_COUNTER + CIVIL_EXT_DETECT_STUB;
-        let modified: string;
-        if (/<head[^>]*>/i.test(text)) {
-            modified = text.replace(/<head([^>]*)>/i, `<head$1>${injection}`);
-        } else if (/<html[^>]*>/i.test(text)) {
-            modified = text.replace(/<html([^>]*)>/i, `<html$1>${injection}`);
-        } else {
-            modified = injection + text;
-        }
+        const modified = injectAtTop(
+            text,
+            CIVIL_CHII_PREAMBLE + CIVIL_ERROR_COUNTER + CIVIL_EXT_DETECT_STUB,
+        );
 
         const headers = new Headers(response.headers);
         headers.delete("content-length");
@@ -780,9 +798,8 @@ async function proxiedResponse(
 
     if (
         originalUrl &&
-        request.mode === "navigate" &&
-        !originalUrl.includes("#bypass=true") &&
-        /\.user\.(js|ts)(\?[^#]*)?$/i.test(originalUrl.split("#")[0])
+        isUserScriptNavigation(originalUrl, request.mode) &&
+        !originalUrl.includes("#bypass=true")
     ) {
         const dnrRedirect = await checkDNRNavRedirect(originalUrl);
         if (dnrRedirect) {
