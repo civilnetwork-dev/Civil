@@ -261,6 +261,50 @@ const HAPARA_API_BASE = "https://api.hapara.com";
 
 const RESTRICTING_SESSION_TYPES = new Set(["filter", "focus", "lock"] as const);
 
+type ConfigUser = z.infer<typeof ConfigUserSchema>;
+
+/** The config entry for `email`, or the first entry when none matches. */
+function findConfigUser(
+    data: z.infer<typeof ConfigResponseSchema>,
+    email: string,
+): ConfigUser | undefined {
+    const users = Array.isArray(data) ? data : (data.users ?? []);
+    const lower = email.toLowerCase();
+    return (
+        users.find(
+            u =>
+                (u.PrimaryEmail && u.PrimaryEmail.toLowerCase() === lower) ||
+                (u.Email && u.Email.toLowerCase() === lower),
+        ) ?? users[0]
+    );
+}
+
+function toStudentConfig(user: ConfigUser, email: string): HaparaStudentConfig {
+    const userId =
+        user.ID || user.UserId || user.PrimaryEmail || user.Email || email;
+    const time = user.MonitoringTime;
+
+    return {
+        userId,
+        email: user.PrimaryEmail ?? user.Email ?? email,
+        classIds: user.Classes ?? [],
+        whiteList: user.WhiteList ?? [],
+        isValid: user.Valid ?? true,
+        invalidCode: user.InvalidCode,
+        hlBusUrl: user.HLBusURL,
+        monitoringTime: time
+            ? {
+                  currentTime: time.CurrentTime,
+                  timezone: time.Timezone,
+                  start: time.Start,
+                  end: time.End,
+                  saturday: time.Saturday,
+                  sunday: time.Sunday,
+              }
+            : undefined,
+    };
+}
+
 function lookupHaparaStudentConfig(
     email: string,
     options: HaparaCheckerOptions = {},
@@ -290,18 +334,7 @@ function lookupHaparaStudentConfig(
             });
         }
 
-        const users = Array.isArray(parsed.data)
-            ? parsed.data
-            : (parsed.data.users ?? []);
-
-        const lower = email.toLowerCase();
-        const user =
-            users.find(
-                u =>
-                    (u.PrimaryEmail &&
-                        u.PrimaryEmail.toLowerCase() === lower) ||
-                    (u.Email && u.Email.toLowerCase() === lower),
-            ) ?? users[0];
+        const user = findConfigUser(parsed.data, email);
 
         if (!user) {
             return err<HaparaStudentConfig, HaparaError>({
@@ -311,28 +344,9 @@ function lookupHaparaStudentConfig(
             });
         }
 
-        const userId =
-            user.ID || user.UserId || user.PrimaryEmail || user.Email || email;
-
-        return ok<HaparaStudentConfig, HaparaError>({
-            userId,
-            email: user.PrimaryEmail ?? user.Email ?? email,
-            classIds: user.Classes ?? [],
-            whiteList: user.WhiteList ?? [],
-            isValid: user.Valid ?? true,
-            invalidCode: user.InvalidCode,
-            hlBusUrl: user.HLBusURL,
-            monitoringTime: user.MonitoringTime
-                ? {
-                      currentTime: user.MonitoringTime.CurrentTime,
-                      timezone: user.MonitoringTime.Timezone,
-                      start: user.MonitoringTime.Start,
-                      end: user.MonitoringTime.End,
-                      saturday: user.MonitoringTime.Saturday,
-                      sunday: user.MonitoringTime.Sunday,
-                  }
-                : undefined,
-        });
+        return ok<HaparaStudentConfig, HaparaError>(
+            toStudentConfig(user, email),
+        );
     });
 }
 
@@ -719,6 +733,30 @@ function verdictForSession(
         };
     }
 
+    return verdictForFocus(
+        sharedFields,
+        activeSession,
+        parsedUrl,
+        normalizedUrlStr,
+    );
+}
+
+/** A focus session allows only its own sites, or only its own links. */
+function verdictForFocus(
+    sharedFields: Omit<
+        HaparaCheckResult,
+        | "verdict"
+        | "blockedDomains"
+        | "allowedDomains"
+        | "allowedLinks"
+        | "matchedDomain"
+    >,
+    activeSession: HaparaSession,
+    parsedUrl: URL,
+    normalizedUrlStr: string,
+): HaparaCheckResult {
+    const { whitelisted } = sharedFields;
+    const links = activeSession.Links ?? [];
     const focusType =
         activeSession.FocusSessionDetails?.FocusType ?? "whole_site";
 

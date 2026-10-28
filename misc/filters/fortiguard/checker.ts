@@ -656,11 +656,12 @@ async function requestRating(
     return response.data;
 }
 
-function parseRating(
-    originalInput: string | URL,
+type FortiGuardRating = z.infer<typeof FortiGuardRatingSchema>;
+
+/** The first rating in a response, or why there is none to read. */
+function extractRating(
     raw: unknown,
-    config: ResolvedFortiGuardConfig,
-): Result<FortiGuardCheckResult, FortiGuardCheckerError> {
+): Result<FortiGuardRating, FortiGuardCheckerError> {
     const parsedResponse = ResponseSchema.safeParse(raw);
 
     if (!parsedResponse.success) {
@@ -690,19 +691,29 @@ function parseRating(
         });
     }
 
+    return ok(parsedRating.data);
+}
+
+function parseRating(
+    originalInput: string | URL,
+    raw: unknown,
+    config: ResolvedFortiGuardConfig,
+): Result<FortiGuardCheckResult, FortiGuardCheckerError> {
+    const rating = extractRating(raw);
+    if (rating.isErr()) return err(rating.error);
+    const data = rating.value;
+
     const categoryId =
-        typeof parsedRating.data === "object"
-            ? parseCategoryId(
-                  parsedRating.data.category ?? parsedRating.data.cate,
-              )
-            : parseCategoryId(parsedRating.data);
+        typeof data === "object"
+            ? parseCategoryId(data.category ?? data.cate)
+            : parseCategoryId(data);
 
     const fallbackUrl = normalizeUrl(originalInput);
     if (fallbackUrl.isErr()) return err(fallbackUrl.error);
 
     const ratedUrl =
-        typeof parsedRating.data === "object" && parsedRating.data.url
-            ? normalizeUrl(parsedRating.data.url).unwrapOr(fallbackUrl.value)
+        typeof data === "object" && data.url
+            ? normalizeUrl(data.url).unwrapOr(fallbackUrl.value)
             : fallbackUrl.value;
 
     const category =

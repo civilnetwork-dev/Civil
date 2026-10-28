@@ -327,16 +327,22 @@ async function resolveExtensionVersion(
     return extensionVersion ?? getLatestLinewizeConnectVersion();
 }
 
-async function fetchLinewizeConfigForRegion(options: {
+type RegionLookup = {
     identity: string;
     region: LinewizeRegion;
     extensionVersion: string;
     timeoutMs: number;
     client: XiorInstance;
-}): Promise<Result<LinewizeDiscoveredConfig, CheckerError>> {
-    const gatewayUrl = getConfigurationGatewayUrl(options.region);
+};
 
-    const userLookupResponse = await options.client.get(
+/** Step one: the identity's user and device ids in this region. */
+async function lookupRegionUser(
+    options: RegionLookup,
+    gatewayUrl: string,
+): Promise<
+    Result<{ userId: string; deviceId: string; raw: unknown }, CheckerError>
+> {
+    const response = await options.client.get(
         `${gatewayUrl}/get/configuration/userid`,
         {
             params: {
@@ -347,23 +353,36 @@ async function fetchLinewizeConfigForRegion(options: {
         },
     );
 
-    if (userLookupResponse.status !== 200) {
+    if (response.status !== 200) {
         return err({
             type: "HTTP_ERROR",
-            status: userLookupResponse.status,
+            status: response.status,
             message: `userid lookup failed for region ${options.region}`,
-            data: userLookupResponse.data,
+            data: response.data,
         });
     }
 
-    const userIdResult = extractUserId(userLookupResponse.data);
+    const userIdResult = extractUserId(response.data);
     if (userIdResult.isErr()) return err(userIdResult.error);
 
-    const deviceIdResult = extractDeviceId(userLookupResponse.data);
+    const deviceIdResult = extractDeviceId(response.data);
     if (deviceIdResult.isErr()) return err(deviceIdResult.error);
 
-    const userId = userIdResult.value;
-    const deviceId = deviceIdResult.value;
+    return ok({
+        userId: userIdResult.value,
+        deviceId: deviceIdResult.value,
+        raw: response.data,
+    });
+}
+
+async function fetchLinewizeConfigForRegion(
+    options: RegionLookup,
+): Promise<Result<LinewizeDiscoveredConfig, CheckerError>> {
+    const gatewayUrl = getConfigurationGatewayUrl(options.region);
+
+    const user = await lookupRegionUser(options, gatewayUrl);
+    if (user.isErr()) return err(user.error);
+    const { userId, deviceId } = user.value;
 
     const configResponse = await options.client.get(
         `${gatewayUrl}/get/configuration/chrome-extension`,
@@ -403,9 +422,69 @@ async function fetchLinewizeConfigForRegion(options: {
         userId,
         deviceId,
         extensionVersion: options.extensionVersion,
-        rawUserLookup: userLookupResponse.data,
+        rawUserLookup: user.value.raw,
         rawConfig: configResponse.data,
     });
+}
+
+/** Tries one region, returning the config or a record of why it failed. */
+async function attemptRegion(
+    options: RegionLookup,
+): Promise<LinewizeDiscoveredConfig | RegionAttempt> {
+    const failure = (error: CheckerError, data: unknown): RegionAttempt => ({
+        region: options.region,
+        gatewayUrl: getConfigurationGatewayUrl(options.region),
+        ok: false,
+        status: error.type === "HTTP_ERROR" ? error.status : undefined,
+        message: error.message,
+        data,
+    });
+
+    try {
+        const result = await fetchLinewizeConfigForRegion(options);
+        if (result.isOk()) return result.value;
+        const { error } = result;
+        return failure(
+            error,
+            error.type === "HTTP_ERROR" ? error.data : (error as any).details,
+        );
+    } catch (error) {
+        const mapped = mapXiorError(error);
+        return failure(
+            mapped,
+            mapped.type === "HTTP_ERROR" ? mapped.data : undefined,
+        );
+    }
+}
+
+async function discoverAcrossRegions(
+    config: AutoLinewizeCheckerConfig,
+    client: XiorInstance,
+): Promise<LinewizeDiscoveredConfig> {
+    const timeoutMs = config.timeoutMs ?? 5_000;
+    const extensionVersion = await resolveExtensionVersion(
+        config.extensionVersion,
+    );
+
+    const attempts: RegionAttempt[] = [];
+
+    for (const region of config.regions ?? LINEWIZE_REGIONS) {
+        const outcome = await attemptRegion({
+            identity: config.identity,
+            region,
+            extensionVersion,
+            timeoutMs,
+            client,
+        });
+        if (!("ok" in outcome)) return outcome;
+        attempts.push(outcome);
+    }
+
+    throw {
+        type: "CONFIG_ERROR",
+        message: "No Linewize region returned a usable configuration",
+        details: attempts,
+    } satisfies CheckerError;
 }
 
 function discoverLinewizeConfig(
@@ -413,68 +492,7 @@ function discoverLinewizeConfig(
     client: XiorInstance = xior.create(),
 ): ResultAsync<LinewizeDiscoveredConfig, CheckerError> {
     return ResultAsync.fromPromise(
-        (async () => {
-            const timeoutMs = config.timeoutMs ?? 5_000;
-            const extensionVersion = await resolveExtensionVersion(
-                config.extensionVersion,
-            );
-
-            const attempts: RegionAttempt[] = [];
-
-            for (const region of config.regions ?? LINEWIZE_REGIONS) {
-                const gatewayUrl = getConfigurationGatewayUrl(region);
-
-                try {
-                    const result = await fetchLinewizeConfigForRegion({
-                        identity: config.identity,
-                        region,
-                        extensionVersion,
-                        timeoutMs,
-                        client,
-                    });
-
-                    if (result.isOk()) return result.value;
-
-                    attempts.push({
-                        region,
-                        gatewayUrl,
-                        ok: false,
-                        status:
-                            result.error.type === "HTTP_ERROR"
-                                ? result.error.status
-                                : undefined,
-                        message: result.error.message,
-                        data:
-                            result.error.type === "HTTP_ERROR"
-                                ? result.error.data
-                                : (result.error as any).details,
-                    });
-                } catch (error) {
-                    const mapped = mapXiorError(error);
-
-                    attempts.push({
-                        region,
-                        gatewayUrl,
-                        ok: false,
-                        status:
-                            mapped.type === "HTTP_ERROR"
-                                ? mapped.status
-                                : undefined,
-                        message: mapped.message,
-                        data:
-                            mapped.type === "HTTP_ERROR"
-                                ? mapped.data
-                                : undefined,
-                    });
-                }
-            }
-
-            throw {
-                type: "CONFIG_ERROR",
-                message: "No Linewize region returned a usable configuration",
-                details: attempts,
-            } satisfies CheckerError;
-        })(),
+        discoverAcrossRegions(config, client),
         error => {
             if (
                 typeof error === "object" &&

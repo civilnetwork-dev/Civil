@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 
-import { type AppEnv, clientIp, readJsonBody } from "../../http";
-import { posthog } from "../posthog";
+import { type AppEnv, readJsonBody } from "../../http";
+import { captureFilterCheck } from "../utils/captureFilter";
 import { respondFilterError } from "../utils/respondFilterError";
 import {
     checkLightspeedFilter,
@@ -48,18 +48,12 @@ export function useLightspeedMiddleware(app: Hono<AppEnv>) {
             hostname,
         } = result.value;
 
-        posthog.capture({
-            distinctId: clientIp(c) ?? "unknown",
-            event: "filter_check",
-            properties: {
-                filter: "lightspeed",
-                url,
-                verdict,
-                blocked,
-                statusIsKnown: verdict !== "UNKNOWN",
-                matchedCategory,
-                categories,
-            },
+        captureFilterCheck(c, "lightspeed", url, {
+            verdict,
+            blocked,
+            statusIsKnown: verdict !== "UNKNOWN",
+            matchedCategory,
+            categories,
         });
 
         return c.json({

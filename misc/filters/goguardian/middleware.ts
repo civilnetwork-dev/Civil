@@ -1,77 +1,69 @@
-import type { Hono } from "hono";
+import type { Context, Hono } from "hono";
 
-import { type AppEnv, clientIp, readJsonBody } from "../../http";
-import { posthog } from "../posthog";
+import { type AppEnv, readJsonBody } from "../../http";
+import { captureFilterCheck, captureFilterError } from "../utils/captureFilter";
 import { checkGoGuardianFilterAuthenticated } from "./checker";
 import { computeExtensionIdFromKey } from "./generateAuthToken";
 import { getGoGuardianVersion } from "./getVersion";
 
-export function useGoGuardianMiddleware(app: Hono<AppEnv>) {
-    app.post("/filterCheck/goguardian", async c => {
-        const { authToken, orgRands, manifestKey, url } = (await readJsonBody(
-            c,
-        )) as {
-            authToken?: string;
-            orgRands?: string[];
-            manifestKey?: string;
-            url: string;
-        };
+type GoGuardianRequest = {
+    authToken?: string;
+    orgRands?: string[];
+    manifestKey?: string;
+    url: string;
+};
 
-        const resolvedOrgRands = manifestKey
-            ? [computeExtensionIdFromKey(manifestKey)]
-            : (orgRands ?? []);
+function authOptionsFor({
+    authToken,
+    orgRands,
+    manifestKey,
+}: GoGuardianRequest) {
+    const resolvedOrgRands = manifestKey
+        ? [computeExtensionIdFromKey(manifestKey)]
+        : (orgRands ?? []);
+    return authToken ? { authToken } : { orgRands: resolvedOrgRands };
+}
 
-        const authOptions = authToken
-            ? { authToken }
-            : { orgRands: resolvedOrgRands };
+async function checkGoGuardian(c: Context<AppEnv>) {
+    const body = (await readJsonBody(c)) as GoGuardianRequest;
+    const { url } = body;
+    const authOptions = authOptionsFor(body);
+    const extensionVersion = await getGoGuardianVersion();
 
-        const extensionVersion = await getGoGuardianVersion();
+    const result = await checkGoGuardianFilterAuthenticated(
+        { url },
+        { ...authOptions, extensionVersion },
+    );
 
-        const result = await checkGoGuardianFilterAuthenticated(
-            { url },
-            { ...authOptions, extensionVersion },
-        );
+    if (result.isErr()) {
+        captureFilterError(c, "goguardian", url, result.error);
+        return c.text(`${result.error.type}: ${result.error.message}`, 500);
+    }
 
-        if (result.isErr()) {
-            posthog.capture({
-                distinctId: clientIp(c) ?? "unknown",
-                event: "filter_error",
-                properties: {
-                    filter: "goguardian",
-                    url,
-                    errorType: result.error.type,
-                    errorMessage: result.error.message,
-                },
-            });
-            return c.text(`${result.error.type}: ${result.error.message}`, 500);
-        } else {
-            const matchedKeywords = [
-                ...result.value.matchedProxyKeywords,
-                ...result.value.matchedThreatKeywords,
-            ];
-            posthog.capture({
-                distinctId: clientIp(c) ?? "unknown",
-                event: "filter_check",
-                properties: {
-                    filter: "goguardian",
-                    url,
-                    blocked: result.value.verdict !== "BLOCK",
-                    statusIsKnown: result.value.verdict !== "UNKNOWN",
-                    matchedKeywords,
-                    proxyModelVersion: result.value.proxyModelVersion,
-                    threatsModelVersion: result.value.threatsModelVersion,
-                },
-            });
-            return c.json({
-                blocked: result.value.verdict !== "BLOCK",
-                statusIsKnown: result.value.verdict !== "UNKNOWN",
-                proxyModelVersion: result.value.proxyModelVersion,
-                matchedKeywords,
-                versionsUsed: {
-                    threats: result.value.threatsModelVersion,
-                    proxies: result.value.proxyModelVersion,
-                },
-            });
-        }
+    const value = result.value;
+    const matchedKeywords = [
+        ...value.matchedProxyKeywords,
+        ...value.matchedThreatKeywords,
+    ];
+    captureFilterCheck(c, "goguardian", url, {
+        blocked: value.verdict !== "BLOCK",
+        statusIsKnown: value.verdict !== "UNKNOWN",
+        matchedKeywords,
+        proxyModelVersion: value.proxyModelVersion,
+        threatsModelVersion: value.threatsModelVersion,
     });
+    return c.json({
+        blocked: value.verdict !== "BLOCK",
+        statusIsKnown: value.verdict !== "UNKNOWN",
+        proxyModelVersion: value.proxyModelVersion,
+        matchedKeywords,
+        versionsUsed: {
+            threats: value.threatsModelVersion,
+            proxies: value.proxyModelVersion,
+        },
+    });
+}
+
+export function useGoGuardianMiddleware(app: Hono<AppEnv>) {
+    app.post("/filterCheck/goguardian", checkGoGuardian);
 }
