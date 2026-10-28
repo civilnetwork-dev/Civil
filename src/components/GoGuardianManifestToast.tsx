@@ -2,8 +2,9 @@ import { createSignal } from "solid-js";
 
 import {
     ContributionActions,
+    ContributionField,
     ContributionHeader,
-    submitContribution,
+    useContributionSubmit,
 } from "~/components/ContributionToast";
 
 import * as s from "~/styles/GoGuardianManifestToast.css";
@@ -15,21 +16,22 @@ interface Props {
     onSubmit: (extensionId: string) => void;
 }
 
-export default function GoGuardianManifestToast(props: Props) {
-    const [manifestKey, setManifestKey] = createSignal("");
-    const [submitting, setSubmitting] = createSignal(false);
-    const [error, setError] = createSignal<string | null>(null);
-    const [dropActive, setDropActive] = createSignal(false);
+function extractKeyFromManifest(text: string): string | null {
+    try {
+        const json = JSON.parse(text) as Record<string, unknown>;
+        const key = json["key"];
+        return typeof key === "string" ? key : null;
+    } catch {
+        return null;
+    }
+}
 
-    const extractKeyFromManifest = (text: string): string | null => {
-        try {
-            const json = JSON.parse(text) as Record<string, unknown>;
-            const key = json["key"];
-            return typeof key === "string" ? key : null;
-        } catch {
-            return null;
-        }
-    };
+/** A manifest.json dropped on the zone or picked with the file browser. */
+function ManifestDropZone(props: {
+    onKey: (key: string) => void;
+    onError: (error: string) => void;
+}) {
+    const [dropActive, setDropActive] = createSignal(false);
 
     /** Both intake paths — a drop and the file picker — end here. */
     const readManifestFile = (file: File | undefined) => {
@@ -37,50 +39,68 @@ export default function GoGuardianManifestToast(props: Props) {
         const reader = new FileReader();
         reader.onload = () => {
             const key = extractKeyFromManifest(reader.result as string);
-            if (key) {
-                setManifestKey(key);
-                setError(null);
-            } else {
-                setError('No "key" field found in manifest.json');
-            }
+            if (key) props.onKey(key);
+            else props.onError('No "key" field found in manifest.json');
         };
         reader.onerror = () => {
-            setError("Couldn't read that file. Try again.");
+            props.onError("Couldn't read that file. Try again.");
         };
         reader.readAsText(file);
     };
 
-    const handleDrop = (e: DragEvent) => {
-        e.preventDefault();
-        setDropActive(false);
-        readManifestFile(e.dataTransfer?.files[0]);
-    };
+    return (
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the label wraps the file input, so clicking or dropping on it activates a real control
+        <label
+            class={s.dropZone}
+            data-active={dropActive() ? "true" : "false"}
+            onDragOver={e => {
+                e.preventDefault();
+                setDropActive(true);
+            }}
+            onDragLeave={() => setDropActive(false)}
+            onDrop={(e: DragEvent) => {
+                e.preventDefault();
+                setDropActive(false);
+                readManifestFile(e.dataTransfer?.files[0]);
+            }}
+        >
+            <input
+                type="file"
+                accept=".json,application/json"
+                style={{ display: "none" }}
+                onChange={e => readManifestFile(e.currentTarget.files?.[0])}
+            />
+            {dropActive()
+                ? "Drop manifest.json here"
+                : "Drop manifest.json or click to browse"}
+        </label>
+    );
+}
 
-    const handleFileInput = (e: Event) => {
-        readManifestFile((e.currentTarget as HTMLInputElement).files?.[0]);
-    };
+async function submitManifestKey(
+    contribution: ReturnType<typeof useContributionSubmit>,
+    props: Props,
+    manifestKey: string,
+) {
+    const key = manifestKey.trim();
+    if (!key) return;
+    await contribution.submit<{ extensionId: string }>(
+        "/api/goguardian/submit-manifest-key",
+        {
+            manifestKey: key,
+            leaId: props.leaId,
+            districtName: props.districtName,
+        },
+        data => props.onSubmit(data.extensionId),
+    );
+}
 
-    const handleSubmit = async () => {
-        const key = manifestKey().trim();
-        if (!key) return;
-        setSubmitting(true);
-        setError(null);
-        try {
-            const data = await submitContribution<{ extensionId: string }>(
-                "/api/goguardian/submit-manifest-key",
-                {
-                    manifestKey: key,
-                    leaId: props.leaId,
-                    districtName: props.districtName,
-                },
-            );
-            props.onSubmit(data.extensionId);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : "Network error");
-        } finally {
-            setSubmitting(false);
-        }
-    };
+export default function GoGuardianManifestToast(props: Props) {
+    const [manifestKey, setManifestKey] = createSignal("");
+    const contribution = useContributionSubmit();
+
+    const handleSubmit = () =>
+        submitManifestKey(contribution, props, manifestKey());
 
     return (
         <div
@@ -100,42 +120,26 @@ export default function GoGuardianManifestToast(props: Props) {
                 checking for other students in your district.
             </p>
 
-            {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the label wraps the file input, so clicking or dropping on it activates a real control */}
-            <label
-                class={s.dropZone}
-                data-active={dropActive() ? "true" : "false"}
-                onDragOver={e => {
-                    e.preventDefault();
-                    setDropActive(true);
+            <ManifestDropZone
+                onKey={key => {
+                    setManifestKey(key);
+                    contribution.setError(null);
                 }}
-                onDragLeave={() => setDropActive(false)}
-                onDrop={handleDrop}
-            >
-                <input
-                    type="file"
-                    accept=".json,application/json"
-                    style={{ display: "none" }}
-                    onChange={handleFileInput}
-                />
-                {dropActive()
-                    ? "Drop manifest.json here"
-                    : "Drop manifest.json or click to browse"}
-            </label>
+                onError={contribution.setError}
+            />
 
             <span class={s.orDivider}>or paste key</span>
 
-            <textarea
-                class={s.textarea}
+            <ContributionField
                 placeholder="Paste the base64 public key from manifest.json here…"
                 value={manifestKey()}
-                onInput={e => setManifestKey(e.currentTarget.value)}
-                spellcheck="false"
+                onInput={setManifestKey}
             />
 
             <ContributionActions
-                error={error()}
+                error={contribution.error()}
                 canSubmit={!!manifestKey().trim()}
-                submitting={submitting()}
+                submitting={contribution.submitting()}
                 onSkip={props.onDismiss}
                 onSubmit={() => void handleSubmit()}
             />

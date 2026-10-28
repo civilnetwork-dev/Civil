@@ -96,37 +96,43 @@ export async function readSetupEnv(): Promise<SetupEnv> {
 
 const GB = 1024 ** 3;
 
-export async function pickSetupDefaults(env: SetupEnv): Promise<SetupPicks> {
-    const slow =
-        env.saveData ||
-        ["slow-2g", "2g", "3g"].includes(env.effectiveType ?? "");
-    const light =
-        (env.cores !== undefined && env.cores <= 2) ||
-        (env.memoryGb !== undefined && env.memoryGb <= 2) ||
-        env.saveData;
-    const cramped = env.quota !== undefined && env.quota < GB;
-    const sockets = await env.webSocketWorks();
-
-    return {
-        search: env.brave
+function searchPick(env: SetupEnv): SetupPicks["search"] {
+    return env.brave
+        ? {
+              value: "brave",
+              reason: "You use Brave, so Brave Search matches what you're used to.",
+          }
+        : /\bEdg\//.test(env.userAgent)
+          ? {
+                value: "bing",
+                reason: "You use Microsoft Edge, which searches with Bing.",
+            }
+          : env.privacySignal
             ? {
-                  value: "brave",
-                  reason: "You use Brave, so Brave Search matches what you're used to.",
+                  value: "ddg",
+                  reason: "Your browser asks sites not to track you, and DuckDuckGo doesn't.",
               }
-            : /\bEdg\//.test(env.userAgent)
-              ? {
-                    value: "bing",
-                    reason: "You use Microsoft Edge, which searches with Bing.",
-                }
-              : env.privacySignal
-                ? {
-                      value: "ddg",
-                      reason: "Your browser asks sites not to track you, and DuckDuckGo doesn't.",
-                  }
-                : {
-                      value: "google",
-                      reason: "The search engine most people know.",
-                  },
+            : {
+                  value: "google",
+                  reason: "The search engine most people know.",
+              };
+}
+
+function connectionPicks(
+    env: SetupEnv,
+    sockets: boolean,
+    slow: boolean,
+): Pick<
+    SetupPicks,
+    | "search"
+    | "suggestLive"
+    | "transportAuto"
+    | "transport"
+    | "wispVersion"
+    | "navTimeout"
+> {
+    return {
+        search: searchPick(env),
         suggestLive: env.saveData
             ? {
                   value: false,
@@ -159,6 +165,20 @@ export async function pickSetupDefaults(env: SetupEnv): Promise<SetupPicks> {
                   value: 15,
                   reason: "Fifteen seconds is plenty on your connection.",
               },
+    };
+}
+
+function historyPicks(
+    cramped: boolean,
+): Pick<
+    SetupPicks,
+    | "historyEnabled"
+    | "historyLocation"
+    | "historyFormat"
+    | "historyDays"
+    | "historyWhenFull"
+> {
+    return {
         historyEnabled: {
             value: true,
             reason: "History lets you find a page again.",
@@ -189,6 +209,14 @@ export async function pickSetupDefaults(env: SetupEnv): Promise<SetupPicks> {
             value: "trim",
             reason: "If space ever runs out, the oldest pages go first.",
         },
+    };
+}
+
+function displayPicks(
+    env: SetupEnv,
+    light: boolean,
+): Pick<SetupPicks, "startup" | "bookmarksBar" | "motion"> {
+    return {
         startup: {
             value: "restore",
             reason: "Your tabs come back when you return.",
@@ -214,6 +242,14 @@ export async function pickSetupDefaults(env: SetupEnv): Promise<SetupPicks> {
                     value: "system",
                     reason: "Animations follow your device's setting.",
                 },
+    };
+}
+
+function reportingPicks(): Pick<
+    SetupPicks,
+    "compatReports" | "filterDetect" | "analytics"
+> {
+    return {
         compatReports: {
             value: true,
             reason: "Reports help Civil pick the best method for everyone.",
@@ -226,5 +262,24 @@ export async function pickSetupDefaults(env: SetupEnv): Promise<SetupPicks> {
             value: true,
             reason: "Usage analytics help Civil find and fix problems.",
         },
+    };
+}
+
+export async function pickSetupDefaults(env: SetupEnv): Promise<SetupPicks> {
+    const slow =
+        env.saveData ||
+        ["slow-2g", "2g", "3g"].includes(env.effectiveType ?? "");
+    const light =
+        (env.cores !== undefined && env.cores <= 2) ||
+        (env.memoryGb !== undefined && env.memoryGb <= 2) ||
+        env.saveData;
+    const cramped = env.quota !== undefined && env.quota < GB;
+    const sockets = await env.webSocketWorks();
+
+    return {
+        ...connectionPicks(env, sockets, slow),
+        ...historyPicks(cramped),
+        ...displayPicks(env, light),
+        ...reportingPicks(),
     };
 }

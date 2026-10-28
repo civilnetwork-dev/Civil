@@ -1,5 +1,5 @@
-import type { Tab } from "~/lib/TabManager";
 import { tabManager } from "~/lib/TabManager";
+import type { Tab } from "~/types";
 import type {
     CivilTabCreateProperties,
     CivilTabInfo,

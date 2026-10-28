@@ -58,57 +58,92 @@ const shortcuts: {
     },
 ];
 
+const inFrame = () =>
+    typeof window !== "undefined" && window.self !== window.top;
+
+/** Internal navigation belongs to the parent, which owns the active tab. */
+function openPage(event: MouseEvent, href: string) {
+    if (
+        !inFrame() ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.altKey ||
+        event.button !== 0
+    )
+        return;
+    event.preventDefault();
+    window.parent.postMessage(
+        { type: "civil:navigate", url: `browser:${href.slice(1)}` },
+        window.location.origin,
+    );
+}
+
+function NewTabHeader() {
+    return (
+        <header class={s.header}>
+            <a
+                class={s.brand}
+                href="/"
+                aria-label="Civil home"
+                onClick={event => openPage(event, "/newtab")}
+            >
+                <Wordmark width={140} />
+            </a>
+            <div class={s.utilities}>
+                <a
+                    class={s.utilityLink}
+                    href="/checkfilters"
+                    onClick={event => openPage(event, "/checkfilters")}
+                >
+                    Filter check <IconArrowUpRight size={15} />
+                </a>
+                <a
+                    class={s.utilityLink}
+                    href="/settings"
+                    onClick={event => openPage(event, "/settings")}
+                >
+                    <IconSliders size={15} /> Settings
+                </a>
+            </div>
+        </header>
+    );
+}
+
+function Shortcuts() {
+    return (
+        <nav class={s.shortcuts} aria-label="Your browser">
+            <For each={shortcuts}>
+                {shortcut => (
+                    <a
+                        class={s.shortcut}
+                        href={shortcut.href}
+                        onClick={event => openPage(event, shortcut.href)}
+                    >
+                        <Specimen
+                            icon={shortcut.icon}
+                            tint={shortcut.tint}
+                            size={56}
+                            class={s.shortcutMark}
+                        />
+
+                        <span class={s.shortcutTitle}>{shortcut.title}</span>
+                        <span class={s.shortcutDescription}>
+                            {shortcut.description}
+                        </span>
+                    </a>
+                )}
+            </For>
+        </nav>
+    );
+}
+
 export default function NewTabPage() {
     const ads = useSetting("ads");
-    const inFrame = () =>
-        typeof window !== "undefined" && window.self !== window.top;
-
-    // Internal navigation belongs to the parent, which owns the active tab.
-    const openPage = (event: MouseEvent, href: string) => {
-        if (
-            !inFrame() ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.shiftKey ||
-            event.altKey ||
-            event.button !== 0
-        )
-            return;
-        event.preventDefault();
-        window.parent.postMessage(
-            { type: "civil:navigate", url: `browser:${href.slice(1)}` },
-            window.location.origin,
-        );
-    };
 
     return (
         <main class={s.page}>
-            <header class={s.header}>
-                <a
-                    class={s.brand}
-                    href="/"
-                    aria-label="Civil home"
-                    onClick={event => openPage(event, "/newtab")}
-                >
-                    <Wordmark width={140} />
-                </a>
-                <div class={s.utilities}>
-                    <a
-                        class={s.utilityLink}
-                        href="/checkfilters"
-                        onClick={event => openPage(event, "/checkfilters")}
-                    >
-                        Filter check <IconArrowUpRight size={15} />
-                    </a>
-                    <a
-                        class={s.utilityLink}
-                        href="/settings"
-                        onClick={event => openPage(event, "/settings")}
-                    >
-                        <IconSliders size={15} /> Settings
-                    </a>
-                </div>
-            </header>
+            <NewTabHeader />
             <section class={s.content} aria-labelledby="welcome-heading">
                 <div class={s.welcome}>
                     <div class={s.emblem}>
@@ -131,33 +166,7 @@ export default function NewTabPage() {
                         <SearchBarContainer />
                     </div>
                 </Show>
-                <nav class={s.shortcuts} aria-label="Your browser">
-                    <For each={shortcuts}>
-                        {shortcut => (
-                            <a
-                                class={s.shortcut}
-                                href={shortcut.href}
-                                onClick={event =>
-                                    openPage(event, shortcut.href)
-                                }
-                            >
-                                <Specimen
-                                    icon={shortcut.icon}
-                                    tint={shortcut.tint}
-                                    size={56}
-                                    class={s.shortcutMark}
-                                />
-
-                                <span class={s.shortcutTitle}>
-                                    {shortcut.title}
-                                </span>
-                                <span class={s.shortcutDescription}>
-                                    {shortcut.description}
-                                </span>
-                            </a>
-                        )}
-                    </For>
-                </nav>
+                <Shortcuts />
             </section>
             <footer class={s.footer}>
                 {ads()

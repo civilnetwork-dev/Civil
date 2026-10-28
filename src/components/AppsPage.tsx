@@ -35,22 +35,35 @@ function AppIcon(props: { icon: string | null; name: string }) {
     );
 }
 
-/**
- * A grid of pinned sites. Click one, it opens — that is the whole page.
- *
- * The earlier version buried "open" inside a per-tile disclosure: clicking an
- * app expanded a detail panel, and the actual open action was a small text
- * button inside it. Two steps for the page's one purpose, with the first step
- * teaching the user that clicking an app does *not* open it. The tile face is
- * now the open button; remove is a corner control revealed on hover and
- * focus, the same grammar the bookmarks rows use.
- *
- * Also cut in the minimal pass: the "positions" framing (numbered slots,
- * zero-padded labels, a ghost grid of dashed empty positions). An empty state
- * that draws eight numbered boxes looks like a broken page to someone who
- * just wants to pin YouTube; one line of text says everything the ghosts did.
- */
-export default function AppsPage() {
+const BAD_ADDRESS = "That doesn't look like a web address. Try youtube.com";
+
+// `new URL()` alone accepts almost anything once a scheme is bolted on:
+// "not a valid url" becomes the host "not%20a%20valid%20url", which then
+// lands in the grid as a tile labelled with the escaped text. Require
+// something that actually looks like a host first.
+function parseAppUrl(raw: string): URL | null {
+    let url: URL;
+    try {
+        url = new URL(
+            /^[a-z][\w+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`,
+        );
+    } catch {
+        return null;
+    }
+    return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(url.hostname) ? url : null;
+}
+
+function openApp(app: CivilApp) {
+    const existing = tabManager.tabs.find(t => t.url === app.url);
+    if (existing) {
+        tabManager.activateTab(existing.id);
+    } else {
+        const t = tabManager.createTab(app.url);
+        tabManager.activateTab(t.id);
+    }
+}
+
+function useAddApp() {
     const [input, setInput] = createSignal("");
     const [adding, setAdding] = createSignal(false);
     const [addError, setAddError] = createSignal<string | null>(null);
@@ -70,25 +83,9 @@ export default function AppsPage() {
         const raw = input().trim();
         if (!raw) return;
 
-        // `new URL()` alone accepts almost anything once a scheme is bolted on:
-        // "not a valid url" becomes the host "not%20a%20valid%20url", which then
-        // lands in the grid as a tile labelled with the escaped text. Require
-        // something that actually looks like a host first.
-        let url: URL;
-        try {
-            url = new URL(
-                /^[a-z][\w+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`,
-            );
-        } catch {
-            setAddError(
-                "That doesn't look like a web address. Try youtube.com",
-            );
-            return;
-        }
-        if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(url.hostname)) {
-            setAddError(
-                "That doesn't look like a web address. Try youtube.com",
-            );
+        const url = parseAppUrl(raw);
+        if (!url) {
+            setAddError(BAD_ADDRESS);
             return;
         }
 
@@ -104,15 +101,62 @@ export default function AppsPage() {
         }
     };
 
-    const handleOpen = (app: CivilApp) => {
-        const existing = tabManager.tabs.find(t => t.url === app.url);
-        if (existing) {
-            tabManager.activateTab(existing.id);
-        } else {
-            const t = tabManager.createTab(app.url);
-            tabManager.activateTab(t.id);
-        }
-    };
+    return { input, setInput, adding, addError, handleAdd };
+}
+
+function AppTile(props: { app: CivilApp }) {
+    return (
+        <li class={s.position}>
+            <button
+                type="button"
+                class={s.openBtn}
+                onClick={() => openApp(props.app)}
+            >
+                <span class={s.iconStage}>
+                    <AppIcon icon={props.app.icon} name={props.app.name} />
+                </span>
+                <span class={s.name}>{props.app.name}</span>
+            </button>
+            <button
+                type="button"
+                class={s.removeBtn}
+                aria-label={`Remove ${props.app.name}`}
+                onClick={() => appsRemove(props.app.id)}
+            >
+                <IconClose size={13} />
+            </button>
+        </li>
+    );
+}
+
+function NoApps() {
+    return (
+        <div class={s.empty}>
+            <Specimen icon={IconApps} tint="stone" size={64} />
+            <Anno muted>
+                Nothing pinned yet. Add a site above to get started.
+            </Anno>
+        </div>
+    );
+}
+
+/**
+ * A grid of pinned sites. Click one, it opens — that is the whole page.
+ *
+ * The earlier version buried "open" inside a per-tile disclosure: clicking an
+ * app expanded a detail panel, and the actual open action was a small text
+ * button inside it. Two steps for the page's one purpose, with the first step
+ * teaching the user that clicking an app does *not* open it. The tile face is
+ * now the open button; remove is a corner control revealed on hover and
+ * focus, the same grammar the bookmarks rows use.
+ *
+ * Also cut in the minimal pass: the "positions" framing (numbered slots,
+ * zero-padded labels, a ghost grid of dashed empty positions). An empty state
+ * that draws eight numbered boxes looks like a broken page to someone who
+ * just wants to pin YouTube; one line of text says everything the ghosts did.
+ */
+export default function AppsPage() {
+    const add = useAddApp();
 
     return (
         <Sheet>
@@ -133,13 +177,13 @@ export default function AppsPage() {
 
             <Field
                 label="Add a site"
-                value={input()}
-                onInput={setInput}
-                onEnter={handleAdd}
+                value={add.input()}
+                onInput={add.setInput}
+                onEnter={add.handleAdd}
                 placeholder="youtube.com"
-                hint={addError() ?? undefined}
+                hint={add.addError() ?? undefined}
             />
-            <Show when={adding()}>
+            <Show when={add.adding()}>
                 <Anno muted class={s.addingNote}>
                     Adding…
                 </Anno>
@@ -147,44 +191,10 @@ export default function AppsPage() {
 
             <Rule weight="major" class={s.gridRule} />
 
-            <Show
-                when={apps().length > 0}
-                fallback={
-                    <div class={s.empty}>
-                        <Specimen icon={IconApps} tint="stone" size={64} />
-                        <Anno muted>
-                            Nothing pinned yet. Add a site above to get started.
-                        </Anno>
-                    </div>
-                }
-            >
+            <Show when={apps().length > 0} fallback={<NoApps />}>
                 <ul class={s.grid}>
                     <For each={apps()} keyed={false}>
-                        {app => (
-                            <li class={s.position}>
-                                <button
-                                    type="button"
-                                    class={s.openBtn}
-                                    onClick={() => handleOpen(app())}
-                                >
-                                    <span class={s.iconStage}>
-                                        <AppIcon
-                                            icon={app().icon}
-                                            name={app().name}
-                                        />
-                                    </span>
-                                    <span class={s.name}>{app().name}</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    class={s.removeBtn}
-                                    aria-label={`Remove ${app().name}`}
-                                    onClick={() => appsRemove(app().id)}
-                                >
-                                    <IconClose size={13} />
-                                </button>
-                            </li>
-                        )}
+                        {app => <AppTile app={app()} />}
                     </For>
                 </ul>
             </Show>

@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 
 import { IconClose } from "~/components/icons";
 
@@ -9,10 +9,7 @@ import * as s from "~/styles/GoGuardianManifestToast.css";
  * with the server's own message, or the HTTP status when it sent none, and
  * with the network error when the request never completes.
  */
-export async function submitContribution<T>(
-    url: string,
-    body: object,
-): Promise<T> {
+async function submitContribution<T>(url: string, body: object): Promise<T> {
     const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -23,6 +20,33 @@ export async function submitContribution<T>(
         throw new Error(text.slice(0, 120) || `HTTP ${res.status}`);
     }
     return (await res.json()) as T;
+}
+
+/**
+ * A contribution's submitting flag and error, and `submit`, which posts it
+ * and hands the reply on, or records why it failed.
+ */
+export function useContributionSubmit() {
+    const [submitting, setSubmitting] = createSignal(false);
+    const [error, setError] = createSignal<string | null>(null);
+
+    const submit = async <T,>(
+        url: string,
+        body: object,
+        onReply: (reply: T) => void,
+    ) => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            onReply(await submitContribution<T>(url, body));
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Network error");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return { submitting, error, setError, submit };
 }
 
 /** A contribution toast's title row: what it asks for, for which district. */
@@ -84,5 +108,21 @@ export function ContributionActions(props: {
                 </button>
             </div>
         </>
+    );
+}
+
+export function ContributionField(props: {
+    placeholder: string;
+    value: string;
+    onInput: (value: string) => void;
+}) {
+    return (
+        <textarea
+            class={s.textarea}
+            placeholder={props.placeholder}
+            value={props.value}
+            onInput={e => props.onInput(e.currentTarget.value)}
+            spellcheck="false"
+        />
     );
 }

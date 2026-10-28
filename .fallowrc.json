@@ -33,6 +33,30 @@
         "src/routeTree.gen.ts"
     ],
 
+    // Shared foundations that nearly every feature imports by design, so their
+    // fan-in is the point rather than a coupling smell: the design tokens,
+    // Strata recipes, schematic styles and icon registry that DESIGN.md and
+    // ICONS.md make the one source for every screen; the typed settings
+    // registry and the storage events it rides on; the Hono environment and
+    // body/IP helpers every route shares; the chrome.* event type and bus
+    // helpers every emulated API is built from; and the component test mount
+    // AGENTS.md requires every DOM test to use. Splitting them would only move
+    // the same edges behind barrels.
+    "health": {
+        "ignore": [
+            "src/styles/theme.css.ts",
+            "src/styles/material.css.ts",
+            "src/styles/schematic.css.ts",
+            "src/components/icons/index.tsx",
+            "src/lib/settings.ts",
+            "src/lib/reactiveStorage.ts",
+            "misc/http.ts",
+            "misc/browserApiEmulators/extensions/chrome/shim/event.ts",
+            "misc/browserApiEmulators/extensions/chrome/shim/util.ts",
+            "tests/helpers/renderSolid.ts"
+        ]
+    },
+
     "resolve": {
         "conditions": ["solid", "browser"]
     },

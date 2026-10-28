@@ -19,7 +19,38 @@ function getClient() {
     return _client;
 }
 
-export default function PatreonLoginButton() {
+function SignedInUser(props: { user: SessionUser; onSignOut: () => void }) {
+    return (
+        <div class={s.loggedIn}>
+            <Show
+                when={props.user.image}
+                fallback={
+                    <div class={s.avatarFallback}>
+                        {props.user.name?.[0]?.toUpperCase() ?? "P"}
+                    </div>
+                }
+            >
+                <img
+                    class={s.avatar}
+                    src={props.user.image!}
+                    alt={props.user.name ?? "Patreon user"}
+                />
+            </Show>
+            <span class={s.userName}>{props.user.name}</span>
+            <div class={s.divider} />
+            <button
+                class={s.signOutBtn}
+                onClick={props.onSignOut}
+                type="button"
+            >
+                Sign out
+            </button>
+        </div>
+    );
+}
+
+/** The signed-in Patreon user, if any; anonymous sessions don't count. */
+function usePatreonUser() {
     const [user, setUser] = createSignal<SessionUser | null>(null);
     const [loading, setLoading] = createSignal(true);
 
@@ -44,16 +75,22 @@ export default function PatreonLoginButton() {
             });
     });
 
-    const handleLogin = () => {
-        const client = getClient();
-        if (!client) return;
-        client.signIn
-            .social({
-                provider: "patreon",
-                callbackURL: window.location.pathname,
-            })
-            .catch(console.error);
-    };
+    return { user, setUser, loading };
+}
+
+function login() {
+    const client = getClient();
+    if (!client) return;
+    client.signIn
+        .social({
+            provider: "patreon",
+            callbackURL: window.location.pathname,
+        })
+        .catch(console.error);
+}
+
+export default function PatreonLoginButton() {
+    const { user, setUser, loading } = usePatreonUser();
 
     const handleSignOut = () => {
         const client = getClient();
@@ -79,43 +116,13 @@ export default function PatreonLoginButton() {
             <Show
                 when={user()}
                 fallback={
-                    <button
-                        class={s.button}
-                        onClick={handleLogin}
-                        type="button"
-                    >
+                    <button class={s.button} onClick={login} type="button">
                         <IconPatreon size={15} />
                         Log in with Patreon
                     </button>
                 }
             >
-                {u => (
-                    <div class={s.loggedIn}>
-                        <Show
-                            when={u().image}
-                            fallback={
-                                <div class={s.avatarFallback}>
-                                    {u().name?.[0]?.toUpperCase() ?? "P"}
-                                </div>
-                            }
-                        >
-                            <img
-                                class={s.avatar}
-                                src={u().image!}
-                                alt={u().name ?? "Patreon user"}
-                            />
-                        </Show>
-                        <span class={s.userName}>{u().name}</span>
-                        <div class={s.divider} />
-                        <button
-                            class={s.signOutBtn}
-                            onClick={handleSignOut}
-                            type="button"
-                        >
-                            Sign out
-                        </button>
-                    </div>
-                )}
+                {u => <SignedInUser user={u()} onSignOut={handleSignOut} />}
             </Show>
         </Show>
     );

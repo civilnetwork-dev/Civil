@@ -115,6 +115,73 @@ function saveIndex(exts: Omit<CivilExtension, "files">[]): void {
     }
 }
 
+/** The end-of-central-directory record's offset, searching from the end. */
+function findEocd(view: DataView, size: number): number {
+    const EOCD_SIG = 0x06054b50;
+    for (let i = size - 22; i >= 0; i--) {
+        if (view.getUint32(i, true) === EOCD_SIG) return i;
+    }
+    throw new Error("[civil/extensions] unzip(): no EOCD record found");
+}
+
+type CentralEntry = {
+    fileName: string;
+    flags: number;
+    compression: number;
+    compressedSize: number;
+    lfhOffset: number;
+    next: number;
+};
+
+function readCentralEntry(
+    data: Uint8Array,
+    view: DataView,
+    cdPos: number,
+    decoder: TextDecoder,
+): CentralEntry {
+    const fnLen = view.getUint16(cdPos + 28, true);
+    const extraLen = view.getUint16(cdPos + 30, true);
+    const commentLen = view.getUint16(cdPos + 32, true);
+    return {
+        flags: view.getUint16(cdPos + 8, true),
+        compression: view.getUint16(cdPos + 10, true),
+        compressedSize: view.getUint32(cdPos + 20, true),
+        lfhOffset: view.getUint32(cdPos + 42, true),
+        fileName: decoder.decode(data.subarray(cdPos + 46, cdPos + 46 + fnLen)),
+        next: cdPos + 46 + fnLen + extraLen + commentLen,
+    };
+}
+
+/** The entry's contents, or undefined when they can't be extracted. */
+function extractEntry(
+    data: Uint8Array,
+    view: DataView,
+    entry: CentralEntry,
+): Uint8Array | undefined {
+    const { fileName, compression, lfhOffset, compressedSize } = entry;
+    const lfhFnLen = view.getUint16(lfhOffset + 26, true);
+    const lfhExtraLen = view.getUint16(lfhOffset + 28, true);
+    const dataOffset = lfhOffset + 30 + lfhFnLen + lfhExtraLen;
+    const compressed = data.subarray(dataOffset, dataOffset + compressedSize);
+
+    if (compression === 0) return compressed.slice();
+    if (compression === 8) {
+        try {
+            return inflateSync(compressed);
+        } catch (e) {
+            console.error(
+                `[civil/extensions] inflate failed "${fileName}":`,
+                e,
+            );
+            return undefined;
+        }
+    }
+    console.warn(
+        `[civil/extensions] unsupported compression ${compression} for "${fileName}"`,
+    );
+    return undefined;
+}
+
 function unzip(data: Uint8Array): Map<string, Uint8Array> {
     console.log(
         "[civil/extensions] unzip(): parsing ZIP, size:",
@@ -124,17 +191,7 @@ function unzip(data: Uint8Array): Map<string, Uint8Array> {
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const decoder = new TextDecoder();
 
-    const EOCD_SIG = 0x06054b50;
-    let eocdOffset = -1;
-    for (let i = data.byteLength - 22; i >= 0; i--) {
-        if (view.getUint32(i, true) === EOCD_SIG) {
-            eocdOffset = i;
-            break;
-        }
-    }
-    if (eocdOffset === -1)
-        throw new Error("[civil/extensions] unzip(): no EOCD record found");
-
+    const eocdOffset = findEocd(view, data.byteLength);
     const cdOffset = view.getUint32(eocdOffset + 16, true);
     const cdEntries = view.getUint16(eocdOffset + 10, true);
     console.log(
@@ -153,48 +210,19 @@ function unzip(data: Uint8Array): Map<string, Uint8Array> {
             );
             break;
         }
-        const flags = view.getUint16(cdPos + 8, true);
-        const compression = view.getUint16(cdPos + 10, true);
-        const compressedSize = view.getUint32(cdPos + 20, true);
-        const fnLen = view.getUint16(cdPos + 28, true);
-        const extraLen = view.getUint16(cdPos + 30, true);
-        const commentLen = view.getUint16(cdPos + 32, true);
-        const lfhOffset = view.getUint32(cdPos + 42, true);
-        const fileName = decoder.decode(
-            data.subarray(cdPos + 46, cdPos + 46 + fnLen),
-        );
-        cdPos += 46 + fnLen + extraLen + commentLen;
+        const entry = readCentralEntry(data, view, cdPos, decoder);
+        cdPos = entry.next;
 
-        if (fileName.endsWith("/")) continue;
-        if (flags & 0x1) {
-            console.warn("[civil/extensions] skipping encrypted:", fileName);
+        if (entry.fileName.endsWith("/")) continue;
+        if (entry.flags & 0x1) {
+            console.warn(
+                "[civil/extensions] skipping encrypted:",
+                entry.fileName,
+            );
             continue;
         }
-
-        const lfhFnLen = view.getUint16(lfhOffset + 26, true);
-        const lfhExtraLen = view.getUint16(lfhOffset + 28, true);
-        const dataOffset = lfhOffset + 30 + lfhFnLen + lfhExtraLen;
-        const compressed = data.subarray(
-            dataOffset,
-            dataOffset + compressedSize,
-        );
-
-        if (compression === 0) {
-            result.set(fileName, compressed.slice());
-        } else if (compression === 8) {
-            try {
-                result.set(fileName, inflateSync(compressed));
-            } catch (e) {
-                console.error(
-                    `[civil/extensions] inflate failed "${fileName}":`,
-                    e,
-                );
-            }
-        } else {
-            console.warn(
-                `[civil/extensions] unsupported compression ${compression} for "${fileName}"`,
-            );
-        }
+        const contents = extractEntry(data, view, entry);
+        if (contents) result.set(entry.fileName, contents);
     }
 
     console.log("[civil/extensions] unzip(): extracted", result.size, "files");
@@ -745,6 +773,64 @@ export interface ExtensionUpdateResult {
     error?: string;
 }
 
+type LatestVersion = { version: string; downloadUrl: string };
+type InstalledExtension = ReturnType<typeof loadIndex>[number];
+
+/** The newest version the extension's update service offers, null when
+ *  there's none, or "no-update-url" when it names no update service. */
+async function latestVersionOf(
+    ext: InstalledExtension,
+): Promise<LatestVersion | null | "no-update-url"> {
+    const m = ext.manifest as unknown as Record<string, unknown>;
+    if (ext.type === "crx") {
+        // Fall back to Google's update service for Web Store extensions
+        // whose uploaded CRX had update_url stripped (id is the 32-char
+        // a–p Web Store id).
+        const updateUrl =
+            (m.update_url as string | undefined) ||
+            (/^[a-p]{32}$/.test(ext.id)
+                ? "https://clients2.google.com/service/update2/crx"
+                : undefined);
+        if (!updateUrl) return "no-update-url";
+        return checkChromeUpdate(updateUrl, ext.id, ext.version);
+    }
+    const gecko = (
+        m.browser_specific_settings as
+            | { gecko?: { id?: string; update_url?: string } }
+            | undefined
+    )?.gecko;
+    const updateUrl = gecko?.update_url;
+    if (!updateUrl) return "no-update-url";
+    return checkFirefoxUpdate(updateUrl, gecko?.id ?? ext.id);
+}
+
+async function updateExtension(
+    ext: InstalledExtension,
+): Promise<ExtensionUpdateResult> {
+    const base = { id: ext.id, name: ext.name, fromVersion: ext.version };
+    try {
+        const latest = await latestVersionOf(ext);
+        if (latest === "no-update-url") {
+            return { ...base, status: "no-update-url" };
+        }
+        if (!latest || compareVersions(latest.version, ext.version) <= 0) {
+            return { ...base, status: "up-to-date" };
+        }
+
+        const res = await extProxyFetch(latest.downloadUrl);
+        if (!res.ok) throw new Error(`download HTTP ${res.status}`);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        await reinstallInPlace(ext, bytes);
+        return { ...base, status: "updated", toVersion: latest.version };
+    } catch (e) {
+        return {
+            ...base,
+            status: "error",
+            error: e instanceof Error ? e.message : String(e),
+        };
+    }
+}
+
 /**
  * Check every installed extension against its manifest update URL and, when a
  * newer version is available, download and reinstall it in place. Returns a
@@ -755,74 +841,7 @@ export async function extensionsCheckForUpdates(): Promise<
 > {
     const results: ExtensionUpdateResult[] = [];
     for (const ext of loadIndex()) {
-        const base = {
-            id: ext.id,
-            name: ext.name,
-            fromVersion: ext.version,
-        };
-        try {
-            const m = ext.manifest as unknown as Record<string, unknown>;
-            let latest: { version: string; downloadUrl: string } | null = null;
-            if (ext.type === "crx") {
-                // Fall back to Google's update service for Web Store extensions
-                // whose uploaded CRX had update_url stripped (id is the 32-char
-                // a–p Web Store id).
-                const updateUrl =
-                    (m.update_url as string | undefined) ||
-                    (/^[a-p]{32}$/.test(ext.id)
-                        ? "https://clients2.google.com/service/update2/crx"
-                        : undefined);
-                if (!updateUrl) {
-                    results.push({ ...base, status: "no-update-url" });
-                    continue;
-                }
-                latest = await checkChromeUpdate(
-                    updateUrl,
-                    ext.id,
-                    ext.version,
-                );
-            } else {
-                const gecko = (
-                    m.browser_specific_settings as
-                        | { gecko?: { id?: string; update_url?: string } }
-                        | undefined
-                )?.gecko;
-                const updateUrl = gecko?.update_url;
-                if (!updateUrl) {
-                    results.push({ ...base, status: "no-update-url" });
-                    continue;
-                }
-                latest = await checkFirefoxUpdate(
-                    updateUrl,
-                    gecko?.id ?? ext.id,
-                );
-            }
-
-            if (!latest) {
-                results.push({ ...base, status: "up-to-date" });
-                continue;
-            }
-            if (compareVersions(latest.version, ext.version) <= 0) {
-                results.push({ ...base, status: "up-to-date" });
-                continue;
-            }
-
-            const res = await extProxyFetch(latest.downloadUrl);
-            if (!res.ok) throw new Error(`download HTTP ${res.status}`);
-            const bytes = new Uint8Array(await res.arrayBuffer());
-            await reinstallInPlace(ext, bytes);
-            results.push({
-                ...base,
-                status: "updated",
-                toVersion: latest.version,
-            });
-        } catch (e) {
-            results.push({
-                ...base,
-                status: "error",
-                error: e instanceof Error ? e.message : String(e),
-            });
-        }
+        results.push(await updateExtension(ext));
     }
     return results;
 }

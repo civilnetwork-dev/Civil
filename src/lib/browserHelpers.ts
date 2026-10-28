@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 
 import { BROWSER_URLS } from "~/lib/browserUrls";
-import type { Tab } from "~/lib/TabManager";
+import type { Tab } from "~/types";
 
 export function gstaticFavicon(url: string, size = 32): string {
     return `/api/favicon?url=${encodeURIComponent(url)}&size=${size}`;
@@ -40,6 +40,29 @@ interface TabHistoryEntry {
     cursor: number;
 }
 
+/**
+ * Push a visited URL. Deduped against the entry at the current cursor, so
+ * it's safe to call from BOTH programmatic navigation and the iframe load
+ * handler (every Scramjet frame change), and re-loading the same URL during
+ * back/forward doesn't corrupt the stack. Returns whether anything changed.
+ */
+function pushEntry(h: TabHistoryEntry, url: string): boolean {
+    if (h.stack[h.cursor] === url) return false;
+    h.stack = h.stack.slice(0, h.cursor + 1);
+    h.stack.push(url);
+    h.cursor = h.stack.length - 1;
+    return true;
+}
+
+/** Moves the cursor by `step` when that stays inside the stack, returning
+ *  the URL to load there, or null if not possible. */
+function moveCursor(h: TabHistoryEntry, step: 1 | -1): string | null {
+    const next = h.cursor + step;
+    if (next < 0 || next > h.stack.length - 1) return null;
+    h.cursor = next;
+    return h.stack[next] ?? null;
+}
+
 export function createTabHistory() {
     const historyMap = new Map<string, TabHistoryEntry>();
     // Bumped on every stack/cursor change so canBack/canForward stay reactive.
@@ -51,36 +74,17 @@ export function createTabHistory() {
         return historyMap.get(id)!;
     };
 
-    // Push a visited URL. Deduped against the entry at the current cursor, so
-    // it's safe to call from BOTH programmatic navigation and the iframe load
-    // handler (every Scramjet frame change), and re-loading the same URL during
-    // back/forward doesn't corrupt the stack.
     const pushHistory = (id: string, url: string) => {
-        const h = getHistory(id);
-        if (h.stack[h.cursor] === url) return;
-        h.stack = h.stack.slice(0, h.cursor + 1);
-        h.stack.push(url);
-        h.cursor = h.stack.length - 1;
-        bump();
+        if (pushEntry(getHistory(id), url)) bump();
     };
 
-    // Move the cursor and return the URL to load, or null if not possible.
-    const back = (id: string | null): string | null => {
+    const step = (id: string | null, by: 1 | -1): string | null => {
         if (!id) return null;
         const h = getHistory(id);
-        if (h.cursor <= 0) return null;
-        h.cursor--;
-        bump();
-        return h.stack[h.cursor] ?? null;
-    };
-
-    const forward = (id: string | null): string | null => {
-        if (!id) return null;
-        const h = getHistory(id);
-        if (h.cursor >= h.stack.length - 1) return null;
-        h.cursor++;
-        bump();
-        return h.stack[h.cursor] ?? null;
+        const cursor = h.cursor;
+        const url = moveCursor(h, by);
+        if (h.cursor !== cursor) bump();
+        return url;
     };
 
     const canBack = (id: string | null): boolean => {
@@ -99,8 +103,8 @@ export function createTabHistory() {
         historyMap,
         getHistory,
         pushHistory,
-        back,
-        forward,
+        back: (id: string | null) => step(id, -1),
+        forward: (id: string | null) => step(id, 1),
         canBack,
         canForward,
         version,

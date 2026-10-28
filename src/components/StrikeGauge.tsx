@@ -4,18 +4,11 @@ import type { SegmentTone } from "~/styles/StrikeGauge.css";
 import * as s from "~/styles/StrikeGauge.css";
 
 /**
- * The shared strike readout, used by both the interstitial and the status page.
- *
- * It lives here rather than in either page because the two rendered the same
- * gauge from two copies of the same markup, and both copies carried the same
- * dead-CSS-variable bug. One copy means one fix.
+ * The gauge cells, one per allowed strike. Presentational: the "n / max"
+ * readout is the accessible value, so the cells are not announced a second
+ * time.
  */
-export default function StrikeGauge(props: {
-    violations: number;
-    maxViolations: number;
-    /** Omit the explanatory policy text where the surrounding page already says it. */
-    policy?: boolean;
-}) {
+function StrikeCells(props: { violations: number; maxViolations: number }) {
     /**
      * Severity ramps with how close the account is to the cap, not with a fixed
      * threshold: one strike out of three is not the same situation as one out
@@ -29,6 +22,39 @@ export default function StrikeGauge(props: {
     };
 
     return (
+        <div class={s.gauge} aria-hidden="true">
+            <For
+                each={Array.from({ length: props.maxViolations }, (_, i) => i)}
+                keyed={false}
+            >
+                {i => (
+                    <span
+                        class={
+                            i() < props.violations
+                                ? s.segment[tone()]
+                                : s.segment.free
+                        }
+                    />
+                )}
+            </For>
+        </div>
+    );
+}
+
+/**
+ * The shared strike readout, used by both the interstitial and the status page.
+ *
+ * It lives here rather than in either page because the two rendered the same
+ * gauge from two copies of the same markup, and both copies carried the same
+ * dead-CSS-variable bug. One copy means one fix.
+ */
+export default function StrikeGauge(props: {
+    violations: number;
+    maxViolations: number;
+    /** Omit the explanatory policy text where the surrounding page already says it. */
+    policy?: boolean;
+}) {
+    return (
         <div>
             <div class={s.head}>
                 <span class={s.label}>Strikes</span>
@@ -39,27 +65,10 @@ export default function StrikeGauge(props: {
                     {String(props.violations)} / {String(props.maxViolations)}
                 </span>
             </div>
-            {/* Presentational: the "n / max" readout above is the accessible
-                value, so the cells are not announced a second time. */}
-            <div class={s.gauge} aria-hidden="true">
-                <For
-                    each={Array.from(
-                        { length: props.maxViolations },
-                        (_, i) => i,
-                    )}
-                    keyed={false}
-                >
-                    {i => (
-                        <span
-                            class={
-                                i() < props.violations
-                                    ? s.segment[tone()]
-                                    : s.segment.free
-                            }
-                        />
-                    )}
-                </For>
-            </div>
+            <StrikeCells
+                violations={props.violations}
+                maxViolations={props.maxViolations}
+            />
             <Show when={props.policy !== false}>
                 <span class={s.policy}>
                     Reaching a restricted domain through the proxy counts as a

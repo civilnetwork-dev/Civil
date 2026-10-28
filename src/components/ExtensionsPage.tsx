@@ -64,6 +64,38 @@ function ExtensionIcon(props: { ext: ExtensionListItem }) {
     );
 }
 
+/** The confirm-once uninstall control at the end of a row. */
+function UninstallControl(props: {
+    name: string;
+    armed: boolean;
+    onArm: () => void;
+    onUninstall: () => void;
+}) {
+    return (
+        <Show
+            when={props.armed}
+            fallback={
+                <button
+                    type="button"
+                    class={s.removeBtn}
+                    aria-label={`Uninstall ${props.name}`}
+                    onClick={props.onArm}
+                >
+                    <IconClose size={14} />
+                </button>
+            }
+        >
+            <button
+                type="button"
+                class={s.removeArmed}
+                onClick={props.onUninstall}
+            >
+                Confirm uninstall
+            </button>
+        </Show>
+    );
+}
+
 /**
  * One extension. This was previously written out twice — once under "Chrome
  * Extensions" and once under "Firefox Extensions" — with the two copies
@@ -111,27 +143,12 @@ function ExtensionRow(props: {
                 <span class={s.toggleTrack} />
                 <span class={s.toggleThumb} />
             </label>
-            <Show
-                when={props.armed}
-                fallback={
-                    <button
-                        type="button"
-                        class={s.removeBtn}
-                        aria-label={`Uninstall ${props.ext.name}`}
-                        onClick={props.onArm}
-                    >
-                        <IconClose size={14} />
-                    </button>
-                }
-            >
-                <button
-                    type="button"
-                    class={s.removeArmed}
-                    onClick={props.onUninstall}
-                >
-                    Confirm uninstall
-                </button>
-            </Show>
+            <UninstallControl
+                name={props.ext.name}
+                armed={props.armed}
+                onArm={props.onArm}
+                onUninstall={props.onUninstall}
+            />
         </li>
     );
 }
@@ -161,41 +178,39 @@ function describeInstallError(e: unknown): string {
         : "Couldn't install that extension.";
 }
 
-export default function ExtensionsPage() {
-    // Reactive extension index: reading extensions() inside JSX or a memo
-    // re-runs on any install / uninstall / enable-toggle / update, since each
-    // routes through saveIndex, which notifies the reactive store.
-    const extensions = (): ExtensionListItem[] => extensionsGetAll();
+async function launchBackground(ext: Omit<CivilExtension, "files">) {
+    const { launchExtensionBackground } =
+        await import("~/api/extensionRuntime");
+    await launchExtensionBackground(ext);
+}
+
+/** Installs an uploaded .crx or .xpi; false for any other kind of file. */
+async function installFile(file: File): Promise<boolean> {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (file.name.endsWith(".crx")) {
+        const { extensionsInstallCrx } = await import("~/api/extensions");
+        await launchBackground(await extensionsInstallCrx(bytes));
+        return true;
+    }
+    if (file.name.endsWith(".xpi")) {
+        const { extensionsInstallXpi } = await import("~/api/extensions");
+        await launchBackground(await extensionsInstallXpi(bytes));
+        return true;
+    }
+    return false;
+}
+
+/** Installing from a link or an uploaded file, with its progress and error. */
+function useInstaller() {
     const [urlInput, setUrlInput] = createSignal("");
     const [installing, setInstalling] = createSignal(false);
     const [error, setError] = createSignal<string | null>(null);
-    const [checking, setChecking] = createSignal(false);
-    const [updateStatus, setUpdateStatus] = createSignal<string | null>(null);
 
-    // Uninstalling deletes the extension's stored files, so the control asks
-    // once. Keyed by id rather than a boolean because arming one row must
-    // disarm any other — two live "confirm" buttons is how the wrong one gets
-    // clicked.
-    const [armedId, setArmedId] = createSignal<string | null>(null);
-    let armTimer: ReturnType<typeof setTimeout> | undefined;
-
-    const arm = (id: string) => {
-        clearTimeout(armTimer);
-        setArmedId(id);
-        armTimer = setTimeout(() => setArmedId(null), 4000);
-    };
-
-    const handleInstallUrl = async () => {
-        const url = urlInput().trim();
-        if (!url) return;
+    const run = async (install: () => Promise<void>) => {
         setInstalling(true);
         setError(null);
         try {
-            const ext = await extensionsInstallFromUrl(url);
-            const { launchExtensionBackground } =
-                await import("~/api/extensionRuntime");
-            await launchExtensionBackground(ext);
-            setUrlInput("");
+            await install();
         } catch (e) {
             setError(describeInstallError(e));
         } finally {
@@ -203,39 +218,42 @@ export default function ExtensionsPage() {
         }
     };
 
+    const handleInstallUrl = async () => {
+        const url = urlInput().trim();
+        if (!url) return;
+        await run(async () => {
+            await launchBackground(await extensionsInstallFromUrl(url));
+            setUrlInput("");
+        });
+    };
+
     const handleFileUpload = async (e: Event) => {
         const input = e.currentTarget as HTMLInputElement;
         const file = input.files?.[0];
         if (!file) return;
-        setInstalling(true);
-        setError(null);
-        try {
-            const bytes = new Uint8Array(await file.arrayBuffer());
-            if (file.name.endsWith(".crx")) {
-                const { extensionsInstallCrx } =
-                    await import("~/api/extensions");
-                const ext = await extensionsInstallCrx(bytes);
-                const { launchExtensionBackground } =
-                    await import("~/api/extensionRuntime");
-                await launchExtensionBackground(ext);
-            } else if (file.name.endsWith(".xpi")) {
-                const { extensionsInstallXpi } =
-                    await import("~/api/extensions");
-                const ext = await extensionsInstallXpi(bytes);
-                const { launchExtensionBackground } =
-                    await import("~/api/extensionRuntime");
-                await launchExtensionBackground(ext);
-            } else {
+        await run(async () => {
+            if (!(await installFile(file))) {
                 setError("Only .crx and .xpi files are supported");
-                return;
             }
-        } catch (err) {
-            setError(describeInstallError(err));
-        } finally {
-            setInstalling(false);
-            input.value = "";
-        }
+        });
+        input.value = "";
     };
+
+    return {
+        urlInput,
+        setUrlInput,
+        installing,
+        error,
+        setError,
+        handleInstallUrl,
+        handleFileUpload,
+    };
+}
+
+/** Checking every extension for updates, and relaunching what updated. */
+function useUpdateCheck(setError: (error: string | null) => void) {
+    const [checking, setChecking] = createSignal(false);
+    const [updateStatus, setUpdateStatus] = createSignal<string | null>(null);
 
     const handleCheckUpdates = async () => {
         setChecking(true);
@@ -243,15 +261,9 @@ export default function ExtensionsPage() {
         setUpdateStatus(null);
         try {
             const results = await extensionsCheckForUpdates();
-
-            const updated = results.filter(r => r.status === "updated");
-            if (updated.length) {
-                const { launchExtensionBackground } =
-                    await import("~/api/extensionRuntime");
-                for (const r of updated) {
-                    const ext = extensionsGetAll().find(e => e.id === r.id);
-                    if (ext) await launchExtensionBackground(ext);
-                }
+            for (const r of results.filter(res => res.status === "updated")) {
+                const ext = extensionsGetAll().find(e => e.id === r.id);
+                if (ext) await launchBackground(ext);
             }
             setUpdateStatus(summarizeUpdates(results));
         } catch (e) {
@@ -263,31 +275,170 @@ export default function ExtensionsPage() {
         }
     };
 
-    const handleUninstall = async (id: string) => {
+    return { checking, updateStatus, handleCheckUpdates };
+}
+
+/**
+ * Uninstalling deletes the extension's stored files, so the control asks
+ * once. Keyed by id rather than a boolean because arming one row must disarm
+ * any other — two live "confirm" buttons is how the wrong one gets clicked.
+ */
+function useArmedUninstall() {
+    const [armedId, setArmedId] = createSignal<string | null>(null);
+    let armTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const arm = (id: string) => {
+        clearTimeout(armTimer);
+        setArmedId(id);
+        armTimer = setTimeout(() => setArmedId(null), 4000);
+    };
+
+    const uninstall = async (id: string) => {
         clearTimeout(armTimer);
         setArmedId(null);
         await extensionsUninstall(id);
     };
 
-    const crxExts = () => extensions().filter(e => e.type === "crx");
-    const xpiExts = () => extensions().filter(e => e.type === "xpi");
+    return { armedId, arm, uninstall };
+}
 
-    /** One kind of extension under its own rule, shown when any are installed. */
-    const section = (label: string, list: () => ExtensionListItem[]) => (
-        <Show when={list().length > 0}>
+function ExtensionsTitle(props: {
+    extensions: ExtensionListItem[];
+    checking: boolean;
+    onCheck: () => void;
+}) {
+    const enabledCount = () => props.extensions.filter(e => e.enabled).length;
+    return (
+        <TitleBlock
+            title="Extensions"
+            icon={IconPuzzle}
+            tint="sandstone"
+            meta={
+                props.extensions.length > 0
+                    ? `${enabledCount()} of ${props.extensions.length} enabled`
+                    : undefined
+            }
+            actions={
+                <div class={s.titleActions}>
+                    <button
+                        type="button"
+                        class={s.textBtn}
+                        onClick={props.onCheck}
+                        disabled={
+                            props.checking || props.extensions.length === 0
+                        }
+                    >
+                        <Show
+                            when={props.checking}
+                            fallback={
+                                <>
+                                    <IconRefresh size={13} /> Check for updates
+                                </>
+                            }
+                        >
+                            <IconLoader size={13} /> Checking…
+                        </Show>
+                    </button>
+                </div>
+            }
+        />
+    );
+}
+
+function InstallIntake(props: { installer: ReturnType<typeof useInstaller> }) {
+    const installer = () => props.installer;
+    return (
+        <div class={s.intake}>
+            <span class={s.intakeLabel} id="ext-intake-label">
+                Source
+            </span>
+            <input
+                class={s.intakeInput}
+                type="text"
+                placeholder="https://… (.crx or .xpi)"
+                value={installer().urlInput()}
+                aria-labelledby="ext-intake-label"
+                onInput={e => installer().setUrlInput(e.currentTarget.value)}
+                onKeyDown={e => {
+                    if (e.key === "Enter") installer().handleInstallUrl();
+                }}
+            />
+            <button
+                type="button"
+                class={s.textBtn}
+                onClick={installer().handleInstallUrl}
+                disabled={
+                    installer().installing() || !installer().urlInput().trim()
+                }
+            >
+                <Show
+                    when={installer().installing()}
+                    fallback={
+                        <>
+                            <IconLink size={13} /> Install
+                        </>
+                    }
+                >
+                    <IconLoader size={13} /> Installing…
+                </Show>
+            </button>
+            <label class={s.uploadLabel}>
+                <IconUpload size={13} /> Upload file
+                <input
+                    type="file"
+                    accept=".crx,.xpi"
+                    class={s.uploadInput}
+                    onChange={installer().handleFileUpload}
+                />
+            </label>
+        </div>
+    );
+}
+
+/**
+ * One region for both outcomes, always present in the DOM. A live region
+ * that is added at the same moment its text arrives is frequently missed
+ * entirely — the announcement has to land in a region the screen reader was
+ * already watching.
+ */
+function StatusLine(props: { error: string | null; status: string | null }) {
+    return (
+        <p
+            class={`${s.status} ${props.error ? s.statusTone.error : s.statusTone.info}`}
+            role="status"
+            aria-live="polite"
+        >
+            <Show when={props.error ?? props.status}>
+                <span class={s.statusMark} aria-hidden="true" />
+                {props.error ?? props.status}
+            </Show>
+        </p>
+    );
+}
+
+/** One kind of extension under its own rule, shown when any are installed. */
+function ExtensionSection(props: {
+    label: string;
+    list: ExtensionListItem[];
+    uninstaller: ReturnType<typeof useArmedUninstall>;
+}) {
+    return (
+        <Show when={props.list.length > 0}>
             <div class={s.section}>
-                <Rule label={label} weight="major" />
+                <Rule label={props.label} weight="major" />
                 <ul class={s.list}>
-                    <For each={list()} keyed={false}>
+                    <For each={props.list} keyed={false}>
                         {ext => (
                             <ExtensionRow
                                 ext={ext()}
-                                armed={armedId() === ext().id}
+                                armed={props.uninstaller.armedId() === ext().id}
                                 onToggle={v =>
                                     extensionsSetEnabled(ext().id, v)
                                 }
-                                onArm={() => arm(ext().id)}
-                                onUninstall={() => handleUninstall(ext().id)}
+                                onArm={() => props.uninstaller.arm(ext().id)}
+                                onUninstall={() =>
+                                    props.uninstaller.uninstall(ext().id)
+                                }
                             />
                         )}
                     </For>
@@ -295,42 +446,23 @@ export default function ExtensionsPage() {
             </div>
         </Show>
     );
+}
 
-    const enabledCount = () => extensions().filter(e => e.enabled).length;
+export default function ExtensionsPage() {
+    // Reactive extension index: reading extensions() inside JSX or a memo
+    // re-runs on any install / uninstall / enable-toggle / update, since each
+    // routes through saveIndex, which notifies the reactive store.
+    const extensions = (): ExtensionListItem[] => extensionsGetAll();
+    const installer = useInstaller();
+    const updates = useUpdateCheck(installer.setError);
+    const uninstaller = useArmedUninstall();
 
     return (
         <Sheet>
-            <TitleBlock
-                title="Extensions"
-                icon={IconPuzzle}
-                tint="sandstone"
-                meta={
-                    extensions().length > 0
-                        ? `${enabledCount()} of ${extensions().length} enabled`
-                        : undefined
-                }
-                actions={
-                    <div class={s.titleActions}>
-                        <button
-                            type="button"
-                            class={s.textBtn}
-                            onClick={handleCheckUpdates}
-                            disabled={checking() || extensions().length === 0}
-                        >
-                            <Show
-                                when={checking()}
-                                fallback={
-                                    <>
-                                        <IconRefresh size={13} /> Check for
-                                        updates
-                                    </>
-                                }
-                            >
-                                <IconLoader size={13} /> Checking…
-                            </Show>
-                        </button>
-                    </div>
-                }
+            <ExtensionsTitle
+                extensions={extensions()}
+                checking={updates.checking()}
+                onCheck={updates.handleCheckUpdates}
             />
 
             <p class={schematic.lede}>
@@ -338,63 +470,11 @@ export default function ExtensionsPage() {
                 like.
             </p>
 
-            <div class={s.intake}>
-                <span class={s.intakeLabel} id="ext-intake-label">
-                    Source
-                </span>
-                <input
-                    class={s.intakeInput}
-                    type="text"
-                    placeholder="https://… (.crx or .xpi)"
-                    value={urlInput()}
-                    aria-labelledby="ext-intake-label"
-                    onInput={e => setUrlInput(e.currentTarget.value)}
-                    onKeyDown={e => {
-                        if (e.key === "Enter") handleInstallUrl();
-                    }}
-                />
-                <button
-                    type="button"
-                    class={s.textBtn}
-                    onClick={handleInstallUrl}
-                    disabled={installing() || !urlInput().trim()}
-                >
-                    <Show
-                        when={installing()}
-                        fallback={
-                            <>
-                                <IconLink size={13} /> Install
-                            </>
-                        }
-                    >
-                        <IconLoader size={13} /> Installing…
-                    </Show>
-                </button>
-                <label class={s.uploadLabel}>
-                    <IconUpload size={13} /> Upload file
-                    <input
-                        type="file"
-                        accept=".crx,.xpi"
-                        class={s.uploadInput}
-                        onChange={handleFileUpload}
-                    />
-                </label>
-            </div>
-
-            {/* One region for both outcomes, always present in the DOM. A live
-                region that is added at the same moment its text arrives is
-                frequently missed entirely — the announcement has to land in a
-                region the screen reader was already watching. */}
-            <p
-                class={`${s.status} ${error() ? s.statusTone.error : s.statusTone.info}`}
-                role="status"
-                aria-live="polite"
-            >
-                <Show when={error() ?? updateStatus()}>
-                    <span class={s.statusMark} aria-hidden="true" />
-                    {error() ?? updateStatus()}
-                </Show>
-            </p>
+            <InstallIntake installer={installer} />
+            <StatusLine
+                error={installer.error()}
+                status={updates.updateStatus()}
+            />
 
             {/* One statement, not three. The title block's meta, this rule's
                 label and the body line all said "none installed" within 150px
@@ -410,8 +490,16 @@ export default function ExtensionsPage() {
                 </div>
             </Show>
 
-            {section("Chrome extensions", crxExts)}
-            {section("Firefox extensions", xpiExts)}
+            <ExtensionSection
+                label="Chrome extensions"
+                list={extensions().filter(e => e.type === "crx")}
+                uninstaller={uninstaller}
+            />
+            <ExtensionSection
+                label="Firefox extensions"
+                list={extensions().filter(e => e.type === "xpi")}
+                uninstaller={uninstaller}
+            />
         </Sheet>
     );
 }

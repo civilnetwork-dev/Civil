@@ -4,9 +4,9 @@
 import { onSettled, Show } from "solid-js";
 
 import { IconClose, IconSpinner, IconWorld } from "~/components/icons";
-import type { Tab } from "~/lib/TabManager";
 import { tabManager } from "~/lib/TabManager";
 import { registerTabDraggable, registerTabDropTarget } from "~/lib/useTabDrag";
+import type { Tab } from "~/types";
 
 import * as s from "~/styles/BrowserChrome.css";
 
@@ -22,27 +22,52 @@ interface TabPillProps {
     onReorder: (tabId: string, newIndex: number) => void;
 }
 
+/** The favicon, or the loading spinner or world glyph in its place. */
+function TabIcon(props: { tab: Tab; active: boolean }) {
+    return (
+        <>
+            <Show when={props.tab.favicon}>
+                <img class={s.tabFavicon} src={props.tab.favicon} alt="" />
+            </Show>
+            <Show when={!props.tab.favicon}>
+                <span class={[s.tabIcon, { [s.tabIconActive]: props.active }]}>
+                    <Show
+                        when={props.tab.isLoading}
+                        fallback={<IconWorld size={13} />}
+                    >
+                        <IconSpinner size={13} class={s.spin} />
+                    </Show>
+                </span>
+            </Show>
+        </>
+    );
+}
+
+function registerPill(el: HTMLDivElement, props: TabPillProps) {
+    const releaseDrag = registerTabDraggable(el, props.tab.id, props.getStrip, {
+        setDraggingId: props.setDraggingId,
+    });
+    const releaseTarget = registerTabDropTarget(el, props.tab.id, {
+        getTabs: props.getTabs,
+        onReorder: props.onReorder,
+    });
+    return () => {
+        releaseDrag();
+        releaseTarget();
+    };
+}
+
+function activateOnKey(e: KeyboardEvent, tabId: string) {
+    if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        tabManager.activateTab(tabId);
+    }
+}
+
 export function TabPill(props: TabPillProps) {
     let el!: HTMLDivElement;
 
-    onSettled(() => {
-        const releaseDrag = registerTabDraggable(
-            el,
-            props.tab.id,
-            props.getStrip,
-            {
-                setDraggingId: props.setDraggingId,
-            },
-        );
-        const releaseTarget = registerTabDropTarget(el, props.tab.id, {
-            getTabs: props.getTabs,
-            onReorder: props.onReorder,
-        });
-        return () => {
-            releaseDrag();
-            releaseTarget();
-        };
-    });
+    onSettled(() => registerPill(el, props));
 
     return (
         <div
@@ -60,26 +85,9 @@ export function TabPill(props: TabPillProps) {
             ]}
             style={{ width: `${props.width}px` }}
             onClick={() => tabManager.activateTab(props.tab.id)}
-            onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    tabManager.activateTab(props.tab.id);
-                }
-            }}
+            onKeyDown={e => activateOnKey(e, props.tab.id)}
         >
-            <Show when={props.tab.favicon}>
-                <img class={s.tabFavicon} src={props.tab.favicon} alt="" />
-            </Show>
-            <Show when={!props.tab.favicon}>
-                <span class={[s.tabIcon, { [s.tabIconActive]: props.active }]}>
-                    <Show
-                        when={props.tab.isLoading}
-                        fallback={<IconWorld size={13} />}
-                    >
-                        <IconSpinner size={13} class={s.spin} />
-                    </Show>
-                </span>
-            </Show>
+            <TabIcon tab={props.tab} active={props.active} />
             {/* Below ~110px the title is down to a character or two of noise
                 and the close button crowds it. Drop both and let the tab be
                 its favicon, the way desktop browsers do at this density; the

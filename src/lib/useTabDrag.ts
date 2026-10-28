@@ -6,7 +6,7 @@ import {
 import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/utils/disable-native-drag-preview";
 import { preventUnhandled } from "@atlaskit/pragmatic-drag-and-drop/utils/prevent-unhandled";
 
-import type { Tab } from "~/lib/TabManager";
+import type { Tab } from "~/types";
 
 import { tabDragClone } from "~/styles/BrowserChrome.css";
 

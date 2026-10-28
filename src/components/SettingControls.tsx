@@ -326,8 +326,9 @@ export function HostForm(props: {
  * after four seconds, like Clear all on the History page.
  */
 export function ArmedKey(props: {
-    label: string;
-    armedLabel: string;
+    label: JSX.Element;
+    armedLabel: JSX.Element;
+    icon?: JSX.Element;
     onConfirm: () => void;
 }) {
     const [armed, setArmed] = createSignal(false);
@@ -347,6 +348,7 @@ export function ArmedKey(props: {
                 props.onConfirm();
             }}
         >
+            {props.icon}
             {armed() ? props.armedLabel : props.label}
         </button>
     );
