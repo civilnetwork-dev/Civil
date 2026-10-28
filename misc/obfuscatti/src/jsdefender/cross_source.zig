@@ -36,11 +36,11 @@ pub const Snapshot = struct {
         var free: std.ArrayList(FreeReference) = .empty;
         for (trees, module_flags, 0..) |*tree, module, source| {
             if (tree.hasErrors()) return error.AnalysisFailed;
-            const semantic = try parser.semantic.analyze(tree);
+            const semantic = try parser.semantic.analyze(tree, .{ .check = true });
             if (tree.hasErrors()) return error.AnalysisFailed;
             if (!module) for (semantic.symbols, 0..) |symbol, ordinal| {
-                if (semantic.scope(symbol.scope).kind != .global or !symbol.flags.inValueSpace()) continue;
-                const id: parser.traverser.semantic.SymbolId = @fromBackingInt(@intCast(ordinal));
+                if (semantic.scopes.get(symbol.scope).kind != .global or !symbol.flags.intersects(parser.semantic.Symbol.value_space)) continue;
+                const id: parser.semantic.SymbolId = @fromBackingInt(@intCast(ordinal));
                 if (semantic.decls(id).len == 0) continue;
                 try globals.put(owned, try owned.dupe(u8, tree.string(symbol.name)), {});
                 for (semantic.decls(id)) |node| try self.references.put(owned, .{ .source = source, .index = node }, {});

@@ -448,7 +448,7 @@ fn groupVariables(
     nodes: []const ast.NodeIndex,
     policy: ?*Policy,
 ) !void {
-    const semantic = try parser.semantic.analyze(tree);
+    const semantic = try parser.semantic.analyze(tree, .{ .check = true });
     var groups: std.ArrayList(Group) = .empty;
     defer {
         for (groups.items) |*group| group.bindings.deinit(allocator);
@@ -472,8 +472,8 @@ fn groupVariables(
         }
         if (!simple) continue;
         @import("summary.zig").count(11, 1);
-        const scope = semantic.scope(semantic.scopeOf(index));
-        const target = semantic.scope(scope.hoist_target).node;
+        const scope = semantic.scopes.get(semantic.scopeOf(index));
+        const target = semantic.scopes.get(scope.hoist_target).node;
         const body = switch (tree.data(target)) {
             .program, .function_body => target,
             .function => |v| v.body,
@@ -754,7 +754,7 @@ fn sparseProperties(
     policy: ?*Policy,
     name_source: ?@import("runtime.zig").NameSource,
 ) !void {
-    const semantic = try parser.semantic.analyze(tree);
+    const semantic = try parser.semantic.analyze(tree, .{ .check = true });
     for (nodes) |index| {
         const declaration = switch (tree.data(index)) {
             .variable_declaration => |v| v,
@@ -892,7 +892,7 @@ pub const ConstantArgumentState = struct {
         var collector = Collector{ .allocator = allocator };
         defer collector.nodes.deinit(allocator);
         try parser.traverser.basic.traverse(Collector, tree, &collector);
-        const semantic = try parser.semantic.analyze(tree);
+        const semantic = try parser.semantic.analyze(tree, .{ .check = true });
         var literals: std.ArrayList(ast.NodeIndex) = .empty;
         defer literals.deinit(allocator);
         for (collector.nodes.items) |index| {

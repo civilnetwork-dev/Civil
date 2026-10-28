@@ -70,7 +70,7 @@ pub const Output = struct {
     }
 };
 
-pub const Error = error{ ParseFailed, OutOfMemory } || codegen.Error;
+pub const Error = error{ParseFailed} || std.mem.Allocator.Error;
 
 /// Parses `source`, runs the passes to a fixed point, and prints the result.
 /// The returned code is owned by the caller.
@@ -85,7 +85,7 @@ pub fn deobfuscate(
         // Parens carry no information once the tree is reprinted, and keeping
         // them blocks folding through `(0x1 + 0x2)`.
         .preserve_parens = false,
-        .comments = .flat,
+        .comments = .collect,
     }) catch return error.ParseFailed;
     defer tree.deinit();
 
