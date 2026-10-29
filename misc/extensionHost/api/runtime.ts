@@ -2,7 +2,7 @@
  *
  * There is exactly one JS realm per loaded extension here (no separate
  * background/content/popup contexts to bridge between), so `sendMessage`
- * doesn't need the postMessage bus the in-page shim uses — it calls
+ * doesn't need the postMessage bus the in-page shim uses: it calls
  * registered listeners directly and collects whichever `sendResponse` fired
  * first, matching Chrome's own "first responder wins" behavior.
  */
@@ -34,7 +34,7 @@ export async function dispatchMessage(
         // asynchronously (the real chrome.runtime contract). This host runs
         // everything synchronously in one tick, so "asynchronous" here just
         // means "after this listener returns" rather than "after a promise
-        // resolves" — good enough for extensions that call sendResponse from
+        // resolves": good enough for extensions that call sendResponse from
         // a microtask, which is the common real-world pattern.
         if (keepAsync === true) {
             await Promise.resolve();
@@ -47,8 +47,8 @@ export async function dispatchMessage(
 /** A `Port` that keeps its holder running without carrying anything.
  *
  * Nine of the twenty-eight tracked filters call `runtime.connect`, and a port
- * is used the moment it is created — `port.onMessage.addListener(...)`,
- * `port.postMessage(...)` — so returning nothing usable kills the background
+ * is used the moment it is created (`port.onMessage.addListener(...)`,
+ * `port.postMessage(...)`), so returning nothing usable kills the background
  * script on its next line. There is only one JS realm per loaded extension
  * here, so there is no second end for a real port to reach; what this
  * provides is a port-shaped object that absorbs both, which is enough for
@@ -91,7 +91,7 @@ function sendMessageFrom(state: RuntimeDeps["state"]) {
         // Overloads: sendMessage(message), sendMessage(message, options),
         // sendMessage(extId, message, ...). The extension id form is a
         // no-op here (single-extension host). A trailing callback is not
-        // handled here — every method in this host gets that uniformly
+        // handled here: every method in this host gets that uniformly
         // from `withCallbacks`, which strips it before this ever sees it.
         const message =
             typeof args[0] === "string" && args.length > 1 ? args[1] : args[0];
@@ -99,14 +99,14 @@ function sendMessageFrom(state: RuntimeDeps["state"]) {
 
         // Delivered to nobody, deliberately. Chrome fires `onMessage` in
         // every frame of the extension *except the frame that sent the
-        // message* — a background page that messages itself does not hear
+        // message*: a background page that messages itself does not hear
         // itself. This host has exactly one frame, so a `sendMessage`
         // from inside it reaches no listener at all, and the reply is
         // `undefined` (Chrome's answer when nothing responds).
         //
         // Echoing it back instead is not a harmless shortcut. It turns
-        // any `sendMessage` inside an `onMessage` handler — a completely
-        // ordinary shape, "tell everyone the state changed" — into
+        // any `sendMessage` inside an `onMessage` handler (a completely
+        // ordinary shape, "tell everyone the state changed") into
         // unbounded recursion. mobileguardian's background page does
         // exactly that, and re-entered its own listener 18,689 times
         // before the stack gave out.
@@ -126,7 +126,7 @@ function runtimeEvents(state: RuntimeDeps["state"]) {
         // Real Chrome fires onInstalled once, the first time an extension is
         // added. A surprising number of vendor bundles register their real
         // DNR rules and webRequest listeners inside this handler rather than
-        // at the top of the script — host.ts fires it once after the
+        // at the top of the script: host.ts fires it once after the
         // background script's synchronous top-level body finishes running,
         // so those handlers actually execute instead of sitting unused.
         onInstalled: registry<(details: { reason: string }) => void>(

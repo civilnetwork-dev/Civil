@@ -3,7 +3,7 @@ import { Show } from "solid-js";
 import * as s from "~/styles/schematic.css";
 
 /**
- * A labelled hairline — the signature element of the language.
+ * A labelled hairline: the signature element of the language.
  *
  * The label sits inline with the line rather than above it, the way a
  * dimension callout does on a drawing, so a section heading costs one row

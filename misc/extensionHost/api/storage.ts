@@ -1,4 +1,4 @@
-/** chrome.storage.{local,sync,session}. In-memory only — no IndexedDB, since
+/** chrome.storage.{local,sync,session}. In-memory only: no IndexedDB, since
  *  there's no page for IndexedDB to belong to. */
 
 import type { ExtensionState, StorageArea } from "../state";
@@ -44,8 +44,8 @@ function buildArea(state: ExtensionState, area: StorageArea) {
 
 /** The enterprise-policy area. Read-only by design in Chrome: it is written
  *  by the device's admin console, never by the extension, and a `set` on it
- *  rejects. Five of the tracked filters read their configuration from here —
- *  allowlists, block categories, the tenant to report to — so seeding it is
+ *  rejects. Five of the tracked filters read their configuration from here
+ *  (allowlists, block categories, the tenant to report to) so seeding it is
  *  how a test puts an extension into the state a real managed Chromebook
  *  would. `LoadOptions.managedStorage` is what fills it. */
 function buildManagedArea(state: ExtensionState) {
@@ -62,8 +62,8 @@ function buildManagedArea(state: ExtensionState) {
         clear: async () => {
             throw new Error("storage.managed is read-only");
         },
-        // A real, present key (not absent), so `withFallback` — which only
-        // catches missing properties — would not have caught its absence:
+        // A real, present key (not absent), so `withFallback`, which only
+        // catches missing properties, would not have caught its absence:
         // `chrome.storage.managed.onChanged.addListener(...)` in a real
         // bundle (linewizeConnect) read `.addListener` off `undefined` and
         // threw, same failure class stub.ts exists to prevent, one level

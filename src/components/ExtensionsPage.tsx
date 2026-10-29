@@ -97,8 +97,8 @@ function UninstallControl(props: {
 }
 
 /**
- * One extension. This was previously written out twice — once under "Chrome
- * Extensions" and once under "Firefox Extensions" — with the two copies
+ * One extension. This was previously written out twice, once under "Chrome
+ * Extensions" and once under "Firefox Extensions", with the two copies
  * differing only in the badge. Forty-odd lines of markup kept in sync by hand
  * is a defect waiting to happen, and the second copy had already drifted
  * nowhere useful.
@@ -129,7 +129,7 @@ function ExtensionRow(props: {
                 {props.ext.type.toUpperCase()}
             </span>
             {/* The switch is the only thing stating enabled/disabled to a
-                screen reader — the spine node beside it is decorative — so it
+                screen reader (the spine node beside it is decorative) so it
                 carries the extension's name in its own label rather than
                 relying on the row for context. */}
             <label class={s.toggle}>
@@ -281,7 +281,7 @@ function useUpdateCheck(setError: (error: string | null) => void) {
 /**
  * Uninstalling deletes the extension's stored files, so the control asks
  * once. Keyed by id rather than a boolean because arming one row must disarm
- * any other — two live "confirm" buttons is how the wrong one gets clicked.
+ * any other: two live "confirm" buttons is how the wrong one gets clicked.
  */
 function useArmedUninstall() {
     const [armedId, setArmedId] = createSignal<string | null>(null);
@@ -398,7 +398,7 @@ function InstallIntake(props: { installer: ReturnType<typeof useInstaller> }) {
 /**
  * One region for both outcomes, always present in the DOM. A live region
  * that is added at the same moment its text arrives is frequently missed
- * entirely — the announcement has to land in a region the screen reader was
+ * entirely: the announcement has to land in a region the screen reader was
  * already watching.
  */
 function StatusLine(props: { error: string | null; status: string | null }) {

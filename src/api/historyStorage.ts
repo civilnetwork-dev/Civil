@@ -59,6 +59,19 @@ export function budgetFor(loc: HistoryLocation, limitKb: number): number {
     return limitKb * 1024;
 }
 
+/**
+ * The most `loc` holds before the browser refuses a write, whatever the space
+ * limit says: localStorage's fixed quota, or the quota IndexedDB reports.
+ * Infinity when the browser reports none.
+ */
+export async function locationQuota(loc: HistoryLocation): Promise<number> {
+    if (loc === "localstorage") return LS_QUOTA;
+    const estimate = await navigator.storage
+        ?.estimate?.()
+        .catch(() => undefined);
+    return estimate?.quota || Infinity;
+}
+
 const isQuotaError = (error: unknown) => {
     const name = (error as { name?: unknown } | null)?.name;
     return (

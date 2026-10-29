@@ -1,5 +1,5 @@
 /**
- * Pick a FreeDNS base domain that no tracked filter blocks — the cross-check
+ * Pick a FreeDNS base domain that no tracked filter blocks: the cross-check
  * the tunnel's module doc calls "the caller's (eventual) job", now built.
  *
  * FreeDNS' registry is the candidate pool (misc/tunnel/freedns `getRegistry`);
@@ -13,15 +13,15 @@
  * worth keeping. What we persist (via `flat-cache`, to `data/`) is the set of
  * *blocked* domains: the stable, expensive-to-find, actionable negative.
  * Survivors are derived as `registry ∖ blocked` at pick time, so they can never
- * be served stale from disk. The file is rewritten only when that set grows —
- * i.e. only when a new domain gets blocked — which is the requested trigger.
+ * be served stale from disk. The file is rewritten only when that set grows
+ * (i.e. only when a new domain gets blocked) which is the requested trigger.
  *
  * ponytail: a domain in the block cache is never re-tested (it short-circuits
  * the vendor calls), so a domain that later becomes unblocked stays out. Delete
  * the cache file to re-test from scratch; a TTL per entry is the upgrade if that
  * ever matters. Clean domains are re-classified every run, which is what "runs
  * each of them through the filter checker" asks for; `maxCandidates` bounds
- * how many go out at once, so a run never stampedes the vendor APIs — see
+ * how many go out at once, so a run never stampedes the vendor APIs. See
  * `pickTunnelDomain`'s own doc comment for why that's a batch size, not a
  * ceiling: the pool it draws from is finite and shrinks as it's used.
  */
@@ -46,7 +46,7 @@ export interface PickDomainOptions {
     cacheId?: string;
     /** Registry pages to enumerate. Default: all of them. */
     maxPages?: number;
-    /** Batch size for classifying not-yet-blocked domains — tried in order
+    /** Batch size for classifying not-yet-blocked domains: tried in order
      *  until one batch has a survivor, or the registry runs out. Default 50;
      *  `Infinity` classifies literally every public domain in one batch. */
     maxCandidates?: number;
@@ -121,7 +121,7 @@ async function mapLimit<T>(
  * clean pool thins with every repeated run. Stopping at one blocked batch
  * meant a harness re-run could fail outright once enough of the registry had
  * accumulated into the cache, even with plenty of clean domains left
- * further into `fresh` — confirmed against this project's own accumulated
+ * further into `fresh`: confirmed against this project's own accumulated
  * cache (2000+ entries after repeated runs) failing two runs straight on a
  * batch of 50. Batching (rather than classifying all of `fresh` up front)
  * keeps the original "never stampede the vendor APIs" intent for the common
@@ -181,7 +181,7 @@ export async function pickTunnelDomain(
 
     throw new Error(
         `pickTunnelDomain: all ${checked} candidate domain(s) in the ` +
-            `registry were blocked — clear ${cacheId} to re-test, or the ` +
+            `registry were blocked. Clear ${cacheId} to re-test, or the ` +
             `registry itself may be exhausted.`,
     );
 }

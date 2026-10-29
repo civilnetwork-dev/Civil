@@ -1,11 +1,11 @@
 /**
- * chrome.sockets.{tcp,tcpServer,udp} — a privileged, packaged-apps-only API a
+ * chrome.sockets.{tcp,tcpServer,udp}: a privileged, packaged-apps-only API a
  * handful of legacy Chrome Apps (ciscoUmbrellaApp's local roaming-client
  * proxy and DNS server) still use for real network sockets. This host has no
  * real network to hand out sockets on, so the honest answer is the same one
  * `buildEmptyCollections` gives for browsing history or bookmarks: nothing
  * exists here, every list is genuinely empty, and a socket that's asked to
- * `connect`/`send`/`listen` succeeds into the void rather than throwing —
+ * `connect`/`send`/`listen` succeeds into the void rather than throwing:
  * `getSockets` returning `undefined` instead of `[]` is what actually crashed
  * ciscoUmbrellaApp (`server.js` immediately calls `.filter()` on it).
  */

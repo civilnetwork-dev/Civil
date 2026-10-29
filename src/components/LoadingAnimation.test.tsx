@@ -9,7 +9,10 @@ import * as s from "~/styles/LoadingAnimation.css";
 describe("LoadingAnimation", () => {
     it("draws the mark and a stream of route nodes", () => {
         const { container, unmount } = renderSolid(() => <LoadingAnimation />);
-        expect(container.querySelector(`.${s.loadingMarkC}`)).not.toBeNull();
+        expect(
+            container.querySelector(`.${s.loadingMarkStone}`),
+        ).not.toBeNull();
+        expect(container.querySelector(`.${s.loadingMarkDoor}`)).not.toBeNull();
         expect(container.querySelectorAll(`.${s.loadingMarkNode}`).length).toBe(
             3,
         );
@@ -17,30 +20,37 @@ describe("LoadingAnimation", () => {
     });
 
     /**
-     * The whole idea rests on paint order. The nodes are drawn *before* the C so
-     * the letter's own material occludes them and the route surfaces only in the
-     * mouth and the counter — exactly as the wordmark does it at full size. Move
-     * the path above the rects and the nodes float over the glyph: still
-     * animated, still on-palette, and meaningless.
+     * The whole idea rests on paint order. The door's light is drawn first, the
+     * nodes over it, and the stone last, so the stone's own material occludes
+     * the nodes and the traffic surfaces only in the door. Move the stone below
+     * the rects and the nodes float over the wall; move the light above them
+     * and they vanish into it: still animated, still on-palette, and
+     * meaningless.
      *
      * There is no clip path or mask holding this together, so nothing else would
      * catch the regression.
      */
-    it("paints the route behind the letter, not over it", () => {
+    it("paints the traffic over the light and behind the stone", () => {
         const { container, unmount } = renderSolid(() => <LoadingAnimation />);
         const svg = container.querySelector(`.${s.loadingMark}`);
         const kids = [...(svg?.children ?? [])];
 
+        const firstNode = kids.findIndex(el =>
+            el.classList.contains(s.loadingMarkNode),
+        );
         const lastNode = kids.findLastIndex(el =>
             el.classList.contains(s.loadingMarkNode),
         );
-        const letter = kids.findIndex(el =>
-            el.classList.contains(s.loadingMarkC),
+        const door = kids.findIndex(el =>
+            el.classList.contains(s.loadingMarkDoor),
+        );
+        const stone = kids.findIndex(el =>
+            el.classList.contains(s.loadingMarkStone),
         );
 
-        expect(letter).toBeGreaterThan(-1);
-        expect(lastNode).toBeGreaterThan(-1);
-        expect(letter).toBeGreaterThan(lastNode);
+        expect(door).toBeGreaterThan(-1);
+        expect(firstNode).toBeGreaterThan(door);
+        expect(stone).toBeGreaterThan(lastNode);
         unmount();
     });
 });

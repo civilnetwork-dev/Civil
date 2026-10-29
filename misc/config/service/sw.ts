@@ -1,12 +1,11 @@
 import mime from "mime/lite";
-import { encode } from "$config/shared/wasmDencode";
 import {
     navConditionMatches,
     navRedirectTarget,
 } from "$config/shared/dnrNavMatch";
 import { DNR_NAV_DIR, type DnrNavRule } from "$config/shared/dnrNavRules";
 import { getExtensionFile } from "$config/shared/extensionFile";
-import { jsDecode } from "$config/shared/xorCodec";
+import { decode, encode } from "$config/shared/xorCodec";
 
 importScripts("/scramjetController/controller.sw.js");
 
@@ -393,119 +392,6 @@ const CIVIL_EXT_DETECT_STUB = `<script>
 })();
 </script>`;
 
-const CIVIL_ERROR_COUNTER = `<script>
-(function(){
-  try {
-    var W = window.__civilNativeWindow || window;
-    if (W.__civilErrCounterInstalled) return;
-    W.__civilErrCounterInstalled = true;
-    W.__civilConsoleErrors = 0;
-    W.__civilRewriterErrors = 0;
-    var RX = new RegExp(["scramjet","rewrit","unrewrite","oxc","proxy"].join("|"), "i");
-    function argsToStr(a){
-      try {
-        return Array.prototype.map.call(a, function(x){
-          return (x && x.stack) || String(x);
-        }).join(' ');
-      } catch(e) { return ''; }
-    }
-    // console.error / uncaught: count all; tag rewriter-looking ones.
-    function bumpError(text){
-      try {
-        W.__civilConsoleErrors++;
-        if (text && RX.test(String(text))) W.__civilRewriterErrors++;
-      } catch(e) {}
-    }
-    function bumpWarn(text){
-      try {
-        if (text && RX.test(String(text))) {
-          W.__civilConsoleErrors++;
-          W.__civilRewriterErrors++;
-        }
-      } catch(e) {}
-    }
-    try {
-      var _e = console.error;
-      console.error = function(){
-        bumpError(argsToStr(arguments));
-        return _e.apply(console, arguments);
-      };
-    } catch(e) {}
-    try {
-      var _w = console.warn;
-      console.warn = function(){
-        bumpWarn(argsToStr(arguments));
-        return _w.apply(console, arguments);
-      };
-    } catch(e) {}
-    // Failed proxied requests: non-OK (>=400) responses + network failures on
-    // fetch/XHR (Scramjet routes subresources via XHR through the SW, so these
-    // catch the 500s) + failed resource element loads.
-    W.__civilFailedRequests = 0;
-    try {
-      var _fetch = W.fetch;
-      if (typeof _fetch === 'function') {
-        W.fetch = function(){
-          var p;
-          try { p = _fetch.apply(this, arguments); }
-          catch(e) { try { W.__civilFailedRequests++; } catch(_) {} throw e; }
-          try {
-            return p.then(function(r){
-              try {
-                if (r && typeof r.status === 'number' && r.status >= 400) {
-                  W.__civilFailedRequests++;
-                }
-              } catch(e) {}
-              return r;
-            }, function(err){
-              try { W.__civilFailedRequests++; } catch(e) {}
-              throw err;
-            });
-          } catch(e) { return p; }
-        };
-      }
-    } catch(e) {}
-    try {
-      var XHR = W.XMLHttpRequest;
-      if (XHR && XHR.prototype && !XHR.prototype.__civilWrapped) {
-        XHR.prototype.__civilWrapped = true;
-        var _open = XHR.prototype.open;
-        XHR.prototype.open = function(){
-          try {
-            this.addEventListener('load', function(){
-              try { if (this.status >= 400) W.__civilFailedRequests++; } catch(e) {}
-            });
-            this.addEventListener('error', function(){
-              try { W.__civilFailedRequests++; } catch(e) {}
-            });
-          } catch(e) {}
-          return _open.apply(this, arguments);
-        };
-      }
-    } catch(e) {}
-    var add = W.__civilNativeAddEventListener || W.addEventListener.bind(W);
-    try {
-      add('error', function(ev){
-        try {
-          var t = ev && ev.target;
-          // Resource element (img/script/link/iframe) failed to load.
-          if (t && t !== W && t.tagName) {
-            W.__civilFailedRequests++;
-            return;
-          }
-        } catch(e) {}
-        bumpError((ev && (ev.message || (ev.error && ev.error.stack))) || '');
-      }, true);
-    } catch(e) {}
-    try {
-      add('unhandledrejection', function(ev){
-        bumpError((ev && ev.reason && (ev.reason.stack || ev.reason.message)) || '');
-      });
-    } catch(e) {}
-  } catch(e) {}
-})();
-</script>`;
-
 function isUserScriptNavigation(
     originalUrl: string | undefined,
     requestMode: RequestMode | undefined,
@@ -562,7 +448,7 @@ async function injectChiiPreamble(
         const text = await response.text();
         const modified = injectAtTop(
             text,
-            CIVIL_CHII_PREAMBLE + CIVIL_ERROR_COUNTER + CIVIL_EXT_DETECT_STUB,
+            CIVIL_CHII_PREAMBLE + CIVIL_EXT_DETECT_STUB,
         );
 
         const headers = new Headers(response.headers);
@@ -604,7 +490,7 @@ function decodeProxiedUrl(encodedUrl: string): string | null {
             const segments = afterPrefix.split("/").filter(Boolean);
             const lastSegment = segments[segments.length - 1];
             if (!lastSegment) return null;
-            return jsDecode(lastSegment);
+            return decode(lastSegment);
         }
     } catch {}
     return null;

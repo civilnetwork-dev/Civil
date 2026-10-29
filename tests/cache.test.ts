@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The load-bearing property of this module is not "caching works" — it's that
+ * The load-bearing property of this module is not "caching works": it's that
  * **a Redis failure never fails a request**. Every proxy decision, session
  * lookup and Patreon entitlement check goes through `cached()`, so if it starts
  * propagating Redis errors the whole app goes down with Redis instead of
@@ -82,7 +82,7 @@ describe("cached: happy path", () => {
     });
 
     it("preserves Date values through the cache", async () => {
-        // MessagePack (not JSON) is used precisely so this holds — session
+        // MessagePack (not JSON) is used precisely so this holds: session
         // objects carry expiry Dates.
         const value = { at: new Date("2026-01-02T03:04:05.000Z") };
         await cached("k", async () => value);

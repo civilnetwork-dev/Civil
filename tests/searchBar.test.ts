@@ -4,16 +4,11 @@
 // its constructor wires a "submit" handler. happy-dom gives it all of those.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// SearchBar's constructor awaits these during setup, and submitFrame calls
-// fetchBestProxy/measureAndReportCompat. Stub them so the test drives only the
-// proxy-selection logic, with no service worker, bare-mux, or network.
+// SearchBar's constructor awaits these during setup. Stub them so the test
+// drives only the proxy-selection logic, with no service worker or bare-mux.
 vi.mock("../src/lib/swUtils", () => ({
     registerSw: vi.fn(async () => {}),
     setupBareMux: vi.fn(async () => {}),
-}));
-vi.mock("../src/lib/bestProxy", () => ({
-    fetchBestProxy: vi.fn(async () => null),
-    measureAndReportCompat: vi.fn(),
 }));
 
 import searchBar from "../src/lib/SearchBar";
@@ -26,10 +21,10 @@ beforeEach(() => {
 });
 
 describe("SearchBar.submitFrame transport", () => {
-    // The load watchdog's failover retry depends on this: with no best-proxy
-    // pick, the frame used to keep whatever transport it had, so the retry
-    // ran on the transport that had just failed.
-    it("applies the resolved transport even without a best-proxy pick", async () => {
+    // The load watchdog's failover retry depends on this: the frame used to
+    // keep whatever transport it had, so the retry ran on the transport that
+    // had just failed.
+    it("applies the resolved transport to the frame", async () => {
         const sframe: any = { go: vi.fn(), controller: {} };
         (window as any).scramjet = {
             frames: [],
@@ -123,7 +118,6 @@ describe("SearchBar.submitFrame proxy readiness", () => {
             frames: [],
             createFrame: vi.fn(() => sframe),
         };
-        localStorage.setItem("proxy", "scramjet");
 
         const bar = searchBar();
         await bar.submitFrame({} as any, "example.com");

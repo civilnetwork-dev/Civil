@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { createSignal, createUniqueId, For, Show } from "solid-js";
 
 import { IconChevronDown } from "~/components/icons";
+import { TRAIT_NAMES, type Traits } from "~/components/settingOptions";
 import { normalizeHost } from "~/lib/settings";
 
 import * as schematic from "~/styles/schematic.css";
@@ -178,6 +179,28 @@ export function ChoiceRow<T extends string | number>(
             />
             {props.children}
         </Row>
+    );
+}
+
+const TRAIT_KEYS = Object.keys(TRAIT_NAMES) as (keyof Traits)[];
+
+/**
+ * How one choice does on site support, reliability, speed and latency, as
+ * name and value pairs. Built from spans, so it fits in a row's hint and in a
+ * setup card's label, which only take inline content.
+ */
+export function TraitList(props: { traits: Traits }) {
+    return (
+        <span class={s.traits}>
+            <For each={TRAIT_KEYS}>
+                {key => (
+                    <span class={s.trait}>
+                        <span class={s.traitName}>{TRAIT_NAMES[key]}</span>{" "}
+                        <span>{props.traits[key]}</span>
+                    </span>
+                )}
+            </For>
+        </span>
     );
 }
 

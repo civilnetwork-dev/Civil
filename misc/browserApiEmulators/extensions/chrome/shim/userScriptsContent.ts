@@ -211,8 +211,8 @@ try {
     };
     window.__cFakeLoc=__cFakeLoc;
   }catch(_){}
-  var __cRe=/^\\/~\\/(scramjet|uv)\\//;
-  var __cReAbs=new RegExp('^https?:\\/\\/[^/]+\\/~\\/(scramjet|uv)\\/');
+  var __cRe=/^\\/~\\/scramjet\\//;
+  var __cReAbs=new RegExp('^https?:\\/\\/[^/]+\\/~\\/scramjet\\/');
   function __cRewrite(obj) {
     if(!obj||typeof obj!=='object') return obj;
     var o={};

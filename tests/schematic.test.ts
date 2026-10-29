@@ -11,8 +11,8 @@ import {
 import { vars } from "../src/styles/theme.css";
 
 /**
- * These stacks are loaded from `@fontsource`, which means the request can fail
- * — and on the school networks this app runs behind, an unfamiliar font CDN
+ * These stacks are loaded from `@fontsource`, which means the request can fail,
+ * and on the school networks this app runs behind, an unfamiliar font CDN
  * request failing is an ordinary Tuesday. What must survive that is the
  * *category*: ledgers and hour meters align because their glyphs are
  * fixed-width, so a mono stack that falls back to a proportional face silently
@@ -34,7 +34,7 @@ describe("font stacks", () => {
 
     /**
      * `ui-monospace` resolves to the platform's own mono, which is a better
-     * fallback than jumping straight to the generic family — it keeps the
+     * fallback than jumping straight to the generic family: it keeps the
      * system's actual UI mono rather than whatever `monospace` maps to.
      */
     it("keeps a system mono between the webfont and the generic family", () => {
@@ -62,7 +62,7 @@ describe("ANNO", () => {
 
     it("keeps both annotation tiers above the WCAG AA small-text minimum", () => {
         // snowmelt (anno) measures 8.87:1 and ash (annoMuted) measures 4.80:1
-        // against stratum — both clear the 4.5:1 WCAG AA small-text minimum.
+        // against stratum. Both clear the 4.5:1 WCAG AA small-text minimum.
         // ash is the floor of the palette: there is nothing dimmer to reach for,
         // which is the point of collapsing the old ember/cinder pair into it.
         expect(anno).not.toBe(annoMuted);

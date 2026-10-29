@@ -1,7 +1,8 @@
 import type { Context, Hono } from "hono";
 
 import { type AppEnv, readJsonBody } from "../../http";
-import { captureFilterCheck, captureFilterError } from "../utils/captureFilter";
+import { captureFilterCheck } from "../utils/captureFilter";
+import { respondFilterError } from "../utils/respondFilterError";
 import { createAutoLinewizeFilterChecker as createLinewizeFilterChecker } from "./checker";
 
 async function checkLinewize(c: Context<AppEnv>) {
@@ -15,25 +16,21 @@ async function checkLinewize(c: Context<AppEnv>) {
     });
 
     if (linewizeCheckerResult.isErr()) {
-        const { error } = linewizeCheckerResult;
-        captureFilterError(c, "linewize", url, error, {
-            phase: "checker_init",
-        });
-        return c.text(
-            `Internal Server Error - ${error.type}: ${error.message}`,
-            500,
+        return respondFilterError(
+            c,
+            "linewize",
+            url,
+            linewizeCheckerResult.error,
+            { phase: "checker_init" },
         );
     }
 
     const checkResult = await linewizeCheckerResult.value.checkUrl({ url });
 
     if (checkResult.isErr()) {
-        const { error } = checkResult;
-        captureFilterError(c, "linewize", url, error, { phase: "url_check" });
-        return c.text(
-            `Internal server error: ${error.type} - ${error.message}`,
-            500,
-        );
+        return respondFilterError(c, "linewize", url, checkResult.error, {
+            phase: "url_check",
+        });
     }
 
     const { verdict, categories, raw } = checkResult.value;

@@ -3,7 +3,7 @@
  * downloads (api/deviceApis.ts's `buildEmptyCollections`, genuinely nothing
  * to seed), a filter can be *configured* through one: impero reads its
  * school code from a bookmark titled "impero" whose URL carries a
- * `school_code` query parameter — a school's IT admin pushes it via policy
+ * `school_code` query parameter: a school's IT admin pushes it via policy
  * the same way a managed Chromebook pushes any other bookmark. `search({})`
  * (real Chrome: no query fields set, matches everything) is the only method
  * this vendor calls; the rest stay simple recorded no-ops, same shape as

@@ -3,19 +3,21 @@ import { createSignal, For, onSettled } from "solid-js";
 import * as s from "~/styles/LoadingAnimation.css";
 
 /**
- * The mark's C, on its own 16-unit grid — the same path the favicon draws.
+ * The Doorway on its own 16-unit grid, the cells the favicon draws: the stone,
+ * cut into courses, and the door its two slabs open by overlapping.
  *
- * A literal rather than a shared export: `Wordmark` draws the full lockup on a
- * 376-unit canvas, and this screen needs the C alone with its node animated.
- * Two consumers, two shapes — the only thing they share is the path string, and
- * a constant exported for one caller is not reuse.
+ * Literals rather than shared exports: `Wordmark` draws the full lockup on a
+ * 1729-unit canvas, and this screen needs the mark alone with traffic animated
+ * through it. Two consumers, two shapes: the only thing they share is the
+ * geometry, and a constant exported for one caller is not reuse.
  */
-const MARK_C =
-    "M14.74 5.28H11.24C10.64 4.16 9.55 3.58 8 3.58C5.49 3.58 4.19 5.08 4.19 8C4.19 10.92 5.49 12.42 8 12.42C9.55 12.42 10.64 11.84 11.24 10.72H14.74C14.07 13.76 12.01 15 8 15C2.96 15 1 13.04 1 8C1 2.96 2.96 1 8 1C12.01 1 14.07 2.24 14.74 5.28Z";
+const MARK_STONE =
+    "M2 1H10V4.5H2ZM2 5H10A4 4 0 0 0 6.13 8H2ZM10 5H14V8H10ZM2 8.5H6V11.5H2ZM10 8.5H14V11.5H10ZM2 12H6V15H2ZM10 12H14V15H10Z";
+const MARK_DOOR = "M6 15V9A4 4 0 0 1 10 5V15Z";
 
 /**
- * Nodes arriving along the route. Three is enough to read as a stream and few
- * enough that none of them collide in the mouth.
+ * Traffic crossing the door. Three is enough to read as a stream and few
+ * enough that the door never shows more than two at once.
  *
  * Their stagger is a literal fraction of the cycle rather than a computed
  * offset: this screen server-side renders, and anything derived at render time
@@ -23,7 +25,7 @@ const MARK_C =
  */
 const NODES = [0, 1, 2];
 
-/** One pass of a node from outside the mouth to absorbed at the stem. */
+/** One pass of a node from behind the left pier to behind the right one. */
 const CYCLE_MS = 2400;
 
 function formatResource(url: string): string {
@@ -121,7 +123,7 @@ function watchServiceWorker(pushLive: (text: string) => void) {
  * `onSettled` must **return** its cleanup; calling `onCleanup` inside it
  * throws `CLEANUP_IN_FORBIDDEN_SCOPE` in Solid 2.0, and because the throw
  * happens during the effect run it halts the reactive system for the whole
- * root — "no further updates will be processed". This screen mounts on
+ * root: "no further updates will be processed". This screen mounts on
  * every cold load, so that was every cold load. It never surfaced because
  * the halt is reported to the console rather than thrown to the caller, and
  * the loader looks identical either way: the artwork was a canvas driving
@@ -167,14 +169,15 @@ function useLiveStatus() {
 function LoadingMark() {
     return (
         <svg class={s.loadingMark} viewBox="0 0 16 16" aria-hidden="true">
+            <path class={s.loadingMarkDoor} d={MARK_DOOR} />
             <For each={NODES}>
                 {i => (
                     <rect
                         class={s.loadingMarkNode}
-                        x="11.24"
-                        y="6.8"
-                        width="3.5"
-                        height="2.4"
+                        x="2"
+                        y="9"
+                        width="2.5"
+                        height="2"
                         style={{
                             "animation-delay": `${
                                 (i * CYCLE_MS) / NODES.length
@@ -183,8 +186,8 @@ function LoadingMark() {
                     />
                 )}
             </For>
-            <path class={s.loadingMarkDepth} d={MARK_C} />
-            <path class={s.loadingMarkC} d={MARK_C} />
+            <path class={s.loadingMarkDepth} d={MARK_STONE} />
+            <path class={s.loadingMarkStone} d={MARK_STONE} />
         </svg>
     );
 }
@@ -194,10 +197,10 @@ export default function LoadingAnimation() {
 
     return (
         <div class={s.loadingContainer}>
-            {/* Nodes first, then the C over them: the letter's own material is
-                what hides the route, so it surfaces only in the mouth and the
-                counter. Reordering these two blocks makes the nodes float over
-                the glyph and the whole idea disappears. */}
+            {/* The lit door, then the nodes, then the stone over them: the
+                stone's own material is what hides the traffic, so it surfaces
+                only in the door. Painting the stone before the nodes makes them
+                float over the wall and the whole idea disappears. */}
             <LoadingMark />
             <div class={s.loadingStatusWrapper}>
                 <span

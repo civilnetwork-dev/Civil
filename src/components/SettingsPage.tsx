@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { createSignal, For, onSettled, Show } from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 
 import {
     historyApplyLimits,
@@ -15,7 +15,11 @@ import {
     type MoveResult,
     onHistoryChange,
 } from "~/api/history";
-import type { HistoryLocation, LocationReport } from "~/api/historyStorage";
+import {
+    budgetFor,
+    type HistoryLocation,
+    type LocationReport,
+} from "~/api/historyStorage";
 import HistoryFullNotice from "~/components/HistoryFullNotice";
 import { IconClose, IconSliders } from "~/components/icons";
 import Sheet from "~/components/schematic/Sheet";
@@ -25,11 +29,14 @@ import {
     ArmedKey,
     ChoiceRow,
     HostForm,
+    type Option,
     Select,
     TextRow,
     ToggleRow,
+    TraitList,
 } from "~/components/SettingControls";
 import {
+    APPS_OPEN_OPTIONS,
     BAR_OPTIONS,
     checkDays,
     DAY_PRESETS,
@@ -43,12 +50,15 @@ import {
     SEARCH_OPTIONS,
     STARTUP_OPTIONS,
     TIMEOUT_OPTIONS,
+    type Traits,
     TRANSPORT_NOTES,
     TRANSPORT_OPTIONS,
+    TRANSPORT_TRAITS,
     WHEN_FULL_NOTES,
     WHEN_FULL_OPTIONS,
     WISP_NOTE,
     WISP_OPTIONS,
+    WISP_TRAITS,
 } from "~/components/settingOptions";
 import { onLsChange } from "~/lib/reactiveStorage";
 import {
@@ -66,6 +76,7 @@ import {
 import { exportSettings, importSettings } from "~/lib/settingsTransfer";
 import { lastTransportChoice, type TransportSource } from "~/lib/transport";
 
+import * as schematic from "~/styles/schematic.css";
 import * as c from "~/styles/SettingControls.css";
 import * as s from "~/styles/SettingsPage.css";
 
@@ -80,7 +91,6 @@ const SECTIONS = [
 ] as const;
 
 const SOURCE: Record<TransportSource, string> = {
-    auto: "picked automatically",
     site: "your rule for that site",
     failover: "switched to after a page didn't load",
     default: "the default method",
@@ -148,6 +158,28 @@ const statusSentence = (st: HistoryStatus, compressed: boolean) => {
 };
 
 type Save = <K extends SettingKey>(key: K, value: SettingValue<K>) => void;
+
+/** Every option's traits side by side, so the choice is an informed one. */
+function Compare<T extends string>(props: {
+    label: string;
+    options: readonly Option<T>[];
+    traits: Record<T, Traits>;
+}) {
+    return (
+        <div class={s.readout}>
+            <ul class={s.compare} aria-label={props.label}>
+                <For each={props.options}>
+                    {option => (
+                        <li>
+                            <span class={s.readoutName}>{option.label}</span>
+                            <TraitList traits={props.traits[option.value]} />
+                        </li>
+                    )}
+                </For>
+            </ul>
+        </div>
+    );
+}
 
 function useLastChoice() {
     const [lastChoice, setLastChoice] = createSignal(lastTransportChoice());
@@ -269,34 +301,30 @@ function FailoverRows(props: { save: Save }) {
 
 /** How proxied pages are fetched, and what Civil does when one fails. */
 function ConnectionSection(props: { save: Save }) {
-    const transportAuto = useSetting("transportAuto");
     const transport = useSetting("transport");
     const wisp = useSetting("wispVersion");
     const lastChoice = useLastChoice();
 
     return (
         <Section id="connection" title="Connection">
-            <ToggleRow
-                label="Pick a method for each site automatically"
+            <ChoiceRow
+                label="Default method"
                 hint={
                     <>
-                        Civil tests each new site and uses the method it loads
-                        best with. Turned off, every site uses the default
-                        method and addresses aren't sent for testing.
+                        {TRANSPORT_NOTES[transport()]}
                         <Show when={lastChoice()}>
                             {` The last site, ${lastChoice()!.host}, used ${lastChoice()!.transport} (${SOURCE[lastChoice()!.source]}).`}
                         </Show>
                     </>
                 }
-                checked={transportAuto()}
-                onChange={on => props.save("transportAuto", on)}
-            />
-            <ChoiceRow
-                label="Default method"
-                hint={TRANSPORT_NOTES[transport()]}
                 value={transport()}
                 options={TRANSPORT_OPTIONS}
                 onChange={value => props.save("transport", value)}
+            />
+            <Compare
+                label="How the methods compare"
+                options={TRANSPORT_OPTIONS}
+                traits={TRANSPORT_TRAITS}
             />
             <TransportRules save={props.save} />
             <ChoiceRow
@@ -305,6 +333,11 @@ function ConnectionSection(props: { save: Save }) {
                 value={wisp()}
                 options={WISP_OPTIONS}
                 onChange={value => props.save("wispVersion", value)}
+            />
+            <Compare
+                label="How the Wisp versions compare"
+                options={WISP_OPTIONS}
+                traits={WISP_TRAITS}
             />
             <FailoverRows save={props.save} />
         </Section>
@@ -681,6 +714,54 @@ function ExcludedSites(props: { page: Page }) {
     );
 }
 
+function HistoryMeter(props: { hist: HistoryControls }) {
+    const limit = useSetting("historyLimitKb");
+
+    // The meter reads the space limit live, so changing it moves the bar
+    // without waiting for the next visit to rewrite history.
+    const meter = createMemo(() => {
+        const st = props.hist.status();
+        if (!st) return null;
+        const capacity = Math.min(st.quota, budgetFor(st.writer, limit()));
+        if (!Number.isFinite(capacity) || capacity <= 0) return null;
+        const used = st.size[st.writer];
+        const ratio = Math.min(used / capacity, 1);
+        return { where: st.writer, used, capacity, ratio, full: ratio >= 0.8 };
+    });
+
+    return (
+        <Show when={meter()}>
+            <div class={s.meter}>
+                <p class={[s.meterLabel, s.numbers]}>
+                    <span>{capital(PLACE_NAMES[meter()!.where])}</span>
+                    <span>
+                        {`${meter()!.full ? "Nearly full: " : ""}${formatSize(meter()!.used)} of ${formatSize(meter()!.capacity)}`}
+                    </span>
+                </p>
+                {/* The label above says it in words; the bar repeats it for
+                    the eye, so it stays out of the a11y tree. */}
+                <div
+                    class={s.meterTrack}
+                    data-full={meter()!.full ? "" : undefined}
+                    aria-hidden="true"
+                >
+                    <div
+                        class={s.meterFill}
+                        style={{
+                            // A sliver stays visible however small the share:
+                            // an empty-looking bar would say nothing is
+                            // stored.
+                            width: meter()!.used
+                                ? `max(4px, ${meter()!.ratio * 100}%)`
+                                : "0",
+                        }}
+                    />
+                </div>
+            </div>
+        </Show>
+    );
+}
+
 function HistorySection(props: { page: Page; hist: HistoryControls }) {
     const historyEnabled = useSetting("historyEnabled");
     const format = useSetting("historyFormat");
@@ -694,6 +775,7 @@ function HistorySection(props: { page: Page; hist: HistoryControls }) {
                       )
                     : "Reading history."}
             </p>
+            <HistoryMeter hist={props.hist} />
             <ToggleRow
                 label="Save history"
                 hint="Turned off, pages you visit aren't added. What's already saved stays."
@@ -725,6 +807,7 @@ function TabsSection(props: { save: Save }) {
     const startup = useSetting("startup");
     const startupUrl = useSetting("startupUrl");
     const bookmarksBar = useSetting("bookmarksBar");
+    const appsOpenIn = useSetting("appsOpenIn");
     const motion = useSetting("motion");
     return (
         <Section id="tabs" title="Tabs and appearance">
@@ -754,6 +837,13 @@ function TabsSection(props: { save: Save }) {
                 onChange={value => props.save("bookmarksBar", value)}
             />
             <ChoiceRow
+                label="Open apps in"
+                hint="Where a site you pick on the Apps page opens."
+                value={appsOpenIn()}
+                options={APPS_OPEN_OPTIONS}
+                onChange={value => props.save("appsOpenIn", value)}
+            />
+            <ChoiceRow
                 label="Motion"
                 hint="Reduce motion stops Civil's animations even when this device doesn't ask for that."
                 value={motion()}
@@ -765,18 +855,11 @@ function TabsSection(props: { save: Save }) {
 }
 
 function PrivacySection(props: { save: Save }) {
-    const compatReports = useSetting("compatReports");
     const filterDetect = useSetting("filterDetect");
     const analytics = useSetting("analytics");
     const ads = useSetting("ads");
     return (
         <Section id="privacy" title="Privacy">
-            <ToggleRow
-                label="Send site compatibility reports"
-                hint="After a page loads, Civil tells its server how well it worked, including the address, so automatic method picking improves for everyone."
-                checked={compatReports()}
-                onChange={on => props.save("compatReports", on)}
-            />
             <ToggleRow
                 label="Check for filters when Civil opens"
                 hint="Looks for filter extensions such as GoGuardian so Civil can warn you about them. Filter check still runs when you open it."
@@ -995,7 +1078,7 @@ export default function SettingsPage() {
             <nav class={s.jump} aria-label="Settings sections">
                 <For each={SECTIONS}>
                     {([id, title]) => (
-                        <a class={s.jumpLink} href={`#${id}`}>
+                        <a class={schematic.chip} href={`#${id}`}>
                             {title}
                         </a>
                     )}

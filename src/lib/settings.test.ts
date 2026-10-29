@@ -18,7 +18,7 @@ beforeEach(() => localStorage.clear());
 describe("settings", () => {
     it("answers today's behaviour when nothing is stored", () => {
         expect(getSetting("transport")).toBe("epoxy");
-        expect(getSetting("transportAuto")).toBe(true);
+        expect(getSetting("wispVersion")).toBe("2");
         expect(getSetting("navTimeout")).toBe(15);
         expect(getSetting("historyDays")).toBe(0);
         expect(getSetting("transportSites")).toEqual({});
@@ -37,7 +37,10 @@ describe("settings", () => {
         localStorage.setItem("civil:history-days", "-3");
         localStorage.setItem("civil:history-enabled", "yes");
         localStorage.setItem("civil:transport-sites", "{not json");
+        // Automatic Wisp is gone; a stored pick reads as the default.
+        localStorage.setItem("civil:wisp-version", "auto");
         expect(getSetting("transport")).toBe("epoxy");
+        expect(getSetting("wispVersion")).toBe("2");
         expect(getSetting("navTimeout")).toBe(15);
         expect(getSetting("historyDays")).toBe(0);
         expect(getSetting("historyEnabled")).toBe(true);
@@ -149,5 +152,23 @@ describe("normalizeHost", () => {
         expect(normalizeHost("discord.com")).toBe("discord.com");
         expect(normalizeHost("not a host")).toBeNull();
         expect(normalizeHost("localhost")).toBeNull();
+    });
+
+    it("strips only a leading www., the port and the path", () => {
+        expect(normalizeHost("https://api.example.com/")).toBe(
+            "api.example.com",
+        );
+        expect(normalizeHost("https://a.www.example.com/")).toBe(
+            "a.www.example.com",
+        );
+        expect(normalizeHost("  http://example.com:8443/x  ")).toBe(
+            "example.com",
+        );
+    });
+
+    it("answers null for empty or unparseable input", () => {
+        expect(normalizeHost("")).toBeNull();
+        expect(normalizeHost("   ")).toBeNull();
+        expect(normalizeHost("http://")).toBeNull();
     });
 });

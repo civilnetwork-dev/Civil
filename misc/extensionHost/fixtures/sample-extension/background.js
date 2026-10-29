@@ -7,7 +7,7 @@ chrome.storage.local.get({ checkCount: 0 }).then(data => {
     checkCount = data.checkCount;
 });
 
-// Three arguments, in Chrome's own order — the `sender` in the middle is
+// Three arguments, in Chrome's own order: the `sender` in the middle is
 // what real vendor bundles are written against.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message === "ping") {

@@ -1,9 +1,9 @@
 /**
- * chrome.enterprise.{deviceAttributes,networkingAttributes} — managed-device
+ * chrome.enterprise.{deviceAttributes,networkingAttributes} (managed-device
  * identity, privileged APIs only a device policy grants. lightspeedFilterAgent
  * calls `getDeviceSerialNumber`/`getDirectoryDeviceId` to build its license
  * request; a managed Chromebook's own dummy-but-real-shaped identifiers are
- * the honest answer, same reasoning as `buildSystem`'s CPU/memory inventory —
+ * the honest answer, same reasoning as `buildSystem`'s CPU/memory inventory)
  * not captured values (this project never had a real fleet's), just the
  * right shape so a bundle's own validation (non-empty string) passes.
  */

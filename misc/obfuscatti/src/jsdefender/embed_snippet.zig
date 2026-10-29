@@ -1,24 +1,24 @@
 //! Embeds a real JS source snippet into a transform's own tree, parsed and
 //! cloned rather than hand-built node by node.
 //!
-//! js-confuser leans on this constantly — its `Template` class parses a
+//! js-confuser leans on this constantly. Its `Template` class parses a
 //! plain JS string (via the same Babel parser it obfuscates user code
 //! with) and splices the result into the AST being built, wherever a
 //! transform needs to emit real code shaped like something a human wrote
 //! rather than synthesized expression-by-expression. Its dead-code
 //! template library (`templates/deadCodeTemplates.ts`) is ~24 real,
-//! substantial snippets — a full SHA-256 implementation, a UTF-8
-//! codec, an RSA toy implementation, LeetCode-style algorithm solutions —
+//! substantial snippets (a full SHA-256 implementation, a UTF-8
+//! codec, an RSA toy implementation, LeetCode-style algorithm solutions)
 //! embedded exactly this way. Its string-concealing transform generates a
 //! decoder function the same way (`encoding.ts`'s `code: new
 //! Template(...)`).
 //!
 //! yuku's `Parser` has no equivalent: `Parser.init`/`Parser.parse` always
 //! build a fresh, owned `Tree` (confirmed by reading `parser/parser.zig`
-//! directly, not assumed) — there's no "parse this snippet into the tree
+//! directly, not assumed), and there's no "parse this snippet into the tree
 //! I already have" entry point. Every transform in this project instead
-//! builds every node it emits by hand, one `tree.addNode` call at a time
-//! — fine for a handful of nodes (a getter, a guard `if`), completely
+//! builds every node it emits by hand, one `tree.addNode` call at a time:
+//! fine for a handful of nodes (a getter, a guard `if`), completely
 //! impractical for something the size of a real SHA-256 implementation.
 //!
 //! This closes that gap generically instead of one hand-written clone per
@@ -27,7 +27,7 @@
 //! every `NodeIndex`/`IndexRange`/`String` field it finds along the way to
 //! the copy's own equivalents. The remap logic is written once, over
 //! `NodeData`'s fields via comptime reflection (`inline for` over
-//! `@typeInfo(...)`'s field names and types) — not one branch per node variant — so it
+//! `@typeInfo(...)`'s field names and types), not one branch per node variant, so it
 //! doesn't need updating every time yuku's grammar grows a new node type.
 //! A field of any other type (bool, an enum like `VariableKind`, a plain
 //! `u32`) needs no remapping at all: it's already tree-independent, so the
@@ -41,8 +41,8 @@ const no_span: ast.Span = .{ .start = 0, .end = 0 };
 
 /// Parses `source` as a standalone program and clones its top-level
 /// statements into `target`, returning them as a fresh `IndexRange`
-/// (via `target.addExtra`) ready to splice into `target`'s own body —
-/// same shape every other transform here already builds by hand for
+/// (via `target.addExtra`) ready to splice into `target`'s own body,
+/// the same shape every other transform here already builds by hand for
 /// `prependProgram`-style insertion.
 pub fn embedProgram(allocator: std.mem.Allocator, target: *ast.Tree, source: []const u8) !ast.IndexRange {
     var snippet = parser.parse(allocator, source, .{}) catch |err| switch (err) {
@@ -66,7 +66,7 @@ pub fn embedProgram(allocator: std.mem.Allocator, target: *ast.Tree, source: []c
 
 /// Same as `embedProgram`, but for a single expression (`source` is
 /// parsed as `source;`, and the wrapping expression-statement's own
-/// expression is what gets cloned and returned) — for a snippet that
+/// expression is what gets cloned and returned), for a snippet that
 /// needs to sit in an expression position rather than a statement list.
 pub fn embedExpression(allocator: std.mem.Allocator, target: *ast.Tree, source: []const u8) !ast.NodeIndex {
     var buf = try allocator.alloc(u8, source.len + 1);

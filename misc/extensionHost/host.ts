@@ -1,13 +1,13 @@
 /**
  * Loads an unpacked extension folder and runs its background code in a
  * `node:vm` sandbox with a `chrome`/`browser` global and the web platform
- * that surrounds it — no real Chromium or WebKit underneath.
+ * that surrounds it: no real Chromium or WebKit underneath.
  *
  * "Emulate the API, don't emulate a browser" was the original line here, and
  * running the twenty-eight real filter bundles moved it: what stopped most of
  * them wasn't a missing `chrome.*` member but a missing `Response`,
  * `EventTarget`, `location` or `document`. So the surrounding platform is
- * provided too — see api/platform.ts, including why an MV2 background gets a
+ * provided too: see api/platform.ts, including why an MV2 background gets a
  * DOM and an MV3 service worker does not. What is still not emulated is a
  * *browser*: no rendering, no navigation, no network.
  */
@@ -61,13 +61,13 @@ import type { ExtensionHandle, LoadOptions } from "./types";
 /**
  * `vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER` (below) makes Node print a
  * one-time `ExperimentalWarning` the moment a script's first dynamic
- * `import(...)` actually runs — asynchronously, after the `runInContext` call
+ * `import(...)` actually runs: asynchronously, after the `runInContext` call
  * that triggered it has already returned, so no call this module makes can
  * wrap and un-wrap a listener around just that moment. Node only ever emits
  * it once per process for this specific feature, which is what makes a
  * module-scope filter the right size for it, installed once here rather than
- * re-applied per call: every other warning — deprecations, other experimental
- * features, whatever the rest of the process cares about — still reaches
+ * re-applied per call: every other warning (deprecations, other experimental
+ * features, whatever the rest of the process cares about) still reaches
  * whatever was already listening. This runs only when something imports this
  * module; nothing in Civil's own server path does.
  */
@@ -90,16 +90,16 @@ process.on("warning", warning => {
  * a module linker `vm.Script`'s plain compile doesn't have.
  *
  * A static `import`/`export` statement is a genuine syntax error in a classic
- * script — the catch below catches it and bundles. A *dynamic* `import(...)`
+ * script: the catch below catches it and bundles. A *dynamic* `import(...)`
  * call is a different problem, and not a compile-time one: it's ordinary,
  * syntactically valid classic-script code, so a plain compile always
  * succeeds, and it only fails once that call actually runs, unless the vm is
- * told how to resolve it. `USE_MAIN_CONTEXT_DEFAULT_LOADER` is that answer —
- * it resolves a dynamic import exactly the way this file's own imports
+ * told how to resolve it. `USE_MAIN_CONTEXT_DEFAULT_LOADER` is that answer.
+ * It resolves a dynamic import exactly the way this file's own imports
  * resolve, relative to `filename`, which is why `filename` here is always the
  * real absolute path rather than a short display name: relative resolution
  * needs a real base to resolve against. This handles even a *computed*
- * specifier (`import(backend + ".js")`), which bundling can never inline —
+ * specifier (`import(backend + ".js")`), which bundling can never inline:
  * esbuild only inlines what it can see as a literal at build time. Three of
  * the tracked filters ship an ES-module service worker (`"type": "module"`)
  * or a classic script that dynamic-imports its own chunks; content scripts
@@ -107,14 +107,14 @@ process.on("warning", warning => {
  * for exactly that).
  *
  * esbuild resolves the *static* import graph and emits one classic IIFE,
- * which is exactly what the vm can run — and what Chrome effectively does
+ * which is exactly what the vm can run, and what Chrome effectively does
  * anyway when it loads a module worker. Bundling is attempted only after a
  * plain compile fails, so the common case pays nothing and multi-file MV2
  * backgrounds keep sharing one global scope instead of each becoming its own
  * module.
  */
 export interface CompileLinking {
-    /** The vm context the compiled script will run in — must match whatever
+    /** The vm context the compiled script will run in: must match whatever
      *  `.runInContext(...)` the caller uses, so a dynamically-imported module
      *  sees the same `chrome`, `fetch` and everything else the script does. */
     context: vm.Context;
@@ -142,7 +142,7 @@ export async function compileScript(
 }
 
 /** Bundles `entryPath` into one classic IIFE, or returns `undefined` if
- *  esbuild produced nothing — the caller decides what to fall back to. */
+ *  esbuild produced nothing: the caller decides what to fall back to. */
 async function bundleWithEsbuild(
     entryPath: string,
 ): Promise<string | undefined> {
@@ -160,7 +160,7 @@ async function bundleWithEsbuild(
         plugins: [
             {
                 // Isomorphic libraries inside a vendor bundle keep their
-                // Node branches — aristotleStudent's imports `node-fetch`,
+                // Node branches: aristotleStudent's imports `node-fetch`,
                 // `util`, `fs` and `string_decoder` behind a runtime
                 // check that is false in a browser. Chrome never resolves
                 // those either; it just never reaches them. Resolving
@@ -187,8 +187,8 @@ async function bundleWithEsbuild(
 }
 
 /** The background code to execute, in order, as `[filename, source]` pairs.
- *  A background *page* contributes its `<script>` tags — file references and
- *  inline blocks alike — rather than the HTML document itself. */
+ *  A background *page* contributes its `<script>` tags, file references and
+ *  inline blocks alike, rather than the HTML document itself. */
 async function readBackgroundSources(
     dir: string,
     background: ResolvedBackground,
@@ -232,7 +232,7 @@ function createState(options: LoadOptions): ExtensionState {
     return state;
 }
 
-/** The extension's own translations, when it ships them — see buildI18n.
+/** The extension's own translations, when it ships them: see buildI18n.
  *  Absent `_locales` is normal and not an error. */
 type Messages = Parameters<typeof buildI18n>[0];
 
@@ -258,7 +258,7 @@ function createSyntheticTab(): SyntheticTab {
     };
 }
 
-/** Both calling conventions, then the fallback outermost — see buildChromeApi. */
+/** Both calling conventions, then the fallback outermost: see buildChromeApi. */
 function namespace<T extends object>(api: T) {
     return withFallback(withCallbacks(api));
 }
@@ -272,7 +272,7 @@ type ApiContext = {
     messages: Messages;
 };
 
-/** Namespaces whose results bundles read rather than only calling them —
+/** Namespaces whose results bundles read rather than only calling them,
  *  so they are emulated, not stubbed. See api/deviceApis.ts. */
 function readableNamespaces({
     extensionId,
@@ -308,7 +308,7 @@ function readableNamespaces({
  * chrome.* namespaces this host doesn't implement (chrome.windows,
  * chrome.webRequest, chrome.identity, ...). Without the fallback, the first
  * access to one of them throws and kills the whole background script before
- * it reaches the declarativeNetRequest calls this host exists to observe —
+ * it reaches the declarativeNetRequest calls this host exists to observe:
  * see api/stub.ts.
  *
  * Each namespace is wrapped individually, not just the top-level object:
@@ -319,7 +319,7 @@ function readableNamespaces({
  *
  * withCallbacks wraps each implemented namespace before withFallback so both
  * calling conventions work: promise style (MV3) and trailing callback (MV2's
- * only style, and still widely used in MV3 bundles) — see api/callbacks.ts
+ * only style, and still widely used in MV3 bundles): see api/callbacks.ts
  * for how much of this corpus depends on the latter. Order matters: the
  * fallback proxy has to be outermost so it still sees, and can stub,
  * whatever withCallbacks didn't produce.
@@ -354,7 +354,7 @@ function createSandbox(
         // WebExtensions surface as `browser`, promise-only. Every method
         // built above already returns a Promise (the one dual-mode
         // exception, runtime.sendMessage's optional callback, still resolves
-        // its promise either way) — so `browser` is the same object, not a
+        // its promise either way), so `browser` is the same object, not a
         // second implementation. `chrome` stays defined under the "safari"
         // target too because real Safari exposes both, and extensions that
         // feature-detect via `self.browser ?? self.chrome` are common.
@@ -363,7 +363,7 @@ function createSandbox(
     sandbox.self = sandbox;
     sandbox.globalThis = sandbox;
     // A background page's `window` is the global object, the same way
-    // `self` is — not a separate object that happens to carry the DOM. Code
+    // `self` is, not a separate object that happens to carry the DOM. Code
     // that reads `window.chrome`, `window.location` or `window.foo` after
     // setting a bare `foo` depends on that identity.
     if (background.type === "scripts" || background.type === "page")
@@ -425,7 +425,7 @@ async function runBackground({
     }
 
     // Fired once, after every background file's synchronous top-level body
-    // has finished registering its listeners — including any onInstalled
+    // has finished registering its listeners, including any onInstalled
     // listener itself. Real Chrome fires this exactly once per extension
     // install, which loading it into this host is the closest equivalent of.
     for (const listener of state.installedListeners)
@@ -523,7 +523,7 @@ export async function loadExtension(
     const sandbox = createSandbox(platform.globals, api, background);
     const context = vm.createContext(sandbox);
     // `importScripts` and `self.location` both resolve against the background
-    // entry's own directory, not the extension root — a worker at
+    // entry's own directory, not the extension root: a worker at
     // `js/worker.js` calling `importScripts("base64.js")` means
     // `js/base64.js`. Resolving from the root instead is what made
     // lanschoolWebHelper fail on a file that is right there next to its

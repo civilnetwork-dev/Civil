@@ -4,7 +4,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-/// Park–Miller, including JavaScript remainder and seed normalization.
+/// Park-Miller, including JavaScript remainder and seed normalization.
 /// A floating state preserves the original's accepted fractional seeds.
 pub const Random = struct {
     state: f64,

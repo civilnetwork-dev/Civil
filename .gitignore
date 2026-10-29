@@ -74,7 +74,7 @@ MAINTENANCE.md
 zig-pkg/
 
 # Unpacked filter extensions the filter route check loads (misc/filterProbe).
-# Never published — twenty-eight vendor bundles, ~200MB — and downloaded on
+# Never published (twenty-eight vendor bundles, ~200MB) and downloaded on
 # demand (misc/filterProbe/downloadBundles.ts), then kept warm in the
 # Blacksmith cache, the same shape Filter-Sources uses for them. The small
 # committed probeData.json is the offline answer; the bundles themselves stay

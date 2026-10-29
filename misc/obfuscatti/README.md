@@ -138,7 +138,7 @@ All 18 recovered stages are present in the original pipeline order:
 | Debugger removal | `debuggerRemoval` | `true` |
 | Domain lock | `domainLock` | Domain string or `{ domainPattern, errorScript? }` |
 | Date lock | `dateLock` | `{ startDate?, endDate?, errorScript? }` |
-| DevTools blocking | `devToolsBlocking` | `true` or `{ patience? }`; patience 0–1000, default 5 |
+| DevTools blocking | `devToolsBlocking` | `true` or `{ patience? }`; patience 0-1000, default 5 |
 | Console cloaking | `consoleCloaking` | `true` or `{ exclude? }` |
 | Function reordering | `functionReorder` | `true` or `{ randomize? }` |
 | Control flow | `controlFlow` | `true` or `{ randomize?, injectFakeCode? }` |
@@ -161,7 +161,7 @@ recovered matching rule rather than a general wildcard. The addon uses the
 host's standard `Date.parse`, including legacy and local-time dates. `errorScript` contains
 JavaScript statements.
 
-Integer bounds accept 0–65535; the default inclusive range is 0–8 and an
+Integer bounds accept 0-65535; the default inclusive range is 0-8 and an
 explicit zero upper bound also selects 8. `radix` accepts one
 value or an array of `none`, `binary`, `decimal`, `hexadecimal` and `octal`.
 Name modes are `sequential`, `hexadecimal`, `base52`, `base62`, `runic`,
@@ -190,7 +190,7 @@ fields. The original defaults have a preserved distinction:
 - The special named set `default` enables strings and Base62 local declarations.
 
 Use a nonzero `randomSeed` for repeatable output with the same inputs, settings
-and port version. The recovered Park–Miller generator preserves fractional seed
+and port version. The recovered Park-Miller generator preserves fractional seed
 normalization and exclusive upper bounds. A missing or zero seed selects a
 time-derived seed, returned in `protectionSummary.randomSeed`.
 

@@ -21,7 +21,12 @@ import {
     IconSliders,
     IconWorld,
 } from "~/components/icons";
-import { ChoiceRow, TextRow, ToggleRow } from "~/components/SettingControls";
+import {
+    ChoiceRow,
+    TextRow,
+    ToggleRow,
+    TraitList,
+} from "~/components/SettingControls";
 import {
     BAR_OPTIONS,
     dayLabel,
@@ -32,12 +37,15 @@ import {
     SEARCH_OPTIONS,
     STARTUP_OPTIONS,
     TIMEOUT_OPTIONS,
+    type Traits,
     TRANSPORT_NOTES,
     TRANSPORT_OPTIONS,
+    TRANSPORT_TRAITS,
     WHEN_FULL_NOTES,
     WHEN_FULL_OPTIONS,
     WISP_NOTE,
     WISP_OPTIONS,
+    WISP_TRAITS,
 } from "~/components/settingOptions";
 import Specimen, { type Glyph, type Tint } from "~/components/Specimen";
 import { Wordmark } from "~/components/Wordmark";
@@ -80,7 +88,6 @@ const STEPS: readonly Step[] = [
         icon: IconLink,
         tint: "stone",
         keys: [
-            "transportAuto",
             "transport",
             "transportFailover",
             "transportRemember",
@@ -111,10 +118,10 @@ const STEPS: readonly Step[] = [
     },
     {
         title: "Help Civil work better?",
-        lede: "Civil can share how sites load and how you use it, and look for filters so it can warn you about them.",
+        lede: "Civil can share how you use it, and look for filters so it can warn you about them.",
         icon: IconLock,
         tint: "stone",
-        keys: ["compatReports", "filterDetect", "analytics"],
+        keys: ["filterDetect", "analytics"],
     },
 ];
 
@@ -133,7 +140,12 @@ const labelOf = <T,>(
 function Cards<T extends string | number | boolean>(props: {
     legend: string;
     value: T;
-    options: readonly { value: T; label: string; note?: string }[];
+    options: readonly {
+        value: T;
+        label: string;
+        note?: string;
+        traits?: Traits;
+    }[];
     suggested?: T;
     reason?: string;
     onChange: (value: T) => void;
@@ -163,6 +175,13 @@ function Cards<T extends string | number | boolean>(props: {
                                     <span class={s.cardNote}>
                                         {option.note}
                                     </span>
+                                </Show>
+                                <Show when={option.traits}>
+                                    {traits => (
+                                        <span class={s.cardNote}>
+                                            <TraitList traits={traits()} />
+                                        </span>
+                                    )}
                                 </Show>
                                 <Show when={option.value === props.suggested}>
                                     <span class={s.suggested}>Suggested</span>
@@ -348,10 +367,11 @@ function browsingRows(v: Draft, why: Why): SummaryRow[] {
         },
         {
             name: "Connection",
-            value: v.transportAuto
-                ? `Automatic, starting with ${method}`
-                : `Always ${method}`,
-            reason: why("transport") ?? why("transportAuto"),
+            value:
+                v.transport === "epoxy"
+                    ? `${method}, on Wisp ${labelOf(WISP_OPTIONS, v.wispVersion).toLowerCase()}`
+                    : method,
+            reason: why("transport") ?? why("wispVersion"),
         },
         {
             name: "Slow pages",
@@ -386,11 +406,6 @@ function preferenceRows(v: Draft, why: Why): SummaryRow[] {
             name: "Motion",
             value: labelOf(MOTION_OPTIONS, v.motion),
             reason: why("motion"),
-        },
-        {
-            name: "Compatibility reports",
-            value: onOff(v.compatReports),
-            reason: why("compatReports"),
         },
         {
             name: "Filter check at startup",
@@ -504,22 +519,10 @@ function SearchStep(props: { draft: SetupDraft }) {
     );
 }
 
-const HOW_OPTIONS = [
-    {
-        value: true,
-        label: "Automatically",
-        note: "Civil tests each new site and uses what works best. Recommended.",
-    },
-    {
-        value: false,
-        label: "Always the same way",
-        note: "You pick one method, and Civil sticks to it.",
-    },
-];
-
 const METHOD_OPTIONS = TRANSPORT_OPTIONS.map(o => ({
     ...o,
     note: TRANSPORT_NOTES[o.value],
+    traits: TRANSPORT_TRAITS[o.value],
 }));
 
 function ConnectionMore(props: { draft: SetupDraft }) {
@@ -527,15 +530,6 @@ function ConnectionMore(props: { draft: SetupDraft }) {
     const set = props.draft.set;
     return (
         <More>
-            <Show when={d().transportAuto}>
-                <ChoiceRow
-                    label="Starting method"
-                    hint={TRANSPORT_NOTES[d().transport]}
-                    value={d().transport}
-                    options={TRANSPORT_OPTIONS}
-                    onChange={v => set("transport", v)}
-                />
-            </Show>
             <ToggleRow
                 label="Switch methods when a page doesn't load"
                 hint="Otherwise you choose one on the error page."
@@ -556,7 +550,12 @@ function ConnectionMore(props: { draft: SetupDraft }) {
             />
             <ChoiceRow
                 label="Wisp version"
-                hint={WISP_NOTE}
+                hint={
+                    <>
+                        {WISP_NOTE}
+                        <TraitList traits={WISP_TRAITS[d().wispVersion]} />
+                    </>
+                }
                 value={d().wispVersion}
                 options={WISP_OPTIONS}
                 onChange={v => set("wispVersion", v)}
@@ -570,22 +569,13 @@ function ConnectionStep(props: { draft: SetupDraft }) {
     return (
         <>
             <Cards
-                legend="Choose how"
-                value={d().transportAuto}
-                options={HOW_OPTIONS}
-                suggested={props.draft.pick("transportAuto")?.value}
+                legend="Method"
+                value={d().transport}
+                options={METHOD_OPTIONS}
+                suggested={props.draft.pick("transport")?.value}
                 reason={props.draft.pick("transport")?.reason}
-                onChange={v => props.draft.set("transportAuto", v)}
+                onChange={v => props.draft.set("transport", v)}
             />
-            <Show when={!d().transportAuto}>
-                <Cards
-                    legend="Method"
-                    value={d().transport}
-                    options={METHOD_OPTIONS}
-                    suggested={props.draft.pick("transport")?.value}
-                    onChange={v => props.draft.set("transport", v)}
-                />
-            </Show>
             <ConnectionMore draft={props.draft} />
         </>
     );
@@ -708,12 +698,6 @@ function HelpStep(props: { draft: SetupDraft }) {
     const set = props.draft.set;
     return (
         <>
-            <ToggleRow
-                label="Send site compatibility reports"
-                hint="After a page loads, Civil tells its server how well it worked, including the address, so it picks better methods for everyone."
-                checked={d().compatReports}
-                onChange={on => set("compatReports", on)}
-            />
             <ToggleRow
                 label="Check for filters when Civil opens"
                 hint="Looks for filter extensions such as GoGuardian so Civil can warn you."
@@ -862,7 +846,7 @@ function StepBody(props: { phase: Phase; draft: SetupDraft }) {
 function SetupTop(props: { flow: SetupFlow }) {
     return (
         <header class={s.top}>
-            <Wordmark width={120} />
+            <Wordmark width={180} />
             <Show when={typeof props.flow.phase() === "number"}>
                 <button
                     type="button"

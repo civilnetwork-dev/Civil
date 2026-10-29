@@ -1,12 +1,12 @@
 /**
  * Downloads the raw, unpacked filter extensions the sandbox loads.
  *
- * The bundles are never committed to any repo — twenty-eight vendor
- * extensions, ~200MB — and the `Filter-Sources` repo's own cache is no help
+ * The bundles are never committed to any repo (twenty-eight vendor
+ * extensions, ~200MB) and the `Filter-Sources` repo's own cache is no help
  * here: it keeps *deobfuscated `.js`* snapshots for diffing, without the
  * `manifest.json` or the assets the sandbox needs to actually run a filter.
  * So the filter route check acquires its own raw copies, once, and the
- * Blacksmith workflow caches the result — the same "download on the first run,
+ * Blacksmith workflow caches the result: the same "download on the first run,
  * cache thereafter" shape Filter-Sources uses, applied to the runnable bundles
  * this side needs.
  *
@@ -18,7 +18,7 @@
  * and unzips the ZIP inside to `<dest>/<folder>/`.
  *
  * This repeats, in TypeScript, what Filter-Sources' `tools/src/omaha.zig` and
- * `crx.zig` already do in Zig — including the multi-app response scoping fix
+ * `crx.zig` already do in Zig, including the multi-app response scoping fix
  * (a vendor endpoint answers a query for one id with its whole catalogue, so
  * the `<updatecheck>` must be read from the matching `<app>` block, not the
  * first one). It is duplicated rather than reused because that tool lives in
@@ -44,7 +44,7 @@ import { unzipSync } from "fflate";
 const EXTENSIONS_JSON_URL =
     "https://raw.githubusercontent.com/civilnetwork-dev/Filter-Sources/main/extensions.json";
 
-/** The Chrome version the Omaha query claims to be. Stale is fine — nothing in
+/** The Chrome version the Omaha query claims to be. Stale is fine: nothing in
  *  the response depends on it (see the note in Filter-Sources' omaha.zig); the
  *  request just has to carry a plausible one. */
 const PRODVERSION = "151.0.7922.173";
@@ -74,7 +74,7 @@ export function buildOmahaUrl(
  * The `codebase` (CRX URL) for `id`, read from the `<app appid="{id}">` block
  * specifically. Vendor endpoints return their whole multi-app catalogue for
  * any query, so taking the first `<updatecheck>` in the document would grab a
- * different extension's CRX — the same bug Filter-Sources' omaha.zig scopes
+ * different extension's CRX: the same bug Filter-Sources' omaha.zig scopes
  * around.
  */
 export function codebaseForApp(xml: string, id: string): string | undefined {
@@ -128,7 +128,7 @@ async function loadEntries(): Promise<ExtensionEntry[]> {
     const res = await fetch(EXTENSIONS_JSON_URL);
     if (!res.ok)
         throw new Error(
-            `could not fetch extensions.json (${res.status}) — set CIVIL_EXTENSIONS_JSON to a local copy`,
+            `could not fetch extensions.json (${res.status}); set CIVIL_EXTENSIONS_JSON to a local copy`,
         );
     return res.json() as Promise<ExtensionEntry[]>;
 }
@@ -184,14 +184,14 @@ async function main(): Promise<void> {
         `\n${downloaded} downloaded, ${cached} cached, ${failed.length} failed` +
             `${failed.length ? `: ${failed.join(", ")}` : ""}\n`,
     );
-    // A failed download is not fatal to the whole run — the sandbox skips a
-    // vendor whose folder is absent — but the exit code lets CI notice.
+    // A failed download is not fatal to the whole run (the sandbox skips a
+    // vendor whose folder is absent) but the exit code lets CI notice.
     if (failed.length) process.exitCode = 1;
 }
 
 // Only run when invoked directly, so the pure helpers above can be imported by
 // a test without hitting the network. `pathToFileURL` gets the file:// spelling
-// right across platforms — a hand-built `file://${path}` drops a slash on
+// right across platforms. A hand-built `file://${path}` drops a slash on
 // Windows and never matches.
 if (
     process.argv[1] &&

@@ -70,7 +70,7 @@ export const avatar = style({
 /**
  * The initial shown when a supporter has no Patreon avatar.
  *
- * White on full-strength Patreon red measures 3.42:1 — below the 4.5:1 floor
+ * White on full-strength Patreon red measures 3.42:1. Below the 4.5:1 floor
  * for text this size, and pure white is barred by the palette anyway. Dropping
  * the ground toward `void` keeps the red unmistakably Patreon's while lifting
  * the initial to 6.88:1 against `daylight`.

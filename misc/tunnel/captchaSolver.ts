@@ -4,18 +4,18 @@
  *
  * ## The model
  *
- * A CRNN (CNN → BiLSTM → CTC) — reused, not built here. Its source was
+ * A CRNN (CNN → BiLSTM → CTC): reused, not built here. Its source was
  * `taigzz/freednscaptcha` on Docker Hub (a Flask API wrapping a real trained
  * PyTorch checkpoint), pulled by fetching only the small application-code
- * layer directly from the registry (~33MB) rather than the full ~2.9GB image
- * — the manifest showed the layer sizes, and `pip install torch torchvision`
+ * layer directly from the registry (~33MB) rather than the full ~2.9GB image:
+ * the manifest showed the layer sizes, and `pip install torch torchvision`
  * was obviously the huge one. `misc/tunnel/models/freednscaptcha.onnx` is
  * that checkpoint's `torch.onnx.export`, verified to match the original
  * PyTorch output to within 1e-5, and then verified for real: five fresh
  * captchas, each guessed and actually submitted to FreeDNS, five accepted.
  * That is a materially different result from every model tried before it
- * (a stock captcha-TrOCR model, and two general scene-text models — PARSeq
- * and a 275k-real-captcha CRNN — all failed against FreeDNS's specific font).
+ * (a stock captcha-TrOCR model, and two general scene-text models, PARSeq
+ * and a 275k-real-captcha CRNN, all failed against FreeDNS's specific font).
  *
  * No model card or license accompanies the source image; `taigzz` published
  * it as a runnable public API, which is the use this puts it to.
@@ -25,7 +25,7 @@
  *
  * ## Why CTC, one forward pass
  *
- * The model predicts one class per output timestep directly — no
+ * The model predicts one class per output timestep directly: no
  * autoregressive decode loop, no KV cache, just argmax-per-timestep with
  * repeats collapsed and blanks dropped (`ctcGreedyDecode`). Confirmed against
  * the original `ctc_greedy_decode` in the source `model.py`.
@@ -33,7 +33,7 @@
  * ## The real charset
  *
  * `CHARS` below (`A`-`Z`, no digits, no lowercase) is the source model's own
- * training charset — independent confirmation, from someone else's labeled
+ * training charset. Independent confirmation, from someone else's labeled
  * data, of what this project's own synthetic-captcha investigation found the
  * hard way: FreeDNS's real answers are uppercase letters only.
  */
@@ -50,7 +50,7 @@ const MODEL_PATH =
     process.env.CIVIL_CAPTCHA_MODEL_PATH ??
     join(import.meta.dirname, "models", "freednscaptcha.onnx");
 
-/** The source model's own training charset — CTC class 0 is the blank,
+/** The source model's own training charset: CTC class 0 is the blank,
  *  classes 1-26 are `CHARS[0..25]`. */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 /** Matches `T.Resize((80, 215))` in the source `app.py` exactly. */
@@ -65,7 +65,7 @@ function loadModel(): Promise<ort.InferenceSession> {
 }
 
 /** Captcha image bytes → the model's `[1, 1, 80, 215]` tensor. A plain
- *  stretch-resize and a 0-1 scale, no letterboxing and no mean/std — matches
+ *  stretch-resize and a 0-1 scale, no letterboxing and no mean/std: matches
  *  the source `app.py` preprocessing (`Grayscale, Resize((80,215)),
  *  ToTensor()`) exactly, not a guess at what a captcha model usually wants. */
 async function toPixelValues(image: Uint8Array): Promise<ort.Tensor> {
@@ -107,7 +107,7 @@ function ctcGreedyDecode(logits: ort.Tensor): string {
 
 /**
  * Returns a solver: captcha image bytes → best-guess text. The model loads
- * from the local ONNX file on the first call and is reused after — no
+ * from the local ONNX file on the first call and is reused after: no
  * network fetch, unlike the model this replaced.
  */
 export function createCaptchaSolver(): (image: Uint8Array) => Promise<string> {
@@ -122,7 +122,7 @@ export function createCaptchaSolver(): (image: Uint8Array) => Promise<string> {
 }
 
 /** Saves the image to a temp file, prints its path, and reads the answer
- *  typed at the terminal. Blocks on stdin — only reached once the OCR
+ *  typed at the terminal. Blocks on stdin: only reached once the OCR
  *  attempts are exhausted, which live verification suggests should be rare. */
 async function askHuman(image: Uint8Array): Promise<string> {
     const path = join(tmpdir(), `freedns-captcha-${Date.now()}.png`);
@@ -134,7 +134,7 @@ async function askHuman(image: Uint8Array): Promise<string> {
     });
     try {
         const answer = await rl.question(
-            `\ncaptcha OCR gave up — open ${path} and type what it says: `,
+            `\ncaptcha OCR gave up. Open ${path} and type what it says: `,
         );
         return answer.trim();
     } finally {

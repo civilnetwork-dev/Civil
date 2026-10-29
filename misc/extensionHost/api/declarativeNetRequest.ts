@@ -8,7 +8,7 @@
  * block beats upgradeScheme beats redirect beats modifyHeaders.
  *
  * ponytail: `requestDomains`/`excludedRequestDomains` and `tabIds` conditions
- * are not implemented — no vendor bundle inspected while building this used
+ * are not implemented: no vendor bundle inspected while building this used
  * them, and both need real per-request context (tab identity, resolved
  * request domain vs initiator) this synthetic host doesn't carry yet. Add
  * when a vendor ruleset actually needs them.
@@ -60,7 +60,7 @@ export function compileUrlFilter(
     let source: string;
     if (anchorStart === "domain") {
         // Matches right after `scheme://`, or right after `scheme://sub.` for
-        // any number of subdomain labels — i.e. anchored to a domain-label
+        // any number of subdomain labels, i.e. anchored to a domain-label
         // boundary, not just anywhere inside the host.
         source = `^[a-z-]+://([a-z0-9-]+\\.)*${body}`;
     } else if (anchorStart === "url") {

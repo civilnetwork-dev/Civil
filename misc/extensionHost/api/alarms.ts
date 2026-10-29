@@ -6,7 +6,7 @@
  * every 30 minutes" should not have to wait 30 real minutes, or run on fake
  * global timers that also freeze the test framework's own timeouts. Calling
  * `ExtensionHandle.advanceTime(ms)` moves only this extension's clock and
- * fires whatever alarms fall due — deterministic and instant.
+ * fires whatever alarms fall due: deterministic and instant.
  */
 
 import type { Alarm } from "../../browserApiEmulators/extensions/chrome/types";
@@ -25,7 +25,7 @@ function createAlarm(state: ExtensionState) {
         ...args: [name: string, info: AlarmInfo] | [info: AlarmInfo]
     ) => {
         // Chrome accepts `create(name, info)` or `create(info)` with the
-        // name omitted entirely — not just undefined, genuinely a single
+        // name omitted entirely, not just undefined, genuinely a single
         // argument. A real FortiGuard bundle calls the one-arg form; a
         // fixed `(name, info)` signature crashes on it since `info` is
         // never passed at all.

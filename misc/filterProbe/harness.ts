@@ -1,5 +1,5 @@
 /**
- * The filter route check, end to end — the task's "main TypeScript file to run
+ * The filter route check, end to end: the task's "main TypeScript file to run
  * all the tests, executed via bun".
  *
  * ```sh
@@ -19,30 +19,30 @@
  *
  * In order:
  *
- *   1. Brings up Civil's own `docker-compose.yml` stack under Podman —
- *      postgres, redis and the app itself, built from the repo's Dockerfile —
+ *   1. Brings up Civil's own `docker-compose.yml` stack under Podman
+ *      (postgres, redis and the app itself, built from the repo's Dockerfile)
  *      on a free host port, and waits for the app container to report
  *      healthy (dockerStack.ts). Not a bare `bun run.ts`: the compose stack
  *      is what actually provisions the database and Redis this needs, rather
  *      than assuming both already exist on the host.
  *   2. Picks an unblocked FreeDNS base domain, then opens a FreeDNS-fronted
- *      cloudflared tunnel to it (misc/tunnel) — the public URL a filter would
+ *      cloudflared tunnel to it (misc/tunnel): the public URL a filter would
  *      actually see.
  *   3. For every Civil route × every filter *vendor* (one filter at a time, so
  *      filters never conflict), loads the proxy in the sandbox, waits, and asks
- *      `detect.ts` whether the filter flagged it — a broken probe is retried
+ *      `detect.ts` whether the filter flagged it: a broken probe is retried
  *      rather than counted as clean, and a clean read gets one longer-waited
  *      recheck before it's trusted (`probeVendorRoute`, below). When flagged,
  *      `predict.ts` says which Civil source to change.
  *   4. Tears down in reverse the moment it is done: stops the compose stack,
- *      then closes the tunnel — which deletes the FreeDNS subdomain.
+ *      then closes the tunnel, which deletes the FreeDNS subdomain.
  *
  * Every step here needs something no CI job has by default: Podman, FreeDNS
  * credentials, and a cloudflared download. The captcha it solves itself, and
  * the compose stack provisions its own database and Redis rather than needing
  * either already running. So this file is the *live* runner, invoked by hand
- * or by a secrets-gated CI job. The deterministic core it orchestrates — the
- * detection and the prediction — is what the Vitest suite proves on every run,
+ * or by a secrets-gated CI job. The deterministic core it orchestrates, the
+ * detection and the prediction, is what the Vitest suite proves on every run,
  * against the committed `probeData.json`, with none of that infrastructure.
  * See `filterProbe.test.ts`.
  */
@@ -53,7 +53,7 @@ import { createServer } from "node:net";
 import { join } from "node:path";
 
 // A live run against a FreeDNS tunnel hostname found this network's IPv6
-// path to Cloudflare's edge outright broken -- a raw TCP connect() failure
+// path to Cloudflare's edge outright broken. A raw TCP connect() failure
 // (openssl s_client -6 against a known-good Cloudflare IPv6 address:
 // "BIO_connect: Unknown error ... errno=0"), separate from and worse than
 // the DNS-propagation and edge-SNI-warmup delays everything else here
@@ -108,16 +108,16 @@ function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** Two independent public resolvers, queried directly — the record's real
+/** Two independent public resolvers, queried directly. The record's real
  *  state at FreeDNS's own nameservers, with no local negative-cache in the
  *  way (this machine's OS resolver, which `fetch()` uses internally, can
- *  hold a hostname's first failed lookup as a negative result for minutes —
- *  a documented Windows DNS client behavior — which would make retrying
+ *  hold a hostname's first failed lookup as a negative result for minutes,
+ *  a documented Windows DNS client behavior, which would make retrying
  *  through `fetch()` alone pointless: every retry just replays the same
  *  stale miss regardless of whether the record now exists). One resolver
  *  being slow or briefly unreachable shouldn't read as "record not there". */
 /** Consecutive spaced successes `waitForTunnelReady` needs before it calls a
- *  tunnel ready — see its own comment for what a single success misses. Three
+ *  tunnel ready: see its own comment for what a single success misses. Three
  *  five seconds apart: long enough to outlast a stale negative DNS entry,
  *  cheap next to the sweep it gates. */
 const READY_CONFIRMATIONS = 3;
@@ -148,17 +148,17 @@ async function hostnameResolvesPublicly(hostname: string): Promise<boolean> {
 /**
  * A `fetch` that sends exactly the request line and Host header a real
  * client would for the tunnel's custom `hostname`, but connects to and
- * presents `origin` — the tunnel's own native `*.trycloudflare.com` name —
+ * presents `origin`, the tunnel's own native `*.trycloudflare.com` name,
  * for DNS and TLS SNI instead of the CNAME'd custom hostname.
  *
  * Direct evidence (an `openssl s_client` probe straight at a resolved
  * Cloudflare edge IP): connecting with SNI = the custom FreeDNS hostname got
- * a raw TLS alert 40 (`handshake_failure`) with no certificate ever sent —
+ * a raw TLS alert 40 (`handshake_failure`) with no certificate ever sent:
  * Cloudflare's edge doesn't recognize that SNI as belonging to any zone it
  * manages, because it's a third-party domain that only points here via a
  * CNAME Cloudflare was never told about. `origin` is Cloudflare's own
  * hostname, recognized immediately by every edge node; a Quick Tunnel is
- * 1:1 with its origin, so SNI alone fully determines routing here — the Host
+ * 1:1 with its origin, so SNI alone fully determines routing here: the Host
  * header (still the real custom hostname, since only `tls.serverName` is
  * overridden) passes through to Civil's server untouched, and `pageUrl` /
  * `location.href` in the sandbox still reflect the real intended hostname.
@@ -169,7 +169,7 @@ async function hostnameResolvesPublicly(hostname: string): Promise<boolean> {
  * The connection itself is made to `origin`, not to `hostname`: the URL's
  * host is what Bun resolves and connects to, and `*.trycloudflare.com`
  * resolves anywhere, while the FreeDNS record for `hostname` can trail
- * behind on this machine's own resolver — seen live: public resolvers saw it
+ * behind on this machine's own resolver. Seen live: public resolvers saw it
  * while `getaddrinfo` here returned ENOTFOUND for five straight minutes.
  * The request line still carries the real hostname through an explicit
  * `Host` header, which Bun would otherwise also use for SNI and certificate
@@ -179,7 +179,7 @@ async function hostnameResolvesPublicly(hostname: string): Promise<boolean> {
  * the foreign `Host` and the handshake is clean). Requests to any other
  * host pass through untouched.
  *
- * This only changes what *this harness's own probing* sends — it can't and
+ * This only changes what *this harness's own probing* sends: it can't and
  * doesn't change what a real browser does (SNI and DNS both follow the
  * address bar there). It makes the harness's own detection checks reliable;
  * it says nothing about how consistently a real, filtered browser would land
@@ -218,7 +218,7 @@ function tunnelAwareFetch(origin: string, hostname: string): typeof fetch {
  *
  * `openTunnel` returns the instant FreeDNS's web form reports success, with
  * no guarantee the record has reached FreeDNS's own advertised nameservers
- * yet — on live runs this has taken minutes (free, shared DNS
+ * yet: on live runs this has taken minutes (free, shared DNS
  * infrastructure, no propagation SLA). Only once a public resolver
  * (`hostnameResolvesPublicly`) sees the record does this loop touch
  * `fetch()` at all, so the *first* real lookup this process's own resolver
@@ -251,7 +251,7 @@ async function waitForTunnelReady(
                 // the record propagated (the Windows behavior described on
                 // hostnameResolvesPublicly), in which case a single fetch that
                 // happens to land looks identical to a tunnel that is actually
-                // ready -- and the sweep then errors every combo with
+                // ready, and the sweep then errors every combo with
                 // ENOTFOUND on a hostname this check just called reachable
                 // (seen live). Spaced successes outlast that cached miss;
                 // anything short of a clean streak starts over.
@@ -281,7 +281,7 @@ async function waitForTunnelReady(
     );
 }
 
-/** A probe that never actually rendered the page — distinct from a filter's
+/** A probe that never actually rendered the page: distinct from a filter's
  *  own clean verdict, and must never be reported as one (see detect.ts's own
  *  matching check, which this mirrors so a surviving bad observation can't
  *  slip through as "ok" even if the retry loop below gives up on it). */
@@ -298,7 +298,7 @@ function isInfraFailure(observation: PageObservation): string | undefined {
 const INFRA_RETRY_ATTEMPTS = 3;
 const INFRA_RETRY_DELAY_MS = 1_000;
 /** Extra wait for the clean-result recheck, on top of the configured
- *  `waitMs` — fixed rather than a multiple, so raising CIVIL_FILTER_WAIT_MS
+ *  `waitMs`: fixed rather than a multiple, so raising CIVIL_FILTER_WAIT_MS
  *  doesn't also blow up the recheck's cost. */
 const RECHECK_EXTRA_WAIT_MS = 5_000;
 
@@ -325,14 +325,14 @@ async function observeWithRetries(
  * single-shot `detectFlagging(await observeRoute(...), vendor)`:
  *
  *   - A broken probe (tunnel hiccup, Civil error) is retried rather than
- *     silently counted as "not flagged" — sandbox.ts already retries its own
+ *     silently counted as "not flagged": sandbox.ts already retries its own
  *     page fetch once; this is the outer retry for when the whole
  *     content-script pass needs to run again.
  *   - A *clean* read gets a second look with a longer wait before it's
  *     trusted: `BlocksiCore Failed to initialize, retrying...` (seen live, on
  *     an actual probe run) shows a filter's content script can still be
  *     mid-startup at the fifteen-second mark. A flagged read is trusted
- *     immediately either way — confirming a block needs no extra scrutiny;
+ *     immediately either way: confirming a block needs no extra scrutiny;
  *     clearing one does.
  *
  * GoGuardian bypasses all of this (as it always has): it's a single
@@ -381,7 +381,7 @@ async function probeVendorRoute(
     const first = detectFlagging(observation, vendor);
     if (first.flagged) return first;
 
-    // Clean so far — recheck once with a longer wait before trusting it. A
+    // Clean so far: recheck once with a longer wait before trusting it. A
     // flaky recheck (its own infra hiccup) doesn't undo an otherwise-good
     // first read; it just means this particular recheck carries no signal.
     const recheck = await observeRoute({
@@ -398,12 +398,12 @@ async function probeVendorRoute(
  * fresh session when a warm-up times out. Throws when no attempt answers.
  *
  * openTunnel returns the instant the FreeDNS CNAME record is
- * created, with no guarantee any resolver -- including this
- * process's own -- already sees it. This wait's own fetches go
+ * created, with no guarantee any resolver, including this
+ * process's own, already sees it. This wait's own fetches go
  * through tunnelAwareFetch (see its doc comment), which routes
- * around the other confirmed delay -- Cloudflare's edge not
+ * around the other confirmed delay, Cloudflare's edge not
  * recognizing the CNAME'd hostname's SNI on some fraction of edge
- * nodes -- so what's left to wait out here is genuinely just DNS
+ * nodes, so what's left to wait out here is genuinely just DNS
  * propagation. A fresh session (new anycast route, new random label)
  * is still attempted on a timeout as defense in depth against
  * whatever this doesn't explain; each abandoned attempt is torn down
@@ -415,8 +415,8 @@ async function openReachableTunnel(
 ): Promise<Tunnel> {
     const MAX_TUNNEL_ATTEMPTS = 3;
     // Long enough to actually outlast FreeDNS propagation, which has taken
-    // minutes on live runs. A fresh session can't speed that up -- it mints
-    // a new random label, restarting propagation from zero -- so timing out
+    // minutes on live runs. A fresh session can't speed that up (it mints
+    // a new random label, restarting propagation from zero) so timing out
     // early here traded a record that was about to land for one that starts
     // over. Retries stay for the failure a new session does fix: a tunnel
     // that resolves but never answers.
@@ -450,7 +450,7 @@ async function openReachableTunnel(
             // stuck in a resolver's negative cache.
             await candidate.close();
             process.stdout.write(
-                `tunnel not confirmed reachable (${message})${attempt < MAX_TUNNEL_ATTEMPTS ? " — opening a fresh session" : ""}\n`,
+                `tunnel not confirmed reachable (${message})${attempt < MAX_TUNNEL_ATTEMPTS ? "; opening a fresh session" : ""}\n`,
             );
         }
     }
@@ -496,7 +496,7 @@ async function probeCell(
         };
     }
     // One vendor's real-world bundle throwing (its own bug, not
-    // ours) must not void every other vendor's result — this is a
+    // ours) must not void every other vendor's result: this is a
     // sweep, and a partial one is still the point of it. Isolated
     // per iteration rather than only hardening the sandbox itself:
     // 28 independent, messy third-party bundles will keep finding
@@ -522,7 +522,7 @@ async function probeCell(
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         process.stdout.write(
-            `error    ${vendor} @ ${route.path} — ${message}\n`,
+            `error    ${vendor} @ ${route.path}: ${message}\n`,
         );
         return { error: { vendor, route: route.path, message } };
     }
@@ -571,7 +571,7 @@ async function prepareFreeDns(): Promise<{
     await client.login();
 
     // A prior run killed before teardown leaks its FreeDNS subdomain, and
-    // the account quota is small — reclaim any such orphan before creating
+    // the account quota is small: reclaim any such orphan before creating
     // this run's, so a few interrupted runs can't wedge every later one
     // behind "no more subdomain capacity".
     const swept = await sweepTunnelOrphans(client);
@@ -582,8 +582,8 @@ async function prepareFreeDns(): Promise<{
 
     // CIVIL_TUNNEL_DOMAIN is now an optional pin: set it *and* its id to
     // force a domain; otherwise auto-pick one no filter blocks. This is the
-    // slow step — it sweeps the FreeDNS registry past the reputation
-    // checkers — so it runs after the server is already coming up.
+    // slow step, it sweeps the FreeDNS registry past the reputation
+    // checkers, so it runs after the server is already coming up.
     const pinnedName = process.env.CIVIL_TUNNEL_DOMAIN;
     const pinnedId = process.env.CIVIL_TUNNEL_DOMAIN_ID;
     const domain =
@@ -602,8 +602,8 @@ async function main(): Promise<number> {
     const waitMs = Number(process.env.CIVIL_FILTER_WAIT_MS ?? 15_000);
 
     // The OCR model (misc/tunnel/captchaSolver) is verified reliable against
-    // FreeDNS's actual captcha font — most attempts should resolve on the
-    // first guess — but still falls back to pausing and asking here in the
+    // FreeDNS's actual captcha font (most attempts should resolve on the
+    // first guess) but still falls back to pausing and asking here in the
     // terminal if it runs out of tries. `CIVIL_TUNNEL_CAPTCHA` still
     // overrides both for a one-shot manual solve when set.
     const captchaCode = process.env.CIVIL_TUNNEL_CAPTCHA;
@@ -655,15 +655,15 @@ function report(results: Result[], errors: ObservationError[]): void {
     );
     for (const { verdict, suggestions } of flagged) {
         process.stdout.write(
-            `\n${verdict.vendor} flagged ${verdict.route} — ${describeSignal(verdict)}\n`,
+            `\n${verdict.vendor} flagged ${verdict.route}: ${describeSignal(verdict)}\n`,
         );
         for (const s of suggestions.slice(0, 3))
             process.stdout.write(
-                `  → ${s.file}${s.line ? `:${s.line}` : ""} — ${s.reason}\n`,
+                `  → ${s.file}${s.line ? `:${s.line}` : ""}: ${s.reason}\n`,
             );
     }
     for (const { vendor, route, message } of errors) {
-        process.stdout.write(`\n${vendor} errored on ${route} — ${message}\n`);
+        process.stdout.write(`\n${vendor} errored on ${route}: ${message}\n`);
     }
 }
 

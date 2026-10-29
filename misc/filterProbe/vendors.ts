@@ -1,12 +1,12 @@
 /**
  * The tracked filters, keyed by *vendor* rather than by extension id.
  *
- * Several vendors ship more than one extension against the same backend —
+ * Several vendors ship more than one extension against the same backend:
  * Cisco's Security and Umbrella, Lightspeed's Filter and Insight, Securly's
  * core and Classroom, LanSchool's three, Aristotle's two, GoGuardian's
  * GoGuardian + Gopher Buddy. The filter route test suite tests each *vendor*
- * once (the task's "every filter, not every id"), so this map — folder →
- * vendor — is what collapses the twenty-eight `~/extensions` folders and the
+ * once (the task's "every filter, not every id"), so this map, folder →
+ * vendor, is what collapses the twenty-eight `~/extensions` folders and the
  * twenty-eight `Filter-Sources` entries down to the eighteen vendors that
  * actually differ.
  *
@@ -71,12 +71,12 @@ export const VENDOR_DISPLAY_NAMES: Record<string, string> = {
 };
 
 /** For a vendor that ships several extensions, the one to load into the
- *  sandbox as this vendor's representative — chosen by which one actually
+ *  sandbox as this vendor's representative: chosen by which one actually
  *  watches and blocks browsing, the thing this suite tests against, not by
  *  which folder name sounds most "student"-flavored. LanSchool is the
  *  cautionary case: `lanschoolStudent` is the classroom remote-control agent
  *  (no content scripts, a managed schema with zero filtering fields);
- *  `lanschoolWebHelper` is the real filter — it ships `blocked.html` as a
+ *  `lanschoolWebHelper` is the real filter: it ships `blocked.html` as a
  *  web-accessible resource and calls `chrome.tabs.update(tabId, {url:
  *  blocked.html})` from several sites in its background. Verified against
  *  each bundle's actual manifest/background, not assumed from its name. */

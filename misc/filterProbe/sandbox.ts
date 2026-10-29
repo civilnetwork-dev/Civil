@@ -5,7 +5,7 @@
  * the two emulator subsystems that already exist rather than as a third:
  *
  *   - The filter's **background** runs in the extension host (`loadExtension`,
- *     misc/extensionHost) — real `chrome.*`, real declarativeNetRequest, real
+ *     misc/extensionHost): real `chrome.*`, real declarativeNetRequest, real
  *     alarms, headless. That is "one filter installed".
  *   - The proxied **page** is fetched through the running Civil server and
  *     loaded into a happy-dom `Window`, and the filter's **content scripts**
@@ -13,11 +13,11 @@
  *     small `chrome` shim whose `runtime.sendMessage` is bridged to the loaded
  *     background. That is "the proxy opened".
  *
- * After a wait — the task's fifteen seconds, so a content script that polls or
- * defers has run — it reports back what `detect.ts` needs: the final
+ * After a wait (the task's fifteen seconds, so a content script that polls or
+ * defers has run) it reports back what `detect.ts` needs: the final
  * `location.href`, the page text (enriched with alt/aria/title attribute text,
  * so an image-only overlay isn't invisible to a marker search), and the
- * filter's own declarativeNetRequest verdict for the page URL — a fourth,
+ * filter's own declarativeNetRequest verdict for the page URL: a fourth,
  * independent channel alongside redirect/marker/vendor-name that needs no
  * rendering at all, just the ruleset the background already registered.
  *
@@ -27,7 +27,7 @@
  * below); one that blocks by *rewriting the DOM* is observed through the text
  * it leaves; one that blocks via a registered DNR rule is observed by asking
  * the ruleset directly. A filter that blocks by some mechanism needing a real
- * renderer is beyond this and beyond what runs without a browser at all — the
+ * renderer is beyond this and beyond what runs without a browser at all: the
  * honest ceiling, the same one the extension host draws.
  */
 
@@ -72,7 +72,7 @@ export interface SandboxOptions {
      * Off by default, same as `LoadOptions.allowNetwork` and for the same
      * reason: an unknown filter bundle must not reach the real network during
      * a routine test run. A one-off, explicitly opted-in live check is the
-     * only reason to set this — vendorEmulation.ts's offline emulation is what
+     * only reason to set this: vendorEmulation.ts's offline emulation is what
      * routine runs should rely on instead.
      */
     allowNetwork?: boolean;
@@ -85,7 +85,7 @@ interface ContentScript {
 }
 
 /** The page fetch, retried a couple of times with a short backoff before
- *  giving up — a bare transient tunnel blip must not be laundered into a
+ *  giving up: a bare transient tunnel blip must not be laundered into a
  *  false "clean" read the way a silently-swallowed empty page would be
  *  (detect.ts's fetchError/status check is what actually acts on this; this
  *  is just making sure a real hiccup gets a second chance first). */
@@ -115,7 +115,7 @@ async function fetchPageWithRetry(
     };
 }
 
-/** `body.textContent` alone misses an image-only block overlay — a shield
+/** `body.textContent` alone misses an image-only block overlay: a shield
  *  icon with `alt="Blocked by Securly"` and no visible text run leaves
  *  nothing in plain text content. Folding in `alt`/`aria-label`/`title`
  *  attribute text and the document title catches that without needing a
@@ -195,7 +195,7 @@ function contentSendMessage(handle: ExtensionHandle) {
             | ((r: unknown) => void)
             | undefined;
         // A background listener that throws is Chrome's problem to log,
-        // not the content script's to crash on — swallow it to undefined,
+        // not the content script's to crash on: swallow it to undefined,
         // the same result Chrome gives the sender when a listener errors.
         const p = handle
             .sendMessage(message)
@@ -211,7 +211,7 @@ function contentSendMessage(handle: ExtensionHandle) {
 
 /** A minimal content-script `chrome`, bridged to the loaded background for
  *  messaging and answering everything else the way the extension host's
- *  universal stub does — do nothing, never throw. */
+ *  universal stub does: do nothing, never throw. */
 function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
     const port = {
         name: "",
@@ -224,7 +224,7 @@ function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
         id: extensionId,
         getURL: (path: string) =>
             `chrome-extension://${extensionId}/${path.replace(/^\//, "")}`,
-        // Read for its result, so a stub's `undefined` won't do — bundles
+        // Read for its result, so a stub's `undefined` won't do: bundles
         // pull `version` and `name` off it during startup (mobileguardian).
         getManifest: () => handle.manifest,
         sendMessage: contentSendMessage(handle),
@@ -265,11 +265,11 @@ async function injectionSource(
 
 /**
  * chrome.scripting.executeScript for the background. The page window is
- * filled in once it exists — a filter's background can call executeScript in
+ * filled in once it exists: a filter's background can call executeScript in
  * reaction to a message from its own content script (the normal "content
  * script announces the page, background decides, background injects the
  * block" shape), which can only happen after that content script is running,
- * i.e. after `window` exists. A call before then (rare — genuine
+ * i.e. after `window` exists. A call before then (rare: genuine
  * startup-time injection has no specific page to target anyway) fails safe to
  * a no-op, same as Chrome resolving no frames.
  */
@@ -300,11 +300,11 @@ function createScriptRunner(target: InjectionTarget) {
 }
 
 /**
- * One filter installed: its background, headless. Best-effort — a filter
+ * One filter installed: its background, headless. Best-effort: a filter
  * whose background can't fully start still has content scripts, which are
  * what render block pages; the point of the run is the page, not the
- * worker. The emulation (vendorEmulation.ts) — matched by the bundle's own
- * folder name — is what lets a vendor's real, configured code path run
+ * worker. The emulation (vendorEmulation.ts), matched by the bundle's own
+ * folder name, is what lets a vendor's real, configured code path run
  * rather than its unconfigured one.
  */
 async function loadFilterBackground(
@@ -332,15 +332,15 @@ async function loadFilterBackground(
  * A real `console`, not happy-dom's VirtualConsole (a content script that
  * logs from a deferred timer would otherwise reach the virtual console after
  * the window is closed and throw on its freed printer), but a fresh one per
- * observation, not the shared global object itself — see
+ * observation, not the shared global object itself: see
  * `buildFreshConsole`'s own comment for why that distinction is load
  * bearing, not cosmetic.
  *
  * The settings match api/platform.ts's happy-dom usage: this document's own
  * markup must not trigger real loads of its own (a `<link href>`/`<script
  * src>` the fetched page happens to carry), the same reasoning that made
- * that comment — "happy-dom must not also try to evaluate or fetch anything
- * the document references" — apply here too. Content scripts still run:
+ * that comment ("happy-dom must not also try to evaluate or fetch anything
+ * the document references") apply here too. Content scripts still run:
  * they're injected by `runInContext` below, entirely outside happy-dom's own
  * script pipeline, which these settings don't gate.
  */
@@ -354,7 +354,7 @@ function createPageWindow(pageUrl: string): Window {
             // errorCapture left at the default ("tryAndCatch"): a content
             // script's own deferred timer callback (setTimeout/setInterval/…)
             // throwing is then caught and logged via console.error instead of
-            // crashing this process — "disabled" previously took down the
+            // crashing this process: "disabled" previously took down the
             // whole multi-vendor sweep on one vendor's async bug (GoGuardian's
             // admin.js _reRun, scheduled off a chrome.storage stub call).
         },
@@ -363,11 +363,11 @@ function createPageWindow(pageUrl: string): Window {
 
 /**
  * A content script's own fetch()/XMLHttpRequest()/WebSocket() calls go
- * through happy-dom's real, working implementations by default — none of the
+ * through happy-dom's real, working implementations by default: none of the
  * window settings gate a direct JS call the way they gate the document's own
  * tag-driven loads. Content scripts get the same containment background
  * scripts already have (api/platform.ts): offline-but-emulated by default
- * (`emulation.network` answers a vendor's own endpoints — see
+ * (`emulation.network` answers a vendor's own endpoints: see
  * vendorEmulation.ts), genuinely live only when a caller opts in via
  * `allowNetwork`. A content script's own extension-relative fetches (its
  * bundled WASM, config, etc.) still resolve for real, off `extensionDir`,
@@ -375,7 +375,7 @@ function createPageWindow(pageUrl: string): Window {
  *
  * XMLHttpRequest has no toggle: Node never implemented a real one (it
  * predates fetch as a browser-only API), so api/platform.ts's own
- * `allowNetwork` handling doesn't branch on it either — the offline,
+ * `allowNetwork` handling doesn't branch on it either: the offline,
  * local-file-serving version is what both paths use regardless.
  */
 function containPageNetwork(
@@ -479,7 +479,7 @@ async function runContentScripts(
 /**
  * Where the tab ended up. Some filters (lanschoolWebHelper, mobileguardian)
  * block from their background via chrome.tabs.update({url}) rather than a
- * content script writing location.href — invisible to a real browser's
+ * content script writing location.href: invisible to a real browser's
  * address bar only in the sense that this host never re-navigates the
  * happy-dom window to render it. A real tab would already be showing that
  * URL, so it's what a redirect check should see too.
@@ -529,7 +529,7 @@ async function observePage(
     const { extensionDir, route, waitMs = 15_000 } = options;
     window.document.write(page.html);
     // The served page's own rendered-text length, before any content script
-    // has had a chance to touch it — the dom-replaced heuristic's baseline
+    // has had a chance to touch it: the dom-replaced heuristic's baseline
     // (detect.ts).
     const originalLength = window.document.body?.textContent?.length ?? 0;
 
@@ -548,7 +548,7 @@ async function observePage(
         pageText: extractRichText(window),
         originalLength,
         // The filter's own configured block rules, asked directly whether
-        // they'd block this exact page URL — a real, deterministic check
+        // they'd block this exact page URL: a real, deterministic check
         // that needed none of the rendering above. Only meaningful when the
         // background actually loaded far enough to register rules.
         dnrMatch: handle?.matchRequest(page.pageUrl, {
@@ -610,7 +610,7 @@ async function readManifest(
 ): Promise<{ content_scripts?: unknown[] }> {
     try {
         const raw = await readFile(join(dir, "manifest.json"), "utf8");
-        return JSON.parse(raw.replace(/^﻿/, ""));
+        return JSON.parse(raw.replace(/^\uFEFF/, ""));
     } catch {
         return {};
     }

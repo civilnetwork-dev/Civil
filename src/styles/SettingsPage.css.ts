@@ -1,27 +1,16 @@
-import { style } from "@vanilla-extract/css";
+import { createVar, style } from "@vanilla-extract/css";
 
-import { alpha, blend, hitArea, PEBBLE, TABLET } from "./material.css";
+import { alpha, blend, hitArea, TABLET } from "./material.css";
 import { ANNO, FONT_MONO } from "./schematic.css";
 import { vars } from "./theme.css";
 
-/** Jump links to each section: pebbles, like bookmarks on the shelf. */
+/** Jump links to each section, drawn as the shared filter chips. */
 export const jump = style({
     display: "flex",
     flexWrap: "wrap",
     gap: "8px",
     margin: "0 0 28px",
 });
-
-export const jumpLink = style(
-    blend(PEBBLE, {
-        ...ANNO,
-        padding: "6px 11px",
-        borderRadius: "8px",
-        color: vars.color.snowmelt,
-        textDecoration: "none",
-        selectors: { "&:hover": { color: vars.color.firn } },
-    }),
-);
 
 /** What the last action did, read out politely. Holds its height when empty. */
 export const status = style({
@@ -41,7 +30,6 @@ export const sectionTitle = style({
     fontSize: "16px",
     fontWeight: 600,
     color: vars.color.firn,
-    textShadow: `0 1px 0 ${vars.color.basalt}`,
 });
 
 export const tablet = style(
@@ -61,6 +49,39 @@ export const summary = style({
     color: vars.color.snowmelt,
 });
 
+/**
+ * How full history's location is. The track is a pale step of the fill's own
+ * hue, so the state reads across the whole bar; nearly full turns both to
+ * calcite, the warned verdict, and the label says so in words as well.
+ */
+const meterHue = createVar();
+
+export const meter = style({ padding: "0 0 16px" });
+
+export const meterLabel = style({
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px",
+    margin: "0 0 8px",
+    fontSize: "13px",
+    color: vars.color.snowmelt,
+});
+
+export const meterTrack = style({
+    vars: { [meterHue]: vars.color.cobalt },
+    height: "8px",
+    borderRadius: "4px",
+    overflow: "hidden",
+    backgroundColor: alpha(meterHue, 20),
+    selectors: { "&[data-full]": { vars: { [meterHue]: vars.color.calcite } } },
+});
+
+export const meterFill = style({
+    height: "100%",
+    borderRadius: "4px",
+    backgroundColor: meterHue,
+});
+
 /** A readout between rows: what the location check found. */
 export const readout = style({
     padding: "14px 0",
@@ -77,6 +98,16 @@ export const readoutList = style({
     padding: 0,
     display: "grid",
     gap: "4px",
+});
+
+/** Each option's traits in a column, side by side where there's room. */
+export const compare = style({
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "14px 28px",
 });
 
 export const readoutName = style({

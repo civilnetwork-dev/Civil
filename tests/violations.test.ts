@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * adversarial rather than functional:
  *
  *   1. A user who wipes their data and makes a fresh anonymous account must not
- *      reset their strike count — the per-IP counter has to survive.
+ *      reset their strike count: the per-IP counter has to survive.
  *   2. A ban must never apply to a whole IP, because an entire school sits
  *      behind one NAT address.
  *

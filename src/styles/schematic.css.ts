@@ -6,7 +6,6 @@ import {
     DUR,
     EASE,
     GLINT,
-    GROUND,
     hitArea,
     KEY_STONE,
     LIT,
@@ -63,6 +62,48 @@ export const lede = style({
     color: vars.color.snowmelt,
 });
 
+/* Filter chips (Apps shelf, History range, Bookmarks scope)              */
+
+export const chips = style({
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "16px",
+});
+
+/**
+ * A filter chip: flat, a hairline ring at rest, a neutral fill when on. Also
+ * worn by links (Settings' section jumps), hence the flex box and no underline.
+ */
+export const chip = style({
+    display: "inline-flex",
+    alignItems: "center",
+    height: "32px",
+    textDecoration: "none",
+    padding: "0 14px",
+    border: "none",
+    borderRadius: "999px",
+    background: "none",
+    boxShadow: `inset 0 0 0 1px ${alpha(vars.color.talus, 70)}`,
+    color: vars.color.snowmelt,
+    font: "inherit",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: `background-color ${DUR.fast} ${EASE.standard}, color ${DUR.fast} ${EASE.standard}`,
+    selectors: {
+        "&:hover": { color: vars.color.firn },
+        '&[aria-pressed="true"]': {
+            backgroundColor: vars.color.scree,
+            color: vars.color.firn,
+        },
+        "&:focus-visible": {
+            outline: `2px solid ${vars.color.cobalt}`,
+            outlineOffset: "2px",
+        },
+    },
+});
+
 export const annoMuted = style({
     ...ANNO,
     color: vars.color.snowmelt,
@@ -70,13 +111,16 @@ export const annoMuted = style({
 
 /* Sheet                                                                 */
 
-export const sheet = style(
-    blend(GROUND, {
-        minHeight: "100%",
-        padding: "48px max(24px, calc((100% - 1040px) / 2)) 64px",
-        color: vars.color.firn,
-    }),
-);
+// The shell (AppShell.css.ts) lays the ground; the sheet is the page column
+// beside its sidebar.
+export const sheet = style({
+    maxWidth: "1040px",
+    padding: "36px clamp(20px, 4vw, 48px) 64px",
+    color: vars.color.firn,
+    "@media": {
+        "screen and (max-width: 720px)": { padding: "24px 16px 48px" },
+    },
+});
 
 export const sheetBody = style({
     position: "relative",
@@ -130,16 +174,15 @@ export const titleBlockHead = style({
     minWidth: 0,
 });
 
-// Raised lettering: the glyphs stand a pixel proud of the ground and cast a
-// short soft shadow, the same light as every slab.
+// Calm Strata: titles are flat lettering at app size; the specimen beside
+// them keeps the page's one piece of stone depth.
 export const titleBlockTitle = style({
     margin: 0,
-    fontSize: "32px",
+    fontSize: "26px",
     fontWeight: 600,
     lineHeight: 1.2,
     letterSpacing: "-0.015em",
     color: vars.color.firn,
-    textShadow: `0 1px 0 ${vars.color.basalt}, 0 3px 8px color-mix(in srgb, black 35%, transparent)`,
 });
 
 export const titleBlockIdent = style({

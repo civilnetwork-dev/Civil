@@ -1,76 +1,62 @@
 /**
- * Pure-JS implementation of the XOR URL codec.
+ * The XOR URL codec: how a proxied address is written into Civil's paths.
  *
- * This is the fallback used by wasmDencode.ts before the WASM module finishes
- * loading, which in practice means it handles the first navigation of a session.
- * The WASM implementation in config/encoder/ must produce byte-identical output:
- * if the two ever diverge, a URL encoded by one and decoded by the other
- * silently resolves to garbage, and the failure looks like "the proxy broke on
- * this site" rather than "the encoder changed".
+ * Encoding percent-encodes the address's UTF-8 bytes, XORs 0x02 into every
+ * odd position of that text, then percent-encodes the result again. Decoding
+ * runs the same steps backwards. A filter scanning the request path or the
+ * address bar never sees the destination host.
  *
- * Kept in its own module (rather than inline in wasmDencode.ts) so it can be
- * unit-tested without instantiating the WASM module. See tests/xorCodec.test.ts.
+ * The service worker, the browser page and every proxied frame all run these
+ * same two functions. The scramjet controller copies them into frames and
+ * workers as source text (`codec.encode.toString()`), so each one has to
+ * stand alone: no imports, and no references to anything else in this file.
+ * tests/xorCodec.test.ts rebuilds them from their source to keep it that way.
  *
- * Scheme: percent-encode → XOR 0x02 over odd character positions →
- * percent-encode again. Decoding reverses it.
+ * The output format is fixed. History, bookmarks and open tabs hold addresses
+ * encoded by older builds, so a change here breaks every one of them.
  */
 
-const HEX = "0123456789ABCDEF";
-
-/** RFC 3986 unreserved characters: A-Z a-z 0-9 - _ . ~ */
-export function isUnreserved(c: number): boolean {
-    return (
-        (c >= 65 && c <= 90) ||
-        (c >= 97 && c <= 122) ||
-        (c >= 48 && c <= 57) ||
-        c === 45 ||
-        c === 95 ||
-        c === 46 ||
-        c === 126
+export function encode(url: string): string {
+    const hex = "0123456789ABCDEF";
+    // RFC 3986 unreserved characters pass through; every other byte becomes
+    // a %XX escape.
+    const escape = (bytes: Iterable<number>) => {
+        let out = "";
+        for (const b of bytes) {
+            const ch = String.fromCharCode(b);
+            out += /[\w.~-]/.test(ch) ? ch : `%${hex[b >> 4]}${hex[b & 15]}`;
+        }
+        return out;
+    };
+    const codes = Array.from(escape(new TextEncoder().encode(url)), c =>
+        c.charCodeAt(0),
     );
+    for (let i = 1; i < codes.length; i += 2) codes[i] ^= 2;
+    return escape(codes);
 }
 
-function percentEncodeBytes(bytes: Iterable<number>): string {
-    let out = "";
-    for (const b of bytes) {
-        out += isUnreserved(b)
-            ? String.fromCharCode(b)
-            : `%${HEX[b >> 4]}${HEX[b & 0x0f]}`;
-    }
-    return out;
-}
-
-/** XOR 0x02 into every odd-indexed byte. Its own inverse. */
-function xorOddPositions(bytes: number[]): number[] {
-    for (let i = 1; i < bytes.length; i += 2) bytes[i] ^= 0x02;
-    return bytes;
-}
-
-export function jsEncode(str: string): string {
-    const percentEncoded = percentEncodeBytes(new TextEncoder().encode(str));
-    const xored = xorOddPositions(
-        Array.from(percentEncoded, c => c.charCodeAt(0)),
-    );
-    return percentEncodeBytes(xored);
-}
-
-export function jsDecode(str: string): string {
-    const bytes: number[] = [];
-    for (let i = 0; i < str.length; i++) {
-        if (str[i] === "%" && i + 2 < str.length) {
-            bytes.push(parseInt(str.slice(i + 1, i + 3), 16));
+export function decode(encoded: string): string {
+    const codes: number[] = [];
+    for (let i = 0; i < encoded.length; i++) {
+        if (encoded[i] === "%" && i + 2 < encoded.length) {
+            codes.push(parseInt(encoded.slice(i + 1, i + 3), 16));
             i += 2;
         } else {
-            bytes.push(str.charCodeAt(i));
+            codes.push(encoded.charCodeAt(i));
         }
     }
-    xorOddPositions(bytes);
+    // Built a character at a time: spreading a long address into
+    // String.fromCharCode overflows the call stack.
+    let escaped = "";
+    for (let i = 0; i < codes.length; i++) {
+        escaped += String.fromCharCode(i % 2 ? codes[i] ^ 2 : codes[i]);
+    }
     try {
-        return decodeURIComponent(String.fromCharCode(...bytes));
+        return decodeURIComponent(escaped);
     } catch {
-        // Not valid percent-encoded UTF-8: hand back the input rather than
-        // throwing, so a malformed URL degrades to a failed navigation instead
-        // of an unhandled exception in the service worker.
-        return str;
+        // Not valid percent-encoded UTF-8. Handing back the input turns a
+        // malformed address into a failed navigation instead of an exception
+        // in the service worker.
+        return encoded;
     }
 }

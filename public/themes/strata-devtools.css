@@ -6,13 +6,13 @@
  * This file is a plain stylesheet rather than part of the vanilla-extract
  * contract, because chii loads it as a theme by URL and never sees our build.
  * That means the values below are duplicated from `src/styles/palette.ts` by
- * hand and cannot drift silently — if the palette changes, this changes with
+ * hand and cannot drift silently: if the palette changes, this changes with
  * it. The token names are DevTools', not ours; only the values are ours.
  *
  * ## Where the extra colours come from
  *
  * The palette is twelve colours and DevTools wants more distinct accents than
- * that — it uses them to separate token types in the source viewer and console,
+ * that: it uses them to separate token types in the source viewer and console,
  * so collapsing purple onto red and teal onto blue would cost real information.
  * The two extras here are *tones* of palette colours rather than new hues:
  * `--color-accent-purple` is a lighter tone of `wine` and both
@@ -28,7 +28,7 @@
  * text-primary 13.94 · text-secondary 8.87 · accent-blue 4.80 · warning 12.63 ·
  * success 9.53 · error 4.77 · on-primary 5.98 against `--color-primary`.
  * `--color-text-disabled` lands at 4.80, which is *higher* than the tier it
- * replaced (3.56) — disabled text is exempt from WCAG 1.4.3 either way, but
+ * replaced (3.56): disabled text is exempt from WCAG 1.4.3 either way, but
  * there was no reason to keep it at the old value.
  */
 

@@ -8,7 +8,6 @@ export { cached, invalidate, invalidateTag, redis, sessionKey } from "./cache";
 export { db } from "./db";
 export { createDatabaseMiddleware } from "./middleware";
 export * from "./models/ibossGateway";
-export * from "./models/siteProxy";
 export * from "./models/user";
 export * from "./models/visit";
 export * from "./schema";

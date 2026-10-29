@@ -68,7 +68,7 @@ async function checkFilter(
         });
         // 429 is the shared filter-check rate limiter, not a vendor verdict.
         // It used to fall through the generic branch below and print the raw
-        // JSON body into the ledger — the single most common failure this page
+        // JSON body into the ledger: the single most common failure this page
         // produces (79 `filter_rate_limited` events), shown as gibberish.
         if (res.status === 429) {
             const retryAfterSeconds = await readRetryAfter(res);
@@ -679,7 +679,7 @@ export default function FilterCheckPage() {
 
                 {/* The one page where Civil's voice has a direct target. The
                     vendors this page queries describe themselves in soft nouns
-                    — visibility, insights, oversight, "observed" — for systems
+                    (visibility, insights, oversight, "observed") for systems
                     that record screens minute by minute. This page asks their
                     own classifiers the same question from the other side, and
                     prints whatever comes back. */}

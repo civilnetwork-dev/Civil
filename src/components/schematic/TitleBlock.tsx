@@ -11,13 +11,13 @@ import * as s from "~/styles/schematic.css";
  *
  * The meta sits *under* the title, not as a third flex child. The row is
  * `space-between`, so a floating meta landed in a different place on every
- * page — centred where a page had actions, hard right where it did not — which
+ * page (centred where a page had actions, hard right where it did not) which
  * read as a value that had come loose rather than as the sheet's state. A real
  * title block stacks its identifying data in one corner, and that is also the
  * only arrangement that is stable across pages.
  *
- * The eyebrow is optional and currently unused. Every page once carried one —
- * "launcher", "diagnostic", "collection", "archive" — and session watching
+ * The eyebrow is optional and currently unused. Every page once carried one
+ * ("launcher", "diagnostic", "collection", "archive") and session watching
  * showed why they had to go: they are internal category labels, words a
  * developer files pages under, not words a user acts on. A student scanning
  * for "where do I search" reads a cryptic extra word above every title. The
@@ -42,7 +42,7 @@ export default function TitleBlock(props: {
                         <Specimen
                             icon={props.icon!}
                             tint={props.tint}
-                            size={52}
+                            size={44}
                         />
                     </Show>
                     <div class={s.titleBlockIdent}>

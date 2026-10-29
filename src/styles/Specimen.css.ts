@@ -29,7 +29,6 @@ const hi = createVar();
 const face = createVar();
 const band = createVar();
 const deep = createVar();
-const ink = createVar();
 
 const { basalt, firn } = vars.color;
 
@@ -65,7 +64,7 @@ export const specimen = style({
     width: "var(--specimen-size, 56px)",
     height: "var(--specimen-size, 56px)",
     borderRadius: "30%",
-    color: ink,
+    color: firn,
     backgroundColor: face,
     backgroundImage: `${SHEEN}, ${GRAIN}, ${LIT}`,
     backgroundSize: "260% 100%, auto, auto",
@@ -150,24 +149,24 @@ export const idle = style({
 });
 
 /**
- * Tints are palette tones, never new colours. Light minerals take a basalt
- * inlay for their glyph; dark and saturated ones a firn glyph.
+ * Tints are palette tones, never new colours. Every tile takes a firn glyph:
+ * the emboss's hard basalt drop draws its edge even on the light minerals,
+ * where a basalt glyph, solid since the Stone set, read as a black hole.
  */
-const tone = (color: string, glyphInk: string) => ({
+const tone = (color: string) => ({
     vars: {
         [hi]: mix(color, 58, firn),
         [face]: color,
         [band]: mix(color, 62, basalt),
         [deep]: mix(color, 36, basalt),
-        [ink]: glyphInk,
     },
 });
 
 export const tint = styleVariants({
-    cobalt: tone(vars.color.cobalt, firn),
-    stone: tone(vars.color.talus, firn),
-    juniper: tone(vars.color.juniper, basalt),
-    calcite: tone(vars.color.calcite, basalt),
-    sandstone: tone(vars.color.sandstone, basalt),
-    wine: tone(vars.color.wine, firn),
+    cobalt: tone(vars.color.cobalt),
+    stone: tone(vars.color.talus),
+    juniper: tone(vars.color.juniper),
+    calcite: tone(vars.color.calcite),
+    sandstone: tone(vars.color.sandstone),
+    wine: tone(vars.color.wine),
 });

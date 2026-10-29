@@ -82,7 +82,7 @@ export const bookmarkLabel = style({
 });
 
 /**
- * Hidden until the chip is hovered or holds focus — but with opacity, not
+ * Hidden until the chip is hovered or holds focus, but with opacity, not
  * `display: none`. Display-none removes an element from the tab order
  * outright, so this control was unreachable by keyboard entirely: there was no
  * sequence of keys that could delete a bookmark from the bar. `pointer-events`

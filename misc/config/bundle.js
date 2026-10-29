@@ -1,6 +1,3 @@
-import { copyFile } from "node:fs/promises";
-import { createRequire } from "node:module";
-import { basename, resolve } from "node:path";
 import alias from "@rollup/plugin-alias";
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
@@ -11,11 +8,6 @@ import { rollup } from "rollup";
 import { transformSync } from "oxc-transform";
 import nodePolyfills from "rollup-plugin-polyfill-node";
 import { visualizer } from "rollup-plugin-visualizer";
-
-const require = createRequire(import.meta.url);
-const { globSync: fastGlobSync } = require("fast-glob");
-
-const configFiles = fastGlobSync(["./**/*.config.ts", "./**/*.config.js"]);
 
 const { green } = createColors();
 
@@ -39,22 +31,13 @@ const stripTypes = {
     },
 };
 
-// Extensionless imports (`./xorCodec`) name .ts files, which rollup's
-// resolver only finds when told to look for them.
+// Extensionless imports (`$config/shared/xorCodec`) name .ts files, which
+// rollup's resolver only finds when told to look for them.
 const extensions = [".mjs", ".js", ".json", ".node", ".ts"];
 
 const basePlugins = [
     alias({
-        entries: [
-            {
-                find: "$wasm",
-                replacement: resolve(
-                    import.meta.dirname,
-                    "../../config/encoder",
-                ),
-            },
-            { find: "$config", replacement: import.meta.dirname },
-        ],
+        entries: [{ find: "$config", replacement: import.meta.dirname }],
     }),
     stripTypes,
     nodeResolve({ browser: true, extensions }),
@@ -90,7 +73,6 @@ const basePlugins = [
         mangle: {
             toplevel: true,
             safari10: true,
-            reserved: ["__wasmDencode", "document"],
         },
         format: {
             comments: false,
@@ -99,177 +81,52 @@ const basePlugins = [
     }),
 ];
 
-const externalWasmDencode = {
-    name: "external-wasm-dencode",
-    resolveId(source) {
-        if (source === "$config/shared/wasmDencode") {
-            return { id: "__wasmDencode", external: true };
-        }
-        return null;
-    },
-};
-
-const swPlugins = [externalWasmDencode, ...basePlugins];
-
-const plugins = [
-    externalWasmDencode,
-    ...basePlugins.slice(0, 1),
-    basePlugins[1],
-    nodePolyfills(),
-    basePlugins[2],
-    basePlugins[3],
-    basePlugins[4],
-];
-
-const configInput = Object.fromEntries(
-    configFiles.map(file => {
-        const base = basename(file).replace(/\.(config)\.(ts|js)$/, "");
-        return [`${base}_config`, file];
-    }),
-);
-
-const otherInput = {
-    ...configInput,
-    scramjet_init: "./scramjet/scramjetInit.ts",
-};
-
-const wasmDencodeBundle = await rollup({
-    input: "./shared/wasmDencode.ts",
-    treeshake: {
-        propertyReadSideEffects: false,
-        unknownGlobalSideEffects: false,
-    },
-    plugins: [
-        ...basePlugins,
-        ...(useVisualizer
-            ? [
-                  visualizer({
-                      filename: "../../dist-config/stats/wasm_dencode.html",
-                      open: false,
-                  }),
-              ]
-            : []),
-    ],
-});
-
-const { output: wdOutput } = await wasmDencodeBundle.write({
-    dir: "../../dist-config",
-    format: "iife",
-    entryFileNames: "wasm_dencode.js",
-    name: "__wasmDencode",
-    compact: true,
-    generatedCode: { arrowFunctions: true, constBindings: true },
-});
-
-await wasmDencodeBundle.close();
-
-for (const chunk of wdOutput) {
-    console.log(green(chunk.fileName));
-}
-
-for (const [name, file] of Object.entries(otherInput)) {
-    const bundle = await rollup({
-        input: file,
+// Every bundle is an IIFE except the bare-mux transport, which bare-mux
+// imports as an ES module.
+async function bundle(input, plugins, output) {
+    const build = await rollup({
+        input,
         treeshake: {
             propertyReadSideEffects: false,
             unknownGlobalSideEffects: false,
         },
         plugins: [
             ...plugins,
-            ...(useVisualizer
+            ...(useVisualizer && output.name
                 ? [
                       visualizer({
-                          filename: `../../dist-config/stats/${name}.html`,
+                          filename: `../../dist-config/stats/${output.name}.html`,
                           open: false,
                       }),
                   ]
                 : []),
         ],
     });
-
-    const { output } = await bundle.write({
+    const { output: chunks } = await build.write({
         dir: "../../dist-config",
         format: "iife",
-        entryFileNames: `${name}.js`,
-        name,
-        globals: { __wasmDencode: "__wasmDencode" },
         compact: true,
         generatedCode: { arrowFunctions: true, constBindings: true },
+        ...output,
     });
-
-    await bundle.close();
-
-    for (const chunk of output) {
-        console.log(green(chunk.fileName));
-    }
+    await build.close();
+    for (const chunk of chunks) console.log(green(chunk.fileName));
 }
 
-const swBundle = await rollup({
-    input: "./service/sw.ts",
-    treeshake: {
-        propertyReadSideEffects: false,
-        unknownGlobalSideEffects: false,
-    },
-    plugins: [
-        ...swPlugins,
-        ...(useVisualizer
-            ? [
-                  visualizer({
-                      filename: "../../dist-config/stats/sw.html",
-                      open: false,
-                  }),
-              ]
-            : []),
-    ],
-});
+await bundle(
+    "./scramjet/scramjetInit.ts",
+    [...basePlugins.slice(0, 2), nodePolyfills(), ...basePlugins.slice(2)],
+    { name: "scramjet_init", entryFileNames: "scramjet_init.js" },
+);
 
-const { output: swOutput } = await swBundle.write({
-    dir: "../../dist-config",
-    format: "iife",
-    entryFileNames: "sw.js",
+await bundle("./service/sw.ts", basePlugins, {
     name: "sw",
-    globals: { __wasmDencode: "__wasmDencode" },
-    banner: 'var document={baseURI:self.location.origin};importScripts("/wasm_dencode.js");',
-    compact: true,
-    generatedCode: { arrowFunctions: true, constBindings: true },
+    entryFileNames: "sw.js",
 });
 
-await swBundle.close();
-
-for (const chunk of swOutput) {
-    console.log(green(chunk.fileName));
-}
-
-const baremuxTransportBundle = await rollup({
-    input: "./baremux/transport.ts",
-    treeshake: {
-        propertyReadSideEffects: false,
-        unknownGlobalSideEffects: false,
-    },
-    plugins: [
-        ...basePlugins.slice(0, 1),
-        basePlugins[1],
-        nodeResolve({ browser: true, extensions }),
-        commonjs(),
-        basePlugins[3],
-    ],
-});
-
-const { output: baremuxOutput } = await baremuxTransportBundle.write({
+// Left unminified, as it always shipped.
+await bundle("./baremux/transport.ts", basePlugins.slice(0, 4), {
     dir: "../../dist-config/baremux-transport",
     format: "es",
     entryFileNames: "index.mjs",
-    compact: true,
-    generatedCode: { arrowFunctions: true, constBindings: true },
 });
-
-await baremuxTransportBundle.close();
-
-for (const chunk of baremuxOutput) {
-    console.log(green("baremux-transport/" + chunk.fileName));
-}
-
-await copyFile(
-    "../../config/encoder/xor_encoder.wasm",
-    "../../dist-config/xor_encoder.wasm",
-);

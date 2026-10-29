@@ -25,7 +25,7 @@ describe("pickSetupDefaults", () => {
         const p = await pickSetupDefaults(device());
         expect(p.search?.value).toBe("google");
         expect(p.transport?.value).toBe("epoxy");
-        expect(p.transportAuto?.value).toBe(true);
+        expect(p.wispVersion?.value).toBe("2");
         expect(p.navTimeout?.value).toBe(15);
         expect(p.suggestLive?.value).toBe(true);
         expect(p.historyFormat?.value).toBe("json");

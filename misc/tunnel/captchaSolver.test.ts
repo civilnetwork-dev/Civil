@@ -1,7 +1,7 @@
 /**
  * The captcha solver. The model itself is a small local file now (see
  * captchaSolver.ts's module doc) and loads instantly, but reading a *real*
- * captcha still means a live network call to freedns.afraid.org — so that
+ * captcha still means a live network call to freedns.afraid.org, so that
  * part stays opt-in (`CIVIL_CAPTCHA_LIVE=1`) out of politeness to a third
  * party's free service, not out of concern for model size. What always runs
  * is the shape of the solver's output contract, driven through a stubbed
@@ -25,8 +25,8 @@ describe("createCaptchaSolver", () => {
     });
 });
 
-// The hybrid solver still falls back to a human once ocrAttempts runs out —
-// live verification found the OCR model reliable, but not infallible, and
+// The hybrid solver still falls back to a human once ocrAttempts runs out.
+// Live verification found the OCR model reliable, but not infallible, and
 // this exercises that fallback path directly (`ocrAttempts: 0` forces it on
 // the first call) without actually blocking on stdin.
 vi.mock("node:readline/promises", () => ({
@@ -60,9 +60,9 @@ describe("createHybridCaptchaSolver", () => {
 });
 
 // Opt-in: fetches one real, live captcha from freedns.afraid.org. Proves the
-// pipeline runs end to end against a real image — not that the answer is
+// pipeline runs end to end against a real image, not that the answer is
 // correct, which only a live FreeDNS submission can show (already done by
-// hand: five fresh captchas, five accepted — see captchaSolver.ts's module
+// hand: five fresh captchas, five accepted; see captchaSolver.ts's module
 // doc). Model loading itself is local and instant now, so this is gated on
 // the network call, not the model.
 describe.skipIf(process.env.CIVIL_CAPTCHA_LIVE !== "1")(
@@ -84,7 +84,7 @@ describe.skipIf(process.env.CIVIL_CAPTCHA_LIVE !== "1")(
             const answer = await solve(bytes);
 
             // The model's own training charset is uppercase A-Z only (see
-            // captchaSolver.ts) — real FreeDNS answers never contain a digit
+            // captchaSolver.ts): real FreeDNS answers never contain a digit
             // or a lowercase letter, so this is a real correctness check, not
             // just a shape check.
             expect(answer).toMatch(/^[A-Z]*$/);

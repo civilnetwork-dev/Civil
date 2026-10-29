@@ -11,7 +11,7 @@ export class ManifestError extends Error {}
 
 /** Background entry point(s) resolved to a manifest_version-independent shape:
  *  MV3 has one `service_worker`, MV2 can list multiple `scripts` or point at
- *  one `page`. For `page`, `files` holds the HTML document itself — the
+ *  one `page`. For `page`, `files` holds the HTML document itself: the
  *  scripts it pulls in are extracted by `backgroundScriptsFromPage`, which
  *  needs the file's contents and so belongs to the caller that reads it. */
 export interface ResolvedBackground {
@@ -59,7 +59,7 @@ export function resolveBackground(
 ): ResolvedBackground {
     const bg = manifest.background;
     // Legacy Chrome Packaged Apps (lanschoolStudent still ships one) nest
-    // their background under `app.background.scripts` instead — same
+    // their background under `app.background.scripts` instead: same
     // `scripts` shape, different home in the manifest.
     if (!bg) {
         const appScripts = manifest.app?.background?.scripts;
@@ -75,7 +75,7 @@ export function resolveBackground(
     // what the document is for: a background page's body is empty and its
     // <script> tags are the extension's actual background code. Two of the
     // tracked filters (goguardian, contentkeeper) ship one, and treating it
-    // as "no background" meant neither ever ran a line — every observation
+    // as "no background" meant neither ever ran a line: every observation
     // about them would have been an observation of an extension doing
     // nothing. The scripts are extracted in `backgroundScriptsFromPage`.
     if (bg.page) return { type: "page", files: [bg.page] };
@@ -84,7 +84,7 @@ export function resolveBackground(
 
 /** Every `<script>` in a background page, in document order: `{ src }` for
  *  `<script src="...">` and `{ code }` for an inline block. Deliberately a
- *  regex and not an HTML parser — a background page is a near-empty document
+ *  regex and not an HTML parser: a background page is a near-empty document
  *  whose whole purpose is its script tags, and the alternative is a DOM
  *  implementation this host has no other use for. */
 export function backgroundScriptsFromPage(

@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { globalStyle, style } from "@vanilla-extract/css";
 
 import {
     alpha,
@@ -15,6 +15,7 @@ import {
     RISE,
 } from "./material.css";
 import { ANNO, FONT_SANS } from "./schematic.css";
+import { trait, traits } from "./SettingControls.css";
 import { vars } from "./theme.css";
 
 /**
@@ -164,9 +165,8 @@ export const cardInput = style({
 
 const CHOSEN = mix(vars.color.cobalt, 24, vars.color.scree);
 
-// A card is a stone key: raised because it is pressable. Choosing one floods
-// its face with cobalt through background-color alone, so its sediment and
-// shadow keep the same layers in every state.
+// A card is a stone key. Choosing one floods its face with cobalt through
+// background-color alone, so its hairline keeps the same layer in every state.
 export const cardFace = style(
     blend(KEY_STONE, {
         display: "flex",
@@ -201,6 +201,11 @@ export const cardNote = style({
     fontWeight: 400,
     lineHeight: 1.45,
 });
+
+// A card is too narrow for the traits' two columns: each trait becomes one
+// line of text, its name leading.
+globalStyle(`${cardNote} ${traits}`, { display: "block" });
+globalStyle(`${cardNote} ${trait}`, { display: "block" });
 
 export const cardMark = style({
     flexShrink: 0,

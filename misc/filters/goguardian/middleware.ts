@@ -1,7 +1,8 @@
 import type { Context, Hono } from "hono";
 
 import { type AppEnv, readJsonBody } from "../../http";
-import { captureFilterCheck, captureFilterError } from "../utils/captureFilter";
+import { captureFilterCheck } from "../utils/captureFilter";
+import { respondFilterError } from "../utils/respondFilterError";
 import { checkGoGuardianFilterAuthenticated } from "./checker";
 import { computeExtensionIdFromKey } from "./generateAuthToken";
 import { getGoGuardianVersion } from "./getVersion";
@@ -36,8 +37,7 @@ async function checkGoGuardian(c: Context<AppEnv>) {
     );
 
     if (result.isErr()) {
-        captureFilterError(c, "goguardian", url, result.error);
-        return c.text(`${result.error.type}: ${result.error.message}`, 500);
+        return respondFilterError(c, "goguardian", url, result.error);
     }
 
     const value = result.value;

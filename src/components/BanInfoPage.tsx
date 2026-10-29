@@ -83,7 +83,7 @@ function useBlocklist(onLoaded: () => void) {
         };
 
         // The blocklist is fetched from a third-party host at runtime, so it
-        // can fail for reasons that have nothing to do with this app — and the
+        // can fail for reasons that have nothing to do with this app, and the
         // school filter this proxy exists to get around is one of them. Without
         // this the page sat on "loading blocklist" forever, which reads as a
         // hung app rather than an unreachable list.

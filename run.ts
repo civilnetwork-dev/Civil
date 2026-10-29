@@ -6,7 +6,7 @@ import { getRequestListener } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 import { start as startChii } from "chii";
-import { type Context, Hono, type MiddlewareHandler } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { compress } from "hono/compress";
 
@@ -14,20 +14,14 @@ import { usePosthogProxy } from "./misc/analytics/posthogProxy";
 import {
     createDatabaseMiddleware,
     getBannedDomains,
-    getSiteProxyConfig,
     initBannedDomains,
     isUserBanned,
     matchBannedDomain,
-    normalizeHostname,
-    probeSite,
-    recordCompatFeedback,
-    redis,
     resolveSessionFromHeaders,
     resolveSessionFromRequest,
-    upsertSiteProxyConfig,
 } from "./misc/database/index";
 import { requireEnv, validateEnv } from "./misc/env";
-import { type AppEnv, readJsonBody } from "./misc/http";
+import type { AppEnv } from "./misc/http";
 import { isPrivateHost } from "./misc/net";
 import {
     extractClientIp,
@@ -293,136 +287,6 @@ app.get("/api/favicon", async c => {
     } catch {
         return c.body(null, 404);
     }
-});
-
-const _proxyProbesInFlight = new Map<string, Promise<unknown>>();
-
-const FALLBACK_PROXY_DECISION = {
-    proxy: "scramjet",
-    transport: "epoxy",
-    wispVersion: 2,
-    score: 0,
-    cached: false,
-    fallback: true,
-};
-
-type ProxyPayload = {
-    proxy: string;
-    transport: string;
-    wispVersion: number;
-    score: number;
-};
-
-async function cacheProxyPayload(redisKey: string, payload: ProxyPayload) {
-    await redis
-        .set(redisKey, JSON.stringify(payload), "EX", 86400)
-        .catch(() => {});
-}
-
-/** Probes the host once, however many requests ask for it meanwhile. */
-function probeOnce(hostname: string, redisKey: string): Promise<unknown> {
-    let inflight = _proxyProbesInFlight.get(hostname);
-    if (!inflight) {
-        inflight = (async () => {
-            const decision = await probeSite(`https://${hostname}/`);
-            await upsertSiteProxyConfig(hostname, decision).catch(() => {});
-            const payload = {
-                proxy: decision.proxy,
-                transport: decision.transport,
-                wispVersion: decision.wispVersion,
-                score: decision.score,
-            };
-            await cacheProxyPayload(redisKey, payload);
-            return payload;
-        })().finally(() => _proxyProbesInFlight.delete(hostname));
-        _proxyProbesInFlight.set(hostname, inflight);
-    }
-    return inflight;
-}
-
-async function bestProxyFor(c: Context<AppEnv>, hostname: string) {
-    const redisKey = `siteproxy:${hostname}`;
-    const hit = await redis.get(redisKey).catch(() => null);
-    if (hit) {
-        return c.json({ ...JSON.parse(hit), cached: true });
-    }
-
-    const stored = await getSiteProxyConfig(hostname);
-    // A row from before UV was removed can still say proxy: "uv" (the
-    // proxy column has no DB-level enum, just text) -- treat that the
-    // same as no stored decision at all, so it falls through to a fresh
-    // probeSite() below and self-heals to "scramjet" via
-    // upsertSiteProxyConfig, rather than serving a recommendation for a
-    // proxy backend that no longer exists.
-    if (stored && stored.proxy === "scramjet") {
-        const payload = {
-            proxy: stored.proxy,
-            transport: stored.transport,
-            wispVersion: stored.wispVersion,
-            score: stored.score,
-        };
-        await cacheProxyPayload(redisKey, payload);
-        return c.json({ ...payload, cached: true });
-    }
-
-    const payload = await probeOnce(hostname, redisKey);
-    return c.json({ ...(payload as object), cached: false });
-}
-
-app.get("/api/best-proxy", async c => {
-    const urlParam = c.req.query("url");
-    const hostname = urlParam ? normalizeHostname(urlParam) : null;
-    if (!hostname) {
-        return c.json({ error: "invalid url" }, 400);
-    }
-
-    c.header("Cache-Control", "no-store");
-    if (isPrivateHost(hostname)) {
-        return c.json(FALLBACK_PROXY_DECISION);
-    }
-
-    try {
-        return await bestProxyFor(c, hostname);
-    } catch {
-        return c.json(FALLBACK_PROXY_DECISION);
-    }
-});
-
-app.post("/api/best-proxy", async c => {
-    const body = await readJsonBody<{
-        url: string;
-        proxy: string;
-        transport: string;
-        compat: number;
-        rewriterErrors: number;
-    }>(c);
-    const hostname = body.url ? normalizeHostname(body.url) : null;
-    const proxy = body.proxy;
-    const compat = Number(body.compat);
-    const rewriterErrors = Number.isFinite(Number(body.rewriterErrors))
-        ? Math.max(0, Number(body.rewriterErrors))
-        : 0;
-    if (!hostname || proxy !== "scramjet" || !Number.isFinite(compat)) {
-        return c.json({ error: "bad feedback" }, 400);
-    }
-    if (isPrivateHost(hostname)) return c.body(null, 204);
-
-    try {
-        const transport =
-            body.transport === "epoxy" ||
-            body.transport === "libcurl" ||
-            body.transport === "bare"
-                ? body.transport
-                : undefined;
-        await recordCompatFeedback(
-            hostname,
-            transport,
-            Math.max(0, Math.min(100, compat)),
-            rewriterErrors,
-        );
-        await redis.del(`siteproxy:${hostname}`).catch(() => {});
-    } catch {}
-    return c.body(null, 204);
 });
 
 app.all("/api/check-banned/*", c => {

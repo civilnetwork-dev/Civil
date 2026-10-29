@@ -39,8 +39,8 @@ export default function FilterCheckForm(props: {
                 />
             </Show>
             {/* "specimen url" and "run report" were the drawing's vocabulary,
-                not the reader's. The page asks one question — is this site
-                blocked — so the field and the button say that. */}
+                not the reader's. The page asks one question (is this site
+                blocked) so the field and the button say that. */}
             <Field
                 label="Website"
                 type="url"

@@ -11,6 +11,7 @@ import {
     HistoryUnreadable,
     LOCATIONS,
     type LocationReport,
+    locationQuota,
     measureLocations,
     pickBest,
     readLocation,
@@ -553,6 +554,8 @@ export interface HistoryStatus {
     pages: Record<HistoryLocation, number>;
     /** Stored size, in the units the space limit counts. */
     size: Record<HistoryLocation, number>;
+    /** The most the writer's location holds, before the space limit. */
+    quota: number;
 }
 
 export async function historyStatus(): Promise<HistoryStatus> {
@@ -560,13 +563,15 @@ export async function historyStatus(): Promise<HistoryStatus> {
     const size = { localstorage: 0, indexeddb: 0 };
     for (const loc of LOCATIONS)
         size[loc] = await storedSize(loc).catch(() => 0);
+    const current = writer();
     return {
-        writer: writer(),
+        writer: current,
         pages: {
             localstorage: segs.localstorage.length,
             indexeddb: segs.indexeddb.length,
         },
         size,
+        quota: await locationQuota(current),
     };
 }
 

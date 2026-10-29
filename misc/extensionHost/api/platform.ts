@@ -3,7 +3,7 @@
  *
  * `chrome.*` is only half of what a vendor bundle runs against. The other
  * half is whatever the surrounding global scope provides, and a bare
- * `node:vm` context provides almost none of it — no `Response`, no
+ * `node:vm` context provides almost none of it: no `Response`, no
  * `EventTarget`, no `location`, no `document`. Loading the twenty-eight real
  * filter bundles showed that this, not the extension API, was what actually
  * stopped most of them: `ReferenceError: window is not defined` kills a
@@ -12,14 +12,14 @@
  * ## The MV2/MV3 split is real, not a convenience
  *
  * An MV3 `service_worker` runs in a ServiceWorkerGlobalScope: `self`,
- * `location`, `navigator`, `fetch`, `importScripts` — and no `window`, no
+ * `location`, `navigator`, `fetch`, `importScripts`, and no `window`, no
  * `document`. A bundle that touches `document` there is broken in real
  * Chrome too, and handing it a DOM would hide that.
  *
  * MV2 is the opposite. `background.scripts` and `background.page` both load
  * into a real background **page**, which is a full document with `window`,
  * `document`, `localStorage` and the rest. Withholding those from an MV2
- * background isn't strictness, it's inaccuracy — and it is exactly what
+ * background isn't strictness, it's inaccuracy, and it is exactly what
  * stopped goguardian, gopherbuddy, mobileguardian and contentkeeper, all
  * four of them MV2.
  *
@@ -48,12 +48,12 @@ export interface PlatformOptions {
     manifestVersion: 2 | 3;
     extensionId: string;
     /** The unpacked extension directory, so `fetch` can serve the
-     *  extension's own packaged files — see `buildFetch`. */
+     *  extension's own packaged files: see `buildFetch`. */
     extensionDir: string;
     /** MV2 backgrounds are pages and get a DOM; MV3 service workers don't. */
     dom: boolean;
     allowNetwork: boolean;
-    /** Optional responder for genuinely remote requests — see LoadOptions.network. */
+    /** Optional responder for genuinely remote requests: see LoadOptions.network. */
     network?: (request: {
         url: string;
         method: string;
@@ -81,7 +81,7 @@ export interface Platform {
      * Adds a `<script src>` to the background page's document, for MV2 only;
      * a no-op without a DOM.
      *
-     * The element is added, not executed — the host runs the code itself in
+     * The element is added, not executed: the host runs the code itself in
      * the vm. What this provides is the document *looking* the way Chrome's
      * generated background page looks, which bundles read: ciscoUmbrella's
      * walks `document.getElementsByTagName("script")` and takes
@@ -98,14 +98,14 @@ export interface Platform {
  * top-level `fetch()` that throws ends the whole background script, which is
  * not what losing the network does and is how lightspeedFilterAgent stopped
  * dead. And it is not a rejection either, which is what a real offline
- * device gives — because plenty of vendor bundles call `fetch` during
+ * device gives, because plenty of vendor bundles call `fetch` during
  * startup without a `.catch`, and an unhandled rejection is a test failure
  * even though the bundle is fine.
  *
  * So: an empty, well-formed, unsuccessful-but-parseable response. `.json()`
  * gives `{}`, `.text()` gives `"{}"`, `.ok` is false. A bundle that checks
  * the status takes its error path; one that parses regardless gets an empty
- * object rather than an exception. Nothing is fabricated *as data* — the
+ * object rather than an exception. Nothing is fabricated *as data*: the
  * body is empty and the status says the request did not succeed. Pass
  * `allowNetwork` for real traffic.
  */
@@ -153,7 +153,7 @@ const CONTENT_TYPES: Record<string, string> = {
  *
  * Being offline does not stop an extension from reading its own resources:
  * `fetch(chrome.runtime.getURL("model.wasm"))` is a local read that succeeds
- * on a plane, and vendor bundles use it for exactly that — WebAssembly
+ * on a plane, and vendor bundles use it for exactly that: WebAssembly
  * blobs, bundled rule lists, default configuration. Answering those with the
  * generic offline response hands a WebAssembly compiler two bytes of JSON,
  * which is how ckauthenticatorg3 and lightspeedInsightAgent failed with
@@ -321,13 +321,13 @@ class OfflineXMLHttpRequestBase extends EventTarget {
 
 /**
  * `XMLHttpRequest`. Node has none at all, and bundles reach for it
- * unconditionally — MV2 code especially, plus the Emscripten runtimes a
+ * unconditionally: MV2 code especially, plus the Emscripten runtimes a
  * couple of them embed.
  *
  * Like `fetch`, it serves the extension's own packaged files and nothing
  * else. That is not a nicety: goguardian loads its Avro schemas this way and
  * then parses them, so a stub that always answered "503, empty body" handed
- * the parser an empty string and died on `invalid name: ""` — a failure with
+ * the parser an empty string and died on `invalid name: ""`: a failure with
  * no resemblance to anything a real device would do.
  *
  * Synchronous mode (`open(..., false)`) is supported, because that is how
@@ -438,7 +438,7 @@ function buildLocation(extensionId: string, path: string) {
  *
  * The filter can legitimately match nothing if the corpus shifts, and
  * `new UserAgent(filter)` throws in that case. Falling back to an
- * unfiltered agent keeps the host loading — a slightly wrong device beats no
+ * unfiltered agent keeps the host loading: a slightly wrong device beats no
  * navigator at all, which is a `ReferenceError` in the first bundle that
  * reads one.
  */
@@ -472,7 +472,7 @@ function buildUserAgentData(
 ) {
     const chromeFull = /Chrome\/([\d.]+)/.exec(userAgent)?.[1];
     const chromeMajor = chromeFull?.split(".")[0];
-    // "CrOS x86_64 16093.57.0" — the OS build, which is what Chrome reports
+    // "CrOS x86_64 16093.57.0": the OS build, which is what Chrome reports
     // as platformVersion on a Chromebook.
     const crosVersion = /CrOS \S+ ([\d.]+)/.exec(userAgent)?.[1];
     const lowEntropy = {
@@ -506,7 +506,7 @@ function buildUserAgentData(
 }
 
 /**
- * A managed Chromebook is typically on AC power in a classroom cart — full
+ * A managed Chromebook is typically on AC power in a classroom cart: full
  * and charging is the honest default, not a placeholder. An EventTarget for
  * the same reason `connection` is one: imtlazarus and lanschoolStudent both
  * call `getBattery().then(b => b.addEventListener(...))`.
@@ -551,15 +551,15 @@ function navigatorDeviceApis() {
  * `navigator` as the chosen device reports it.
  *
  * `appVersion` and `connection` are here because bundles read them without
- * guarding — haparahighlights calls `self.navigator.appVersion.match(...)`
+ * guarding: haparahighlights calls `self.navigator.appVersion.match(...)`
  * and securlyClassroom calls `navigator.connection.addEventListener(...)`
  * during startup, and an absent property is a TypeError in both.
  *
  * Real device data rather than a hand-written string, from the same
  * `user-agents` package and the same `/CrOS/` filter that
  * misc/filters/securly/cluster.ts uses to talk to Securly. A hardcoded UA
- * goes stale silently — this one shipped claiming Chrome 128 while the
- * package's current Chrome OS entries are on 150 — and it drags `platform`,
+ * goes stale silently (this one shipped claiming Chrome 128 while the
+ * package's current Chrome OS entries are on 150) and it drags `platform`,
  * `vendor`, `language` and `connection` along with it, all of which the
  * package already carries as a *consistent set*. Inventing those four
  * independently is how you end up with a navigator no real device ever
@@ -664,7 +664,7 @@ function buildServiceWorkerScope() {
 }
 
 /** Web platform constructors Node already implements to spec. Passed through
- *  rather than reimplemented — these are the same objects the rest of the
+ *  rather than reimplemented: these are the same objects the rest of the
  *  process uses, and a bundle that constructs a `Response` wants a real one. */
 function nodeWebGlobals(): Record<string, unknown> {
     return {
@@ -701,7 +701,7 @@ function nodeWebGlobals(): Record<string, unknown> {
     };
 }
 
-// Every real `console` method, bound once at module load — before any
+// Every real `console` method, bound once at module load: before any
 // vendor's code has ever run.
 const REAL_CONSOLE_METHODS: Record<string, (...args: unknown[]) => unknown> =
     Object.fromEntries(
@@ -724,13 +724,13 @@ const REAL_CONSOLE_METHODS: Record<string, (...args: unknown[]) => unknown> =
     );
 
 /**
- * A fresh `console` per extension load — never the real, shared global
+ * A fresh `console` per extension load: never the real, shared global
  * object itself. A background is a separate vm realm, so a vendor
  * reassigning `console.log` inside it only ever touches its own copy; handed
  * the real object directly, that reassignment lands on Node's actual global
  * `console` instead (they're the same object, not a copy), corrupting
  * logging for every *other* vendor's background loaded afterward for the
- * rest of the process — confirmed against linewizeConnect, which wraps
+ * rest of the process. Confirmed against linewizeConnect, which wraps
  * `console.log` into its own logger that calls back into `console.log`
  * internally, so once the reassignment reaches the real global it recurses
  * into itself on the very next vendor's first log line: a
@@ -739,9 +739,9 @@ const REAL_CONSOLE_METHODS: Record<string, (...args: unknown[]) => unknown> =
  * shares this same fix, from here rather than a second copy.
  *
  * Silent unless `CIVIL_VENDOR_CONSOLE` is set. What a vendor bundle logs is
- * its own startup narration against an offline, freshly-installed device —
- * "Failed to register to Cloud", storage keys read back empty, a websocket
- * that never opens — and a full sweep produces over two thousand such lines,
+ * its own startup narration against an offline, freshly-installed device
+ * ("Failed to register to Cloud", storage keys read back empty, a websocket
+ * that never opens) and a full sweep produces over two thousand such lines,
  * burying the few dozen the harness itself writes. None of it feeds a
  * verdict (detect.ts reads the page, not the console). Set the variable to
  * see it when chasing one vendor's behavior; that is how the gaps this host
@@ -764,12 +764,12 @@ export function buildFreshConsole(): Console {
  * check it starts" into a test run that never exits. `dispose()` clears
  * whatever is still outstanding.
  *
- * These are real Node timers, not happy-dom's — so unlike a content script's
+ * These are real Node timers, not happy-dom's, so unlike a content script's
  * timers (filterProbe/sandbox.ts) or this same background page's own DOM
  * timers, nothing else already contains a callback that throws. A vendor
  * bundle's polling loop firing after its synchronous startup has finished is
  * routine, not exceptional, so an error from it must not take down the
- * whole host process — logged instead, the same as happy-dom's own default
+ * whole host process: logged instead, the same as happy-dom's own default
  * handles a caught timer error. Logged to the vendor's own console, not the
  * process's: the error is the vendor's (imtlazarus reads a `BLOCK_RULE_ID`
  * its bundle never declares), so it belongs with the rest of that vendor's
@@ -821,7 +821,7 @@ function browserGlobals(options: PlatformOptions) {
         location: buildLocation(extensionId, options.backgroundPath),
         origin: `chrome-extension://${extensionId}`,
         isSecureContext: true,
-        // Neither Node nor happy-dom implements IndexedDB — Node has no native
+        // Neither Node nor happy-dom implements IndexedDB: Node has no native
         // version at all, unlike Response/Blob/EventTarget in nodeWebGlobals.
         // A fresh factory per load: a shared module-level instance would leak
         // one extension's stored data into the next extension's load, or one
@@ -843,8 +843,8 @@ function browserGlobals(options: PlatformOptions) {
 }
 
 /**
- * Every constructor and helper the document brings with it — DOMParser,
- * Element, MutationObserver, localStorage, alert, ... — copied onto the
+ * Every constructor and helper the document brings with it (DOMParser,
+ * Element, MutationObserver, localStorage, alert, ...) copied onto the
  * sandbox global rather than hand-listed, because the point of using a DOM
  * implementation is not having to guess which parts a minified bundle
  * reaches for.
@@ -852,7 +852,7 @@ function browserGlobals(options: PlatformOptions) {
  * Walking the prototype chain, not just own properties: happy-dom defines
  * `alert`, `getComputedStyle`, `matchMedia` and most other *methods* on
  * Window.prototype, so an own-properties-only copy silently leaves them out
- * — which is how contentkeeper's background page still died on `alert is
+ * which is how contentkeeper's background page still died on `alert is
  * not defined` after being handed a whole DOM.
  */
 function copyWindowGlobals(
@@ -908,14 +908,14 @@ async function buildBackgroundPage(
             // errorCapture left at the default ("tryAndCatch"): a background
             // page's own deferred timer callback (setTimeout/setInterval/…)
             // throwing is then caught and logged via console.error instead of
-            // crashing this process — "disabled" here is the same trap fixed
+            // crashing this process: "disabled" here is the same trap fixed
             // in filterProbe/sandbox.ts's matching happy-dom usage.
         },
     });
 
     copyWindowGlobals(window, globals);
     // `window` is deliberately NOT set here. In a real page `window` *is* the
-    // global object, so the caller aliases it to the sandbox itself — which
+    // global object, so the caller aliases it to the sandbox itself, which
     // matters concretely: goguardian's background page walks
     // `Object.values(window.chrome)` to promisify the API, and a `window`
     // that is happy-dom's Window rather than the sandbox has no `chrome` on

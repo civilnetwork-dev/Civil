@@ -1,7 +1,7 @@
 FROM oven/bun:latest AS builder
 
 # Debian (glibc), not alpine: obscura-rs only ships prebuilt native addons for
-# macOS and Linux glibc (see node_modules/obscura-rs/README.md) — musl can't
+# macOS and Linux glibc (see node_modules/obscura-rs/README.md): musl can't
 # dlopen them, and there's no local crate source here to cross-compile a musl
 # build from (the Rust source lives in the separate Crash0v3rrid3/obscura
 # repo). bash/libstdc++/libgcc already ship in this base image, unlike on
@@ -22,7 +22,7 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 
-# Opt-in only (see misc/obfuscateAssets.ts and misc/obfuscatti/README.md):
+# Opt-in only (see misc/vite/obfuscateAssets.ts and misc/obfuscatti/README.md):
 # defaults to obscura-rs, unchanged from before this arg existed. Building
 # misc/obfuscatti's native binding here, from source, rather than copying in
 # a prebuilt one, is what makes it match *this* image's platform -- a

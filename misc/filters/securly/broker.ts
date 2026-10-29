@@ -266,7 +266,7 @@ function getExtensionVersion(
             // This subscriber manifest lists Securly's enterprise-distributed
             // builds, not the Web Store one whose id the installed bundle's
             // key derives to, so an exact match fails for the very extension
-            // this project ships — and failing here made every reputation
+            // this project ships, and failing here made every reputation
             // check UNKNOWN, i.e. Securly never vetoed a domain. Any current
             // version from the same manifest is what a real deployment sends.
             const version =

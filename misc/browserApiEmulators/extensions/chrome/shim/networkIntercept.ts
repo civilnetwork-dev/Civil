@@ -840,17 +840,10 @@ function interceptXHR(
     };
 }
 
-/**
- * Patches this window's fetch and XMLHttpRequest. The third parameter used
- * to route background requests through UV's page-side encoder, which was a
- * no-op in practice: UV only ever set `__uv$config` on the service worker's
- * own `self` (misc/config/service/sw.ts), never on `window`. UV is gone, and
- * requests go out unchanged.
- */
+/** Patches this window's fetch and XMLHttpRequest. */
 export function installNetworkInterceptor(
     events: WebRequestEventSet,
     getDNRRules: () => DNRRule[],
-    _proxyExternalRequests = false,
 ): void {
     const w = window as unknown as Record<string, unknown>;
     if (w.__civil_net_intercepted) return;

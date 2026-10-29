@@ -1,5 +1,5 @@
 /**
- * Regenerates `filterApiSurface.json` — the record of which parts of the
+ * Regenerates `filterApiSurface.json`: the record of which parts of the
  * extension API each tracked filter vendor actually touches.
  *
  * ## Why a generated fixture and not a live scan
@@ -27,7 +27,7 @@
  *
  * `apis`: every `chrome.<ns>.<member>` / `browser.<ns>.<member>` in the
  * bundle's JS and HTML, filtered to real extension API namespaces (see
- * `KNOWN_NAMESPACES`). A regex, not a parser — it cannot see APIs reached
+ * `KNOWN_NAMESPACES`). A regex, not a parser: it cannot see APIs reached
  * through an alias (`const s = chrome.storage; s.local.get(...)`) and it
  * would happily record a namespace named in a comment. Both directions of
  * error are acceptable here because of what the data is used for: the test
@@ -37,7 +37,7 @@
  * namespaces exists because the raw scan pulls in `chrome.google.com` from
  * URL strings and a `browser.params` from one vendor's own object.
  *
- * `callbackCalls`: calls that pass a function as a later argument —
+ * `callbackCalls` are calls that pass a function as a later argument, like
  * `chrome.storage.local.get(keys, cb)`. This is the *only* calling
  * convention MV2 has (Chrome added promises with MV3), so a host whose
  * implemented methods are promise-only silently never calls these back. That
@@ -54,7 +54,7 @@ import { resolveBackground } from "../manifest";
 
 /**
  * Real extension API namespaces. Anything else a `chrome.x.y` regex turns up
- * is a false positive — a hostname in a string literal, a vendor's own
+ * is a false positive: a hostname in a string literal, a vendor's own
  * object that happens to be named `browser`, a typo in dead code.
  * Deliberately broader than what the filters currently use: a namespace
  * appearing here does not mean anything needs it, only that if a bundle
@@ -151,7 +151,7 @@ const MEMBER =
  * whitespace-stripped source, because minified bundles have none and
  * unminified ones would otherwise need the pattern to tolerate arbitrary
  * indentation. The `[^()]{0,240}?` argument run means calls whose earlier
- * arguments themselves contain parentheses are missed — an undercount, which
+ * arguments themselves contain parentheses are missed. An undercount, which
  * is the safe direction: this field is only ever used to prove that callback
  * style *is* used, never that it isn't.
  */
@@ -229,7 +229,7 @@ function scanBundle(dir: string): FilterApiSurface {
     // A BOM before `{` is real in a couple of these bundles and JSON.parse
     // rejects it.
     const manifest = JSON.parse(
-        readFileSync(join(dir, "manifest.json"), "utf8").replace(/^﻿/, ""),
+        readFileSync(join(dir, "manifest.json"), "utf8").replace(/^\uFEFF/, ""),
     );
     const background = resolveBackground(manifest).type;
 

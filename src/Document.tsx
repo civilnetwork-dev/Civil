@@ -10,7 +10,6 @@ import { PALETTE } from "./styles/palette";
  * uses.
  */
 const proxyScripts = [
-    "/wasm_dencode.js",
     "/baremux/index.js",
     "/scramjet/scramjet.js",
     "/scramjetController/controller.api.js",

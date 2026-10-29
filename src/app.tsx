@@ -5,7 +5,7 @@ import type { createRouter } from "./router";
 /**
  * IBM Plex Sans and IBM Plex Mono, one superfamily.
  *
- * Rubik is a rounded geometric face — friendly, and working directly against a
+ * Rubik is a rounded geometric face: friendly, and working directly against a
  * language built from hairlines, square corners and measured rules. Plex was
  * drawn for technical documentation and its two cuts share a skeleton, so text
  * and data sit on the same rhythm instead of looking like two products.

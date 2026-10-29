@@ -11,7 +11,7 @@
  * reaches for something new, regenerating the fixture is what turns that
  * into a failing test here.
  *
- * The bundles themselves are not in this repository — the committed scan
+ * The bundles themselves are not in this repository: the committed scan
  * result is. The last block opts back into the real thing when a checkout of
  * them happens to be present.
  */
@@ -65,8 +65,8 @@ function writeExtension(files: Record<string, string>): string {
  * Timeout for tests that load an MV2 background, which is the only shape that
  * pulls in a DOM (see api/platform.ts).
  *
- * Not masking a hang. That work is a happy-dom import plus a vm load — ~0.5s
- * on an idle machine — but this file runs alongside 30-odd others, and under
+ * Not masking a hang. That work is a happy-dom import plus a vm load, ~0.5s
+ * on an idle machine, but this file runs alongside 30-odd others, and under
  * that contention it has twice crossed the 5s default. Five seconds is not a
  * meaningful bound for it; a test that genuinely hangs still blows through
  * this one.
@@ -106,8 +106,8 @@ const REQUIRED_SURFACE: Record<string, string[]> = (() => {
  * the wrapping is where reachability is actually decided.
  *
  * Presence and type are checked, not invocation. Calling every member with
- * no arguments would report failures that no real bundle would ever hit —
- * `tabs.get()` without a tab id throws by design — so behavior is covered by
+ * no arguments would report failures that no real bundle would ever hit
+ * (`tabs.get()` without a tab id throws by design), so behavior is covered by
  * the targeted blocks further down instead.
  */
 async function probeMissing(
@@ -124,7 +124,7 @@ async function probeMissing(
         "background.js": `
 // Members whose correct value, in real Chrome, is \`undefined\` until
 // something sets them. Reading one back as undefined is the API working,
-// not a gap — \`runtime.lastError\` is undefined exactly when the last call
+// not a gap: \`runtime.lastError\` is undefined exactly when the last call
 // succeeded, which is the normal case and the one this probe is in.
 const UNSET_BY_DESIGN = new Set(["runtime.lastError", "extension.lastError"]);
 const REQUIRED = ${JSON.stringify(REQUIRED_SURFACE)};
@@ -192,7 +192,7 @@ describe("every API surface the tracked filters touch is reachable", () => {
  *
  * This is the convention MV2 has and MV3 kept: `chrome.storage.local.get(keys, cb)`.
  * Seven of the twenty-eight filters are still MV2, where it is the *only*
- * convention available — and the MV3 ones use it too, out of habit and
+ * convention available, and the MV3 ones use it too, out of habit and
  * cross-browser code sharing. A method that returns a promise and drops the
  * callback leaves those bundles waiting forever on a reply that never comes,
  * which looks like an extension that simply does nothing rather than one
@@ -227,7 +227,7 @@ const CALLBACK_ARGS: Record<string, unknown[]> = {
 };
 
 /** Every implemented-namespace path any filter calls with a callback, with
- *  the filters that do — so a failure names who breaks. */
+ *  the filters that do, so a failure names who breaks. */
 const CALLBACK_PATHS: [path: string, callers: string[]][] = (() => {
     const byPath = new Map<string, string[]>();
     for (const [name, filter] of Object.entries(FILTERS))
@@ -293,7 +293,7 @@ describe("runtime.onMessage listeners", () => {
         // Twenty of the twenty-eight. Not a stylistic detail: a listener
         // declared `(message, sender, sendResponse)` and dispatched with two
         // arguments receives `undefined` where `sendResponse` belongs, so
-        // every reply it attempts throws — and it throws inside the
+        // every reply it attempts throws, and it throws inside the
         // extension's own listener, which reads as the vendor's code being
         // broken rather than the host's dispatch being wrong.
         expect(threeArg.length).toBeGreaterThan(FILTER_NAMES.length / 2);
@@ -306,8 +306,8 @@ describe("runtime.onMessage self-delivery", () => {
         async () => {
             // Chrome fires onMessage in every frame of the extension except the
             // one that sent the message. A background page that broadcasts from
-            // inside its own onMessage handler — "the state changed, tell
-            // everyone" — is ordinary code, and echoing it back makes it
+            // inside its own onMessage handler ("the state changed, tell
+            // everyone") is ordinary code, and echoing it back makes it
             // unbounded recursion: mobileguardian re-entered its own listener
             // 18,689 times that way before the stack gave out.
             const dir = writeExtension({
@@ -380,7 +380,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ---------------------------------------------------------------------------
 
 /** The four shapes the twenty-eight manifests actually use, with how many
- *  filters use each — so this block is provably exhaustive over the corpus
+ *  filters use each, so this block is provably exhaustive over the corpus
  *  rather than over what MV2/MV3 permit in theory. */
 const BACKGROUND_SHAPES = (() => {
     const counts = new Map<string, string[]>();
@@ -398,7 +398,7 @@ describe("background entry points", () => {
         // only *looked* backgroundless before resolveBackground learned to
         // read the legacy `app.background.scripts` shape they actually use).
         // The synthetic "no background at all" case below still covers that
-        // code path — it's just that nothing in the current corpus needs it.
+        // code path: it's just that nothing in the current corpus needs it.
         expect([...BACKGROUND_SHAPES.keys()].toSorted()).toEqual([
             "page",
             "scripts",
@@ -452,7 +452,7 @@ describe("background entry points: classic pages", () => {
         "runs the scripts an MV2 background page pulls in",
         async () => {
             // Two filters (goguardian, contentkeeper) ship `background.page`
-            // rather than `background.scripts` — an HTML document whose only
+            // rather than `background.scripts`: an HTML document whose only
             // real content is its <script> tags. Treating it as "no background"
             // means neither of their service workers ever runs, and every
             // assertion about them would be about an extension that did nothing.
@@ -490,7 +490,7 @@ describe("background entry points: classic pages", () => {
 });
 
 // ---------------------------------------------------------------------------
-// storage.managed — how a school filter gets told what to block
+// storage.managed: how a school filter gets told what to block
 // ---------------------------------------------------------------------------
 
 describe("storage.managed", () => {
@@ -500,8 +500,8 @@ describe("storage.managed", () => {
 
     it("is read by the filters that take enterprise policy", () => {
         // Not an incidental API for this corpus: a managed Chromebook hands
-        // the extension its whole configuration — allowlists, block
-        // categories, the tenant it reports to — through managed storage. A
+        // the extension its whole configuration (allowlists, block
+        // categories, the tenant it reports to) through managed storage. A
         // host that returns nothing there runs the vendor's *unconfigured*
         // code path, which is not the code path a student's device runs.
         expect(users.length).toBeGreaterThan(0);
@@ -599,7 +599,7 @@ describe("runtime.connect", () => {
         // and registers handlers on it keeps running, and the messages it
         // would have exchanged go nowhere.
         //
-        // What this asserts is exactly that and no more — that port setup is
+        // What this asserts is exactly that and no more: that port setup is
         // survivable, not that port messaging works. A test that needs a
         // reply to travel over a port is a test this host cannot serve yet.
         expect(users.length).toBeGreaterThan(0);
@@ -639,14 +639,14 @@ const haveBundles = existsSync(BUNDLE_ROOT);
  *
  * Lightspeed Insight refuses to start without an enterprise policy and two
  * replies from its own server, so without this it runs about four statements
- * and stops — which would make every observation of it an observation of an
+ * and stops, which would make every observation of it an observation of an
  * extension that gave up.
  *
  * All three pieces come from reading the bundle, not from guessing:
  *
  *   - `schema.json` in the bundle declares the whole managed-policy surface:
  *     `EntitlementKey` and `Env`, both strings, nothing else. `js/utils.js`
- *     rejects when the value is empty, so any non-empty string gets past it —
+ *     rejects when the value is empty, so any non-empty string gets past it:
  *     hence a random one here. It is a placeholder, not a real tenant's key,
  *     and it never leaves the process.
  *   - `Env` selects one of the bundle's own `env/{dev,qa,prod}.json` files
@@ -655,12 +655,12 @@ const haveBundles = existsSync(BUNDLE_ROOT);
  *     `agentConfigUrl/{platform}/{key}` and throws on anything but 2xx. Those
  *     are the two replies below. The config fields are the ones
  *     `background.js` actually reads, and `speedTestActive: false` keeps its
- *     `client.wasm` speed-test engine (a Go/QUIC build — decompiling it shows
+ *     `client.wasm` speed-test engine (a Go/QUIC build: decompiling it shows
  *     `Lightspeed-Systems/insight-speedtest` and no entitlement logic at all)
  *     from trying to open QUIC connections that this host has no network for.
  *
- * `vendorEmulation.ts` — shared with misc/filterProbe/sandbox.ts, so a
- * bundle's configured/enrolled state is the same in both places it's tested —
+ * `vendorEmulation.ts` (shared with misc/filterProbe/sandbox.ts, so a
+ * bundle's configured/enrolled state is the same in both places it's tested)
  * carries the same idea for Securly, iboss, Linewize and Aristotle.
  */
 const VENDOR_SETUP: Record<
@@ -717,19 +717,19 @@ const VENDOR_SETUP: Record<
 
 /**
  * Errors a bundle still reports after startup. Usually the bundle's own
- * behavior rather than a gap in the host — pinned rather than hidden, so a
+ * behavior rather than a gap in the host: pinned rather than hidden, so a
  * change in either direction shows up as a failing test.
  *
  * `lanschoolStudent` is the one real exception: this genuinely is a host
  * gap, `chrome.app.window.create(...)`'s callback-style result being
  * `undefined` instead of a real `AppWindow` (`.setBounds`, `.show`, `.close`,
- * ...) — surfaced now that `resolveBackground` actually loads this bundle's
+ * ...): surfaced now that `resolveBackground` actually loads this bundle's
  * legacy `app.background` shape (misc/filterProbe/vendors.ts's own doc
  * comment has the fuller story). Left unbuilt on purpose: it's Chrome Apps'
  * window-management API, reached from this vendor's full-screen "blank
  * screen" lockdown UI, nothing to do with filtering, and lanschoolStudent
  * isn't even lanschool's primary folder for the filter-probe harness
- * anymore — lanschoolWebHelper is, since it's the one that actually blocks.
+ * anymore: lanschoolWebHelper is, since it's the one that actually blocks.
  */
 const KNOWN_ASYNC_FAILURES: Record<string, RegExp> = {
     lanschoolStudent: /setBounds/,
@@ -799,8 +799,8 @@ async function startupProblems(
  * anywhere. This block runs against the bundles themselves when a checkout of
  * them happens to be present.
  *
- * "Starts up" means what it says: the vendor's real background code — the
- * whole graph of it, service worker or background page — runs to completion
+ * "Starts up" means what it says: the vendor's real background code (the
+ * whole graph of it, service worker or background page) runs to completion
  * against this host's `chrome` and its surrounding platform, and neither
  * throws nor leaves a rejected promise behind. Getting there took the
  * platform layer in api/platform.ts; before it, most of these bundles died

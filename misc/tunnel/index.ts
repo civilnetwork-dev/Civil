@@ -2,7 +2,7 @@
  * Public tunnel for a locally-running Civil server.
  *
  * A cloudflared tunnel (via `untun`) already hands out a public
- * `*.trycloudflare.com` URL, but that hostname is trivially blockable — every
+ * `*.trycloudflare.com` URL, but that hostname is trivially blockable: every
  * filter can drop `trycloudflare.com` wholesale. The point of routing through
  * FreeDNS is the hostname: a subdomain of one of afraid.org's shared public
  * domains, CNAME'd at the cloudflare tunnel, on a name no filter has a reason
@@ -26,11 +26,11 @@
  * takes either a `captchaCode` solved out-of-band or a `solveCaptcha` callback,
  * and retries a rejected guess against a fresh captcha when a solver is present
  * (`captchaAttempts`). `createCaptchaSolver` (misc/tunnel/captchaSolver) is one
- * such callback, a local CRNN — verified reliable (five real FreeDNS
+ * such callback, a local CRNN: verified reliable (five real FreeDNS
  * submissions, five accepted), but retries still apply on the rare miss.
  *
- * **Which domain.** The `Filter-Sources` TODO's full vision — pick a domain
- * *no tracked filter blocks*, automatically — is now `pickTunnelDomain`
+ * **Which domain.** The `Filter-Sources` TODO's full vision (pick a domain
+ * *no tracked filter blocks*, automatically) is now `pickTunnelDomain`
  * (misc/tunnel/pickDomain): it enumerates `FreeDnsClient.getRegistry()`, runs
  * each candidate past the filter reputation checkers (misc/filters/
  * domainReputation), and returns a random survivor. `openTunnel` still takes a
@@ -49,14 +49,14 @@ import { FreeDnsClient, FreeDnsError, type Subdomain } from "./freedns";
 const firstChar = customAlphabet("abcdefghijklmnopqrstuvwxyz", 1);
 const restChars = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 11);
 
-/** A random 12-character DNS-safe label — long enough not to collide or be
+/** A random 12-character DNS-safe label: long enough not to collide or be
  *  guessable, short enough to stay well under the 63-char label limit. */
 function randomSubdomain(): string {
     return firstChar() + restChars();
 }
 
-/** Finds `hostname` in the account's subdomain list, retrying a few times —
- *  a record `createSubdomain` just reported success for can still be absent
+/** Finds `hostname` in the account's subdomain list, retrying a few times.
+ *  A record `createSubdomain` just reported success for can still be absent
  *  from this same list moments later (confirmed live: FreeDNS's own
  *  backend read lags its own writes, the same replication lag that delays
  *  public DNS). A single un-retried lookup would read that as "already
@@ -88,7 +88,7 @@ export interface OpenTunnelOptions {
     captchaCode?: string;
     /** Called with the captcha image when `captchaCode` is not given. An OCR
      *  solver is never perfect, so when this is supplied a rejected captcha is
-     *  retried with a fresh one — see `captchaAttempts`. */
+     *  retried with a fresh one: see `captchaAttempts`. */
     solveCaptcha?: (image: Uint8Array) => Promise<string>;
     /** How many times to solve-and-try the captcha before giving up. Only
      *  applies with `solveCaptcha` (a hand-typed `captchaCode` gets one shot,
@@ -129,7 +129,7 @@ function closeOnce(
         closed = true;
         try {
             // Live runs show FreeDNS's own subdomain list can still be missing
-            // a record moments after `createSubdomain` redirected success —
+            // a record moments after `createSubdomain` redirected success:
             // the same backend-replication lag that delays public DNS also
             // delays this read, so a single un-retried lookup right after
             // creation can find nothing and silently skip the delete.
@@ -167,7 +167,7 @@ export async function openTunnel(options: OpenTunnelOptions): Promise<Tunnel> {
     if (!options.client) await client.login();
 
     // The tunnel comes up first, so the captcha is only spent once there is a
-    // real host to point the record at — and, with a solver, so a rejected
+    // real host to point the record at, and, with a solver, so a rejected
     // guess can be retried against a fresh captcha without tearing anything
     // down.
     const tunnel = await startTunnel({
@@ -206,8 +206,8 @@ export async function openTunnel(options: OpenTunnelOptions): Promise<Tunnel> {
 }
 
 /**
- * Creates the subdomain, solving the captcha and — because an OCR guess is
- * often wrong — retrying against a fresh one. A hand-typed `captchaCode` gets a
+ * Creates the subdomain, solving the captcha and (because an OCR guess is
+ * often wrong) retrying against a fresh one. A hand-typed `captchaCode` gets a
  * single attempt: it can't be re-solved, so a wrong one is the caller's to fix.
  * Only a rejected *captcha* is retried; any other failure propagates at once.
  */
@@ -238,8 +238,8 @@ export async function createSubdomainWithCaptcha(
         } catch (error) {
             // Retry only a captcha rejection, and only when there is a solver
             // to produce a different guess and attempts left to spend. FreeDNS's
-            // own error page never says "captcha" — a wrong guess comes back as
-            // "The security code was incorrect, please try again." — so both
+            // own error page never says "captcha" (a wrong guess comes back as
+            // "The security code was incorrect, please try again.") so both
             // wordings are matched.
             const isCaptcha =
                 error instanceof FreeDnsError &&
@@ -255,7 +255,7 @@ export async function createSubdomainWithCaptcha(
  * Delete leftover tunnel subdomains from crashed or interrupted prior runs.
  *
  * A CNAME pointing at a `*.trycloudflare.com` origin, under a label in
- * `randomSubdomain`'s format, is only ever a record `openTunnel` created — and
+ * `randomSubdomain`'s format, is only ever a record `openTunnel` created, and
  * if one still exists, its cloudflared process is long gone, so the record is
  * dead. Each counts against FreeDNS's small subdomain quota, and a run killed
  * before `close()` leaks one; left alone they accumulate until creation fails
@@ -266,7 +266,7 @@ export async function createSubdomainWithCaptcha(
  * The destination is confirmed via `getSubdomainDetails`, not read off the
  * list page: that page truncates a long destination to 43 characters with a
  * literal "..." in the HTML, and the cut lands wherever the tunnel's random
- * name happens to put it — mid-word, inside `trycloudflare` itself (confirmed
+ * name happens to put it. Mid-word, inside `trycloudflare` itself (confirmed
  * live: `"guitar-usgs-bangkok-planets.trycloudflar..."` went unswept, then
  * wedged the next run at "no more subdomain capacity", because it does not
  * contain the string `trycloudflare`). No substring of the truncated value is

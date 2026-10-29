@@ -13,8 +13,7 @@ import {
  *
  * In order: a method picked on the connection error page for this frame's
  * next load, a per-site rule, the method a timed-out load failed over to this
- * session, the best-proxy probe's pick (only while automatic picking is on),
- * and the default method.
+ * session, and the user's default method.
  *
  * The failover pick lives here, in memory, rather than only in the stored
  * default. The watchdog used to rotate just the stored `transport` key, which
@@ -22,12 +21,8 @@ import {
  * the very transport that had just failed.
  */
 
-export type TransportSource =
-    | "retry"
-    | "site"
-    | "failover"
-    | "auto"
-    | "default";
+const SOURCES = ["retry", "site", "failover", "default"] as const;
+export type TransportSource = (typeof SOURCES)[number];
 
 export interface TransportChoice {
     host: string;
@@ -48,44 +43,22 @@ const used = new WeakMap<
 const siteRule = (host: string | null) =>
     host ? getSetting("transportSites")[host] : undefined;
 
-/** Whether a best-proxy pick could matter for `term`, so the probe is worth sending. */
-export function wantsBestProxy(term: string): boolean {
-    return (
-        (getSetting("transportAuto") && !siteRule(normalizeHost(term))) ||
-        getSetting("wispVersion") === "auto"
-    );
-}
-
 /**
  * The key scramjetInit builds a transport under. Only Epoxy has a choice of
  * Wisp version: libcurl bundles a version 1 client and Bare doesn't use Wisp.
  * "epoxy" is the version 1 client Civil always had; "epoxy@2" asks for
- * version 2. Automatic takes the best-proxy probe's pick, 2 without one.
+ * version 2.
  */
-export function transportKey(
-    transport: TransportName,
-    bestWisp?: number,
-): string {
+export function transportKey(transport: TransportName): string {
     if (transport !== "epoxy") return transport;
-    const setting = getSetting("wispVersion");
-    const version =
-        setting === "auto" ? (bestWisp === 1 ? 1 : 2) : Number(setting);
-    return version === 2 ? "epoxy@2" : "epoxy";
+    return getSetting("wispVersion") === "2" ? "epoxy@2" : "epoxy";
 }
 
-export function resolveTransport(
-    frame: object,
-    term: string,
-    bestPick?: string,
-): TransportName {
+export function resolveTransport(frame: object, term: string): TransportName {
     const host = normalizeHost(term);
     const once = oneShot.get(frame);
     oneShot.delete(frame);
     const rule = siteRule(host);
-    const auto =
-        getSetting("transportAuto") && isTransport(bestPick)
-            ? bestPick
-            : undefined;
 
     const [transport, source]: [TransportName, TransportSource] = once
         ? [once, "retry"]
@@ -93,9 +66,7 @@ export function resolveTransport(
           ? [rule, "site"]
           : failover
             ? [failover, "failover"]
-            : auto
-              ? [auto, "auto"]
-              : [getSetting("transport"), "default"];
+            : [getSetting("transport"), "default"];
 
     used.set(frame, { transport, source });
     if (host) {
@@ -139,9 +110,7 @@ export function lastTransportChoice(): TransportChoice | null {
             c &&
             typeof c.host === "string" &&
             isTransport(c.transport) &&
-            ["retry", "site", "failover", "auto", "default"].includes(
-                c.source,
-            ) &&
+            SOURCES.includes(c.source) &&
             Number.isFinite(c.at)
         )
             return c as TransportChoice;

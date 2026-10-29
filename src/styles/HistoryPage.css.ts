@@ -17,7 +17,7 @@ import { vars } from "./theme.css";
 /**
  * The measured time rule.
  *
- * Each day is introduced by a labelled `Rule` — the same dimension-callout
+ * Each day is introduced by a labelled `Rule`: the same dimension-callout
  * motif the rest of the language uses for a section break, here reused as a
  * day divider. The hour histogram and the entry count sit underneath it as a
  * measured readout of what the rule spans, rather than being folded into the
@@ -26,7 +26,7 @@ import { vars } from "./theme.css";
 
 /**
  * The scope row states what's currently in view. It sits directly under the
- * title block because the filter doesn't only hide rows — the day rules and
+ * title block because the filter doesn't only hide rows: the day rules and
  * their hour readouts below recompute from it too.
  */
 export const scopeRow = style({
@@ -72,7 +72,7 @@ export const filterHint = style(
 /**
  * One text node, one style. The previous readout split its numbers and words
  * into separately-styled spans, which left no whitespace between them in the
- * DOM — so the live region announced "3pages2days" and the page needed an
+ * DOM, so the live region announced "3pages2days" and the page needed an
  * `aria-hidden` copy plus a visually-hidden sibling to say one sentence.
  * A sentence set as a sentence needs none of that.
  */
@@ -107,7 +107,7 @@ export const dayMetrics = style({
 });
 
 /**
- * A day's browsing plotted against its own 24 hours — the page already holds
+ * A day's browsing plotted against its own 24 hours: the page already holds
  * every timestamp, and this is the one place that shape becomes visible.
  */
 export const dayMeter = style({
@@ -116,7 +116,7 @@ export const dayMeter = style({
     // narrow, twenty-four hours were plotted across a fifth of the sheet with
     // the count stranded a thousand pixels away, so the gap read as a layout
     // fault rather than as a chart. Given the width, the bars resolve into a
-    // day's actual shape — which is the only reason this chart exists.
+    // day's actual shape, which is the only reason this chart exists.
     flex: "1 1 auto",
     maxWidth: "640px",
     display: "flex",
@@ -170,7 +170,7 @@ export const dayMeterBar = style({
     },
 });
 
-// ember is non-text — this bar is a tick, not a label — so it clears the
+// ember is non-text (this bar is a tick, not a label) so it clears the
 // 3:1 threshold rather than needing 4.5:1.
 export const dayMeterBarOn = style({
     selectors: {
@@ -311,7 +311,7 @@ export const entryTitle = style({
 
 /**
  * Revealed on row hover, row focus-within, and unconditionally where there is
- * no hover to trigger it — `display: none` until hover would be the keyboard
+ * no hover to trigger it. `display: none` until hover would be the keyboard
  * trap DESIGN.md records.
  */
 export const deleteBtn = style({

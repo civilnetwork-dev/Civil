@@ -1,19 +1,19 @@
 /**
  * The filter route check, proven offline.
  *
- * The harness (harness.ts) is the live runner — server, tunnel, captcha,
+ * The harness (harness.ts) is the live runner: server, tunnel, captcha,
  * cloudflared. None of that belongs in a test run, and none of it is where the
  * risk is. The risk is in the two pure pieces the harness orchestrates:
  * whether `detectFlagging` correctly reads a filter's block page out of a
  * `PageObservation`, and whether `predictFix` points at the right Civil source
  * when it does. Those are what this file exercises, driven by the committed
- * `probeData.json` and, for the sandbox, a stubbed fetch — no bundle, no
+ * `probeData.json` and, for the sandbox, a stubbed fetch: no bundle, no
  * network, no wait.
  *
  * The last block opts into the real bundles when a checkout is present, to
  * prove the sandbox can actually load a filter and run a content script
- * against a page. The full live path — a running Civil server behind a tunnel
- * — is the harness's job and is not asserted here.
+ * against a page. The full live path, a running Civil server behind a tunnel,
+ * is the harness's job and is not asserted here.
  */
 
 import { existsSync } from "node:fs";
@@ -34,7 +34,7 @@ function observe(partial: Partial<PageObservation>): PageObservation {
     return {
         route: "/newtab",
         finalUrl: "https://abc123.mooo.com/newtab",
-        pageText: "Civil — new tab",
+        pageText: "Civil: new tab",
         originalLength: 20,
         status: 200,
         ...partial,
@@ -102,7 +102,7 @@ describe("detectFlagging", () => {
         // A real marker from Securly's own bundle.
         const marker = PROBE_DATA.securly!.blockMarkers[0]!;
         const verdict = detectFlagging(
-            observe({ pageText: `200 ${marker} — contact your teacher` }),
+            observe({ pageText: `200 ${marker}: contact your teacher` }),
             "securly",
         );
         expect(verdict.flagged).toBe(true);
@@ -141,7 +141,7 @@ describe("detectFlagging attribution and failures", () => {
     });
 
     it("never lets a broken probe (fetch failure) read as clean", () => {
-        // Marker-shaped text, but the fetch itself never succeeded -- this
+        // Marker-shaped text, but the fetch itself never succeeded: this
         // text proves nothing and must not flag.
         const verdict = detectFlagging(
             observe({
@@ -229,7 +229,7 @@ describe("detectFlagging page shrinkage", () => {
 
     it("does not flag a route that was always short as dom-replaced", () => {
         const verdict = detectFlagging(
-            observe({ pageText: "Civil — new tab", originalLength: 20 }),
+            observe({ pageText: "Civil: new tab", originalLength: 20 }),
             "securly",
         );
         expect(verdict.flagged).toBe(false);
@@ -289,7 +289,7 @@ describe("predictFix", () => {
 
 describe("predictFix gaps and DNR", () => {
     it("flags the absence of a handler for a vendor that has none", () => {
-        // loilo has no misc/filters/loilo — the prediction should say so.
+        // loilo has no misc/filters/loilo: the prediction should say so.
         const verdict = detectFlagging(
             observe({ pageText: "200 blocked by LoiLo" }),
             "loilo",
@@ -353,7 +353,7 @@ describe("sandbox observeRoute", () => {
                     { status: 200 },
                 )) as unknown as typeof fetch,
         });
-        // No visible text run at all -- textContent alone would be empty.
+        // No visible text run at all: textContent alone would be empty.
         expect(observation.pageText).toContain(
             "This site has been blocked by a teacher",
         );
@@ -437,11 +437,11 @@ describe.skipIf(!haveBundles)("real filter bundles", () => {
             // Negative control, and the assertion that carries the weight for
             // the six vendors whose bundles yield no distinctive block marker
             // (their block text is server-rendered or district-configured).
-            // It proves the whole path really ran — fetch, DOM, this vendor's
-            // content scripts — and that none of it fabricates a flag from an
+            // It proves the whole path really ran (fetch, DOM, this vendor's
+            // content scripts) and that none of it fabricates a flag from an
             // ordinary page.
-            const clean = await observeWithBody(dir, "Civil — new tab");
-            expect(clean.pageText).toContain("Civil — new tab");
+            const clean = await observeWithBody(dir, "Civil: new tab");
+            expect(clean.pageText).toContain("Civil: new tab");
             expect(detectFlagging(clean, vendor).flagged).toBe(false);
 
             // Positive control, where this vendor has a marker of its own: the

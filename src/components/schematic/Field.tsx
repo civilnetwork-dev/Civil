@@ -44,7 +44,7 @@ export default function Field(props: {
                         if (e.key !== "Enter" || !props.onEnter) return;
                         // A caller that wires onEnter is handling Enter itself.
                         // Without preventDefault the browser would ALSO submit
-                        // the enclosing form, firing the same handler twice — a
+                        // the enclosing form, firing the same handler twice: a
                         // duplicate add on Apps, a duplicate report request on
                         // the Filter Checker.
                         e.preventDefault();

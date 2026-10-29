@@ -36,7 +36,7 @@ window.addEventListener("__civilDebug", (e: Event) => {
 // lazy route, script, or stylesheet it asks for is gone and the page dies
 // with a blank pane. Vite reports a stale JS chunk as `vite:preloadError`,
 // but a stale CSS preload instead throws "Unable to preload CSS for ..."
-// directly — no dedicated event, seen live and unhandled on /ban (session
+// directly. No dedicated event, seen live and unhandled on /ban (session
 // replay: a stale chunk hash from BanPage's own last deploy). Both mean the
 // same thing, so both reload; the timestamp keeps a persistently failing
 // chunk from reloading in a loop.
@@ -57,7 +57,7 @@ window.addEventListener("vite:preloadError", e => {
     reloadForStaleChunk();
 });
 
-// Vite's CSS preload failure isn't a `vite:preloadError` — it's a plain
+// Vite's CSS preload failure isn't a `vite:preloadError`: it's a plain
 // thrown error from the injected `<link>`'s own handler, so it has to be
 // caught generically. Only the exact known message triggers a reload; any
 // other error is left alone to propagate and be reported as normal.
@@ -120,7 +120,7 @@ function startPostHog(posthog: typeof import("posthog-js").default): void {
         //    internal panic on top of that is just noise.
         //  - PostHog's own session-replay recorder (rrweb) walks into the
         //    sandboxed Scramjet proxy frame and gets the exact SecurityError
-        //    a real cross-origin frame would throw — an intentional
+        //    a real cross-origin frame would throw: an intentional
         //    boundary the proxy's whole design depends on, not a bug.
         before_send: event => {
             if (event?.event !== "$exception") return event;

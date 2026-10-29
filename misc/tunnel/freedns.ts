@@ -2,18 +2,18 @@
  * A typed FreeDNS (freedns.afraid.org) client.
  *
  * A port of ading2210's `freedns-client` `client.py`
- * (https://github.com/ading2210/freedns-client) — same endpoints, same form
- * fields, same "a 302 means it worked" success test — with three deliberate
+ * (https://github.com/ading2210/freedns-client) (same endpoints, same form
+ * fields, same "a 302 means it worked" success test) with three deliberate
  * differences:
  *
  *   1. `xior`, not `fetch`, for every request (the rest of Civil's outbound
- *      HTTP goes through xior too — see misc/filters/securly/cluster.ts), and
+ *      HTTP goes through xior too, see misc/filters/securly/cluster.ts), and
  *      `redirect: "manual"` so a 302 stays a 302 to read rather than being
  *      followed into the page it points at.
  *   2. Credentials come from `FREEDNS_EMAIL` / `FREEDNS_PASSWORD` (FreeDNS
  *      accepts an email in its username field), so nothing calling this has
  *      to hold them. `login()` with no arguments reads the environment.
- *   3. A `deleteSubdomain` the reference doesn't have — the tunnel teardown
+ *   3. A `deleteSubdomain` the reference doesn't have: the tunnel teardown
  *      needs it (see index.ts), and it is the one method here modelled on
  *      FreeDNS's own delete form rather than on the reference client.
  *
@@ -26,7 +26,7 @@
  *
  * Captchas are not solved here. `createSubdomain`, `createAccount` and
  * `updateSubdomain` take a `captchaCode` the caller obtained from
- * `getCaptcha()` and solved by hand — the same contract the reference keeps,
+ * `getCaptcha()` and solved by hand. The same contract the reference keeps,
  * and the right one: auto-solving a bot check is neither this library's job
  * nor something it should pretend to do.
  */
@@ -85,10 +85,10 @@ export type RecordType = "A" | "AAAA" | "CNAME" | "MX" | "NS" | "TXT";
 /**
  * Just enough cookie handling for one logged-in session: capture `Set-Cookie`
  * off each response and replay the names/values on the next request. Not a
- * spec-complete jar (no path, domain, expiry, or Secure handling) — this talks
+ * spec-complete jar (no path, domain, expiry, or Secure handling): this talks
  * to exactly one host over one session, where none of that changes the
  * outcome. `getSetCookie()` needs the runtime to expose redirect responses'
- * headers, which Bun does (the target runtime — see the module doc); Node's
+ * headers, which Bun does (the target runtime, see the module doc); Node's
  * `redirect: "manual"` strips them on a 3xx.
  */
 class CookieJar {
@@ -132,7 +132,7 @@ export class FreeDnsClient {
 
         // Every request carries the accumulated cookies; every response feeds
         // the jar. `redirect: "manual"` is forced here so callers never have
-        // to remember it — a followed redirect would turn the 302 success
+        // to remember it: a followed redirect would turn the 302 success
         // signal into a 200 for the page it landed on.
         this.http.interceptors.request.use(config => {
             const cookie = this.jar.header();
@@ -161,7 +161,7 @@ export class FreeDnsClient {
         });
     }
 
-    /** A 302 (or an opaque redirect — Node reports a manual-mode 3xx as
+    /** A 302 (or an opaque redirect: Node reports a manual-mode 3xx as
      *  status 0) is FreeDNS's "it worked". Any 2xx means it stayed on the
      *  page to show an error. */
     private static redirected(response: XiorResponse): boolean {
@@ -235,7 +235,7 @@ export class FreeDnsClient {
 
     /**
      * The public domains FreeDNS offers, one registry page at a time. This is
-     * the raw material for "pick a domain the filters don't block" — the
+     * the raw material for "pick a domain the filters don't block": the
      * blocklist cross-check itself lives above this, in whatever calls it.
      */
     async getRegistry(page = 1, sort = 5, query?: string): Promise<Registry> {
@@ -384,7 +384,7 @@ export class FreeDnsClient {
     }
 
     /**
-     * Delete a subdomain by id. Not in the reference client — modelled on
+     * Delete a subdomain by id. Not in the reference client: modelled on
      * FreeDNS's own subdomain list, whose delete form posts checked
      * `data_id[]` entries to `delete2.php`. Deletion is not captcha-gated, so
      * the tunnel can tear itself down unattended.
@@ -395,7 +395,7 @@ export class FreeDnsClient {
         );
         // A redirect back to the list is success; a 200 that names the id in
         // an error page is not. An id FreeDNS no longer knows about is
-        // treated as already gone rather than an error — teardown is
+        // treated as already gone rather than an error: teardown is
         // idempotent by design.
         if (
             !FreeDnsClient.redirected(response) &&
@@ -512,7 +512,7 @@ function childElements(node: AnyNode): Element[] {
     return isTag(node) ? node.children.filter(isTag) : [];
 }
 
-/** The first `<tag name="...">` in the document — the several `select`/`input`
+/** The first `<tag name="...">` in the document: the several `select`/`input`
  *  lookups the edit-form parser needs. */
 function selectByName(
     doc: ReturnType<typeof parseDocument>,

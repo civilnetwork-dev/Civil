@@ -25,10 +25,10 @@
 //!   4. **Dead-branch pruning.** `if (!0) x else y`, and the same for `?:`.
 //!   5. **Sequence splitting.** `a(), b(), c();` becomes three statements.
 //!
-//! Passes 1–4 run to a fixed point, because inlining a string exposes folds and
+//! Passes 1-4 run to a fixed point, because inlining a string exposes folds and
 //! folding exposes branches.
 //!
-//! ponytail: the accessor forms understood are the two canonical ones —
+//! ponytail: the accessor forms understood are the two canonical ones:
 //! `return T[i - N]` and `i = i - N; return T[i]`. The rotation IIFE and the
 //! RC4/base64 accessor variants need an evaluator, not a syntax pass; when one
 //! is present the strings stay as calls and the rest of the passes still run.
@@ -119,7 +119,7 @@ pub fn deobfuscate(
 }
 
 // ---------------------------------------------------------------------------
-// Pass 1 — string-array inlining
+// Pass 1: string-array inlining
 // ---------------------------------------------------------------------------
 
 const StringArray = struct {
@@ -318,11 +318,11 @@ fn sameString(tree: *const ast.Tree, a: ast.String, b: ast.String) bool {
 }
 
 // ---------------------------------------------------------------------------
-// Passes 2–4 — normalisation, folding, pruning
+// Passes 2-4: normalisation, folding, pruning
 // ---------------------------------------------------------------------------
 
 /// Runs on the exit phase so children are already folded when a parent is
-/// visited — `0x1 + 0x2 + 0x3` collapses in one traversal rather than needing
+/// visited: `0x1 + 0x2 + 0x3` collapses in one traversal rather than needing
 /// one round per operator.
 const Folder = struct {
     stats: *Stats,
@@ -396,7 +396,7 @@ const Folder = struct {
     ) void {
         if (node.argument == .null) return;
         switch (node.operator) {
-            // `!0` / `!1` / `!""` — the obfuscator's stand-in for true/false.
+            // `!0` / `!1` / `!""`: the obfuscator's stand-in for true/false.
             .logical_not => {
                 const truth = truthiness(ctx.tree, node.argument) orelse return;
                 ctx.tree.setData(index, .{ .boolean_literal = .{ .value = !truth } });
@@ -524,7 +524,7 @@ fn isIdentifier(text: []const u8) bool {
 }
 
 /// A reserved word is a valid property name but not a valid identifier after a
-/// dot in every position — `a["new"]` must stay bracketed to keep parsing under
+/// dot in every position: `a["new"]` must stay bracketed to keep parsing under
 /// older engines the vendors still target.
 fn isReservedWord(text: []const u8) bool {
     const reserved = [_][]const u8{
@@ -564,7 +564,7 @@ fn quote(gpa: std.mem.Allocator, value: []const u8) error{OutOfMemory}![]const u
 }
 
 // ---------------------------------------------------------------------------
-// Pass 5 — sequence splitting
+// Pass 5: sequence splitting
 // ---------------------------------------------------------------------------
 
 /// `a(), b(), c();` is one statement holding three calls. Split into three

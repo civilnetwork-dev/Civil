@@ -4,11 +4,11 @@
  * path every other vendor here uses.
  *
  * GoGuardian's actual "smart filtering" isn't a live, per-page cloud
- * classification call — `checker.ts` shows it's authenticate once, download
+ * classification call: `checker.ts` shows it's authenticate once, download
  * the current proxy/threat keyword models, then match them *locally* against
  * the URL/title/text. That local match is what a real admin.js decides with,
  * so running it directly against Civil's real page content is a genuine
- * verdict, not a fabricated one — the same reasoning that already justified
+ * verdict, not a fabricated one: the same reasoning that already justified
  * `misc/filters/goguardian/middleware.ts`'s live `/filterCheck/goguardian`
  * endpoint using this exact license, per real request, in production. This
  * reuses that same, already-shipped call pattern; it isn't a new exposure.
@@ -16,7 +16,7 @@
  * misc/extensionHost has no seeding hook this would even use: there is no
  * managed-storage gate here to get past and no content-script DOM state to
  * observe. GoGuardian's own admin.js (loaded harmlessly by the sandboxed
- * path for the other detection channels — redirects, DOM markers — still
+ * path for the other detection channels (redirects, DOM markers) still
  * gets its turn there too) never needed fixing; its actual decision logic
  * doesn't run where the sandbox could see it.
  */
@@ -53,7 +53,7 @@ function extractText(html: string): string {
 
 /** The diagnostic page fetch, retried a couple of times before giving up. A
  *  transient tunnel hiccup must not be laundered into a false "not flagged"
- *  verdict by matching the keyword model against empty title/text — that was
+ *  verdict by matching the keyword model against empty title/text: that was
  *  the previous behavior, and it's indistinguishable from a real clean read
  *  in the report. Exhausting retries throws instead, which the harness's
  *  existing per-combo try/catch already turns into a reported error rather
@@ -85,7 +85,7 @@ async function fetchPageWithRetry(
 export async function checkGoGuardianRoute(
     url: string,
     route: string,
-    /** Defaults to global `fetch`; a test or caller injects a stub/wrapper —
+    /** Defaults to global `fetch`; a test or caller injects a stub/wrapper:
      *  see sandbox.ts's identical `fetchImpl` for why. */
     fetchImpl: typeof fetch = fetch,
 ): Promise<Verdict> {

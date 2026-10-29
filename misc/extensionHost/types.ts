@@ -3,7 +3,7 @@
  *
  * Manifest and wire-protocol shapes (`ChromeManifest`, `DNRRule`, `Port`,
  * `MessageSender`, `ChromeEvent`, `Alarm`, `TabInfo`, ...) are NOT redefined
- * here — they already exist in `browserApiEmulators/extensions/chrome/types`
+ * here: they already exist in `browserApiEmulators/extensions/chrome/types`
  * for the in-page shim, and a manifest.json means the same thing whether the
  * extension ends up running in an iframe or in this host. Only what's unique
  * to running headless under Bun lives in this file.
@@ -14,7 +14,7 @@ import type { ChromeManifest } from "../browserApiEmulators/extensions/chrome/ty
 /** Which extension runtime surface to expose: Chrome's `chrome.*` (callback
  *  or promise) or WebKit/Firefox's `browser.*` (promise-only). Safari Web
  *  Extensions use the same WebExtensions API as Firefox, so "safari" and
- *  "firefox" share one implementation here — see `browserNamespace.ts`. */
+ *  "firefox" share one implementation here: see `browserNamespace.ts`. */
 export type ExtensionTarget = "chrome" | "safari";
 
 export interface LoadOptions {
@@ -23,11 +23,11 @@ export interface LoadOptions {
     target?: ExtensionTarget;
     /** Seeds chrome.storage.local before the background script runs. */
     initialStorage?: Record<string, unknown>;
-    /** Seeds chrome.bookmarks — a school-pushed bookmark is how a handful of
+    /** Seeds chrome.bookmarks: a school-pushed bookmark is how a handful of
      *  filters (impero) receive their own configuration. See api/bookmarks.ts. */
     initialBookmarks?: { title: string; url: string }[];
     /**
-     * Seeds chrome.storage.managed — the enterprise-policy area a managed
+     * Seeds chrome.storage.managed: the enterprise-policy area a managed
      * Chromebook's admin console writes and the extension can only read.
      * Several tracked filters take their entire configuration from it, so
      * without this they run their unconfigured code path rather than the one
@@ -50,7 +50,7 @@ export interface LoadOptions {
      *
      * This is what a vendor's server-side gate needs to get past. Lightspeed
      * Insight, for one, refuses to start until its entitlement key verifies
-     * against `agent.catchon.com` and its agent config comes back — no
+     * against `agent.catchon.com` and its agent config comes back: no
      * amount of local seeding substitutes for those two replies. Answering
      * them here runs the extension's *real* configured code path, offline
      * and deterministically.
@@ -63,12 +63,12 @@ export interface LoadOptions {
      *  shaped like a real Chrome extension id (32 lowercase a-p chars). */
     extensionId?: string;
     /**
-     * Backs `chrome.scripting.executeScript` with somewhere real to run —
+     * Backs `chrome.scripting.executeScript` with somewhere real to run:
      * without this, `func`/`files` are recorded and resolve to `[]`, same as
      * Chrome's own "ran, no frame results" shape, but nothing actually
      * executes (see api/scripting.ts). This host has no DOM of its own, so a
      * caller that does (misc/filterProbe/sandbox.ts, against the proxied
-     * page) supplies this to run the injection for real — the same way real
+     * page) supplies this to run the injection for real. The same way real
      * Chrome serializes `func` to source and re-instantiates it in the
      * target frame, which is why `func` arrives here as source text rather
      * than a live closure: any variable it captured from the background's
@@ -103,7 +103,7 @@ export interface ActionCall {
 }
 
 /** The result of matching one URL against the extension's declarativeNetRequest
- *  rules — the actual question filter-evasion analysis needs answered. */
+ *  rules: the actual question filter-evasion analysis needs answered. */
 export interface DNRMatchResult {
     /** Final verdict after resolving rule priority (see api/declarativeNetRequest.ts). */
     action: "allow" | "block" | "redirect" | "none";
@@ -128,8 +128,8 @@ export interface ExtensionHandle {
         area?: "local" | "sync" | "session" | "managed",
     ): Record<string, unknown>;
 
-    /** The background's live `chrome.storage`, for a content script to share
-     *  — the same object, as Chrome shares one store across an extension's
+    /** The background's live `chrome.storage`, for a content script to share:
+     * the same object, as Chrome shares one store across an extension's
      *  contexts. A content script handed a do-nothing stub instead gets
      *  `undefined` back from `storage.local.get()`, where Chrome gives `{}`,
      *  and dies destructuring it (blocksi, in a 400ms retry loop for the
@@ -146,7 +146,7 @@ export interface ExtensionHandle {
         opts?: { resourceType?: string; initiator?: string; method?: string },
     ): DNRMatchResult;
 
-    /** The synthetic tab's current URL — `"about:blank"` until the
+    /** The synthetic tab's current URL. `"about:blank"` until the
      *  background calls `chrome.tabs.update({url})`, the mechanism several
      *  filters (lanschoolWebHelper, mobileguardian) actually block through
      *  instead of a content script. A caller with a real page to compare

@@ -77,7 +77,7 @@ describe("createFilterBlockerMiddleware hosts", () => {
                 )
             ).status,
         ).toBe(403);
-        // With trust off (default), a forwarded header is ignored — only the
+        // With trust off (default), a forwarded header is ignored: only the
         // real Host counts, and there is none here, so it passes.
         expect(
             (await run("goguardian.com", undefined, "x-forwarded-host"))

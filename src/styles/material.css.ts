@@ -70,7 +70,7 @@ export const DUR = {
  * into the panel rather than drawn edge to edge with a ruler.
  *
  * Returns a gradient *value*, not a border shorthand, so it cannot sit in
- * `borderTop` directly — pair it with `borderImage`, as the ledger dividers do.
+ * `borderTop` directly: pair it with `borderImage`, as the ledger dividers do.
  */
 export const hairline = (color: string = vars.color.talus) =>
     `linear-gradient(90deg, transparent 0%, ${color} 12%, ${color} 88%, transparent 100%)`;
@@ -79,7 +79,7 @@ export const hairline = (color: string = vars.color.talus) =>
  * Expands an element's clickable area to at least `size`×`size` without
  * changing how big it looks or disturbing layout.
  *
- * DESIGN.md deliberately sizes icon controls at 18–30px for instrument-panel
+ * DESIGN.md deliberately sizes icon controls at 18-30px for instrument-panel
  * density, but WCAG 2.2 SC 2.5.8 asks for a 24×24 minimum target. Rather than
  * inflate the visuals and lose the density, this centres an invisible
  * pseudo-element over the control and lets that catch the pointer.
@@ -311,8 +311,22 @@ function pressable(
     };
 }
 
-/** Secondary buttons and text actions: a plain stone key. */
-export const KEY_STONE = pressable(scree, 3);
+/**
+ * Secondary buttons and text actions: a plain stone key. Calm Strata (owner's
+ * call, 2026-10-26): it lies flat like a TABLET, a fill and one hairline, and
+ * answers the pointer with its fill alone. Only Civil's own pages use it, so
+ * the browser chrome keeps its raised keycaps.
+ */
+export const KEY_STONE: StyleRule = {
+    position: "relative",
+    backgroundColor: scree,
+    boxShadow: `inset 0 0 0 1px ${alpha(talus, 70)}`,
+    transition: `background-color ${DUR.fast} ${EASE.standard}`,
+    selectors: {
+        "&:hover:not(:disabled)": { backgroundColor: mix(talus, 45, scree) },
+        "&:active:not(:disabled)": { backgroundColor: mix(basalt, 30, scree) },
+    },
+};
 
 const KEYCAP_FACE_COLOR = mix(talus, 40, scree);
 const PEBBLE_FACE_COLOR = mix(talus, 28, scree);
@@ -363,11 +377,15 @@ export const PLATE: StyleRule = {
 
 const TABLET_FACE = mix(scree, 70, stratum);
 
-/** A content bed that holds rows: raised off the ground, not pressable. */
+/**
+ * A content bed that holds rows. Calm Strata (owner's call, 2026-10-25): beds
+ * lie flat with one hairline edge, like the reference apps the owner picked,
+ * so stone depth is left to the signature pieces (logo, specimens, the cobalt
+ * key). An inset ring rather than a border keeps every bed's size unchanged.
+ */
 export const TABLET: StyleRule = {
     backgroundColor: TABLET_FACE,
-    backgroundImage: LIT,
-    boxShadow: `${SHADE.lip}, ${edge(4)}`,
+    boxShadow: `inset 0 0 0 1px ${alpha(vars.color.talus, 60)}`,
 };
 
 const WELL_LIP = `0 1px 0 ${alpha(firn, 7)}`;

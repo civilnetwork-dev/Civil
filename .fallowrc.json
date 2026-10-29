@@ -1,18 +1,17 @@
 {
     "$schema": "./node_modules/fallow/schema.json",
 
-    // Everything the repo actually starts from. The build scripts and runnable
-    // per-vendor examples are listed because nothing imports them - they are
-    // invoked as `bun <file>` or reached through a glob inside bundle.js.
+    // Everything the repo actually starts from that fallow does not detect on
+    // its own. The build scripts and runnable per-vendor examples are listed
+    // because nothing imports them: they are invoked as `bun <file>` or named
+    // as an input inside bundle.js.
     "entry": [
         "src/entry-client.tsx",
         "src/entry-server.tsx",
         "misc/config/bundle.js",
-        "misc/config/**/*.config.ts",
         "misc/config/baremux/transport.ts",
         "misc/config/scramjet/scramjetInit.ts",
         "misc/config/service/*.ts",
-        "misc/config/shared/wasmDencode.ts",
         "misc/browserApiEmulators/extensions/chrome/shim/index.ts",
         "misc/filterProbe/harness.ts",
         "misc/filterProbe/downloadBundles.ts",
@@ -20,16 +19,11 @@
         "tests/**/*.test.{ts,tsx}"
     ],
 
-    // Build output, generated files, and the vendored/native trees.
+    // Tracked files that are generated or served as they are. Build output is
+    // gitignored, which already keeps fallow out of it.
     "ignorePatterns": [
-        "dist/**",
-        "dist-config/**",
-        "data/**",
         "public/**",
-        "config/encoder/**",
-        "misc/obfuscatti/**",
         "misc/wisp/native/index.*",
-        "misc/wisp/zig-client/**",
         "src/routeTree.gen.ts"
     ],
 
@@ -61,12 +55,28 @@
         "conditions": ["solid", "browser"]
     },
 
+    // The two halves AGENTS.md describes: misc/ shares nothing outside
+    // misc/, and the app may use misc/ (the $config/ bundles, mostly). run.ts
+    // and tests sit outside both zones, so they may import either.
+    "boundaries": {
+        "zones": [
+            { "name": "app", "patterns": ["src/**"] },
+            { "name": "misc", "patterns": ["misc/**"] }
+        ],
+        "rules": [
+            { "from": "app", "allow": ["misc"] },
+            { "from": "misc", "allow": [] }
+        ]
+    },
+
+    "rules": {
+        // No rule packs: the conventions AGENTS.md lists are enforced by
+        // oxlint, tsc and review.
+        "policy-violation": "off"
+    },
+
     "duplicates": {
         "ignore": [
-            // The codec functions here are stringified into proxied frames by
-            // the scramjet controller, so they cannot call the shared codec
-            // they repeat; see the comment above `codec` in that file.
-            "misc/config/scramjet/scramjetInit.ts",
             // Standalone runnable examples (`bun <file>`), one per vendor.
             "misc/filters/**/example.ts"
         ]
@@ -74,10 +84,11 @@
 
     // Real dependencies that no import statement names, so fallow cannot see
     // the edge: the Mercury Workshop transports are served to the browser
-    // straight out of node_modules by run.ts; @types/stack-trace types the
-    // untyped stack-trace import inside @terbiumos/tfs, whose declarations
-    // point tsc at its TypeScript source; the rest are build- and test-time
-    // tools that get inlined into their output, which is why they stay in
+    // straight out of node_modules by run.ts, and epoxy-tls ships bundled
+    // inside epoxy-transport's dist; @types/stack-trace types the untyped
+    // stack-trace import inside @terbiumos/tfs, whose declarations point tsc
+    // at its TypeScript source; the rest are build- and test-time tools that
+    // get inlined into their output, which is why they stay in
     // devDependencies even though a non-test entry reaches them.
     "ignoreDependencies": [
         "@types/stack-trace",
@@ -90,7 +101,6 @@
         "@rollup/plugin-node-resolve",
         "@rollup/plugin-terser",
         "fake-indexeddb",
-        "fast-glob",
         "rollup-plugin-polyfill-node",
         "rollup-plugin-visualizer"
     ],

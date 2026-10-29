@@ -18,7 +18,7 @@ import * as s from "~/styles/FilterCheckPage.css";
  * The report ledger.
  *
  * One row per vendor in aligned monospace columns, because the question a user
- * actually has is comparative — "which of these is blocking me" — and cards
+ * actually has is comparative ("which of these is blocking me") and cards
  * make comparison impossible. The verdict keeps its status colour; everything
  * else is the annotation tier.
  *
@@ -34,7 +34,7 @@ import * as s from "~/styles/FilterCheckPage.css";
  *
  * DESIGN.md's Redundant-Channel Rule requires text, glyph AND colour to each
  * carry the verdict independently. Two statuses sharing a glyph drops that to
- * two channels, which matters most to the ~1% of people with deuteranopia —
+ * two channels, which matters most to the ~1% of people with deuteranopia:
  * for them the colour channel is the weakest of the three.
  *
  * A lookup beats the nested ternaries this replaced: a collision is visible at

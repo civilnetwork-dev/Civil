@@ -400,7 +400,7 @@ const BEFORE_TARGET = `(function(){
     `;
 
 const AFTER_TARGET = `
-    L('target.js evaluated successfully');
+    L('target.js evaluated');
   } catch (err) {
     L('target.js init threw', String(err));
     L('target.js init stack', err && err.stack);

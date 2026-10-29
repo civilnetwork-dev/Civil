@@ -2,16 +2,16 @@
  * A real `importModuleDynamically` resolver, for the one shape
  * `vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER` (host.ts's `compileScript`)
  * can't handle: a `chrome-extension://` specifier, built the same way every
- * other extension-relative reference in this host is built —
- * `chrome.runtime.getURL(path)` — and then dynamically imported. Node's
+ * other extension-relative reference in this host is built,
+ * `chrome.runtime.getURL(path)`, and then dynamically imported. Node's
  * default loader only resolves `file:`/`data:`/`node:` and rejects that
  * scheme outright (`ERR_UNSUPPORTED_ESM_URL_SCHEME`), because it has no way
  * to know a `chrome-extension://` origin means "this extension's own files,
- * on disk, under `extensionDir`" — the same translation `api/platform.ts`'s
+ * on disk, under `extensionDir`": the same translation `api/platform.ts`'s
  * `buildFetch` already does for `fetch()`, done here for `import()` instead.
  *
  * Relative specifiers (`./`, `../`) resolve the same way `import()` resolves
- * anywhere: against the *importing* file's own path, recursively — a module
+ * anywhere: against the *importing* file's own path, recursively: a module
  * this resolver loads can itself dynamically-import another, and that one
  * resolves against its own path in turn, not the original entry's.
  *
@@ -24,7 +24,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve as resolvePath } from "node:path";
 import * as vm from "node:vm";
 
-/** `vm.SourceTextModule` is still marked experimental in @types/node — the
+/** `vm.SourceTextModule` is still marked experimental in @types/node: the
  *  runtime API (guarded by vitest.config.ts's flag) is ahead of the
  *  published types, so this is the one, shared cast the whole file needs. */
 const SourceTextModuleCtor = (
@@ -37,7 +37,7 @@ const SourceTextModuleCtor = (
 ).SourceTextModule;
 
 export interface ModuleLoaderOptions {
-    /** The vm context the importing script/module already runs in — a
+    /** The vm context the importing script/module already runs in: a
      *  dynamically-loaded module runs in the *same* context, so it sees the
      *  same `chrome`, `fetch`, etc. the rest of the sandbox does. */
     context: vm.Context;
@@ -52,7 +52,7 @@ export interface ModuleLoaderOptions {
 
 /** Resolves a specifier to an absolute file path, or `undefined` for
  *  anything this host has no business trying to serve (a bare/npm-style
- *  specifier — the same "resolve to nothing runnable" call `compileScript`'s
+ *  specifier: the same "resolve to nothing runnable" call `compileScript`'s
  *  own esbuild fallback already makes for those). */
 function resolveSpecifier(
     specifier: string,
@@ -75,7 +75,7 @@ function resolveSpecifier(
     if (specifier.startsWith(".") || specifier.startsWith("/")) {
         return resolvePath(dirname(referencingPath), specifier);
     }
-    // A bare specifier (an npm-style package name) — nothing this host
+    // A bare specifier (an npm-style package name): nothing this host
     // resolves; matches compileScript's own esbuild plugin, which sends the
     // same shape to an empty module rather than failing the whole load.
     return undefined;
@@ -104,7 +104,7 @@ async function instantiateModule(
     const module: vm.Module = new SourceTextModuleCtor(source, {
         // Non-null: `source` only resolves past the check above when
         // `filePath` was truthy (see its own conditional, three lines
-        // up) — the two are never independent.
+        // up): the two are never independent.
         identifier: filePath!,
         context,
     });

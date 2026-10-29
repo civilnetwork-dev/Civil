@@ -300,12 +300,9 @@ export function buildContextMenusAPI() {
     };
 }
 
-export function buildWebRequestAPI(
-    getDNRRules: () => DNRRule[],
-    proxyExternalRequests = false,
-) {
+export function buildWebRequestAPI(getDNRRules: () => DNRRule[]) {
     const events = buildWebRequestEventSet();
-    installNetworkInterceptor(events, getDNRRules, proxyExternalRequests);
+    installNetworkInterceptor(events, getDNRRules);
     return {
         ...events,
         MAX_HANDLER_BEHAVIOR_CHANGED_CALLS_PER_10_MINUTES: 20,

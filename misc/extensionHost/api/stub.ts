@@ -8,7 +8,7 @@
  * fallback, the first `chrome.windows.onFocusChanged.addListener(...)` in a
  * real bundle throws `TypeError: undefined is not an object` and the whole
  * background script dies before ever reaching the declarativeNetRequest
- * calls this host actually exists to observe — confirmed against a real
+ * calls this host actually exists to observe: confirmed against a real
  * Blocksi service worker while building this.
  *
  * `universalStub()` is simultaneously callable (any call resolves to
@@ -19,7 +19,7 @@
  * crashing the script that touches them.
  */
 /** Registering a listener is not a callback-style call. Both look identical
- *  from inside the proxy — one trailing function argument — so the member
+ *  from inside the proxy, one trailing function argument, so the member
  *  name is what tells them apart, and getting it wrong is worse than doing
  *  nothing: firing `chrome.webRequest.onBeforeRequest.addListener(fn)`'s
  *  argument immediately calls the vendor's request handler with no request,
@@ -39,7 +39,7 @@ export function universalStub(member = ""): unknown {
     return new Proxy(fn, {
         get(_target, prop) {
             // Without this, `await` sees a callable `.then` on the stub and
-            // treats it as a thenable — calling `stub.then(resolve, reject)`
+            // treats it as a thenable: calling `stub.then(resolve, reject)`
             // returns a promise of its own instead of invoking `resolve`,
             // so the `await` never settles. Reporting no `.then` makes the
             // stub a plain, already-"resolved" value to `await` instead.
@@ -72,7 +72,7 @@ export function universalStub(member = ""): unknown {
  *  of being `undefined`. Implemented namespaces are untouched. */
 /**
  * Names that are questions about the object rather than requests for a
- * Chrome API, and so must answer `undefined` — the truth — instead of a
+ * Chrome API, and so must answer `undefined`, the truth, instead of a
  * stub.
  *
  * A stub that says yes to everything says yes to these too, and each one
@@ -93,7 +93,7 @@ export function universalStub(member = ""): unknown {
  * object is something it is not.
  *
  * The `Async` promisification suffix was tried here too and removed. It is
- * the same kind of name — a question, not an API — but answering `undefined`
+ * the same kind of name (a question, not an API) but answering `undefined`
  * breaks the opposite case: bundles that promisify the whole `chrome` object
  * and then call `tabs.executeScriptAsync` for a member this host stubs get a
  * hard `is not a function` where a stub would have absorbed it. Stubbing it

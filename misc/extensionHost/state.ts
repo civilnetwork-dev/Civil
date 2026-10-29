@@ -1,7 +1,7 @@
 /**
  * The mutable state one loaded extension owns: storage areas, alarms, DNR
  * rules, message listeners. Each `api/*.ts` module is a pure function of
- * this state plus whatever arguments the extension passes in — the state
+ * this state plus whatever arguments the extension passes in: the state
  * lives here so `host.ts` can snapshot and drive it without reaching through
  * a chain of closures.
  */
@@ -20,7 +20,7 @@ import type { ActionCall, CapturedMessage } from "./types";
 export type StorageArea = "local" | "sync" | "session" | "managed";
 
 export interface DNRRuleset {
-    /** Chrome's own field name for a rule's id is `id` — not `ruleId`, which
+    /** Chrome's own field name for a rule's id is `id`, not `ruleId`, which
      *  is what `chrome.declarativeNetRequest.getMatchedRules` reports back in
      *  its *results*. A vendor's real rules use `id`. */
     id: number;
@@ -57,7 +57,7 @@ interface ScheduledAlarm extends Alarm {
  *  `sender` in the middle is not a harmless simplification: the three-argument
  *  form is what 278 listener registrations across nine of the tracked filter
  *  bundles are written against, and to them a two-argument dispatch makes
- *  `sendResponse` arrive as `undefined` — so every reply they try to send
+ *  `sendResponse` arrive as `undefined`, so every reply they try to send
  *  throws instead. */
 export type RuntimeMessageListener = (
     message: unknown,
@@ -93,7 +93,7 @@ export class ExtensionState {
     readonly sentMessages: unknown[] = [];
 
     /** Virtual clock. Advanced only by `ExtensionHandle.advanceTime`, never
-     *  by wall-clock time — see api/alarms.ts for why. */
+     *  by wall-clock time: see api/alarms.ts for why. */
     now = 0;
 
     onAlarmFired: ((alarm: Alarm) => void) | null = null;

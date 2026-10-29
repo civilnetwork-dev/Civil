@@ -1,37 +1,37 @@
-# Schematic Interior UI — Implementation Plan (Pass 1)
+# Schematic Interior UI: Implementation Plan (Pass 1)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebuild Civil Proxy's New Tab, Apps, and Filter Checker pages in a "schematic" technical-drawing language on a shared foundation of seven primitives, leaving the browser chrome untouched.
+**Goal:** Rebuild Civil Proxy New Tab, Apps, Filter Checker pages in "schematic" technical-drawing language on shared base of seven primitives. Browser chrome untouched.
 
-**Architecture:** A new `src/styles/schematic.css.ts` token module supplies rules, ruled fields, registration marks, and a monospace annotation tier. Seven presentational primitives in `src/components/schematic/` consume those tokens and nothing else — no application state. Pages compose primitives. A new `src/components/icons/index.ts` indirection layer maps semantic icon names to `solid-icons` today so a custom set can replace it in one file later.
+**Architecture:** New `src/styles/schematic.css.ts` token module supplies rules, ruled fields, registration marks, mono annotation tier. Seven presentational primitives in `src/components/schematic/` consume only those tokens: no app state. Pages compose primitives. New `src/components/icons/index.ts` indirection maps semantic icon names to `solid-icons` now; custom set replaces in one file later.
 
-**Tech Stack:** SolidJS 2.0.0-beta.28, vanilla-extract, TypeScript 6, Vitest 4 + happy-dom, vite-plugin-solid (already a devDependency).
+**Tech Stack:** SolidJS 2.0.0-beta.28, vanilla-extract, TypeScript 6, Vitest 4 + happy-dom, vite-plugin-solid (already devDependency).
 
 **Spec:** `docs/superpowers/specs/2026-08-09-civil-ui-redesign-design.md`
 
 ## Global Constraints
 
-- **No new dependencies.** Not one. Component tests use `render` from `@solidjs/web` (already a dependency), not `@solidjs/testing-library`.
-- **Browser chrome is out of scope.** Do not modify `BrowserChrome.tsx`, `SearchBar*`, `BookmarksBar.tsx`, `ui/TabPill.tsx`, `ui/UrlBar.tsx`, `TabSearch.tsx`, `ContextMenu.tsx`, `ExtensionIconBar.tsx`, or their style files.
-- **Six pages are out of scope:** bookmarks, history, extensions, benchmarks, ban, baninfo. They must keep compiling and rendering.
-- **Do not delete anything from `src/styles/material.css.ts`.** Fourteen files still import it (verified with `grep -rln "material.css" src/`). Slice pages stop *using* `atmosphere`, `edgeLit`, `edgeLitStrong`, and `grainOverlay`; the exports stay until pass 2.
-- **`src/styles/layout.css.ts` has exactly three page consumers**, verified with `grep -rln "layout.css" src/`: `AppsPage.tsx`, `ExtensionsPage.tsx`, `HistoryPage.tsx` (plus their own style files). Task 10 migrates `AppsPage`, leaving two after pass 1. Earlier drafts of this plan said six — that was wrong.
-- **Icon set and loading animation assets are the user's** and arrive later. `LoadingAnimation.tsx`'s public API must not change.
-- **Palette stays Catppuccin Macchiato.** Use `vars.color.*` from `src/styles/theme.css`. No literal hex values in new code.
-- **Annotation text uses `vars.color.subtext0` (primary tier) or `vars.color.overlay2` (muted tier). Never `overlay1` or `overlay0`.** Measured on `base`: `overlay0` 3.15:1, `overlay1` 4.14:1 — both fail WCAG AA's 4.5:1 for small text. `overlay2` is 5.29:1 and `subtext0` is 6.62:1, both pass. Annotations are 11px, so AA-small applies. `overlay1` may still be used for decorative rules, ticks and borders, where contrast requirements do not apply — just not for text.
-- **No `backdrop-filter`, no `blur()`, no animated `box-shadow`.** Target hardware is low-end Chromebooks. Only `transform`, `opacity`, and `grid-template-rows` animate.
-- **Motion tokens come from `material.css.ts`:** `EASE.standard | spring | enter`, `DUR.fast (0.11s) | base (0.18s) | slow (0.28s)`. Do not introduce new durations or easings.
-- **Style formatting:** 4-space indent, LF endings. `bun run check` must pass with no fixes applied.
-- **Every task ends green:** `bun run check`, `bun run test`, and `bunx tsc --noEmit` must all be clean before the commit step — `tsc` may report only the one pre-existing error inside `node_modules/@terbiumos/tfs`. If any of the three is red, the task is NOT done: do not commit, and report BLOCKED or DONE_WITH_CONCERNS rather than DONE.
-- **`JSX` is imported from `@solidjs/web`, never from `solid-js`.** Solid 2.0 moved the namespace. `import type { JSX } from "solid-js"` runs fine under Vitest but fails `tsc` with `TS2305: Module '"solid-js"' has no exported member 'JSX'`. Value imports (`createSignal`, `createUniqueId`, `Show`, `For`) still come from `solid-js`.
-- **Never write to a signal synchronously inside an owned scope.** Solid 2.0 throws `[REACTIVE_WRITE_IN_OWNED_SCOPE]`. In tests that use `createRoot`, create signals inside the root callback but perform every mutation *after* it returns. That also mirrors production, where writes arrive from DOM event handlers rather than during render.
-- **Boolean `aria-*` values must be explicit strings.** Solid 2.0 treats a boolean as attribute *presence*, so `aria-expanded={open()}` renders as absent when false and `""` when true — never `"false"`/`"true"`. Always write `aria-expanded={open() ? "true" : "false"}` and `aria-hidden={open() ? "false" : "true"}`. Measured, not assumed.
-- **After simulating an event in a test, call `flush()` from `solid-js` before asserting.** Solid 2.0 batches writes made outside a computation, so a signal set inside a click or input handler has not reached the DOM when `.click()` returns. Sequence: `el.click(); flush(); expect(...)`. Production is unaffected because components re-render on the following flush anyway.
+- **No new dependencies.** None. Component tests use `render` from `@solidjs/web` (already dep), not `@solidjs/testing-library`.
+- **Browser chrome out of scope.** No touch `BrowserChrome.tsx`, `SearchBar*`, `BookmarksBar.tsx`, `ui/TabPill.tsx`, `ui/UrlBar.tsx`, `TabSearch.tsx`, `ContextMenu.tsx`, `ExtensionIconBar.tsx`, or their style files.
+- **Six pages out of scope:** bookmarks, history, extensions, benchmarks, ban, baninfo. Must keep compiling, rendering.
+- **Delete nothing from `src/styles/material.css.ts`.** Fourteen files import it (verified `grep -rln "material.css" src/`). Slice pages stop *using* `atmosphere`, `edgeLit`, `edgeLitStrong`, `grainOverlay`; exports stay till pass 2.
+- **`src/styles/layout.css.ts` has exactly three page consumers**, verified `grep -rln "layout.css" src/`: `AppsPage.tsx`, `ExtensionsPage.tsx`, `HistoryPage.tsx` (plus own style files). Task 10 migrates `AppsPage`, two left after pass 1. Earlier drafts said six: wrong.
+- **Icon set + loading animation assets belong to user**, come later. `LoadingAnimation.tsx` public API no change.
+- **Palette stays Catppuccin Macchiato.** Use `vars.color.*` from `src/styles/theme.css`. No literal hex in new code.
+- **Annotation text uses `vars.color.subtext0` (primary tier) or `vars.color.overlay2` (muted tier). Never `overlay1` or `overlay0`.** Measured on `base`: `overlay0` 3.15:1, `overlay1` 4.14:1. Both fail WCAG AA 4.5:1 small text. `overlay2` 5.29:1, `subtext0` 6.62:1, pass. Annotations 11px, AA-small applies. `overlay1` fine for decorative rules, ticks, borders (no contrast requirement): just not text.
+- **No `backdrop-filter`, no `blur()`, no animated `box-shadow`.** Target low-end Chromebooks. Only `transform`, `opacity`, `grid-template-rows` animate.
+- **Motion tokens from `material.css.ts`:** `EASE.standard | spring | enter`, `DUR.fast (0.11s) | base (0.18s) | slow (0.28s)`. No new durations/easings.
+- **Style formatting:** 4-space indent, LF endings. `bun run check` pass with no fixes applied.
+- **Every task ends green:** `bun run check`, `bun run test`, `bunx tsc --noEmit` clean before commit: `tsc` may report only one pre-existing error in `node_modules/@terbiumos/tfs`. Any of three red → task NOT done: no commit, report BLOCKED or DONE_WITH_CONCERNS, not DONE.
+- **`JSX` imported from `@solidjs/web`, never `solid-js`.** Solid 2.0 moved namespace. `import type { JSX } from "solid-js"` runs under Vitest but fails `tsc` with `TS2305: Module '"solid-js"' has no exported member 'JSX'`. Value imports (`createSignal`, `createUniqueId`, `Show`, `For`) still from `solid-js`.
+- **Never write signal synchronously in owned scope.** Solid 2.0 throws `[REACTIVE_WRITE_IN_OWNED_SCOPE]`. Tests with `createRoot`: create signals in root callback, do every mutation *after* it returns. Mirrors prod, where writes come from DOM event handlers, not render.
+- **Boolean `aria-*` values must be explicit strings.** Solid 2.0 treats boolean as attribute *presence*: `aria-expanded={open()}` renders absent when false, `""` when true: never `"false"`/`"true"`. Always `aria-expanded={open() ? "true" : "false"}` and `aria-hidden={open() ? "false" : "true"}`. Measured, not assumed.
+- **After simulated event in test, call `flush()` from `solid-js` before assert.** Solid 2.0 batches writes outside computation; signal set in click/input handler not in DOM when `.click()` returns. Sequence: `el.click(); flush(); expect(...)`. Prod unaffected: components re-render on next flush anyway.
 
 ## Spec deviation, deliberate
 
-Spec §4.3 names a CSS custom property `--civil-font-mono`. This plan exports a TypeScript constant `FONT_MONO` from `schematic.css.ts` instead. Every style in this codebase is authored in TypeScript, so a custom property would add an indirection nothing reads. The stack string is identical.
+Spec §4.3 names CSS custom property `--civil-font-mono`. Plan exports TS constant `FONT_MONO` from `schematic.css.ts` instead. All styles authored in TS, so custom property = indirection nothing reads. Stack string identical.
 
 ## File Structure
 
@@ -41,21 +41,21 @@ Spec §4.3 names a CSS custom property `--civil-font-mono`. This plan exports a 
 |---|---|
 | `src/styles/schematic.css.ts` | Rules, ruled fields, marks, annotation tier, mono stack, primitive class names |
 | `src/components/schematic/Anno.tsx` | Mono annotation text |
-| `src/components/schematic/Rule.tsx` | Labelled hairline with optional dimension caps |
+| `src/components/schematic/Rule.tsx` | Labelled hairline, optional dimension caps |
 | `src/components/schematic/Sheet.tsx` | Page plane: ruled field + registration marks |
 | `src/components/schematic/TitleBlock.tsx` | Eyebrow, title, mono meta row |
-| `src/components/schematic/Plate.tsx` | Bounded sub-region with corner ticks |
+| `src/components/schematic/Plate.tsx` | Bounded sub-region, corner ticks |
 | `src/components/schematic/Unfold.tsx` | Depth-on-demand container |
-| `src/components/schematic/Field.tsx` | Labelled input on a hairline |
+| `src/components/schematic/Field.tsx` | Labelled input on hairline |
 | `src/components/icons/index.ts` | Semantic icon names → `solid-icons` components |
 | `src/components/FilterCheckForm.tsx` | Filter Checker form |
 | `src/components/FilterCheckResults.tsx` | Filter Checker results ledger |
-| `src/lib/filterCheckVendors.ts` | `FILTER_CONFIGS` and vendor lookup helpers |
+| `src/lib/filterCheckVendors.ts` | `FILTER_CONFIGS` + vendor lookup helpers |
 | `tests/helpers/renderSolid.ts` | `render` + auto-cleanup helper for component tests |
 
 **Modified:** `vitest.config.ts`, `src/components/NewTabPage.tsx`, `src/components/AppsPage.tsx`, `src/components/FilterCheckPage.tsx`, `src/styles/NewTabPage.css.ts`, `src/styles/AppsPage.css.ts`, `src/styles/FilterCheckPage.css.ts`, 17 files importing `solid-icons`, `DESIGN.md`, `MAINTENANCE.md`.
 
-**Left alone:** `src/styles/layout.css.ts` keeps its exports (six unmigrated pages use `masthead`). `TitleBlock` supersedes it for slice pages only.
+**Left alone:** `src/styles/layout.css.ts` keeps exports (six unmigrated pages use `masthead`). `TitleBlock` supersedes it for slice pages only.
 
 ---
 
@@ -67,7 +67,7 @@ Spec §4.3 names a CSS custom property `--civil-font-mono`. This plan exports a 
 
 **Interfaces:**
 - Consumes: `vars` from `src/styles/theme.css`; `EASE`, `DUR`, `hairline` from `src/styles/material.css`.
-- Produces: `FONT_MONO: string`; `RULE: { hair: string; major: string; accent: string }`; `field(density?: FieldDensity, color?: string): { backgroundImage: string; backgroundSize: string }`; `FieldDensity = "fine" | "base" | "coarse"`; `ANNO` style object; plus the class exports listed in Step 3.
+- Produces: `FONT_MONO: string`; `RULE: { hair: string; major: string; accent: string }`; `field(density?: FieldDensity, color?: string): { backgroundImage: string; backgroundSize: string }`; `FieldDensity = "fine" | "base" | "coarse"`; `ANNO` style object; plus class exports in Step 3.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -130,7 +130,7 @@ describe("ANNO", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test tests/schematic.test.ts`
-Expected: FAIL — `Failed to resolve import "../src/styles/schematic.css"`.
+Expected: FAIL: `Failed to resolve import "../src/styles/schematic.css"`.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -488,7 +488,7 @@ Expected: PASS, 8 tests.
 - [ ] **Step 5: Verify nothing else broke**
 
 Run: `bun run check && bun run test`
-Expected: Biome reports no fixes applied; all tests pass.
+Expected: Biome no fixes applied; all tests pass.
 
 - [ ] **Step 6: Commit**
 
@@ -516,7 +516,7 @@ off-scale grids."
 
 **Interfaces:**
 - Consumes: `render` from `@solidjs/web`.
-- Produces: `renderSolid(component: () => JSX.Element): { container: HTMLElement; unmount: () => void }`. Every later primitive task uses this.
+- Produces: `renderSolid(component: () => JSX.Element): { container: HTMLElement; unmount: () => void }`. Every later primitive task uses it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -555,7 +555,7 @@ describe("renderSolid", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test tests/helpers/renderSolid.test.tsx`
-Expected: FAIL — no test files matched, because `vitest.config.ts` only includes `*.test.ts`, not `*.test.tsx`.
+Expected: FAIL: no test files matched; `vitest.config.ts` only includes `*.test.ts`, not `*.test.tsx`.
 
 - [ ] **Step 3: Add JSX support to the test config**
 
@@ -601,7 +601,7 @@ export default defineConfig({
 });
 ```
 
-The `solid-js/web` and `solid-js/store` aliases mirror `vite.config.ts` — Solid 2.0 beta moved those modules, and without the aliases the primitives resolve a second copy of the reactive runtime.
+`solid-js/web` and `solid-js/store` aliases mirror `vite.config.ts`: Solid 2.0 beta moved those modules; without aliases primitives resolve second copy of reactive runtime.
 
 - [ ] **Step 4: Write the helper**
 
@@ -646,7 +646,7 @@ Expected: PASS, 3 tests.
 - [ ] **Step 6: Verify the existing suite still runs**
 
 Run: `bun run check && bun run test`
-Expected: Biome clean; all previously passing tests still pass (the config change must not drop `misc/**` or `tests/**` coverage).
+Expected: Biome clean; all prior passing tests pass (config change must not drop `misc/**` or `tests/**` coverage).
 
 - [ ] **Step 7: Commit**
 
@@ -774,7 +774,7 @@ describe("Rule", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `bun run test src/components/schematic`
-Expected: FAIL — `Failed to resolve import "./Anno"` and `"./Rule"`.
+Expected: FAIL: `Failed to resolve import "./Anno"` and `"./Rule"`.
 
 - [ ] **Step 3: Write Anno**
 
@@ -1007,7 +1007,7 @@ describe("TitleBlock", () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `bun run test src/components/schematic`
-Expected: FAIL — `Failed to resolve import "./Sheet"` and `"./TitleBlock"`.
+Expected: FAIL: `Failed to resolve import "./Sheet"` and `"./TitleBlock"`.
 
 - [ ] **Step 3: Write Sheet**
 
@@ -1104,7 +1104,7 @@ export default function TitleBlock(props: {
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `bun run test src/components/schematic`
-Expected: PASS, 22 tests total across the four primitive test files.
+Expected: PASS, 22 tests total across four primitive test files.
 
 - [ ] **Step 6: Verify the suite**
 
@@ -1198,7 +1198,7 @@ describe("Plate", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/schematic/Plate.test.tsx`
-Expected: FAIL — `Failed to resolve import "./Plate"`.
+Expected: FAIL: `Failed to resolve import "./Plate"`.
 
 - [ ] **Step 3: Write Plate**
 
@@ -1246,7 +1246,7 @@ export default function Plate(props: {
 }
 ```
 
-If `Dynamic` is not exported from `@solidjs/web` in this beta, import it from `solid-js` instead; run `bun run check` after the change and use whichever import resolves.
+If `Dynamic` not exported from `@solidjs/web` in this beta, import from `solid-js`; run `bun run check` after, use whichever resolves.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1273,7 +1273,7 @@ belong in real lists rather than divs inside a ul."
 
 ### Task 6: Unfold primitive
 
-This is the accessibility-critical primitive. Depth-on-demand is built entirely on reveal, and reveal excludes keyboard and touch users unless the state machine is explicit.
+Accessibility-critical. Depth-on-demand built on reveal; reveal excludes keyboard/touch users unless state machine explicit.
 
 **Files:**
 - Create: `src/components/schematic/Unfold.tsx`
@@ -1292,7 +1292,7 @@ focused ← focusin / focusout on the container, using relatedTarget
 open    = pinned || hovered || focused
 ```
 
-Focus is tracked on the **container**, not the trigger, and `focusout` only clears it when focus actually left the container. Tracking focus on the trigger with `onBlur` would close the region the moment a keyboard user tabbed into the content it just revealed — the single most common way this pattern is built wrong.
+Focus tracked on **container**, not trigger; `focusout` clears only when focus actually left container. Tracking on trigger with `onBlur` closes region the moment keyboard user tabs into revealed content: most common way pattern built wrong.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1447,7 +1447,7 @@ describe("Unfold", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/schematic/Unfold.test.tsx`
-Expected: FAIL — `Failed to resolve import "./Unfold"`.
+Expected: FAIL: `Failed to resolve import "./Unfold"`.
 
 - [ ] **Step 3: Write Unfold**
 
@@ -1535,7 +1535,7 @@ export default function Unfold(props: {
 Run: `bun run test src/components/schematic/Unfold.test.tsx`
 Expected: PASS, 11 tests.
 
-Both `aria-*` values are already written as explicit strings and every state-changing test already calls `flush()`. Both were measured against Solid 2.0.0-beta.28: a boolean renders as attribute presence (absent when false, `""` when true), and a write from a click handler does not reach the DOM until the scheduler flushes. Do not "simplify" either back to the boolean or drop the `flush()` calls — the tests will fail.
+Both `aria-*` values already explicit strings; every state-changing test already calls `flush()`. Both measured on Solid 2.0.0-beta.28: boolean renders as attribute presence (absent false, `""` true), click-handler write not in DOM till scheduler flushes. No "simplify" back to boolean, no drop `flush()`: tests fail.
 
 - [ ] **Step 5: Verify the suite**
 
@@ -1699,7 +1699,7 @@ describe("Field", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/schematic/Field.test.tsx`
-Expected: FAIL — `Failed to resolve import "./Field"`.
+Expected: FAIL: `Failed to resolve import "./Field"`.
 
 - [ ] **Step 3: Write Field**
 
@@ -1797,16 +1797,16 @@ currentTarget. Hints are linked with aria-describedby."
 
 ### Task 8: Icon indirection layer
 
-The user is authoring a custom icon set in vector software. The point of this task is that adopting it later is a one-file edit, not a 17-file sweep.
+User authoring custom icon set in vector software. Point: adopting later = one-file edit, not 17-file sweep.
 
 **Files:**
 - Create: `src/components/icons/index.ts`
 - Test: `src/components/icons/index.test.ts`
-- Modify (import lines only): the 17 files listed in Step 4.
+- Modify (import lines only): 17 files in Step 4.
 
 **Interfaces:**
 - Consumes: `solid-icons/{bi,cg,fa,tb}`.
-- Produces: 31 named exports, each a Solid component accepting `{ size?: number; class?: string }`. Names are semantic (`IconClose`), never vendor-shaped (`TbOutlineX`).
+- Produces: 31 named exports, each Solid component taking `{ size?: number; class?: string }`. Names semantic (`IconClose`), never vendor-shaped (`TbOutlineX`).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1885,7 +1885,7 @@ describe("icon indirection layer", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/icons`
-Expected: FAIL — `Failed to resolve import "./index"`.
+Expected: FAIL: `Failed to resolve import "./index"`.
 
 - [ ] **Step 3: Write the indirection module**
 
@@ -1969,11 +1969,11 @@ export const IconUpload = TbOutlineUpload;
 export const IconWorld = TbOutlineWorld;
 ```
 
-`IconArrowLeft` and `IconForward` are the back/forward pair in `ui/UrlBar.tsx`. They are named asymmetrically on purpose: `IconArrowRight` is already taken by an unrelated Tabler glyph used elsewhere, and collapsing the two would make the "no two names alias the same component" test fail for a real reason.
+`IconArrowLeft` and `IconForward` = back/forward pair in `ui/UrlBar.tsx`. Asymmetric on purpose: `IconArrowRight` taken by unrelated Tabler glyph elsewhere; merging them fails "no two names alias same component" test for real reason.
 
 - [ ] **Step 4: Migrate every call site**
 
-Replace the vendor import in each file with a single import from `~/components/icons`, then rename the JSX usages. The mapping is exactly the table in Step 3, read right-to-left.
+Replace vendor import in each file with one import from `~/components/icons`, rename JSX usages. Mapping = Step 3 table read right-to-left.
 
 | File | Old import | New import |
 |---|---|---|
@@ -2000,9 +2000,9 @@ Example, `src/components/AppsPage.tsx` line 1:
 import { IconClose, IconPlus, IconWorld } from "~/components/icons";
 ```
 
-and every `<TbOutlineWorld size={28} />` becomes `<IconWorld size={28} />`, `<TbOutlineX size={11} />` becomes `<IconClose size={11} />`, `<TbOutlinePlus size={28} />` becomes `<IconPlus size={28} />`.
+and every `<TbOutlineWorld size={28} />` → `<IconWorld size={28} />`, `<TbOutlineX size={11} />` → `<IconClose size={11} />`, `<TbOutlinePlus size={28} />` → `<IconPlus size={28} />`.
 
-For the four files with multi-line vendor imports (`ExtensionsPage.tsx`, `BookmarksPage.tsx`, `ui/UrlBar.tsx`, `ChiiPanel.tsx`), read the existing import block, map each name through the Step 3 table, and replace the block with one `~/components/icons` import.
+Four files with multi-line vendor imports (`ExtensionsPage.tsx`, `BookmarksPage.tsx`, `ui/UrlBar.tsx`, `ChiiPanel.tsx`): read import block, map each name via Step 3 table, replace block with one `~/components/icons` import.
 
 - [ ] **Step 5: Verify no vendor imports remain outside the indirection module**
 
@@ -2012,7 +2012,7 @@ Run:
 grep -rn "solid-icons" src/ --include=*.tsx --include=*.ts | grep -v "src/components/icons/index.ts"
 ```
 
-Expected: no output. Any line printed is a call site that was missed and will silently diverge when the custom set lands.
+Expected: no output. Any line = missed call site, silently diverges when custom set lands.
 
 - [ ] **Step 6: Run the tests**
 
@@ -2022,7 +2022,7 @@ Expected: PASS, 4 tests.
 - [ ] **Step 7: Verify the whole app still builds**
 
 Run: `bun run check && bun run test && bun run build`
-Expected: Biome clean; all tests pass; Vite build succeeds. The build is required here because this task touches 17 files including chrome components no test covers.
+Expected: Biome clean; tests pass; Vite build succeeds. Build required: task touches 17 files incl. chrome components no test covers.
 
 - [ ] **Step 8: Commit**
 
@@ -2056,10 +2056,10 @@ names alias the same component."
 - Test: `src/components/NewTabPage.test.tsx`
 
 **Interfaces:**
-- Consumes: `Sheet`, `TitleBlock` are *not* used here — New Tab's title block sits bottom-left, which is the one page where the block is not a header. It uses `Sheet`, `Anno`, `Rule`, and `Unfold` directly.
+- Consumes: `Sheet`, `TitleBlock` *not* used here: New Tab title block sits bottom-left, only page where block not header. Uses `Sheet`, `Anno`, `Rule`, `Unfold` directly.
 - Produces: nothing other tasks depend on.
 
-**Verification caveat.** `NewTabPage` renders its search bar only inside an iframe (`window.self !== window.top`). Visiting `/newtab` directly shows the title block but not the omnibox, and therefore not the status unfold. Verify the unfold by loading `/` and opening a new tab inside the chrome.
+**Verification caveat.** `NewTabPage` renders search bar only in iframe (`window.self !== window.top`). Direct `/newtab` shows title block but no omnibox, so no status unfold. Verify unfold by loading `/` and opening new tab in chrome.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2112,7 +2112,7 @@ describe("NewTabPage", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/NewTabPage.test.tsx`
-Expected: FAIL — no element matches `.${s.sheetField}`, because the page does not use `Sheet` yet.
+Expected: FAIL: no element matches `.${s.sheetField}`; page not using `Sheet` yet.
 
 - [ ] **Step 3: Rewrite the component**
 
@@ -2184,7 +2184,7 @@ export default function NewTabPage() {
 }
 ```
 
-The status strip's values are placeholders in this task — Task 9b wires them to live data. Keeping them static here means this task's test asserts structure, not fetch behaviour, and can therefore run without stubbing the network.
+Status strip values placeholders here: Task 9b wires live data. Static means test asserts structure, not fetch, runs without network stub.
 
 - [ ] **Step 4: Rewrite the style file**
 
@@ -2287,7 +2287,7 @@ export const adNote = style({
 });
 ```
 
-Every previously exported name (`newtabRoot`, `welcomeText`, `eyebrow`, `eyebrowDot`, `wordmarkRule`, `tagline`, `searchbarWrap`, `cornerBracket`, `cornerTL/TR/BL/BR`, `axisTick`, `axisTickLeft/Right`, `adNotice`) is gone. `NewTabPage.tsx` was its only consumer — confirm with:
+All old exports (`newtabRoot`, `welcomeText`, `eyebrow`, `eyebrowDot`, `wordmarkRule`, `tagline`, `searchbarWrap`, `cornerBracket`, `cornerTL/TR/BL/BR`, `axisTick`, `axisTickLeft/Right`, `adNotice`) gone. `NewTabPage.tsx` only consumer. Confirm:
 
 ```bash
 grep -rn "NewTabPage.css" src/ | grep -v "src/styles/NewTabPage.css.ts"
@@ -2303,8 +2303,8 @@ Expected: PASS, 5 tests.
 - [ ] **Step 6: Verify the build and look at it**
 
 Run: `bun run check && bun run test && ./build.sh`
-Then: `PORT=1234 bun run start:watch` and open `http://localhost:1234/newtab`.
-Expected: a ruled sheet, three corner marks, wordmark and mono meta bottom-left, margin note bottom-right, no omnibox (correct outside a frame).
+Then: `PORT=1234 bun run start:watch`, open `http://localhost:1234/newtab`.
+Expected: ruled sheet, three corner marks, wordmark + mono meta bottom-left, margin note bottom-right, no omnibox (correct outside frame).
 
 - [ ] **Step 7: Commit**
 
@@ -2329,7 +2329,7 @@ Status values are static in this commit; the next wires them to live data."
 - Test: `src/components/NewTabPage.test.tsx`
 
 **Interfaces:**
-- Consumes: `fetchBestProxy` from `~/lib/bestProxy` (returns `Promise<BestProxy | null>` where `BestProxy = { proxy: "uv" | "scramjet"; transport: "epoxy" | "libcurl" | "bare"; wispVersion: 1 | 2; score?: number; cached?: boolean }`); the `detectedFilters` localStorage key, a JSON string array written by `~/lib/swUtils`.
+- Consumes: `fetchBestProxy` from `~/lib/bestProxy` (returns `Promise<BestProxy | null>` where `BestProxy = { proxy: "uv" | "scramjet"; transport: "epoxy" | "libcurl" | "bare"; wispVersion: 1 | 2; score?: number; cached?: boolean }`); `detectedFilters` localStorage key, JSON string array written by `~/lib/swUtils`.
 - Produces: nothing.
 
 - [ ] **Step 1: Write the failing test**
@@ -2367,18 +2367,18 @@ describe("NewTabPage status strip", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/NewTabPage.test.tsx`
-Expected: FAIL — "securly" is not in the output; the strip is still static.
+Expected: FAIL: "securly" not in output; strip still static.
 
 - [ ] **Step 3: Add the reactive reads**
 
-In `src/components/NewTabPage.tsx`, add these imports:
+In `src/components/NewTabPage.tsx`, add imports:
 
 ```tsx
 import { createResource, createSignal, onMount, Show } from "solid-js";
 import { fetchBestProxy } from "~/lib/bestProxy";
 ```
 
-Inside the component, above the `return`:
+In component, above `return`:
 
 ```tsx
     const [filters, setFilters] = createSignal<string[]>([]);
@@ -2407,7 +2407,7 @@ Inside the component, above the `return`:
         filters().length > 0 ? filters().join(" · ") : "none";
 ```
 
-Replace the three static `statusPair` blocks with:
+Replace three static `statusPair` blocks with:
 
 ```tsx
                             <dl class={s.statusStrip}>
@@ -2436,12 +2436,12 @@ Replace the three static `statusPair` blocks with:
                             </dl>
 ```
 
-An em dash is the resting value for anything not yet resolved, so the strip never shows a stale or invented figure.
+Em dash = resting value for unresolved, so strip never shows stale or invented figure.
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `bun run test src/components/NewTabPage.test.tsx`
-Expected: PASS, 8 tests. `fetchBestProxy` calls `fetch`, which happy-dom leaves unstubbed — the promise rejects and `fetchBestProxy` already swallows it, returning `null`, so the em-dash fallbacks render. No network stub is needed.
+Expected: PASS, 8 tests. `fetchBestProxy` calls `fetch`, unstubbed in happy-dom: promise rejects, `fetchBestProxy` swallows, returns `null`, em-dash fallbacks render. No network stub needed.
 
 - [ ] **Step 5: Verify the suite**
 
@@ -2475,7 +2475,7 @@ figure."
 - Consumes: `Sheet`, `TitleBlock`, `Rule`, `Anno`, `Plate`, `Unfold`, `Field` primitives; `apps`, `appsAdd`, `appsRemove` from `~/api/apps`; `tabManager` from `~/lib/TabManager`; `CivilApp` from `~/types`; `IconWorld`, `IconPlus`, `IconClose` from `~/components/icons`.
 - Produces: nothing.
 
-**Behaviour that must not change.** The URL validation in `handleAdd` rejects anything whose hostname fails `/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i`, because `new URL()` alone turns "not a valid url" into the host `not%20a%20valid%20url` and lands it in the grid. Keep that check and its message verbatim.
+**Behaviour that must not change.** URL validation in `handleAdd` rejects hostname failing `/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i`, because `new URL()` alone turns "not a valid url" into host `not%20a%20valid%20url` and puts it in grid. Keep check + message verbatim.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2595,7 +2595,7 @@ describe("AppsPage", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/AppsPage.test.tsx`
-Expected: FAIL — no `.sheetField`, no `label[for]`, no `ul`.
+Expected: FAIL: no `.sheetField`, no `label[for]`, no `ul`.
 
 - [ ] **Step 3: Rewrite the component**
 
@@ -2787,7 +2787,7 @@ export default function AppsPage() {
 }
 ```
 
-Opening an app moves from a click on the tile to an explicit "open" button inside the unfold. That removes the `noStaticElementInteractions` and `useKeyWithClickEvents` Biome suppressions the old file carried — a div with a click handler was never keyboard-reachable.
+Opening app moves from tile click to explicit "open" button in unfold. Drops `noStaticElementInteractions` and `useKeyWithClickEvents` Biome suppressions old file had: click-handler div never keyboard-reachable.
 
 - [ ] **Step 4: Rewrite the style file**
 
@@ -2918,7 +2918,7 @@ export const ghostNote = style({
 });
 ```
 
-Confirm nothing else imported the old names:
+Confirm nothing else imported old names:
 
 ```bash
 grep -rn "AppsPage.css" src/ | grep -v "src/styles/AppsPage.css.ts"
@@ -2935,7 +2935,7 @@ Expected: PASS, 8 tests.
 
 Run: `bun run check && bun run test && ./build.sh`
 Then open `http://localhost:1234/apps`.
-Expected: title block, an "add item" field on a rule, a "positions" rule, and eight dashed ghost positions when empty. Hovering or tabbing to a filled position reveals hostname plus open/remove.
+Expected: title block, "add item" field on rule, "positions" rule, eight dashed ghost positions when empty. Hover/tab to filled position reveals hostname + open/remove.
 
 - [ ] **Step 7: Commit**
 
@@ -2956,7 +2956,7 @@ keyboard-reachable. The hostname validation and its message are unchanged."
 
 ### Task 11: Split FilterCheckPage without changing behaviour
 
-Mechanical extraction only. No visual change. A reviewer should be able to approve this and reject Task 12, or the reverse.
+Mechanical extraction only. No visual change. Reviewer can approve this and reject Task 12, or reverse.
 
 **Files:**
 - Create: `src/lib/filterCheckVendors.ts`
@@ -3030,19 +3030,19 @@ describe("prettifyFilterName", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/lib/filterCheckVendors.test.ts`
-Expected: FAIL — `Failed to resolve import "./filterCheckVendors"`.
+Expected: FAIL: `Failed to resolve import "./filterCheckVendors"`.
 
 - [ ] **Step 3: Move the vendor layer out**
 
-Create `src/lib/filterCheckVendors.ts` and move into it, unchanged, from `src/components/FilterCheckPage.tsx`:
+Create `src/lib/filterCheckVendors.ts`, move in unchanged from `src/components/FilterCheckPage.tsx`:
 
-- the `FilterStatus`, `FilterResult`, and `FilterConfig` type declarations (currently lines 26–48), each now `export type`
+- `FilterStatus`, `FilterResult`, `FilterConfig` type declarations (currently lines 26-48), each now `export type`
 - `SECURLY_EXTENSION_ID` (line 49), now `export const`
-- `FILTER_CONFIGS` (lines 51–291), now `export const`
-- `findFilterConfig` (lines 292–301), now `export function`
-- `prettifyFilterName` (lines 302–349), now `export function`
+- `FILTER_CONFIGS` (lines 51-291), now `export const`
+- `findFilterConfig` (lines 292-301), now `export function`
+- `prettifyFilterName` (lines 302-349), now `export function`
 
-Add this module docblock at the top:
+Add module docblock at top:
 
 ```ts
 /**
@@ -3055,7 +3055,7 @@ Add this module docblock at the top:
  */
 ```
 
-Then in `src/components/FilterCheckPage.tsx`, delete those declarations and import them:
+Then in `src/components/FilterCheckPage.tsx`, delete those declarations, import them:
 
 ```tsx
 import {
@@ -3079,10 +3079,10 @@ Expected: PASS, 7 tests.
 - [ ] **Step 5: Confirm the page is unchanged in behaviour**
 
 Run: `bun run check && bun run test && ./build.sh`
-Then open `http://localhost:1234/checkfilters` and run a check against `https://example.com`.
-Expected: identical appearance and behaviour to before this task. Line count of `FilterCheckPage.tsx` drops by roughly 320.
+Then open `http://localhost:1234/checkfilters`, check `https://example.com`.
+Expected: identical look + behaviour. `FilterCheckPage.tsx` line count drops ~320.
 
-Verify the drop:
+Verify drop:
 
 ```bash
 wc -l src/components/FilterCheckPage.tsx src/lib/filterCheckVendors.ts
@@ -3116,21 +3116,21 @@ between two vendors."
 **Interfaces:**
 - Consumes: `FilterResult`, `FilterStatus` from `~/lib/filterCheckVendors`; `Sheet`, `TitleBlock`, `Rule`, `Anno`, `Unfold`, `Field` primitives; `IconAlert`, `IconCheck`, `IconLoaderDots` from `~/components/icons`.
 
-> **Decide one of these before writing `StatusMark`.** The current page uses three
-> glyphs — `IconCheck` for `allowed`, `IconSpinnerFilled` for `unknown`, and
-> `IconAlert` for everything else. The `StatusMark` below uses only two, which
-> collapses `unknown` into the same glyph as `blocked`.
+> **Decide one of these before writing `StatusMark`.** Current page uses three
+> glyphs: `IconCheck` for `allowed`, `IconSpinnerFilled` for `unknown`,
+> `IconAlert` for rest. `StatusMark` below uses two, collapsing `unknown`
+> into same glyph as `blocked`.
 >
-> The verdict is still spelled out as text in its own ledger column and still
-> carries its own status colour, so a two-glyph split is defensible — but if you
-> take it, **remove `IconSpinnerFilled` from `src/components/icons/index.ts`**,
-> because nothing else imports it and its own test asserts every export has a
-> consumer. Leaving it would be dead code.
+> Verdict still spelled as text in own ledger column with own status
+> colour, so two-glyph split defensible; if taken,
+> **remove `IconSpinnerFilled` from `src/components/icons/index.ts`**:
+> nothing else imports it, and its test asserts every export has a
+> consumer. Leaving it = dead code.
 >
-> Alternatively keep three glyphs, giving `unknown` a neutral mark, which
-> preserves the five-verdict visual system DESIGN.md describes.
+> Or keep three glyphs, `unknown` gets neutral mark, preserving
+> five-verdict visual system DESIGN.md describes.
 >
-> Either is acceptable. Silently dropping the glyph *and* leaving the export is
+> Either OK. Silently dropping glyph *and* keeping export is
 > not.
 - Produces: `FilterCheckForm(props: { needsEmail: boolean; email: string; url: string; loading: boolean; onEmail: (v: string) => void; onUrl: (v: string) => void; onSubmit: () => void })`; `FilterCheckResults(props: { results: FilterResult[] })`.
 
@@ -3236,7 +3236,7 @@ describe("FilterCheckResults", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `bun run test src/components/FilterCheckResults.test.tsx`
-Expected: FAIL — `Failed to resolve import "./FilterCheckResults"`.
+Expected: FAIL: `Failed to resolve import "./FilterCheckResults"`.
 
 - [ ] **Step 3: Write the results ledger**
 
@@ -3399,9 +3399,9 @@ export default function FilterCheckForm(props: {
 
 - [ ] **Step 5: Rewire the page**
 
-In `src/components/FilterCheckPage.tsx`, keep every signal, effect, and handler exactly as-is. Replace only the JSX returned at the end: wrap it in `Sheet`, use `TitleBlock`, and delegate to the two new components.
+In `src/components/FilterCheckPage.tsx`, keep every signal, effect, handler as-is. Replace only returned JSX: wrap in `Sheet`, use `TitleBlock`, delegate to two new components.
 
-The structure of the new `return`:
+New `return` structure:
 
 ```tsx
     return (
@@ -3478,7 +3478,7 @@ The structure of the new `return`:
     );
 ```
 
-Delete the local `StatusIcon` function (lines 350–372 of the original) — `FilterCheckResults` owns status marks now. Add these imports and drop any that become unused:
+Delete local `StatusIcon` function (lines 350-372 of original): `FilterCheckResults` owns status marks now. Add imports, drop any now unused:
 
 ```tsx
 import { IconLoaderDots } from "~/components/icons";
@@ -3492,7 +3492,7 @@ import FilterCheckResults from "./FilterCheckResults";
 
 - [ ] **Step 6: Replace the style file's page-level exports**
 
-In `src/styles/FilterCheckPage.css.ts`, delete `page`, `header`, `headerTitle`, `eyebrow`, `eyebrowMark`, `title`, `subtitle`, `noFiltersText`, `detectedBadges`, `detectedLabel`, `badge`, `label`, `input`, `checkBtn`, `results`, `resultCard`, `resultIcon`, `resultIconColor`, `resultBody`, `resultName`, `resultDetail`, `categories`, `resultStatus`, `rescanBtn`, `unsupportedNotice`. Keep `spinner` and `catChip`. Add:
+In `src/styles/FilterCheckPage.css.ts`, delete `page`, `header`, `headerTitle`, `eyebrow`, `eyebrowMark`, `title`, `subtitle`, `noFiltersText`, `detectedBadges`, `detectedLabel`, `badge`, `label`, `input`, `checkBtn`, `results`, `resultCard`, `resultIcon`, `resultIconColor`, `resultBody`, `resultName`, `resultDetail`, `categories`, `resultStatus`, `rescanBtn`, `unsupportedNotice`. Keep `spinner`, `catChip`. Add:
 
 ```ts
 import { style, styleVariants } from "@vanilla-extract/css";
@@ -3629,8 +3629,8 @@ Expected: PASS, 7 tests.
 - [ ] **Step 8: Verify and exercise it for real**
 
 Run: `bun run check && bun run test && ./build.sh`
-Then open `http://localhost:1234/checkfilters`, run a report against `https://example.com`, and expand a row.
-Expected: a ledger with aligned columns; expanding a row shows its detail string and category chips. Confirm a deliberately bad URL surfaces an error verdict rather than a blank row.
+Then open `http://localhost:1234/checkfilters`, run report on `https://example.com`, expand row.
+Expected: ledger, aligned columns; expanded row shows detail string + category chips. Confirm bad URL gives error verdict, not blank row.
 
 - [ ] **Step 9: Commit**
 
@@ -3660,39 +3660,39 @@ ink."
 
 - [ ] **Step 1: Rewrite DESIGN.md's north star and rules**
 
-Edit the front-matter `description` to: `A stealth browser chrome wrapped around schematic interior pages — a technical drawing you can browse from`.
+Set front-matter `description` to: `A stealth browser chrome wrapped around schematic interior pages — a technical drawing you can browse from`.
 
-In the prose, replace the "Creative North Star: The Stealth Cockpit" section with a two-layer statement: the chrome stays stealth and browser-shaped because it is what a passer-by sees; interior pages are schematic because only the user sees them.
+In prose, replace "Creative North Star: The Stealth Cockpit" section with two-layer statement: chrome stays stealth + browser-shaped because passer-by sees it; interior pages schematic because only user sees them.
 
-Then make these specific corrections:
+Then corrections:
 
 | Rule | Change |
 |---|---|
-| The One-Family Rule | Retired. Rubik carries prose and labels; a system monospace stack carries data. Document `FONT_MONO`. |
-| Flat by default | Retired for interior pages. Interior depth comes from rules and alignment, not shadow *or* light. |
+| The One-Family Rule | Retired. Rubik carries prose + labels; system mono stack carries data. Document `FONT_MONO`. |
+| Flat by default | Retired for interior pages. Interior depth from rules + alignment, not shadow *or* light. |
 | The Two-Lane Accent Rule | Retained. Lavender = chrome, mauve = Filter Checker. |
-| `atmosphere()` / `edgeLit` | Record as **deliberately retired**, with the reason: they belong to the backlit metaphor, which does not coexist with flat ink. Note that the exports survive only until the six pass-2 pages migrate. |
-| Annotation contrast | `overlay1` on `base` is ~4.0:1 and fails WCAG AA for small text. Annotations use `subtext0`. |
+| `atmosphere()` / `edgeLit` | Record **deliberately retired**, reason: belong to backlit metaphor, can't coexist with flat ink. Exports survive only till six pass-2 pages migrate. |
+| Annotation contrast | `overlay1` on `base` ~4.0:1, fails WCAG AA small text. Annotations use `subtext0`. |
 
-Add a "Schematic language" section documenting the sheet model, the three rule weights, the three field densities, registration-mark convention (three corners; bottom-left belongs to the title block), and the seven primitives with one line each.
+Add "Schematic language" section: sheet model, three rule weights, three field densities, registration-mark convention (three corners; bottom-left belongs to title block), seven primitives one line each.
 
-Add a "Migration state" section listing which pages are schematic (newtab, apps, checkfilters) and which are still backlit (bookmarks, history, extensions, benchmarks, ban, baninfo), so the inconsistency is documented rather than mysterious.
+Add "Migration state" section: schematic pages (newtab, apps, checkfilters), still backlit (bookmarks, history, extensions, benchmarks, ban, baninfo), so inconsistency documented, not mysterious.
 
 - [ ] **Step 2: Update MAINTENANCE.md**
 
-- In the file map, add `src/styles/schematic.css.ts`, `src/components/schematic/`, `src/components/icons/`, `src/lib/filterCheckVendors.ts`, `tests/helpers/renderSolid.ts`.
-- Add a "Schematic primitives" subsection to the Solid section: the seven primitives, and the rule that `Unfold` is the only reveal mechanism — do not hand-roll hover states.
-- Add to the icon section: **never import `solid-icons` directly**; import from `~/components/icons`. Include the verification command:
+- File map: add `src/styles/schematic.css.ts`, `src/components/schematic/`, `src/components/icons/`, `src/lib/filterCheckVendors.ts`, `tests/helpers/renderSolid.ts`.
+- Add "Schematic primitives" subsection to Solid section: seven primitives, rule that `Unfold` only reveal mechanism: no hand-rolled hover states.
+- Icon section: **never import `solid-icons` directly**; import from `~/components/icons`. Include verify command:
   ```bash
   grep -rn "solid-icons" src/ | grep -v "src/components/icons/index.ts"
   ```
-- Update the testing table with the new component test files and note the `// @vitest-environment happy-dom` docblock requirement plus `renderSolid`.
-- In "Known problems", remove item 5 if `oxc-parser`/`oxc-transform` were resolved, and add: *interior pages are mid-migration — three schematic, six backlit.*
+- Testing table: add new component test files, note `// @vitest-environment happy-dom` docblock requirement + `renderSolid`.
+- "Known problems": remove item 5 if `oxc-parser`/`oxc-transform` resolved; add: *interior pages are mid-migration: three schematic, six backlit.*
 
 - [ ] **Step 3: Verify**
 
 Run: `bun run check && bun run test && ./build.sh`
-Expected: all green. Documentation changes cannot break the build, but this confirms the tree is clean before the final commit.
+Expected: all green. Docs can't break build; confirms tree clean before final commit.
 
 - [ ] **Step 4: Commit**
 
@@ -3715,25 +3715,25 @@ Adds a migration-state section: three pages schematic, six still backlit."
 
 ## Self-Review
 
-**Spec coverage.** Every numbered spec section maps to a task: §4.1–4.4 foundation → Task 1; §5 primitives → Tasks 3–7; §5.1 `Unfold` → Task 6; §6 icon indirection → Task 8; §7.1 New Tab → Tasks 9 and 9b; §7.2 Apps → Task 10; §7.3 Filter Checker → Task 12; §7.4 component split → Task 11; §8 accessibility → distributed through the primitive tests, with the contrast correction in Task 1; §9 motion → Task 1's `unfoldRegion` transition; §10 performance → the Global Constraints block; §11 empty and error states → Tasks 10 and 12; §12 testing → Task 2 plus per-task tests; §13 verification → the verify step in Tasks 9–12; §14 documentation → Task 13.
+**Spec coverage.** Every numbered spec section maps to task: §4.1-4.4 foundation → Task 1; §5 primitives → Tasks 3-7; §5.1 `Unfold` → Task 6; §6 icon indirection → Task 8; §7.1 New Tab → Tasks 9, 9b; §7.2 Apps → Task 10; §7.3 Filter Checker → Task 12; §7.4 component split → Task 11; §8 accessibility → spread through primitive tests, contrast fix in Task 1; §9 motion → Task 1 `unfoldRegion` transition; §10 performance → Global Constraints; §11 empty/error states → Tasks 10, 12; §12 testing → Task 2 + per-task tests; §13 verification → verify step Tasks 9-12; §14 docs → Task 13.
 
-One spec item is **deliberately not implemented in pass 1**: §11's "service worker unavailable → labelled margin note". `swUtils.ts` only logs to the console today, and surfacing it needs a shared toast or status channel that no slice page owns. It belongs with the chrome work in pass 2. Flagged rather than silently dropped.
+One spec item **deliberately not in pass 1**: §11 "service worker unavailable → labelled margin note". `swUtils.ts` only logs to console; surfacing needs shared toast/status channel no slice page owns. Goes with chrome work in pass 2. Flagged, not silently dropped.
 
-**Type consistency.** `FilterStatus`, `FilterResult`, and `FilterConfig` keep the exact shapes from the current `FilterCheckPage.tsx` through Tasks 11 and 12. `Corner` is defined in Task 4 and reused in Task 12's `marks={["tl", "tr", "br"]}`. `FieldDensity` is defined in Task 1 and consumed in Tasks 4 and 9. `renderSolid`'s `{ container, unmount }` return is used identically in every component test. `IconForward` is exported in Task 8 Step 3 and called out in the note there because it is missing from the test list — add it when writing that test.
+**Type consistency.** `FilterStatus`, `FilterResult`, `FilterConfig` keep exact shapes from current `FilterCheckPage.tsx` through Tasks 11, 12. `Corner` defined Task 4, reused in Task 12 `marks={["tl", "tr", "br"]}`. `FieldDensity` defined Task 1, used Tasks 4, 9. `renderSolid` `{ container, unmount }` return used same in every component test. `IconForward` exported Task 8 Step 3, flagged there since missing from test list: add when writing that test.
 
-**Placeholder scan.** No `TBD`, no "add error handling", no "similar to Task N". Two places intentionally defer to the implementer with a stated fallback rather than a guess: Task 5's `Dynamic` import location, and Task 6's `aria-expanded` boolean coercion. Both name the exact symptom and the exact remedy, because both depend on Solid 2.0 beta behaviour that should be confirmed against the installed version rather than assumed.
+**Placeholder scan.** No `TBD`, no "add error handling", no "similar to Task N". Two spots defer to implementer with stated fallback, not guess: Task 5 `Dynamic` import location, Task 6 `aria-expanded` boolean coercion. Both name exact symptom + remedy; both depend on Solid 2.0 beta behaviour to confirm against installed version, not assume.
 
 ---
 
 # Inserted: theme replacement (runs BEFORE Tasks 9b, 10, 11, 12, 13)
 
-The user replaced the palette direction mid-execution: Catppuccin Macchiato out,
-a bespoke night-sky theme in, plus a more creative New Tab. Sequenced first so
-Tasks 10 and 12 are written in the new theme rather than re-themed afterwards.
+User replaced palette direction mid-execution: Catppuccin Macchiato out,
+bespoke night-sky theme in, plus more creative New Tab. Sequenced first so
+Tasks 10, 12 written in new theme, not re-themed after.
 
-**This voids the old contrast constants.** Every figure in the Global Constraints
+**This voids old contrast constants.** Every figure in Global Constraints
 (overlay0 3.15:1, overlay1 4.14:1, overlay2 5.29:1, subtext0 6.62:1) was
-Macchiato-specific. Replacements are measured below.
+Macchiato-specific. Replacements measured below.
 
 ### Task T1: Replace the palette and rename the contract
 
@@ -3743,15 +3743,15 @@ Macchiato-specific. Replacements are measured below.
 - Delete: `src/styles/themes/macchiato.css.ts`
 
 **Interfaces:**
-- Produces: `PALETTE: Record<SlotName, string>` from `src/styles/palette.ts` — a plain module, NOT a `.css.ts`, so echarts can import raw hex and vanilla-extract never tries to serialize it.
-- `vars.color.<slot>` keeps working; only the slot names change.
+- Produces: `PALETTE: Record<SlotName, string>` from `src/styles/palette.ts`: plain module, NOT `.css.ts`, so echarts imports raw hex and vanilla-extract never tries serializing it.
+- `vars.color.<slot>` keeps working; only slot names change.
 
-**The palette — "Astronomical twilight".** Surfaces descend into atmospheric
-depth; accents are stellar spectral classes plus airglow, the green emission
-visible at a dark site. No pure black (causes halation) and no pure white
-(primary text is 12.88:1 rather than white's 16.32:1).
+**The palette: "Astronomical twilight".** Surfaces descend into atmospheric
+depth; accents = stellar spectral classes plus airglow, green emission
+visible at dark site. No pure black (halation), no pure white
+(primary text 12.88:1 vs white's 16.32:1).
 
-Exact 1:1 rename map, every value measured against `dusk` (#18202F):
+Exact 1:1 rename map, every value measured on `dusk` (#18202F):
 
 | old slot | new slot | hex | on dusk | role |
 |---|---|---|---|---|
@@ -3762,7 +3762,7 @@ Exact 1:1 rename map, every value measured against `dusk` (#18202F):
 | `surface1` | `haze` | `#2C3850` | 1.39 | hover, border |
 | `surface2` | `dust` | `#3C4A66` | 1.84 | strong border |
 | `overlay0` | `ember` | `#5A6B8C` | 3.04 | **non-text only** (icons, rules) |
-| `overlay1` | `cinder` | `#7B8CAE` | 4.82 | muted text — now passes AA |
+| `overlay1` | `cinder` | `#7B8CAE` | 4.82 | muted text: now passes AA |
 | `overlay2` | `starlight` | `#9DAECB` | 7.27 | annotation |
 | `subtext0` | `moonlight` | `#BFCADD` | 9.88 | body |
 | `subtext1` | `halo` | `#CFD8E7` | 11.37 | emphasis |
@@ -3778,34 +3778,34 @@ Exact 1:1 rename map, every value measured against `dusk` (#18202F):
 | `maroon` | `arcturus` | `#E3A56E` | 7.67 | status: error |
 | `red` | `antares` | `#DC8B92` | 6.34 | status: blocked |
 
-**Note the improvement:** the `overlay1` slot failed AA under Macchiato (4.14:1),
-which is why four separate corrections were needed this session. `cinder`
-measures 4.82:1 and passes, so the muted tier is no longer a hazard.
+**Note improvement:** `overlay1` slot failed AA under Macchiato (4.14:1),
+why four separate corrections needed this session. `cinder`
+4.82:1, passes, so muted tier no longer hazard.
 
 - [ ] **Step 1: Create the palette module**
 
-`src/styles/palette.ts` — a plain `.ts` module holding the 22 hex values from the
-table above as `export const PALETTE = { void: "#0C111A", ... } as const;` plus
-`export type SlotName = keyof typeof PALETTE;`. It must NOT be named `.css.ts`:
+`src/styles/palette.ts`: plain `.ts` module holding 22 hex values from
+table as `export const PALETTE = { void: "#0C111A", ... } as const;` plus
+`export type SlotName = keyof typeof PALETTE;`. Must NOT be `.css.ts`:
 vanilla-extract only transforms that suffix, and `benchmarkConfig.ts` needs raw
-hex because echarts cannot read CSS custom properties.
+hex since echarts can't read CSS custom properties.
 
-Document at the top why the palette exists as plain data, and that no pure black
-or pure white appears deliberately.
+Document at top why palette is plain data, and that no pure black
+or pure white is deliberate.
 
 - [ ] **Step 2: Rewrite the contract and the theme**
 
-`src/styles/theme.css.ts` builds the contract from `PALETTE`'s keys instead of
+`src/styles/theme.css.ts` builds contract from `PALETTE` keys instead of
 `flavors.macchiato.colors`. Create `src/styles/themes/twilight.css.ts` calling
-`createGlobalTheme(":root", vars, { color: PALETTE })`, mirroring the shape of
-the file it replaces. Delete `src/styles/themes/macchiato.css.ts` and update the
+`createGlobalTheme(":root", vars, { color: PALETTE })`, mirroring shape of
+replaced file. Delete `src/styles/themes/macchiato.css.ts`, update
 `import "./themes/macchiato.css"` in `src/styles/global.css.ts`.
 
 - [ ] **Step 3: Rename every consumer**
 
-Apply the table's mapping across all files referencing `vars.color.*`. Find them
-with `grep -rln "vars.color" src/`. This is mechanical; change nothing but the
-slot name. Afterwards this must return nothing:
+Apply table mapping across all files referencing `vars.color.*`. Find
+with `grep -rln "vars.color" src/`. Mechanical; change only slot
+name. After, this must return nothing:
 
 ```bash
 grep -rnoE "vars\.color\.(crust|mantle|base|surface[012]|overlay[012]|subtext[01]|text|lavender|mauve|blue|sky|teal|green|yellow|peach|maroon|red)\b" src/
@@ -3814,9 +3814,9 @@ grep -rnoE "vars\.color\.(crust|mantle|base|surface[012]|overlay[012]|subtext[01
 - [ ] **Step 4: Migrate benchmarkConfig and drop the dependency**
 
 `src/lib/benchmarkConfig.ts` imports `flavors` and `ColorName` from
-`@catppuccin/palette` for echarts theming. Point it at `PALETTE` and `SlotName`
-instead, renaming each colour reference through the table. Then remove
-`@catppuccin/palette` from `package.json` and run `bun install`. Confirm nothing
+`@catppuccin/palette` for echarts theming. Point at `PALETTE` and `SlotName`
+instead, renaming each colour ref via table. Then remove
+`@catppuccin/palette` from `package.json`, run `bun install`. Confirm nothing
 imports it:
 
 ```bash
@@ -3825,32 +3825,31 @@ grep -rn "@catppuccin/palette" src/ package.json
 
 - [ ] **Step 5: Update the one colour assertion**
 
-`tests/schematic.test.ts` asserts `ANNO.color` is `vars.color.subtext0`. The
-annotation tier keeps the same role, so it becomes `vars.color.moonlight`.
+`tests/schematic.test.ts` asserts `ANNO.color` is `vars.color.subtext0`. Annotation tier keeps role, so becomes `vars.color.moonlight`.
 
 - [ ] **Step 6: Verify and commit**
 
-All four gates: `bun run test` (269 passing, count unchanged — this is a rename),
-`bun run check`, `bunx tsc --noEmit`, and `./build.sh` exit 0. The build matters
-most: it is the only check that exercises the vanilla-extract theme pipeline.
+All four gates: `bun run test` (269 passing, count unchanged: rename),
+`bun run check`, `bunx tsc --noEmit`, `./build.sh` exit 0. Build matters
+most: only check exercising vanilla-extract theme pipeline.
 
 ### Task T2: New Tab as a star chart
 
-Rework `NewTabPage` so the sheet reads as a celestial chart rather than a generic
-ruled sheet — a star chart *is* a technical drawing, so the schematic language
-and the night-sky theme unify rather than compete. Static only: DESIGN.md forbids
-ambient motion, and a moving starfield would also defeat the stealth requirement.
+Rework `NewTabPage` so sheet reads as celestial chart, not generic
+ruled sheet: star chart *is* technical drawing, so schematic language
+and night-sky theme unify, not compete. Static only: DESIGN.md forbids
+ambient motion, and moving starfield would defeat stealth requirement.
 
-Details are settled during implementation, but the fixed points are: the existing
-`Sheet`/`Rule`/`Anno`/`Unfold` primitives are reused unchanged; the title block
-stays bottom-left; the ad note stays; and any star field is decorative, static,
-`aria-hidden`, and low enough in contrast to sit under the content.
+Details settled during implementation; fixed points: existing
+`Sheet`/`Rule`/`Anno`/`Unfold` primitives reused unchanged; title block
+stays bottom-left; ad note stays; any star field decorative, static,
+`aria-hidden`, low contrast enough to sit under content.
 
 ### Task T3: Fix the Unfold hairline leak
 
-Confirmed by live measurement during Task 9: the collapsed `Unfold` region is
-**13px tall with a visible border**, not 0. `unfoldInner`'s `paddingTop`,
-`borderTop` and `marginTop` count toward the grid item's minimum contribution
-under `grid-template-rows: 0fr`. Move them to a nested element so the collapsed
-row can reach zero. No test can catch this — `happy-dom` computes no layout — so
-verify in a browser.
+Confirmed by live measurement in Task 9: collapsed `Unfold` region
+**13px tall with visible border**, not 0. `unfoldInner` `paddingTop`,
+`borderTop`, `marginTop` count toward grid item minimum contribution
+under `grid-template-rows: 0fr`. Move them to nested element so collapsed
+row reaches zero. No test catches this, `happy-dom` computes no layout, so
+verify in browser.

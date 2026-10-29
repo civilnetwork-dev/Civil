@@ -28,7 +28,7 @@ const ASSETS_HOST = "https://us-assets.i.posthog.com";
  * (1.410.4) bundle itself, not assumed: `analyticsDefaultEndpoint` is
  * literally `/e/`, and the only other api_host-relative paths in it are
  * `/flags/?v=2` and `/array/<token>/config`. Session replay batches through
- * `/e/` too (as `$snapshot` events) in this version — there is no separate
+ * `/e/` too (as `$snapshot` events) in this version: there is no separate
  * `/s/`.
  */
 const ALLOWED_PREFIXES = [
@@ -103,9 +103,9 @@ function buildForwardHeaders(c: Context<AppEnv>): Headers {
     // event; without it every proxied event reports this server's location.
     // `clientIp`, not the socket's peer: behind `REVERSE_PROXY` that peer is
     // the one trusted reverse-proxy hop in front of this process, not the
-    // visitor -- forwarding it would geolocate every event to wherever that
+    // visitor: forwarding it would geolocate every event to wherever that
     // hop runs. `clientIp` resolves the real client through that trusted hop,
-    // the way Express's `req.ip` did under `trust proxy: 1` -- unlike the raw
+    // the way Express's `req.ip` did under `trust proxy: 1`: unlike the raw
     // incoming `x-forwarded-for` header, it can't carry extra entries a client
     // prepended themselves, so it replaces that header rather than extending
     // it.

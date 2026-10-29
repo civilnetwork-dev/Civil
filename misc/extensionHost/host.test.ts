@@ -9,9 +9,9 @@ const FIXTURE_DIR = join(__dirname, "fixtures", "sample-extension");
 
 /** Drains pending microtasks. The fixture's onAlarm listener chains multiple
  *  `await`s (storage.set, then action.setBadgeText), and each real await
- *  costs a tick to resume — the same as it would in actual Chrome. A single
+ *  costs a tick to resume: the same as it would in actual Chrome. A single
  *  `await Promise.resolve()` only advances one hop into that chain; looping
- *  a generous number of times is more robust than hardcoding the exact
+ *  a generous number of times holds up better than hardcoding the exact
  *  chain depth, which would silently need updating every time the fixture's
  *  listener grows another await. */
 async function flushMicrotasks(times = 10): Promise<void> {
@@ -87,7 +87,7 @@ describe("loadExtension storage, alarms and DNR", () => {
         expect(blocked).toEqual({ action: "block", matchedRuleId: 1 });
 
         // Higher-priority allow rule on a more specific path wins over the
-        // lower-priority domain-wide block — exercises real rule resolution,
+        // lower-priority domain-wide block: exercises real rule resolution,
         // not just "does any rule match".
         const allowed = ext.matchRequest(
             "https://blocked-by-filter.example/allowlisted",
@@ -111,7 +111,7 @@ describe("loadExtension network access", () => {
         // Offline, not fatal: the request is answered with a 503 the
         // extension can inspect, rather than a synchronous throw that would
         // end its background script at the first network call. What matters
-        // for containment is unchanged — nothing left the machine.
+        // for containment is unchanged: nothing left the machine.
         expect(ext.getStorage().status).toBe(503);
         expect(ext.getStorage().reachedNetwork).toBe(false);
         expect(ext.getStorage().error).toBeUndefined();

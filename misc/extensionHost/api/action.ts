@@ -1,5 +1,5 @@
 /** chrome.action (MV3) / chrome.browserAction (MV2). No toolbar exists to
- *  draw a badge on, so every call is recorded rather than rendered — a test
+ *  draw a badge on, so every call is recorded rather than rendered: a test
  *  can assert "the extension flagged this page" by checking `actionCalls`. */
 
 import type { ActionCall } from "../types";

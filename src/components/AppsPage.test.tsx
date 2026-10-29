@@ -18,13 +18,7 @@ vi.mock("~/api/apps", () => ({
     appsRemove: vi.fn(),
 }));
 
-vi.mock("~/lib/TabManager", () => ({
-    tabManager: {
-        tabs: [],
-        createTab: vi.fn(() => ({ id: "t1" })),
-        activateTab: vi.fn(),
-    },
-}));
+vi.mock("~/lib/openInBrowser", () => ({ openInBrowser: vi.fn() }));
 
 const { default: AppsPage } = await import("./AppsPage");
 const s = await import("~/styles/schematic.css");
@@ -67,8 +61,8 @@ describe("AppsPage", () => {
 
     /**
      * One line of text, not a grid of dashed numbered slots. The ghost grid
-     * looked like a broken page to a first-time user — eight empty boxes
-     * labelled 01–08 with nothing in them reads as "this failed to load".
+     * looked like a broken page to a first-time user: eight empty boxes
+     * labelled 01-08 with nothing in them reads as "this failed to load".
      */
     it("renders the empty state as one plain sentence", () => {
         const { container, unmount } = renderSolid(() => <AppsPage />);
@@ -98,27 +92,10 @@ describe("AppsPage list", () => {
     it("renders each app as a direct child li of the ul", () => {
         mockApps = ONE_APP;
         const { container, unmount } = renderSolid(() => <AppsPage />);
-        const list = container.querySelector("ul") as HTMLUListElement;
+        const list = container.querySelector("[data-pins]") as HTMLUListElement;
         expect(list).not.toBeNull();
         expect(list.children).toHaveLength(1);
         expect(list.children[0].tagName).toBe("LI");
-        unmount();
-    });
-
-    /**
-     * Clicking an app opens it — one step. The earlier layout put "open"
-     * inside a per-tile disclosure, so the primary action was two clicks and
-     * the first click taught the user that clicking does not open.
-     */
-    it("opens the app on a single click of the tile", async () => {
-        mockApps = ONE_APP;
-        const { tabManager } = await import("~/lib/TabManager");
-        const { container, unmount } = renderSolid(() => <AppsPage />);
-        expect(container.textContent).toContain("chess.org");
-        (container.querySelector("li button") as HTMLButtonElement).click();
-        flush();
-        expect(tabManager.createTab).toHaveBeenCalledWith("https://chess.org/");
-        expect(tabManager.activateTab).toHaveBeenCalled();
         unmount();
     });
 
@@ -131,9 +108,49 @@ describe("AppsPage list", () => {
         unmount();
     });
 
-    it("renders no list at all when there are no apps", () => {
+    it("renders no pin list at all when there are no apps", () => {
         const { container, unmount } = renderSolid(() => <AppsPage />);
-        expect(container.querySelector("ul")).toBeNull();
+        expect(container.querySelector("[data-pins]")).toBeNull();
+        unmount();
+    });
+});
+
+describe("AppsPage opening and shelf", () => {
+    /**
+     * Clicking an app opens it: one step. The earlier layout put "open"
+     * inside a per-tile disclosure, so the primary action was two clicks and
+     * the first click taught the user that clicking does not open.
+     */
+    /**
+     * The page is its own document inside a tab's frame, so it must ask the
+     * chrome to open the app: a `tabManager` call made here once reached a
+     * second, invisible tab list and nothing opened at all.
+     */
+    it("opens the app on a single click of the tile", async () => {
+        mockApps = ONE_APP;
+        const { openInBrowser } = await import("~/lib/openInBrowser");
+        const { container, unmount } = renderSolid(() => <AppsPage />);
+        expect(container.textContent).toContain("chess.org");
+        (
+            container.querySelector("[data-pins] button") as HTMLButtonElement
+        ).click();
+        flush();
+        expect(openInBrowser).toHaveBeenCalledWith("https://chess.org/", {
+            newTab: false,
+        });
+        unmount();
+    });
+
+    it("filters the shelf by chip", () => {
+        const { container, unmount } = renderSolid(() => <AppsPage />);
+        const chip = [...container.querySelectorAll("button")].find(
+            b => b.textContent === "Music",
+        ) as HTMLButtonElement;
+        chip.click();
+        flush();
+        expect(chip.getAttribute("aria-pressed")).toBe("true");
+        expect(container.textContent).toContain("Spotify");
+        expect(container.textContent).not.toContain("Krunker");
         unmount();
     });
 });

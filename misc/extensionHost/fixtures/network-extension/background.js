@@ -4,7 +4,7 @@
 //
 // The result is recorded in storage rather than asserted here: the gate no
 // longer throws, it answers offline (see api/platform.ts for why a throw was
-// the wrong shape — it killed the whole background script at its first
+// the wrong shape: it killed the whole background script at its first
 // network call). So the test reads back what the extension actually got.
 fetch("https://example.com/should-not-be-reached")
     .then(async response => {

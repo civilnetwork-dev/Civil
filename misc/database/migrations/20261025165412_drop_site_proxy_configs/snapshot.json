@@ -1,0 +1,91 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "69f02961-51c8-45a3-a531-51ba38c6c457",
+  "prevIds": [
+    "d028e4bd-bc2f-401c-beb6-2f40e16a5a0f"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "site_proxy_configs"
+      ],
+      "writes": [
+        "s|tbl|public.site_proxy_configs",
+        "n|tbl|public.site_proxy_configs",
+        "e|tbl|public.site_proxy_configs",
+        "n|rel|public.site_proxy_configs",
+        "n|type|public.site_proxy_configs"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"site_proxy_configs\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"hostname\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"proxy\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"transport\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"wisp_version\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"score\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"latency_ms\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"reason\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"score_scramjet\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"site_proxy_configs\",\"score_uv\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"site_proxy_configs_hostname_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"site_proxy_configs\",\"site_proxy_configs_pkey\"]"
+    }
+  ]
+}

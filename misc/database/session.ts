@@ -60,7 +60,7 @@ export function extractSessionTokenFromRequest(req: {
 
 /**
  * Resolve a session token to a session, cached in Redis for 60s.
- * Returns null for a missing token, an invalid token, or any lookup failure —
+ * Returns null for a missing token, an invalid token, or any lookup failure:
  * callers treat all three as "not authenticated".
  */
 export async function resolveSession(

@@ -24,7 +24,7 @@ import * as icons from "./index";
  * Glyphs allowed to sit off centre, each with the reason.
  *
  * The list is the point. Anything on it is a decision; anything off it is a
- * defect. Keep it as short as the drawings allow — `IconSearch` was on it until
+ * defect. Keep it as short as the drawings allow: `IconSearch` was on it until
  * shifting the lens and its handle a quarter-unit up and left cost nothing and
  * removed the exemption.
  */
@@ -94,7 +94,7 @@ function curve(pen: Pen, n: number[], rel: boolean) {
  *
  * Curve control points are folded into the bounds rather than solved for the
  * true extrema. That overestimates a curve's box, which is the safe direction
- * for a centring check — and the only curved glyph is allow-listed anyway.
+ * for a centring check, and the only curved glyph is allow-listed anyway.
  */
 function pointsOf(d: string): Point[] {
     const pen: Pen = { x: 0, y: 0, startX: 0, startY: 0, out: [] };
@@ -180,8 +180,8 @@ describe("icon geometry", () => {
     });
 
     /**
-     * Back and forward are the same drawing reflected. Anything else — a
-     * different shaft length, a barb at a different angle — reads as two
+     * Back and forward are the same drawing reflected. Anything else (a
+     * different shaft length, a barb at a different angle) reads as two
      * unrelated controls sitting next to each other in the chrome.
      */
     it("draws the back and forward arrows as exact mirrors", () => {

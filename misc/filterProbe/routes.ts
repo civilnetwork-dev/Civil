@@ -1,8 +1,8 @@
 /**
  * The Civil routes the harness exercises against each filter.
  *
- * These are the user-facing pages a student actually lands on — the ones a
- * filter watches and blocks — plus the proxy service prefix, which is the one
+ * These are the user-facing pages a student actually lands on, the ones a
+ * filter watches and blocks, plus the proxy service prefix, which is the one
  * that matters most: it is Civil rewriting a *third-party* site, and the point
  * a filter is most likely to flag.
  *
@@ -18,8 +18,8 @@ export interface CivilRoute {
     /** What the route is, for the report. */
     label: string;
     /**
-     * For the proxy service prefix, a third-party URL to route *through* Civil
-     * — the real test of whether a filter flags a proxied site. Absent for
+     * For the proxy service prefix, a third-party URL to route *through* Civil:
+     * the real test of whether a filter flags a proxied site. Absent for
      * Civil's own pages, which are fetched directly.
      */
     proxyTarget?: string;
@@ -35,7 +35,7 @@ export const CIVIL_ROUTES: readonly CivilRoute[] = [
     { path: "/checkfilters", label: "filter check" },
     { path: "/baninfo", label: "ban info" },
     // The proxy itself, exercising a real third-party site through Civil's
-    // Scramjet path — the case a filter is likeliest to catch. `example.com`
+    // Scramjet path: the case a filter is likeliest to catch. `example.com`
     // is chosen because it is inoffensive and always up; the point is the
     // *proxying*, not the destination.
     {

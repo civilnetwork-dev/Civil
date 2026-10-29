@@ -59,7 +59,7 @@ export function navConditionMatches(
 }
 
 /** A DNR `regexSubstitution`, which writes `\0` for the whole match and
- *  `\1`–`\9` for capture groups, in the `$&`/`$1` form String.replace takes. */
+ *  `\1` to `\9` for capture groups, in the `$&`/`$1` form String.replace takes. */
 export function dnrSubstitution(substitution: string): string {
     return substitution.replace(/\\0/g, "$$&").replace(/\\([1-9])/g, "$$$1");
 }

@@ -1,12 +1,14 @@
 import { style } from "@vanilla-extract/css";
 
 import {
+    alpha,
     BAND,
     blend,
     DUR,
     EASE,
     edge,
     elevation,
+    KEY_COBALT,
     KEYCAP,
     LIFT,
     SHADE,
@@ -18,7 +20,122 @@ import { vars } from "./theme.css";
 
 export const addingNote = style({ display: "block", marginTop: "6px" });
 
-export const gridRule = style({ margin: "26px 0 14px" });
+export const sectionTitle = style({
+    margin: "34px 0 14px",
+    fontSize: "16px",
+    fontWeight: 600,
+    color: vars.color.firn,
+});
+
+// The page's one cobalt key: a signature moment, so it keeps its stone depth.
+export const randomKey = style(
+    blend(KEY_COBALT, {
+        display: "inline-flex",
+        alignItems: "center",
+        height: "38px",
+        padding: "0 18px",
+        border: "none",
+        borderRadius: "10px",
+        font: "inherit",
+        fontSize: "14px",
+        fontWeight: 600,
+        cursor: "pointer",
+    }),
+);
+
+export const shelf = style({
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+    gap: "10px",
+});
+
+/** A shelf entry lies flat; pinning it is what turns it to stone. */
+export const card = style({
+    position: "relative",
+    borderRadius: "12px",
+    backgroundColor: alpha(vars.color.scree, 45),
+    boxShadow: `inset 0 0 0 1px ${alpha(vars.color.talus, 50)}`,
+    transition: `background-color ${DUR.fast} ${EASE.standard}`,
+    selectors: { "&:hover": { backgroundColor: vars.color.scree } },
+});
+
+export const cardOpen = style({
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    width: "100%",
+    padding: "12px 46px 12px 12px",
+    border: "none",
+    borderRadius: "12px",
+    background: "none",
+    color: "inherit",
+    font: "inherit",
+    textAlign: "left",
+    cursor: "pointer",
+    selectors: {
+        "&:focus-visible": {
+            outline: `2px solid ${vars.color.cobalt}`,
+            outlineOffset: "-2px",
+        },
+    },
+});
+
+export const cardIcon = style({
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "38px",
+    height: "38px",
+    borderRadius: "10px",
+    backgroundColor: alpha(vars.color.basalt, 70),
+});
+
+export const cardText = style({
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    minWidth: 0,
+});
+
+export const cardName = style({
+    fontSize: "14px",
+    fontWeight: 600,
+    color: vars.color.firn,
+});
+
+export const cardNote = style({
+    fontSize: "12.5px",
+    color: vars.color.snowmelt,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+});
+
+export const pinBtn = style({
+    position: "absolute",
+    top: "50%",
+    right: "10px",
+    translate: "0 -50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "28px",
+    height: "28px",
+    padding: 0,
+    border: "none",
+    borderRadius: "8px",
+    background: "none",
+    color: vars.color.ash,
+    cursor: "pointer",
+    selectors: {
+        "&:hover, &:focus-visible": {
+            color: vars.color.firn,
+            backgroundColor: alpha(vars.color.talus, 45),
+        },
+        "&:focus-visible": { outline: `2px solid ${vars.color.cobalt}` },
+    },
+});
 
 export const grid = style({
     listStyle: "none",
@@ -82,7 +199,7 @@ export const openBtn = style({
 /**
  * Revealed on row hover, row focus-within, and unconditionally where there is
  * no hover to trigger it. `display: none` until hover would remove it from
- * the tab order outright — the keyboard-trap failure DESIGN.md records.
+ * the tab order outright: the keyboard-trap failure DESIGN.md records.
  */
 export const removeBtn = style(
     blend(KEYCAP, {

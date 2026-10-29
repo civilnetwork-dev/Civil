@@ -136,7 +136,7 @@ describe("pickTunnelDomain batches", () => {
     it("tries the next batch when the first is entirely blocked", async () => {
         // A block cache accumulated over many runs can make an early batch
         // come back fully blocked even though clean domains exist further
-        // into the registry — this is what stopping at maxCandidates used to
+        // into the registry: this is what stopping at maxCandidates used to
         // get wrong (see pickTunnelDomain's own doc comment). Blocked-ness is
         // keyed on call order rather than domain name so the assertion holds
         // regardless of how `shuffle` reorders the registry; `concurrency: 1`

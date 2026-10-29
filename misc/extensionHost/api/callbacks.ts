@@ -8,14 +8,14 @@
  *   - MV2 has **no** promise API at all. `chrome.storage.local.get(keys, cb)`
  *     is how you read storage, full stop. Seven of the twenty-eight tracked
  *     filters are still MV2.
- *   - MV3 kept callbacks working, and vendors kept using them — out of habit,
+ *   - MV3 kept callbacks working, and vendors kept using them: out of habit,
  *     and because the same source often has to run under both manifest
  *     versions and under Firefox. The scan behind
  *     `fixtures/filterApiSurface.json` finds callback-style calls in twenty
  *     of the twenty-eight bundles, including MV3-only ones.
  *
  * A method that returns a promise and ignores the function it was handed
- * doesn't fail loudly — the extension just waits forever for a reply that
+ * doesn't fail loudly: the extension just waits forever for a reply that
  * never comes. That reads as "this extension does nothing", which is the
  * most misleading possible result for a host whose whole job is observing
  * what a filter extension does.
@@ -28,8 +28,8 @@
 
 import { buildFreshConsole } from "./platform";
 
-// A callback that throws is the vendor's error, reported the way Chrome does
-// — to the extension's own console, never past the API call that invoked it.
+// A callback that throws is the vendor's error, reported the way Chrome does:
+// to the extension's own console, never past the API call that invoked it.
 // Let it propagate and it surfaces as an unhandled rejection in whatever
 // process hosts this (mobileguardian's storage callback, calling a
 // `runtime.getManifest` its content script didn't have yet).
@@ -75,7 +75,7 @@ function wrapMethod(
         void settled.then(
             value => invoke(callback, value),
             // Chrome reports a failed call by leaving `runtime.lastError` set
-            // and calling the callback with no result — it does not throw at
+            // and calling the callback with no result: it does not throw at
             // the call site, and it does not skip the callback. Skipping it
             // here would reintroduce exactly the silent hang this file
             // exists to prevent.
@@ -89,7 +89,7 @@ function wrapMethod(
     // wrap the whole `chrome` object in a promisifying layer introspect
     // exactly those to decide which methods take a callback and how many
     // arguments precede it. goguardian's layer, handed a zero-arity
-    // `extension.getURL`, promisified it — after which `getURL()` returned a
+    // `extension.getURL`, promisified it, after which `getURL()` returned a
     // Promise, the extension passed that Promise to `XMLHttpRequest.open`,
     // and it died parsing the empty response several modules away.
     Object.defineProperty(wrapped, "name", {

@@ -25,7 +25,7 @@ const mix = (a: string, pct: number, b: string) =>
  * The state spine.
  *
  * Extensions is the only page in the app where every row carries a binary the
- * reader actually scans for — enabled or not. So that binary becomes the
+ * reader actually scans for: enabled or not. So that binary becomes the
  * drawing: a vertical spine down the left of each section with a node per
  * extension, filled when the extension is live and hollow when it is not.
  * "What is running right now" is answerable from the gutter alone, without
@@ -115,7 +115,7 @@ export const intakeInput = style({
 /**
  * The file picker is a <label> wrapping a hidden <input type="file">, which is
  * the only way to restyle one. A label is not focusable, so the input keeps
- * its own focus ring rather than being `display: none` — that would drop it
+ * its own focus ring rather than being `display: none`: that would drop it
  * out of the tab order and leave upload keyboard-unreachable.
  */
 export const uploadLabel = style([
@@ -147,7 +147,7 @@ export const uploadInput = style({
  * Install and update both run async against the network. Their outcome was
  * previously two bare <p>s with inline colours pointing at CSS variables that
  * do not exist (`--civil-color-red`, `--civil-color-text-muted`), so the text
- * rendered unstyled or off-palette — and nothing announced it, which on a
+ * rendered unstyled or off-palette, and nothing announced it, which on a
  * page whose only feedback is this line meant a screen reader user learned
  * nothing about whether an install worked.
  */
@@ -228,8 +228,8 @@ export const row = style(
 
 /**
  * The node on the spine. Filled means enabled. The fill is not the only signal
- * — the switch beside it carries the same state, and the row's own accessible
- * name does too — but it is the one that reads at a glance down the gutter.
+ * (the switch beside it carries the same state, and the row's own accessible
+ * name does too) but it is the one that reads at a glance down the gutter.
  *
  * A live extension is a polished cobalt gem set in the groove; a disabled one
  * is the empty socket it would sit in.
@@ -312,7 +312,7 @@ export const meta = style({
 
 /**
  * The packaging format, as a stamp. crx and xpi differ in tone rather than
- * only in hue — aurora is lighter than arcturus — so they stay distinguishable
+ * only in hue (aurora is lighter than arcturus) so they stay distinguishable
  * under deuteranopia, where the two would otherwise converge.
  */
 const stampBase = style({

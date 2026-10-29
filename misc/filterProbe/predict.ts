@@ -2,7 +2,7 @@
  * Given a filter that flagged the proxy, predict the Civil source that has to
  * change to stop it.
  *
- * A pure traversal of the Civil checkout — no network, no build — so it runs
+ * A pure traversal of the Civil checkout (no network, no build) so it runs
  * in the harness and in a unit test against this very repository. It does not
  * rewrite anything; it produces a ranked list of `file:line` pointers with a
  * reason, which is what the task's step 4 asks for: "find out the code that
@@ -15,7 +15,7 @@
  *     backend. The fix is to block that domain. So: is the domain already in
  *     `filterVendorDomains`? If not, that is the single highest-ranked
  *     suggestion. Either way, the vendor's dedicated handler under
- *     `misc/filters/<vendor>/` is where domain-level behaviour belongs — and
+ *     `misc/filters/<vendor>/` is where domain-level behaviour belongs, and
  *     if the vendor has no handler yet, creating one is the suggestion.
  *   - A `marker` / `vendor-name` means the filter's *content script* blocked
  *     the page in place, before any request Civil could intercept. The fix is
@@ -39,7 +39,7 @@ export interface Suggestion {
 }
 
 /** Where each vendor's dedicated handler lives, relative to the Civil root.
- *  A vendor absent here has no handler yet — which is itself a finding. */
+ *  A vendor absent here has no handler yet, which is itself a finding. */
 const VENDOR_HANDLER_DIR: Record<string, string> = {
     blocksi: "misc/filters/blocksi",
     cisco: "misc/filters/cisco",
@@ -56,7 +56,7 @@ const VENDOR_HANDLER_DIR: Record<string, string> = {
 const MIDDLEWARE = "misc/filters/filterBlockerMiddleware.ts";
 
 /** The 1-based line of the first occurrence of `needle` in a repo file, or
- *  undefined. Cheap substring scan — the files this points at are small. */
+ *  undefined. Cheap substring scan: the files this points at are small. */
 function lineOf(
     civilDir: string,
     relPath: string,
@@ -90,7 +90,7 @@ function handlerSuggestion(vendor: string, civilDir: string): Suggestion {
             file: existsSync(join(civilDir, middleware))
                 ? middleware
                 : handlerDir,
-            reason: `${vendor}'s dedicated handler — where its filtering behaviour is neutralised.`,
+            reason: `${vendor}'s dedicated handler, where its filtering behaviour is neutralised.`,
             rank: 40,
         };
     }
@@ -138,7 +138,7 @@ function redirectSuggestions(
             {
                 file: MIDDLEWARE,
                 line: lineOf(civilDir, MIDDLEWARE, "filterVendorDomains"),
-                reason: `Redirected to ${signal.finalHost}, but ${signal.domain} is not in filterVendorDomains — add it so the proxy blocks the phone-home.`,
+                reason: `Redirected to ${signal.finalHost}, but ${signal.domain} is not in filterVendorDomains. Add it so the proxy blocks the phone-home.`,
                 rank: 100,
             },
         ];
@@ -150,7 +150,7 @@ function redirectSuggestions(
         {
             file: MIDDLEWARE,
             line: lineOf(civilDir, MIDDLEWARE, signal.domain),
-            reason: `${signal.domain} is already blocked, yet the page still reached ${signal.finalHost} — the filter's content script drove the redirect; neutralise it in the vendor handler.`,
+            reason: `${signal.domain} is already blocked, yet the page still reached ${signal.finalHost}, so the filter's content script drove the redirect; neutralise it in the vendor handler.`,
             rank: 60,
         },
     ];
@@ -165,14 +165,14 @@ function dnrBlockSuggestions(
     // The vendor's own declarativeNetRequest rules matched this exact
     // URL before any page even rendered. Those rules ship inside the
     // (static) extension bundle, so they cannot be keyed on this run's
-    // randomly generated FreeDNS hostname — the match is almost
+    // randomly generated FreeDNS hostname: the match is almost
     // certainly on the URL's path/query shape, which is Civil's own
     // route/proxy structure, not a domain to add to a blocklist.
     return [
         ...routeSourceSuggestion(
             route,
             civilDir,
-            `${vendor}'s declarativeNetRequest rules matched this URL directly (rule ${signal.matchedRuleId}), before the page even loaded. The rule ships in the bundle and can't target this run's random hostname, so it matched on the URL's path/query shape — this route's own URL structure is what to change.`,
+            `${vendor}'s declarativeNetRequest rules matched this URL directly (rule ${signal.matchedRuleId}), before the page even loaded. The rule ships in the bundle and can't target this run's random hostname, so it matched on the URL's path/query shape. This route's own URL structure is what to change.`,
             90,
         ),
         ...rewriteLayerSuggestion(
@@ -228,7 +228,7 @@ function signalSuggestions(
             return redirectSuggestions(vendor, signal, civilDir);
         case "keyword-match":
             // GoGuardian only (misc/filterProbe/goguardianCheck.ts): its own
-            // authenticated keyword model matched the route's content directly —
+            // authenticated keyword model matched the route's content directly:
             // no content script or hostname involved, so neither the redirect
             // nor the generic in-place-block reasoning below is accurate for it.
             return routeSourceSuggestion(
@@ -259,7 +259,7 @@ export function predictFix(verdict: Verdict, civilDir: string): Suggestion[] {
         return [
             {
                 file: "misc/tunnel/pickDomain.ts",
-                reason: `${vendor} rates ${signal.hostname} itself as blocked, so every route on it is — no route-level change helps. This domain should never have been picked; check its ${vendor} checker in misc/filters/domainReputation.ts.`,
+                reason: `${vendor} rates ${signal.hostname} itself as blocked, so every route on it is, and no route-level change helps. This domain should never have been picked; check its ${vendor} checker in misc/filters/domainReputation.ts.`,
                 rank: 100,
             },
         ];

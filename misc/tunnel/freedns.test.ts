@@ -1,6 +1,6 @@
 /**
  * Tests for the FreeDNS client's HTML parsing and its success/error decision
- * logic — the parts that are pure functions of a response and carry the real
+ * logic: the parts that are pure functions of a response and carry the real
  * risk of being wrong.
  *
  * The fixtures reproduce the exact DOM the reference `client.py` selects
@@ -119,7 +119,7 @@ describe("login", () => {
 });
 
 describe("login (real xior transport, not the clientWith stub)", () => {
-    // xior's default success check is `response.ok` — false for a 302 — which
+    // xior's default success check is `response.ok`, false for a 302, which
     // would reject the underlying request before `redirected()` ever sees it.
     // The other `login` tests replace `client.http` entirely, so they can't
     // catch that: this one goes through the real `xior.create()` config.

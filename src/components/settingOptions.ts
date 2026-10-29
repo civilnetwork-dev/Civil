@@ -31,14 +31,66 @@ export const TRANSPORT_NOTES: Record<TransportName, string> = {
     bare: "Plain web requests, for networks that block WebSockets. Civil's server fetches each page for you, so it can see them.",
 };
 
+/** How one method or Wisp version does on the four things worth comparing. */
+export interface Traits {
+    sites: string;
+    reliability: string;
+    speed: string;
+    latency: string;
+}
+
+export const TRAIT_NAMES: Record<keyof Traits, string> = {
+    sites: "Site support",
+    reliability: "Reliability",
+    speed: "Speed",
+    latency: "Latency",
+};
+
+export const TRANSPORT_TRAITS: Record<TransportName, Traits> = {
+    epoxy: {
+        sites: "Most sites",
+        reliability: "Steady wherever WebSockets work",
+        speed: "The fastest method",
+        latency: "Low",
+    },
+    libcurl: {
+        sites: "Some sites Epoxy can't load",
+        reliability: "Steady wherever WebSockets work",
+        speed: "Slower, since it's heavier than Epoxy",
+        latency: "A little higher than Epoxy",
+    },
+    bare: {
+        sites: "Most sites, though chat and other live features still need WebSockets",
+        reliability: "The one method that works where WebSockets are blocked",
+        speed: "Quick to start, with almost nothing to download",
+        latency:
+            "Rises when Civil's server is busy, since it fetches every page",
+    },
+};
+
 export const WISP_OPTIONS: Choices<"wispVersion"> = [
     { value: "2", label: "Version 2" },
     { value: "1", label: "Version 1" },
-    { value: "auto", label: "Automatic, per site" },
 ];
 
 export const WISP_NOTE =
-    "How Epoxy talks to Civil's server. Version 2 handles more sites, more reliably, with less delay. Version 1 is the older protocol, for a network where 2 misbehaves. Automatic follows each site's test. libcurl and Bare aren't affected.";
+    "How Epoxy talks to Civil's server. Version 1 is the older protocol, for a network where version 2 misbehaves. libcurl and Bare aren't affected.";
+
+export const WISP_TRAITS: Record<SettingValue<"wispVersion">, Traits> = {
+    "2": {
+        sites: "More than version 1",
+        reliability: "Higher than version 1",
+        speed: "Pages start sooner",
+        latency: "Lower than version 1",
+    },
+    "1": {
+        sites: "Fewer than version 2",
+        reliability:
+            "Lower, but it gets through some networks that break version 2",
+        speed: "Pages start a little later",
+        latency: "Higher than version 2",
+    },
+};
 
 export const TIMEOUT_OPTIONS: Choices<"navTimeout"> = [
     { value: 10, label: "10 seconds" },
@@ -127,6 +179,11 @@ export const BAR_OPTIONS: Choices<"bookmarksBar"> = [
     { value: "always", label: "Always show" },
     { value: "newtab", label: "Show on new tabs only" },
     { value: "never", label: "Hide" },
+];
+
+export const APPS_OPEN_OPTIONS: Choices<"appsOpenIn"> = [
+    { value: "current", label: "This tab" },
+    { value: "new", label: "A new tab" },
 ];
 
 export const MOTION_OPTIONS: Choices<"motion"> = [

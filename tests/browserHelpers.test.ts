@@ -20,7 +20,7 @@ import {
  * becomes a failed navigation; wrong in the other and "github.com" runs a Google
  * search. It's the single most user-visible decision in the address bar.
  *
- * `createTabHistory` is back/forward cursor arithmetic — the classic source of
+ * `createTabHistory` is back/forward cursor arithmetic: the classic source of
  * off-by-one bugs that only show up after a specific click sequence.
  */
 
@@ -120,7 +120,7 @@ describe("displayUrl", () => {
 });
 
 /**
- * createSignal needs an owner, so the history is built inside a root —
+ * createSignal needs an owner, so the history is built inside a root,
  * but Solid 2.0 forbids synchronous writes inside an owned scope, and
  * every history mutation is a write. So the root only creates the
  * signal; `fn` runs after it returns, once we're no longer inside it.

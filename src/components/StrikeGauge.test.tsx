@@ -9,7 +9,7 @@ import * as s from "~/styles/StrikeGauge.css";
 /**
  * The gauge is the only place in the app that renders account standing, and it
  * previously coloured its segments from `--civil-color-yellow`,
- * `--civil-color-maroon` and `--civil-color-red` — none of which exist, since
+ * `--civil-color-maroon` and `--civil-color-red`: none of which exist, since
  * the theme contract only generates `--civil-color-<palette-slot>`. Every
  * segment therefore rendered with no colour, on both pages that drew it, and
  * nothing failed.
@@ -86,7 +86,7 @@ describe("StrikeGauge severity", () => {
 
     /**
      * Solid renders the number 0 as nothing at all, and zero strikes is the
-     * most common state this component is ever asked to show — a blank where
+     * most common state this component is ever asked to show: a blank where
      * the count belongs reads as a broken page, not as "you are fine".
      */
     it("renders a zero count as text", () => {

@@ -33,7 +33,7 @@ function ManifestDropZone(props: {
 }) {
     const [dropActive, setDropActive] = createSignal(false);
 
-    /** Both intake paths — a drop and the file picker — end here. */
+    /** Both intake paths, a drop and the file picker, end here. */
     const readManifestFile = (file: File | undefined) => {
         if (!file) return;
         const reader = new FileReader();

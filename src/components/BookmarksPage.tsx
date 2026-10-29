@@ -3,7 +3,6 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import { bookmarks, bookmarksRemove } from "~/api/bookmarks";
 import {
     IconBookmark,
-    IconClock,
     IconClose,
     IconTrash,
     IconWorld,
@@ -15,13 +14,19 @@ import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import { ArmedKey } from "~/components/SettingControls";
 import Specimen from "~/components/Specimen";
-import { tabManager } from "~/lib/TabManager";
+import { openInBrowser } from "~/lib/openInBrowser";
 import type { CivilBookmark } from "~/types";
 
 import * as s from "~/styles/BookmarksPage.css";
 import * as schematic from "~/styles/schematic.css";
 
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+type Scope = "all" | "recent";
+const SCOPES: readonly (readonly [Scope, string])[] = [
+    ["all", "All"],
+    ["recent", "Recent"],
+];
 
 function Stamp(props: { favicon?: string }) {
     const [failed, setFailed] = createSignal(false);
@@ -55,18 +60,12 @@ function savedOn(ts: number) {
 }
 
 function openBookmark(bm: CivilBookmark) {
-    const existing = tabManager.tabs.find(t => t.url === bm.url);
-    if (existing) {
-        tabManager.activateTab(existing.id);
-    } else {
-        const t = tabManager.createTab(bm.url);
-        tabManager.activateTab(t.id);
-    }
+    openInBrowser(bm.url, { newTab: true });
 }
 
 function useBookmarkList() {
     const [search, setSearch] = createSignal("");
-    const [scope, setScope] = createSignal<"all" | "recent">("all");
+    const [scope, setScope] = createSignal<Scope>("all");
 
     // The set the current scope selects, before the lookup narrows it. The
     // count reads against this so a search that matches nothing doesn't render
@@ -93,7 +92,7 @@ function useBookmarkList() {
     /**
      * One text node, not a row of spans. A live region announces `textContent`,
      * and separately-styled number and word spans leave no whitespace between
-     * them in the DOM — the exact bug History shipped.
+     * them in the DOM: the exact bug History shipped.
      */
     const countLabel = createMemo(() =>
         search().trim()
@@ -108,45 +107,30 @@ type BookmarkList = ReturnType<typeof useBookmarkList>;
 
 function ScopeSwitch(props: { list: BookmarkList }) {
     return (
-        <div class={s.scopeSwitch}>
-            <button
-                type="button"
-                class={
-                    props.list.scope() === "all"
-                        ? s.scopeBtn.on
-                        : s.scopeBtn.off
-                }
-                aria-pressed={props.list.scope() === "all" ? "true" : "false"}
-                onClick={() => props.list.setScope("all")}
-            >
-                <IconBookmark size={13} />
-                All
-            </button>
-            <button
-                type="button"
-                class={
-                    props.list.scope() === "recent"
-                        ? s.scopeBtn.on
-                        : s.scopeBtn.off
-                }
-                aria-pressed={
-                    props.list.scope() === "recent" ? "true" : "false"
-                }
-                onClick={() => props.list.setScope("recent")}
-            >
-                <IconClock size={13} />
-                Recent
-            </button>
+        <div class={schematic.chips} role="group" aria-label="Show">
+            <For each={SCOPES}>
+                {([value, label]) => (
+                    <button
+                        type="button"
+                        class={schematic.chip}
+                        aria-pressed={
+                            props.list.scope() === value ? "true" : "false"
+                        }
+                        onClick={() => props.list.setScope(value)}
+                    >
+                        {label}
+                    </button>
+                )}
+            </For>
         </div>
     );
 }
 
 function BookmarkActions(props: { list: BookmarkList }) {
     return (
-        <div class={s.titleActions}>
-            <ScopeSwitch list={props.list} />
+        <div class={schematic.titleBlockActions}>
             {/* Deleting every bookmark in view can't be undone, so the button
-                asks once first — the same inline two-step used on History. */}
+                asks once first: the same inline two-step used on History. */}
             <Show when={props.list.listed().length > 0}>
                 <ArmedKey
                     icon={<IconTrash size={13} />}
@@ -245,6 +229,8 @@ export default function BookmarksPage() {
             <p class={schematic.lede}>
                 Your saved pages, all in one place. Search to find a favorite.
             </p>
+
+            <ScopeSwitch list={list} />
 
             <div class={s.lookup}>
                 <Lookup

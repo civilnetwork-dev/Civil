@@ -1,11 +1,10 @@
 /**
  * Hosts that must never be reachable through a server-side fetch.
  *
- * This is an SSRF guard, not a convenience filter. `/api/ext-proxy` and
- * `/api/best-proxy` both take a user-supplied URL and fetch it from inside the
- * network the app is deployed in, so without this check a user could reach
- * Postgres, Redis, the metadata service of a cloud host, or anything else on
- * the private network.
+ * This is an SSRF guard, not a convenience filter. `/api/ext-proxy` takes a
+ * user-supplied URL and fetches it from inside the network the app is
+ * deployed in, so without this check a user could reach Postgres, Redis, the
+ * metadata service of a cloud host, or anything else on the private network.
  *
  * Extracted from run.ts so it can be unit-tested. See tests/net.test.ts.
  */

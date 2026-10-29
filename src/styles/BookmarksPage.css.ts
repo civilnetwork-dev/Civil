@@ -1,16 +1,12 @@
-import { style, styleVariants } from "@vanilla-extract/css";
+import { style } from "@vanilla-extract/css";
 
 import {
     blend,
     DUR,
     EASE,
-    edge,
     hitArea,
     KEY_STONE,
-    LIFT,
-    LIT,
     ROW_LIFT,
-    SHADE,
     TABLET,
     WELL,
 } from "./material.css";
@@ -21,89 +17,24 @@ import { vars } from "./theme.css";
  * The index register.
  *
  * History's axis is time, so it draws hour meters under day rules. A bookmark
- * has no interesting time axis — it is an address someone chose to keep — so
+ * has no interesting time axis (it is an address someone chose to keep) so
  * this page is a register instead: a sequential call number, a stamped
  * favicon, the title, and the host as its own aligned column. The call numbers
  * give the page its vertical rhythm and make "how many, and where am I in
  * them" answerable without counting rows.
  *
  * Call numbers are positional, not identity. They renumber when the scope or
- * the search changes, because they describe the current view — which is the
+ * the search changes, because they describe the current view, which is the
  * question a register answers.
  */
-
-/* -------------------------------------------------------------------- */
-/* Title block actions                                                   */
-/* -------------------------------------------------------------------- */
-
-export const titleActions = style({
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    flexWrap: "wrap",
-});
-
-/**
- * The scope selector, which replaced a full-height sidebar holding two links.
- * A sidebar is a lot of structure to spend on a binary, and it was the only
- * page in the app not built from Sheet + TitleBlock.
- */
-// A two-way switch carved as a track, with the chosen scope standing up out
-// of it as a raised key.
-export const scopeSwitch = style(
-    blend(WELL, {
-        display: "flex",
-        alignItems: "stretch",
-        gap: "3px",
-        padding: "3px",
-        borderRadius: "12px",
-    }),
-);
-
-const scopeBtnBase = style({
-    ...ANNO,
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "7px 12px",
-    background: "none",
-    border: "none",
-    borderRadius: "9px",
-    cursor: "pointer",
-    transition: LIFT,
-    selectors: {
-        "&:hover": { color: vars.color.firn },
-    },
-});
-
-const SCOPE_ON = `color-mix(in oklab, ${vars.color.cobalt} 24%, ${vars.color.scree})`;
-
-/**
- * The selected scope is carried by `aria-pressed` for assistive tech, and here
- * by a colour shift, a filled face and its height: three visual channels, so
- * the state does not rest on colour alone (DESIGN.md's Redundant-Channel
- * Rule).
- */
-export const scopeBtn = styleVariants({
-    off: [scopeBtnBase, { color: vars.color.ash }],
-    on: [
-        scopeBtnBase,
-        {
-            color: vars.color.firn,
-            backgroundColor: SCOPE_ON,
-            backgroundImage: LIT,
-            boxShadow: `${SHADE.lip}, ${edge(2)}`,
-        },
-    ],
-});
 
 /* -------------------------------------------------------------------- */
 /* Lookup                                                                */
 /* -------------------------------------------------------------------- */
 
 /**
- * Search is the primary control on a register — the whole point of numbering
- * and aligning entries is to find one — so it gets a labelled full-width row
+ * Search is the primary control on a register (the whole point of numbering
+ * and aligning entries is to find one) so it gets a labelled full-width row
  * rather than History's compact inline filter.
  */
 export const lookup = style(
@@ -120,7 +51,7 @@ export const lookup = style(
 /**
  * The count is one text node, not a row of separately-styled number and word
  * spans. Splitting it would leave no whitespace between the parts in the DOM,
- * and a live region announces `textContent` — History shipped exactly that bug
+ * and a live region announces `textContent`: History shipped exactly that bug
  * and now needs a hidden sibling to work around it.
  */
 export const lookupCount = style({
@@ -152,7 +83,7 @@ export const register = style(
 
 /**
  * The `28px` end column holds the remove control; the rest is the open
- * target. The call-number column went in the minimal pass — fake catalogue
+ * target. The call-number column went in the minimal pass: fake catalogue
  * numbers were decoration pretending to be data.
  */
 export const row = style(
@@ -174,7 +105,7 @@ export const row = style(
 export const openBtn = style({
     display: "grid",
     // minmax(0, 1fr) so a long title ellipses instead of pushing the date
-    // column off the sheet — a grid track's default minimum is its content.
+    // column off the sheet: a grid track's default minimum is its content.
     gridTemplateColumns: "22px minmax(0, 1fr) auto",
     alignItems: "center",
     gap: "12px",

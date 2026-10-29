@@ -60,9 +60,9 @@ function extensionTab(
 /**
  * A proxied navigation that never fires `load`.
  *
- * The transport can die *after* it initialises — epoxy's wisp socket comes back
+ * The transport can die *after* it initialises (epoxy's wisp socket comes back
  * `400 != 101` at connect time, long past `createTransport`'s init-time
- * fallback — and when it does, `sframe.go()` resolves, nothing loads, and the
+ * fallback) and when it does, `sframe.go()` resolves, nothing loads, and the
  * tab sits on "Loading…" against a blank frame forever. Session replay shows
  * exactly what people do next: they hammer Reload, which re-runs the same dead
  * transport and changes nothing.
@@ -223,7 +223,7 @@ function loadedHref(el: HTMLIFrameElement): string | undefined {
     try {
         href = el.contentWindow?.location.href;
     } catch {}
-    // `about:srcdoc` is the connection-error page — a Civil artefact, not
+    // `about:srcdoc` is the connection-error page: a Civil artefact, not
     // somewhere the user went, so it stays out of history.
     if (!href || href === "about:blank" || href === "about:srcdoc")
         return undefined;
@@ -287,7 +287,12 @@ type NavRequest = {
     attempt: number;
 };
 
-type FrameMessage = { type?: string; url?: string; transport?: unknown } | null;
+type FrameMessage = {
+    type?: string;
+    url?: string;
+    transport?: unknown;
+    newTab?: unknown;
+} | null;
 
 class IframeManager {
     readonly iframeMap = new Map<string, HTMLIFrameElement>();
@@ -383,6 +388,19 @@ class IframeManager {
         );
     }
 
+    /** Switches to a tab already showing `url`, or opens one through the
+     *  same path as every other new tab. */
+    private openInOwnTab(url: string): void {
+        const open = tabManager.tabs.find(t => t.url === url);
+        if (open) {
+            tabManager.activateTab(open.id);
+            return;
+        }
+        document.dispatchEvent(
+            new CustomEvent("browser:newtab", { detail: { url } }),
+        );
+    }
+
     readonly onWindowMessage = (event: MessageEvent): void => {
         if (event.origin !== window.location.origin) return;
         const data = event.data as FrameMessage;
@@ -402,10 +420,15 @@ class IframeManager {
         // The New Tab omnibox lives inside the tab's own frame, so it
         // hands the URL up rather than navigating itself. A frame that
         // navigates itself to a scramjet URL has no scramjet frame behind
-        // it — the URL carries only that document's own controller
-        // prefix, which owns no frames — and the service worker answers
+        // it (the URL carries only that document's own controller
+        // prefix, which owns no frames) and the service worker answers
         // "Internal Service Worker Error: No frame found for request".
         if (data?.type === "civil:navigate" && typeof data.url === "string") {
+            // Apps, bookmarks and history may ask for a tab of their own.
+            if (data.newTab === true) {
+                this.openInOwnTab(data.url);
+                return;
+            }
             const id = this.sourceTabId(event.source);
             if (id) this.navigate(id, data.url);
         }

@@ -50,7 +50,7 @@ describe("compileUrlFilter", () => {
     });
 
     it("escapes regex metacharacters in the literal parts of the pattern", () => {
-        // A dot in a urlFilter is literal, not "any character" — a common
+        // A dot in a urlFilter is literal, not "any character": a common
         // regex-injection-shaped bug if the compiler forgets to escape it.
         const re = compileUrlFilter("||example.com/a.b", false);
         expect(re.test("https://example.com/a.b")).toBe(true);

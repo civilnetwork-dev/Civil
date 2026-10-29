@@ -15,7 +15,6 @@
         "isolatedModules": true,
         "paths": {
             "~/*": ["./src/*"],
-            "$wasm/*": ["./config/encoder/*"],
             "$config/*": ["./misc/config/*"],
             "$tests/*": ["./tests/*"]
         },

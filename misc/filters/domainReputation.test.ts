@@ -73,7 +73,7 @@ describe("DOMAIN_CHECKERS registry", () => {
 
     it("iboss abstains instead of guessing when IBOSS_SECURITY_KEY is unset", async () => {
         // tests/setup.ts seeds a fake key for other suites; unset it here to
-        // exercise the documented behavior — no key, no request, never a
+        // exercise the documented behavior: no key, no request, never a
         // fabricated verdict.
         const saved = process.env.IBOSS_SECURITY_KEY;
         delete process.env.IBOSS_SECURITY_KEY;

@@ -1,85 +1,121 @@
 # Icons
 
-How Civil's icon set is built, and the rules a new glyph has to follow.
-Everything here is what `src/components/icons/index.tsx`,
-`src/styles/icons.css.ts` and `src/components/Specimen.tsx` actually do.
+How Civil icon set built, rules new glyph must follow.
+All here = what `src/components/icons/index.tsx`,
+`src/styles/icons.css.ts`, `src/components/Specimen.tsx` actually do.
 
 ## Why a custom set
 
-The app once borrowed from four vendor families (Tabler, Boxicons, Font
-Awesome and CG) that agreed neither with each other nor with the product. One
-set, drawn on the app's own grid, replaced them. `components/icons` is the
-single swap point: every component imports named glyphs from there and nothing
-imports an icon package.
+App once borrowed from four vendor families (Tabler, Boxicons, Font
+Awesome, CG); agreed neither with each other nor product. One set, drawn
+on app's own grid, replaced them. `components/icons` = single swap point:
+every component imports named glyphs from there, nothing imports icon package.
 
 ## The grid
 
-Icons in Civil render at 13 to 17px in the chrome and at 24 to 36px inside
-specimens. They are drawn on a **16-unit grid** so the dominant sizes sit near
-the native scale instead of a 24-unit drawing reduced by half.
+Icons render 13–17px in chrome, 24–36px in specimens. Drawn on **16-unit
+grid** so dominant sizes sit near native scale, not 24-unit drawing halved.
 
-- **Grid:** 16 × 16, ink centred on 8,8. `geometry.test.tsx` checks every
-  glyph's centre against its own box; the only exemption is the Patreon mark.
-- **Stroke:** 1.35 units, round caps and joins, `currentColor`.
-- **Fill:** none by default. Verdict glyphs whose filled or hollow state is a
-  channel (`IconCheck`, `IconAlert`, `IconSpinnerFilled`) and a few solid marks
-  are filled.
-- **Colour:** never baked into a glyph. Context tints it: ash at rest, firn on
-  hover, cobalt when active, a verdict tone in the filter report.
-- **Mirrors:** back and forward are one drawing reflected; a test holds them to
-  it.
+- **Grid:** 16 × 16, ink centred on 8,8. `geometry.test.tsx` checks each
+  glyph's centre vs own box; only exemption Patreon mark.
+- **Stone:** every glyph solid, cut from same stone as Doorway logo. Bars
+  2.2 units (1.8 rings, frames, rays), ends square, joins mitred, no
+  round caps. Corners square or quadrant like logo door head (`IconCheck`
+  and `IconSpinnerFilled` tiles, `IconApps`). Overlapping pieces knocked
+  out even-odd, logo's XOR rule: `IconClose` diamond (same as wordmark X),
+  interlocked `IconLink`. `IconLock` keyhole = tiny Doorway;
+  `IconTrash` lid ajar.
+- **Paths:** fills only, absolute M/L/C/Z (geometry test reads no arcs). One
+  `<path>` per moving part, so gestures move lid, hand, knob alone.
+- **Verdicts:** each verdict glyph distinct by shape, not fill:
+  check tile, ban, alert, close, empty-socket tile (`IconSpinnerFilled`).
+  Bookmark state reads by mass: `IconBookmarkFilled` solid,
+  `IconBookmarkOutline` hollow rim.
+- **Colour:** never baked in. Context tints: ash rest, firn hover,
+  cobalt active, verdict tone in filter report.
+- **Mirrors:** back/forward = one drawing reflected; test enforces.
 
 ## Depth: every glyph is a small solid
 
-The `icon()` factory draws each glyph three times from the one path source, so
-the layers can never drift out of register:
+`icon()` factory draws each glyph three times from one path source, layers
+never drift out of register:
 
-1. **Extrusion**: a heavier copy (2.1 stroke, or the shape plus a hairline for
-   filled glyphs) in `currentColor` sunk toward basalt, offset 0.45 right and
-   0.7 down.
-2. **Rim**: a firn-warmed copy at 55% offset 0.35 left and 0.45 up. It shows
-   on the upper-left edges only, which is where the light comes from.
-3. **Face**: the glyph in `currentColor` on top.
+1. **Extrusion**: heavier copy (shape + hairline outline) in
+   `currentColor` sunk toward basalt, offset 0.45 right, 0.7 down.
+2. **Rim**: firn-warmed copy at 55%, offset 0.35 left, 0.45 up. Shows
+   upper-left edges only, where light comes from.
+3. **Face**: glyph in `currentColor` on top.
 
-On the glyph's own hover, its control's hover, or its control's keyboard
-focus, the face and rim lift a further 0.35 up-left while the extrusion stays,
-so the solid visibly deepens (260ms). Each glyph also has its own gesture in
-`icons.css.ts`, applied to all three layers so the solid moves as one piece:
-meridians narrow, hands turn, panel dividers slide, arrows extend, on the same
-260ms decelerating curve as the lift and as the slab the glyph sits on.
-Reduced-motion users get stationary glyphs.
+On glyph hover, control hover, or control keyboard focus, face and rim lift
+further 0.35 up-left, extrusion stays; solid deepens (260ms). Each glyph
+plays own act once (`gestures` in `icons.css.ts`) on all three layers:
+arrows dash, close blades snip (diamond stretches to slit), tick wipes and
+redraws, socket blinks, bookmark loads and snaps like trap, lid flips,
+shackle unlocks, knob pops, globe meridians turn, apps tiles iris round,
+faders ripple, dots wave, out-arrow leaves via its corner, returns via
+opposite. Rim runs 90ms behind face, extrusion 30ms behind, so copies part
+mid-act like exposures of one motion, restack on landing. Hover waits 80ms
+first, so pointer crossing toolbar starts nothing. Once started, act plays
+to end: `lib/acts.ts` latches `data-act` on glyph at first frame, clears
+when last part ends; stylesheet matches latch like hover, so leaving
+mid-act never snaps to rest. Every act starts/ends at rest: part shows
+drawing while waiting and after end; reduced motion keeps only last frame.
+Rotations end on turn mapping glyph onto itself. Reduced-motion users get
+stationary glyphs. Safari lacks CSS `d`, drops morph keyframes (snip,
+tick, socket, ribbon); there `lib/acts.ts` replays each as SMIL from
+`glyphMorphs` exported by `icons.css.ts` (`styles/morph.ts`).
 
 ## Specimens: large icons
 
-`Specimen` sets one glyph in a mineral tile. The tile is a palette tone lit
-from the upper left, grained, and banded down its side in the same tone sunk
-toward basalt. Inside it the glyph's extrusion and rim layers are hidden and
-its face is lit by `#civil-emboss` (Document.tsx): fractal grain folded into
-the glyph's softened alpha as a height map, specular light from the upper left,
-and a hard basalt drop. Hovering the tile, or the control it sits in, tilts it
-toward the reader, lifts the glyph on its own plane and sweeps a sheen across
-the face.
+`Specimen` sets one glyph in mineral tile. Tile = palette tone lit from
+upper left, grained, banded down side in same tone sunk toward basalt.
+Inside, glyph extrusion and rim hidden; face lit by `#civil-emboss`
+(Document.tsx): fractal grain folded into glyph's softened alpha as height
+map, specular light upper left, hard basalt drop. Hovering tile, or its
+control, tilts it toward reader, lifts glyph on own plane, sweeps sheen
+across face.
 
-Tints are `cobalt`, `stone`, `juniper`, `calcite`, `sandstone` and `wine`.
-Light minerals take a basalt glyph, dark and saturated ones a firn glyph. Each
-destination keeps its mineral everywhere: Apps cobalt, Bookmarks calcite,
-History juniper, Extensions sandstone, Filter check stone, Restricted domains
-wine. Empty states use a stone specimen of the page's glyph. A specimen is
-always decorative and labelled in text beside it.
+Tints: `cobalt`, `stone`, `juniper`, `calcite`, `sandstone`, `wine`.
+Every tile takes firn glyph: emboss's hard basalt drop draws edge even on
+light minerals, where basalt glyph, solid since Stone set, read as black
+hole. Each destination keeps mineral everywhere: Apps cobalt, Bookmarks
+calcite, History juniper, Extensions sandstone, Filter check stone, Restricted
+domains wine. Empty states use stone specimen of page glyph. Specimen
+always decorative, labelled in text beside it.
 
 ## Adding a glyph
 
-- Draw it on the grid above, name it `Icon<Thing>`, and export it from
-  `components/icons/index.tsx` through `icon(name, body, fill?)`.
-- Give it a gesture in `icons.css.ts` under its `data-icon` name, addressed by
-  path order (`"1"`, `"2"`, …). Animate the drawing, never its box.
-- Every icon accepts `size` (number) and `class`, and paints with
-  `currentColor`. That is the whole contract the app depends on.
+- Draw on grid above in Affinity Designer, one 160px artboard per glyph
+  (grid ×10), each part own layer; expand strokes, export SVG, divide by 10.
+  Name `Icon<Thing>`, export from `components/icons/index.tsx` via
+  `icon(name, body)`.
+- Give act in `icons.css.ts` `gestures` under its `data-icon` name,
+  addressed by path order (`"1"`, `"2"`, …). Animate drawing, never box;
+  keyframes start/end at rest. `d` morphs need same commands, same order,
+  as path replaced, so variants with different paths need own `data-icon`
+  name (bookmark, bookmark-filled, bookmark-outline). Morph frames land in
+  `glyphMorphs` for Safari replay automatically; give them `cubic-bezier()`
+  timing only, which SMIL takes. `lib/acts.test.tsx` holds every morph to
+  one structure starting and ending on drawing.
+- Every icon accepts `size` (number) and `class`, paints with
+  `currentColor`. That = whole contract app depends on.
 
 ## Wordmark
 
-The Civil Proxy lockup (CIVIL stepping down into PROXY, the L's foot as the
-P's roof) lives in `components/Wordmark.tsx`, `public/assets/civil-wordmark.*`,
-the favicon and the loader's C. On the New Tab page it stands on two sediment
-bands and a contact shadow, drawn with `drop-shadow` so the extrusion follows
-the letter shapes.
+Civil Proxy lockup (Doorway: two stone slabs XOR into lit door, then
+CIVIL PROXY in grown Plex Bold caps, X knocked out by same XOR) lives in
+`components/Wordmark.tsx`, `public/assets/civil-wordmark.*`, favicon,
+loader mark. Mark on same 16-unit grid as glyphs: one cell = one favicon
+pixel, so 16px favicon draws without grooves, stays crisp.
+
+In `Wordmark.tsx` each course, door, letter = own `<path>`, so lockup plays
+own act (`Wordmark.css.ts`) on hover/focus: tall slab strains, sticks,
+slips into short slab, ratchets home; door, being their overlap, widens by
+right jamb alone (zero-length `H` in path), so every held pose stays exact
+XOR. Jolt then crosses CIVIL PROXY by each cap's distance from door, feet
+kick forward, tops lean back (forward lean fuses tops at I|V and V|I). X
+drawn as two bars filled even-odd, so it swings them upright onto each
+other, vanishes an instant (A xor A), springs back. Y whips. Hover and
+focus wait 120ms; act plays to end through same latch as glyphs, door and
+X replayed as SMIL in Safari. Static copies (`civil-wordmark.*`, favicon)
+keep combined outlines; render same.

@@ -3,7 +3,7 @@ const napi_zig = @import("napi_zig");
 
 pub fn build(b: *std.Build) void {
     // No `-Dtarget=` override here on purpose: this defaults to the host,
-    // which is the whole point at this phase — "at build time only generate
+    // which is the whole point at this phase: "at build time only generate
     // one [binding], for the builder's platform". Cross-compiling the full
     // platform matrix is a later increment, once the port itself is further
     // along; see this directory's README.
@@ -44,7 +44,7 @@ pub fn build(b: *std.Build) void {
     // See README.md for the pinned toolchain and dependency preparation.
     const napi_dep = b.dependency("napi_zig", .{});
     // addLib registers its own build/install steps internally (confirmed:
-    // it returns void, not a Step — yuku's own build.zig also never
+    // it returns void, not a Step, and yuku's own build.zig also never
     // captures its return value), so there's no custom step to wire a
     // dependency onto here; `zig build` (the default step) picks it up.
     napi_zig.addLib(b, napi_dep, .{

@@ -12,9 +12,9 @@ import { vars } from "./theme.css";
  * than render a percentage of a continuous fill.
  *
  * The segment colour was previously set inline from `--civil-color-yellow`,
- * `--civil-color-maroon` and `--civil-color-red`. None of those exist — the
+ * `--civil-color-maroon` and `--civil-color-red`. None of those exist (the
  * theme contract generates `--civil-color-<palette-slot>`, and the palette has
- * no `yellow`, `maroon` or `red` — so every segment rendered with no colour at
+ * no `yellow`, `maroon` or `red`) so every segment rendered with no colour at
  * all. The severity ramp now runs sol → arcturus → antares, which are real
  * slots and, being separated by lightness rather than only hue, stay
  * distinguishable under deuteranopia.
@@ -39,7 +39,7 @@ const segmentBase = style({
 /**
  * The tones are enumerated as static variants rather than driven by a dynamic
  * custom property. Three fixed severities do not need a runtime variable, and
- * the alternative — `assignInlineVars` — would mean adding
+ * the alternative, `assignInlineVars`, would mean adding
  * `@vanilla-extract/dynamic` as a dependency to colour eight small rectangles.
  */
 // A strike is a raised block of its tone, lit on top and banded underneath;

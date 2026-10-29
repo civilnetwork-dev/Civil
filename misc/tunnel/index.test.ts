@@ -39,7 +39,7 @@ describe("openTunnel", () => {
     });
 });
 
-/** FreeDNS's real wording for a wrong guess — it never says "captcha". */
+/** FreeDNS's real wording for a wrong guess: it never says "captcha". */
 const wrongCodeError = () =>
     new FreeDnsError(
         "Failed to create subdomain: The security code was incorrect, please try again.",
@@ -126,7 +126,7 @@ const accountRecords: Subdomain[] = [
         subdomain: "tpv47fuc8cg4.rbarkersw.com",
         destination: "oem-appears-spin-yeah.trycloudflare.com",
     },
-    // A user's own A records — different type, must be spared.
+    // A user's own A records: different type, must be spared.
     {
         id: "24903100",
         type: "A",
@@ -139,14 +139,14 @@ const accountRecords: Subdomain[] = [
         subdomain: "kahoot.v0id.nl",
         destination: "76.76.21.21",
     },
-    // A CNAME the user parked on a real host — trycloudflare check spares it.
+    // A CNAME the user parked on a real host: trycloudflare check spares it.
     {
         id: "30000001",
         type: "CNAME",
         subdomain: "www.example.org",
         destination: "cdn.example.net",
     },
-    // A trycloudflare CNAME whose label isn't the random tunnel format —
+    // A trycloudflare CNAME whose label isn't the random tunnel format:
     // someone named it by hand, so it isn't ours to delete.
     {
         id: "30000002",
@@ -155,7 +155,7 @@ const accountRecords: Subdomain[] = [
         destination: "my-quick-tunnel.trycloudflare.com",
     },
     // A second real orphan, with FreeDNS's own subdomain-list page
-    // truncation applied to its destination (a real captured value —
+    // truncation applied to its destination (a real captured value,
     // the exact way this bug was found live): still a match.
     {
         id: "26632056",
@@ -166,7 +166,7 @@ const accountRecords: Subdomain[] = [
     // A third real orphan whose truncation cut *inside* "trycloudflare"
     // (another real captured value). No substring of what the list page
     // shows identifies this as a tunnel, so the sweep has to read the
-    // details page — this one went unswept and wedged the next run at
+    // details page: this one went unswept and wedged the next run at
     // "no more subdomain capacity".
     {
         id: "26658004",
@@ -227,7 +227,7 @@ describe("sweepTunnelOrphans", () => {
 
 describe("findSubdomainWithRetry", () => {
     /** A stub whose `getSubdomains` returns empty for the first
-     *  `emptyReads` calls, then the real record forever after — modelling
+     *  `emptyReads` calls, then the real record forever after: modelling
      *  FreeDNS's own list API lagging behind a record it just reported
      *  creating successfully. */
     function stubClient(

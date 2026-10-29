@@ -4,7 +4,7 @@
  * A pure function of what the sandbox observed after loading a proxied route
  * with exactly one filter installed (see sandbox.ts) and the committed
  * `probeData.json`. Kept pure and separate from the harness for the usual
- * reason — it is the part with the real risk of being wrong, and it is the
+ * reason: it is the part with the real risk of being wrong, and it is the
  * part worth testing exhaustively without a browser, a tunnel or a wait.
  *
  * A broken probe is excluded first: a fetch failure or a 5xx from Civil
@@ -12,15 +12,15 @@
  * `fetchError`/`status` on `PageObservation`). Past that, five channels, most
  * direct evidence first:
  *
- *   1. `declarativeNetRequest` — the filter's own configured rules, asked
+ *   1. `declarativeNetRequest`: the filter's own configured rules, asked
  *      directly whether they block this exact URL. Needs no rendered page,
  *      no wait, and no guess at what the resulting page would have looked
  *      like; a `redirect`-action match is folded into channel 2 below (it has
  *      a real destination host to check the same way).
- *   2. `location.href` — a filter that blocks redirects the tab to its own
+ *   2. `location.href`: a filter that blocks redirects the tab to its own
  *      block page, so a final URL whose host sits under one of the vendor's
  *      domains is the clearest DOM-observable "flagged".
- *   3. a vendor block marker in the page text — a content script that blocks
+ *   3. a vendor block marker in the page text: a content script that blocks
  *      *in place* (rewrites the page or throws up an overlay) leaves its
  *      block-page wording behind. `pageText` is enriched with alt/aria/title
  *      attribute text, so an image-only overlay isn't invisible here.
@@ -28,11 +28,11 @@
  *      drifted from what's curated in probeData.json.
  *   5. a generic, vendor-agnostic fallback: the page's own text collapsed to
  *      a short fraction of what was served, matching no specific marker at
- *      all — catches an in-place block whose wording isn't curated yet.
+ *      all: catches an in-place block whose wording isn't curated yet.
  *
  * Attribution is not in question: the harness installs one filter at a time,
  * so "flagged" is always "flagged *by the vendor under test*". That is what
- * lets a marker as generic as "Access Denied" count — while only Securly is
+ * lets a marker as generic as "Access Denied" count, while only Securly is
  * loaded, Securly is who denied access.
  */
 
@@ -49,18 +49,18 @@ export interface PageObservation {
     /** `window.location.href` after the filter has had its fifteen seconds. */
     finalUrl: string;
     /** `document.body.innerText`, enriched with `alt`/`aria-label`/`title`
-     *  attribute text and the document title — an image-only block overlay
+     *  attribute text and the document title: an image-only block overlay
      *  (a shield icon with no visible text run) leaves nothing in
      *  `textContent` alone. */
     pageText: string;
     /** Length of the page's own rendered text as originally served, before
-     *  any content script ran — the baseline the generic dom-replaced check
+     *  any content script ran: the baseline the generic dom-replaced check
      *  compares `pageText`'s final length against. */
     originalLength: number;
-    /** HTTP status of the page fetch. Never vendor-driven — the fetch that
+    /** HTTP status of the page fetch. Never vendor-driven (the fetch that
      *  produces this runs outside any extension's request pipeline, so a
-     *  filter's content scripts and background have no way to affect it —
-     *  only used to tell a broken probe apart from a real, clean read. */
+     *  filter's content scripts and background have no way to affect it),
+     *  so it is only used to tell a broken probe apart from a real, clean read. */
     status?: number;
     /** Set when the page fetch itself failed outright (network/tunnel/DNS),
      *  after sandbox.ts's own retries. Same reasoning as `status`: proves
@@ -68,7 +68,7 @@ export interface PageObservation {
     fetchError?: string;
     /** The loaded filter's own declarativeNetRequest ruleset, asked directly
      *  whether it blocks this exact page URL (misc/extensionHost's
-     *  `matchRequest`) — independent of whatever the rendered page ended up
+     *  `matchRequest`): independent of whatever the rendered page ended up
      *  looking like, and of the fifteen-second wait entirely. */
     dnrMatch?: DNRMatchResult;
 }
@@ -82,7 +82,7 @@ export type FlagSignal =
      *  directly, bypassing the sandboxed-extension observation this file
      *  otherwise assumes. */
     | { kind: "keyword-match"; keywords: string[] }
-    /** The filter's own declarativeNetRequest rules block this URL — no
+    /** The filter's own declarativeNetRequest rules block this URL: no
      *  redirect destination, just a hard block. A `redirect`-action DNR
      *  match is reported as the existing `"redirect"` kind instead (it has a
      *  real destination host to check against `probe.domains`, the same as
@@ -90,7 +90,7 @@ export type FlagSignal =
     | { kind: "dnr-block"; matchedRuleId: number }
     /** Generic, vendor-agnostic: the page's own text collapsed to a short
      *  fraction of what was served, with no specific marker or phrase
-     *  matched — an in-place block whose exact wording isn't in
+     *  matched: an in-place block whose exact wording isn't in
      *  probeData.json yet. */
     | { kind: "dom-replaced"; originalLength: number; finalLength: number }
     /** Not observed in the sandbox at all: the vendor's own cloud rating of
@@ -105,7 +105,7 @@ export interface Verdict {
     vendor: string;
     route: string;
     flagged: boolean;
-    /** Present iff `flagged`. What tripped the detector — carried into the
+    /** Present iff `flagged`. What tripped the detector: carried into the
      *  prediction step so it can point at the right Civil code. */
     signal?: FlagSignal;
 }
@@ -147,7 +147,7 @@ function probeFailed(observation: PageObservation): boolean {
     );
 }
 
-/** 1. The filter's own declarativeNetRequest rules, asked directly — a match
+/** 1. The filter's own declarativeNetRequest rules, asked directly: a match
  *  here needed no rendered page and no wait at all. */
 function dnrSignal(
     observation: PageObservation,
@@ -158,7 +158,7 @@ function dnrSignal(
     if (action === "redirect" && redirectUrl) {
         const finalHost = hostOf(redirectUrl);
         // Prefer the canonical probe domain when the redirect lands under
-        // one; otherwise the host itself is the finding — a DNR redirect
+        // one; otherwise the host itself is the finding: a DNR redirect
         // nobody's curated yet, which is exactly the top-ranked case
         // predictFix already has a suggestion for.
         const domain =
@@ -172,7 +172,7 @@ function dnrSignal(
 }
 
 /** 2. Redirected onto a vendor block-page host (content-script/background
- *  driven — chrome.tabs.update or a location.href write). */
+ *  driven: chrome.tabs.update or a location.href write). */
 function redirectSignal(
     observation: PageObservation,
     probe: VendorProbe,
@@ -205,7 +205,7 @@ function vendorNameSignal(
 
 /**
  * 5. Generic, vendor-agnostic fallback: the page's own text collapsed to a
- * short fraction of what was served, matching no specific marker — an
+ * short fraction of what was served, matching no specific marker: an
  * in-place block whose exact wording isn't curated yet (a new release, or a
  * vendor with no distinctive block text at all). Both conditions must hold,
  * not just one: a real block page is both short in absolute terms and a
@@ -215,7 +215,7 @@ function domReplacedSignal(
     observation: PageObservation,
 ): FlagSignal | undefined {
     // ponytail: thresholds picked by eyeball against the block pages already
-    // in probeData.json, not fit to a corpus — loosen/tighten if this misses
+    // in probeData.json, not fit to a corpus: loosen/tighten if this misses
     // a real block or trips on a legitimately terse route.
     const finalLength = observation.pageText.length;
     if (

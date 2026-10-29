@@ -3,7 +3,7 @@
  *
  * Extracted from FilterCheckPage.tsx, which had grown to 865 lines with 240 of
  * them being this table. It lives in lib/ rather than beside the component
- * because it is data and request-shaping, not rendering — and because vendor
+ * because it is data and request-shaping, not rendering, and because vendor
  * APIs drift, so this is the file that changes when a checker breaks.
  */
 
@@ -33,7 +33,7 @@ export type FilterResult = {
  *
  * The window is a whole day at the free tier, so minutes are noise above an
  * hour and seconds are noise above a minute; each unit is dropped once the one
- * above it can answer the only question being asked — when can I try again.
+ * above it can answer the only question being asked, when can I try again.
  */
 export function formatRetryAfter(seconds: number): string {
     if (!Number.isFinite(seconds) || seconds <= 0) return "in a moment";

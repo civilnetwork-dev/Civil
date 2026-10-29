@@ -297,10 +297,10 @@ function pbFindField(data: Uint8Array, targetField: number): Uint8Array | null {
 /**
  * Derive the canonical Chrome extension ID from raw CRX bytes + parsed manifest.
  *
- * Strategy 1 – manifest.key present (development / self-hosted CRX):
+ * Strategy 1. Manifest.key present (development / self-hosted CRX):
  *   base64-decode the key → SHA-256 → nibble-map first 16 bytes.
  *
- * Strategy 2 – CRX3/CRX4 header protobuf:
+ * Strategy 2. CRX3/CRX4 header protobuf:
  *   CrxFileHeader.signed_header_data (field 10000) → SignedData.crx_id (field 1)
  *   → nibble-map 16 bytes.
  *
@@ -543,6 +543,33 @@ async function installToFS(
 }
 
 /**
+ * The archive's manifest.json, parsed, with its __MSG_* locale placeholders
+ * resolved so the stored name and description read "Tampermonkey" rather
+ * than "__MSG_extName__", as Chrome and Firefox show them.
+ */
+function readManifest<T extends ChromeManifest | FirefoxManifest>(
+    files: Map<string, Uint8Array>,
+    kind: "CRX" | "XPI",
+): T {
+    const bytes = files.get("manifest.json");
+    if (!bytes) {
+        console.error(
+            "[civil/extensions] manifest.json missing, found:",
+            [...files.keys()].slice(0, 20),
+        );
+        throw new Error(`[civil/extensions] No manifest.json in ${kind}`);
+    }
+    const manifest = JSON.parse(new TextDecoder().decode(bytes)) as T;
+    resolveManifestMessages(manifest, files);
+    console.log(
+        `[civil/extensions] ${kind} manifest:`,
+        manifest.name,
+        "v" + manifest.version,
+    );
+    return manifest;
+}
+
+/**
  * Install a Chrome extension from raw .crx bytes.
  */
 export async function extensionsInstallCrx(
@@ -550,27 +577,8 @@ export async function extensionsInstallCrx(
 ): Promise<Omit<CivilExtension, "files">> {
     console.log("[civil/extensions] extensionsInstallCrx(): starting");
     const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-    const zipData = parseCrx(bytes);
-    const files = unzip(zipData);
-    const manifestBytes = files.get("manifest.json");
-    if (!manifestBytes) {
-        console.error(
-            "[civil/extensions] manifest.json missing, found:",
-            [...files.keys()].slice(0, 20),
-        );
-        throw new Error("[civil/extensions] No manifest.json in CRX");
-    }
-    const manifest: ChromeManifest = JSON.parse(
-        new TextDecoder().decode(manifestBytes),
-    );
-    // Resolve __MSG_* locale placeholders so the stored name/description are
-    // human-readable (e.g. "Tampermonkey" not "__MSG_extName__").
-    resolveManifestMessages(manifest, files);
-    console.log(
-        "[civil/extensions] CRX manifest:",
-        manifest.name,
-        "v" + manifest.version,
-    );
+    const files = unzip(parseCrx(bytes));
+    const manifest = readManifest<ChromeManifest>(files, "CRX");
     // Derive the real Chrome extension ID from the CRX key material so that
     // sites like Greasyfork can detect the extension by its canonical ID.
     // Falls back to a random UUID if derivation fails.
@@ -604,24 +612,7 @@ export async function extensionsInstallXpi(
     console.log("[civil/extensions] extensionsInstallXpi(): starting");
     const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
     const files = unzip(bytes);
-    const manifestBytes = files.get("manifest.json");
-    if (!manifestBytes) {
-        console.error(
-            "[civil/extensions] manifest.json missing, found:",
-            [...files.keys()].slice(0, 20),
-        );
-        throw new Error("[civil/extensions] No manifest.json in XPI");
-    }
-    const manifest: FirefoxManifest = JSON.parse(
-        new TextDecoder().decode(manifestBytes),
-    );
-    // Resolve __MSG_* locale placeholders (same as Chrome/Firefox do at install).
-    resolveManifestMessages(manifest, files);
-    console.log(
-        "[civil/extensions] XPI manifest:",
-        manifest.name,
-        "v" + manifest.version,
-    );
+    const manifest = readManifest<FirefoxManifest>(files, "XPI");
     const id = crypto.randomUUID();
     const ext: Omit<CivilExtension, "files"> = {
         id,

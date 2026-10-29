@@ -1,16 +1,16 @@
 /**
- * LanSchool's cloud filtering, over the Netsweeper node it forwards to — for
+ * LanSchool's cloud filtering, over the Netsweeper node it forwards to: for
  * the domain-reputation registry (misc/filters/domainReputation).
  *
  * This is deliberately separate from `air/checker.ts`: that module is the
  * *Lenovo LanSchool Air* app, which only decides through a local native-
- * messaging host (`nativeWebLimit`) — there is no remote call it can make on
+ * messaging host (`nativeWebLimit`): there is no remote call it can make on
  * its own. This module is the other LanSchool deployment shape, the one that
  * forwards straight to a Netsweeper categorisation node, and needs no local
  * host to answer.
  *
- * The technique — the base64 payload shape and the specific `coopacademies`
- * node — is ported from shayderrr's `idk` (github.com/shayderrr/idk,
+ * The technique, the base64 payload shape and the specific `coopacademies`
+ * node, is ported from shayderrr's `idk` (github.com/shayderrr/idk,
  * `filters/lanschool.js`); credit to that author for finding it. It is not
  * independently re-derived here: `~/extensions/lanschoolStudent` is the Lenovo
  * Air app (the other deployment), and the wayback captures for LanSchool's own

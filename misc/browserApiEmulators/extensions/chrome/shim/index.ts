@@ -153,14 +153,14 @@ function buildCoreApis({ extId, opts, contextType, features }: ShimContext) {
 }
 
 function buildPageApis(
-    { contextType, features }: ShimContext,
+    { features }: ShimContext,
     getDNRRules: ReturnType<typeof buildCoreApis>["getDNRRules"],
 ) {
     const i18n = buildI18nAPI();
     const permissions = buildPermissionsAPI();
     const contextMenus = gated(features.contextMenus, buildContextMenusAPI);
     const webRequest = gated(features.webRequest, () =>
-        buildWebRequestAPI(getDNRRules, contextType === "background"),
+        buildWebRequestAPI(getDNRRules),
     );
     const notifications = gated(features.notifications, buildNotificationsAPI);
     return { i18n, permissions, contextMenus, webRequest, notifications };

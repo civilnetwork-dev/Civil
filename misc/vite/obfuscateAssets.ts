@@ -26,7 +26,7 @@ export type ObfuscateAssetsOptions = {
      * `OBFUSCATE_ENGINE=obfuscatti` for a one-off build without touching
      * config. Needs `misc/obfuscatti` built first (`cd misc/obfuscatti &&
      * zig build`, using the toolchain and dependency preparation in that
-     * README) -- this throws a clear, actionable error if it isn't,
+     * README): this throws a clear, actionable error if it isn't,
      * rather than silently falling back, since a silent fallback would
      * mean "I asked for obfuscatti" quietly became "I got obscura-rs".
      */

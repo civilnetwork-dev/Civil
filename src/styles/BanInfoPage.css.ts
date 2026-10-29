@@ -11,7 +11,7 @@ const WINE_FACE = `color-mix(in oklab, ${vars.color.wine} 14%, ${vars.color.scre
  *
  * Two things sit on this page and they answer different questions: "where do I
  * stand" and "what is on the list". The tally is a small, dense block at the
- * top; the roll below it is a printed index — thousands of hostnames, set in
+ * top; the roll below it is a printed index: thousands of hostnames, set in
  * columns rather than one per row, because a single-column list of 500 domains
  * is a kilometre of scrolling that tells you nothing a column set does not.
  */

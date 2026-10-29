@@ -1,16 +1,15 @@
 import { For, Show } from "solid-js";
 
+import AppShell from "~/components/AppShell";
 import {
     IconApps,
     IconArrowUpRight,
     IconBookmark,
     IconClock,
     IconPuzzle,
-    IconSliders,
     IconWorld,
 } from "~/components/icons";
 import Specimen, { type Tint } from "~/components/Specimen";
-import { Wordmark } from "~/components/Wordmark";
 import { useSetting } from "~/lib/settings";
 
 import SearchBarContainer from "./SearchBarContainer";
@@ -79,37 +78,6 @@ function openPage(event: MouseEvent, href: string) {
     );
 }
 
-function NewTabHeader() {
-    return (
-        <header class={s.header}>
-            <a
-                class={s.brand}
-                href="/"
-                aria-label="Civil home"
-                onClick={event => openPage(event, "/newtab")}
-            >
-                <Wordmark width={140} />
-            </a>
-            <div class={s.utilities}>
-                <a
-                    class={s.utilityLink}
-                    href="/checkfilters"
-                    onClick={event => openPage(event, "/checkfilters")}
-                >
-                    Filter check <IconArrowUpRight size={15} />
-                </a>
-                <a
-                    class={s.utilityLink}
-                    href="/settings"
-                    onClick={event => openPage(event, "/settings")}
-                >
-                    <IconSliders size={15} /> Settings
-                </a>
-            </div>
-        </header>
-    );
-}
-
 function Shortcuts() {
     return (
         <nav class={s.shortcuts} aria-label="Your browser">
@@ -142,37 +110,38 @@ export default function NewTabPage() {
     const ads = useSetting("ads");
 
     return (
-        <main class={s.page}>
-            <NewTabHeader />
-            <section class={s.content} aria-labelledby="welcome-heading">
-                <div class={s.welcome}>
-                    <div class={s.emblem}>
-                        <Specimen icon={IconWorld} size={72} idle />
+        <AppShell>
+            <main class={s.page}>
+                <section class={s.content} aria-labelledby="welcome-heading">
+                    <div class={s.welcome}>
+                        <div class={s.emblem}>
+                            <Specimen icon={IconWorld} size={72} idle />
+                        </div>
+                        <h1 id="welcome-heading" class={s.heading}>
+                            A little space to explore.
+                        </h1>
+                        <p class={s.description}>
+                            Search for something new, or go somewhere you love.
+                        </p>
                     </div>
-                    <h1 id="welcome-heading" class={s.heading}>
-                        A little space to explore.
-                    </h1>
-                    <p class={s.description}>
-                        Search for something new, or go somewhere you love.
-                    </p>
-                </div>
-                <Show when={!inFrame()}>
-                    <a class={s.openBrowser} href={HOME_URL}>
-                        Open Civil browser <IconArrowUpRight size={18} />
-                    </a>
-                </Show>
-                <Show when={inFrame()}>
-                    <div class={s.searchSeat}>
-                        <SearchBarContainer />
-                    </div>
-                </Show>
-                <Shortcuts />
-            </section>
-            <footer class={s.footer}>
-                {ads()
-                    ? "Ads keep Civil free and open source."
-                    : "Civil is free and open source."}
-            </footer>
-        </main>
+                    <Show when={!inFrame()}>
+                        <a class={s.openBrowser} href={HOME_URL}>
+                            Open Civil browser <IconArrowUpRight size={18} />
+                        </a>
+                    </Show>
+                    <Show when={inFrame()}>
+                        <div class={s.searchSeat}>
+                            <SearchBarContainer />
+                        </div>
+                    </Show>
+                    <Shortcuts />
+                </section>
+                <footer class={s.footer}>
+                    {ads()
+                        ? "Ads keep Civil free and open source."
+                        : "Civil is free and open source."}
+                </footer>
+            </main>
+        </AppShell>
     );
 }

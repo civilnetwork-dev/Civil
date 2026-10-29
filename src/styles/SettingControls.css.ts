@@ -64,6 +64,19 @@ export const rowHint = style({
     lineHeight: 1.5,
 });
 
+// A choice's traits: names in a column of their own, each value beside its
+// name and wrapping under itself.
+export const traits = style({
+    display: "grid",
+    gridTemplateColumns: "max-content minmax(0, 1fr)",
+    gap: "2px 12px",
+    marginTop: "6px",
+});
+
+export const trait = style({ display: "contents" });
+
+export const traitName = style({ fontWeight: 500 });
+
 export const rowControl = style({
     flexShrink: 0,
     display: "flex",

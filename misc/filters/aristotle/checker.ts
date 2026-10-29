@@ -13,23 +13,23 @@
  * ```
  *
  * and its `_urlCheck` sends `serverRPC({ cmd: Or.CheckURL, url, type:
- * "main_frame" })` and reads `s.block` / `s.category` off the reply — exactly
+ * "main_frame" })` and reads `s.block` / `s.category` off the reply: exactly
  * what this checker sends and reads. The auth handshake's metadata field names
  * (`guid`, `os`, `user_id`, `connect_time`, `version`) were not traced through
  * the minifier in the time available; those come from the equivalent checker in
  * shayderrr's `idk` (github.com/shayderrr/idk, `filters/aristotle.js`), whose
  * `cmd`/response shape matches the confirmed enums above.
  *
- * ## The auth secret is not derived — it's shipped, per district
+ * ## The auth secret is not derived: it's shipped, per district
  *
- * `~/extensions/aristotleStudent/config.json` — the installed extension's own,
- * unobfuscated config — is a live `{domain, auth_key, auth_secret}` triple:
+ * `~/extensions/aristotleStudent/config.json` (the installed extension's own,
+ * unobfuscated config) is a live `{domain, auth_key, auth_secret}` triple:
  * `lenape.aristotleinsight.com` (Lenape Regional High School District, NJ) with
  * its own `auth_secret`. There is no key-derivation function anywhere in the
  * bundle: `auth_secret` is a fixed value provisioned into the extension at
  * deployment, one per district, not computed from anything a client could
  * regenerate. That answers "can a per-agent secret be generated
- * cryptographically" — no. This uses that live pairing (domain and secret from
+ * cryptographically": no. This uses that live pairing (domain and secret from
  * the same file, so they are guaranteed to match) rather than mixing a secret
  * with an unrelated domain from wayback data.
  */

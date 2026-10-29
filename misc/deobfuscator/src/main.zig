@@ -1,7 +1,7 @@
 //! `deobfuscate [-o OUT] [--module] [--stats] FILE`
 //!
-//! Reads one JavaScript file — extension is ignored, so the `.tmp` files the
-//! vendors ship are fed in directly — and writes the normalised source to OUT
+//! Reads one JavaScript file (the extension is ignored, so the `.tmp` files the
+//! vendors ship are fed in directly) and writes the normalised source to OUT
 //! or stdout.
 
 const std = @import("std");

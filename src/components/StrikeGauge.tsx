@@ -59,7 +59,7 @@ export default function StrikeGauge(props: {
             <div class={s.head}>
                 <span class={s.label}>Strikes</span>
                 {/* String(), because Solid renders the number 0 as nothing at
-                    all — and zero strikes is the single most common state this
+                    all, and zero strikes is the single most common state this
                     component is asked to display. */}
                 <span class={s.count}>
                     {String(props.violations)} / {String(props.maxViolations)}

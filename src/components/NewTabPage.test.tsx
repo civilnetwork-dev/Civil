@@ -30,7 +30,9 @@ describe("NewTabPage", () => {
         expect(
             container.querySelector('svg[aria-label="Civil Proxy"]'),
         ).not.toBeNull();
-        const links = [...container.querySelectorAll("nav a")];
+        const links = [
+            ...container.querySelectorAll('nav[aria-label="Your browser"] a'),
+        ];
         expect(links.map(link => link.getAttribute("href"))).toEqual([
             "/apps",
             "/bookmarks",

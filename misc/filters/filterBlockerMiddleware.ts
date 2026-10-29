@@ -6,7 +6,7 @@ import { posthog } from "./posthog";
 type Domain = `${string}.${string}`;
 
 /**
- * The registrable domains each tracked filter vendor phones home to —
+ * The registrable domains each tracked filter vendor phones home to:
  * telemetry, policy fetch, classification, licensing. Blocking them at the
  * proxy is what keeps a filter extension from reporting the session or
  * pulling down a fresh block-list mid-flight.
@@ -14,13 +14,13 @@ type Domain = `${string}.${string}`;
  * Grouped by *vendor*, not by extension id: several vendors ship two or three
  * extensions (Cisco's Security/Umbrella, Lightspeed's Filter/Insight,
  * Securly's core/Classroom) that share the same backend, and the filter route
- * test suite reads this same map keyed by vendor — see
+ * test suite reads this same map keyed by vendor: see
  * `misc/filterProbe/probe.ts`, which reuses it as one half of "did a filter
  * flag us". Keeping one source of truth is why it's exported.
  *
  * Every domain here was read out of the vendor's own shipped bundle under
  * `~/extensions` (host permissions, hardcoded config, telemetry endpoints),
- * except ContentKeeper — its authenticator is a NaCl `.nexe` that configures
+ * except ContentKeeper: its authenticator is a NaCl `.nexe` that configures
  * its endpoint per district and carries no hardcoded host, so its public
  * corporate domain stands in. Shared infrastructure a vendor merely rents
  * (S3, Azure Websites, Twilio, appspot) is deliberately left out: blocking it
@@ -69,7 +69,7 @@ export const filterVendorDomains = {
     securly: ["securly.com", "securly.io"],
 } as const satisfies Record<string, readonly Domain[]>;
 
-/** Every vendor domain, flattened — the middleware's default blocklist. */
+/** Every vendor domain, flattened: the middleware's default blocklist. */
 const domainsToBlock: readonly Domain[] =
     Object.values(filterVendorDomains).flat();
 

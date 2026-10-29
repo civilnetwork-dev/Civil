@@ -1,5 +1,5 @@
 /**
- * Regenerates `probeData.json` — per vendor, the signals that mean "this
+ * Regenerates `probeData.json`: per vendor, the signals that mean "this
  * filter noticed the proxy and blocked it".
  *
  * ## Why a committed fixture (same reasoning as extensionHost's)
@@ -26,18 +26,18 @@
  *   - `blockMarkers`: distinctive strings from *this vendor's own* block pages
  *     and block-message code (files named like `block*`, and lines matching a
  *     block phrase). Attribution is by folder, which is sound because the
- *     harness installs exactly one filter at a time — a generic "Access
+ *     harness installs exactly one filter at a time: a generic "Access
  *     Denied" appearing while only Securly is loaded is Securly. Generic
  *     phrases are kept for that reason; they are still this vendor's rendering
  *     of them.
  *
  * The `.tmp` files (JavaScript despite the extension) are scanned as source.
- * Binaries are not a useful marker source and are skipped — established, not
+ * Binaries are not a useful marker source and are skipped. Established, not
  * assumed, with three tools:
  *
  *   - ContentKeeper's `ckauth*.nexe` is a Google Native Client ELF (mangled
  *     C++, 1400+ `nacl` symbols), not a Node `nexe` bundle, so `nexedecompiler`
- *     cannot touch it — it checks for a `<nexe~~sentinel>` a NaCl binary does
+ *     cannot touch it: it checks for a `<nexe~~sentinel>` a NaCl binary does
  *     not have. `strings` over it finds no host. ContentKeeper authenticates
  *     to a per-district appliance and blocks server-side, so there is no
  *     client-side domain or block text to find; its corporate domain stands
@@ -75,7 +75,7 @@ const MAX_FILE_BYTES = 12 * 1024 * 1024;
 const BLOCK_FILE =
     /(?:^|[/\\])(?:[a-z0-9_-]*(?:block|denied|warning|pause|restrict)[a-z0-9_-]*)\.(?:html|js)$/i;
 
-/** Phrases that mean "we stopped you". Deliberately broad — attribution is by
+/** Phrases that mean "we stopped you". Deliberately broad: attribution is by
  *  folder, so breadth costs nothing and catches each vendor's own wording. */
 const BLOCK_PHRASE =
     /((?:this )?(?:site|page|url|content|website|request) (?:has been |is |was |currently )?(?:blocked|not available|unavailable|restricted|denied)[^"'`<>]{0,60})|(access (?:has been |is )?(?:denied|blocked|restricted)[^"'`<>]{0,40})|(blocked by [^"'`<>]{0,50})|(blocked (?:for|due to|by) [^"'`<>]{0,50})/gi;
@@ -89,7 +89,7 @@ const MARKER_NOISE =
  * Phrases too generic to be a *signal*. A 403 on any ordinary site says
  * "Access Denied"; a proxied third-party page could carry "page not available"
  * for reasons that have nothing to do with a filter. Keeping these would turn
- * the proxy route — which fetches a real third-party site through Civil — into
+ * the proxy route, which fetches a real third-party site through Civil, into
  * a false-positive machine. The distinctive phrasing a vendor wraps around
  * them ("blocked by school policy", "blocked due to focus lock mode") is kept;
  * the bare stem is dropped.

@@ -30,6 +30,7 @@ import {
 } from "~/lib/browserHelpers";
 import { isInternalUrl, isNewtabUrl } from "~/lib/browserUrls";
 import { cleanupChiiArtifacts } from "~/lib/chii";
+import { OPEN_ON_START_KEY } from "~/lib/openInBrowser";
 import searchBar from "~/lib/SearchBar";
 import { getSetting, useSetting } from "~/lib/settings";
 import { tabManager } from "~/lib/TabManager";
@@ -301,6 +302,20 @@ function openStartupTabs(adopt: () => void) {
         const page = getSetting("startupUrl").trim();
         openNewTab(startup === "page" && page ? page : "browser:newtab");
     }
+    openPendingStartTab();
+}
+
+/**
+ * A Civil page opened outside the browser (an app picked on a bare /apps)
+ * left its address here to open once the tabs exist.
+ */
+function openPendingStartTab() {
+    let pending: string | null = null;
+    try {
+        pending = sessionStorage.getItem(OPEN_ON_START_KEY);
+        sessionStorage.removeItem(OPEN_ON_START_KEY);
+    } catch {}
+    if (pending) openNewTab(pending);
 }
 
 function createExtensionPageOpener() {

@@ -1,8 +1,8 @@
 /**
  * chrome.tabs, reduced to the one thing that's real in this host: a single
  * synthetic tab representing "the page under test", whose URL the harness
- * controls via `setTabUrl`. There is no real window/tab management — no
- * navigation, no opening new tabs — because there is no browser underneath.
+ * controls via `setTabUrl`. There is no real window/tab management (no
+ * navigation, no opening new tabs) because there is no browser underneath.
  *
  * ponytail: multi-tab support is out of scope. Every filter-check extension
  * inspected cares about "what page is the user looking at right now", not
@@ -42,14 +42,14 @@ function tabQueries(getTab: () => SyntheticTab) {
         },
         getCurrent: async () => getTab(),
         sendMessage: async () => {
-            // No content-script realm to deliver into in this host — see
+            // No content-script realm to deliver into in this host: see
             // scripting.ts for the same boundary. Resolves undefined, the
             // same result Chrome gives when no listener responds.
             return undefined;
         },
         // MV2's content-script injection, the pair `chrome.scripting`
         // replaced in MV3. Recorded no-ops for the same reason
-        // `scripting.executeScript` is one — there is no DOM to inject into —
+        // `scripting.executeScript` is one (there is no DOM to inject into),
         // but present rather than stubbed, because MV2 bundles promisify the
         // namespace at startup and then call `tabs.executeScriptAsync`, which
         // only exists if `executeScript` did.
@@ -68,7 +68,7 @@ function tabQueries(getTab: () => SyntheticTab) {
 function tabLifecycle(getTab: () => SyntheticTab) {
     return {
         create: async () => getTab(),
-        // `update(tabId, props)` or `update(props)` for the active tab —
+        // `update(tabId, props)` or `update(props)` for the active tab:
         // real Chrome accepts both shapes. A `url` is the one property this
         // host's synthetic tab can honestly reflect back (a redirect is a
         // redirect whether a content script writes `location.href` or the

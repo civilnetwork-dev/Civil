@@ -15,27 +15,39 @@ import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
 import { ArmedKey } from "~/components/SettingControls";
 import Specimen from "~/components/Specimen";
-import { tabManager } from "~/lib/TabManager";
+import { openInBrowser } from "~/lib/openInBrowser";
 import type { CivilHistoryEntry } from "~/types";
 
 import * as s from "~/styles/HistoryPage.css";
 import * as schematic from "~/styles/schematic.css";
 
+type Range = "all" | "today" | "week";
+
+const RANGES: readonly (readonly [Range, string])[] = [
+    ["all", "All time"],
+    ["today", "Today"],
+    ["week", "Last 7 days"],
+];
+
+/** The earliest visit a range keeps: midnight today, or a week back. */
+function rangeStart(range: Range): number {
+    if (range === "all") return 0;
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    return range === "today"
+        ? midnight.getTime()
+        : midnight.getTime() - 6 * 86_400_000;
+}
+
 /**
- * Clicking an entry opens the page — the expectation every browser's
+ * Clicking an entry opens the page: the expectation every browser's
  * history page has trained. This page previously could not navigate at
  * all: clicking an entry opened a disclosure showing the full URL and a
  * remove link, so the one thing a user comes to history to do was the one
  * thing it did not offer.
  */
 function openEntry(entry: CivilHistoryEntry) {
-    const existing = tabManager.tabs.find(t => t.url === entry.url);
-    if (existing) {
-        tabManager.activateTab(existing.id);
-    } else {
-        const t = tabManager.createTab(entry.url);
-        tabManager.activateTab(t.id);
-    }
+    openInBrowser(entry.url, { newTab: true });
 }
 
 /**
@@ -110,24 +122,24 @@ function scopeSentenceOf(total: number, days: number, matched: number | null) {
     return `${scope}${total} ${total === 1 ? "page" : "pages"} across ${days} ${days === 1 ? "day" : "days"}`;
 }
 
-function filterEntries(entries: CivilHistoryEntry[], query: string) {
+function filterEntries(
+    entries: CivilHistoryEntry[],
+    query: string,
+    since: number,
+) {
     const q = query.trim().toLowerCase();
-    if (!q) return entries;
     return entries.filter(
         e =>
-            e.url.toLowerCase().includes(q) ||
-            (e.title ?? "").toLowerCase().includes(q),
+            e.visitedAt >= since &&
+            (!q ||
+                e.url.toLowerCase().includes(q) ||
+                (e.title ?? "").toLowerCase().includes(q)),
     );
 }
 
-function useHistory() {
+/** Every saved visit, kept current with history in any document. */
+function useHistoryEntries() {
     const [entries, setEntries] = createSignal<CivilHistoryEntry[]>([]);
-    const [query, setQuery] = createSignal("");
-
-    // Filtering feeds the day charts as well as the list, so typing a domain
-    // turns every day's header into "when did I visit this" rather than just
-    // hiding rows.
-    const matches = createMemo(() => filterEntries(entries(), query()));
 
     const reload = () => {
         void historyGetAll().then(all => setEntries(all));
@@ -151,6 +163,21 @@ function useHistory() {
         setEntries(entries().filter(e => e.id !== id));
     };
 
+    return { entries, clear, remove };
+}
+
+function useHistory() {
+    const { entries, clear, remove } = useHistoryEntries();
+    const [query, setQuery] = createSignal("");
+    const [range, setRange] = createSignal<Range>("all");
+
+    // Filtering feeds the day charts as well as the list, so typing a domain
+    // turns every day's header into "when did I visit this" rather than just
+    // hiding rows.
+    const matches = createMemo(() =>
+        filterEntries(entries(), query(), rangeStart(range())),
+    );
+
     const groupedByDay = createMemo(() => groupByDay(matches()));
 
     /**
@@ -161,7 +188,7 @@ function useHistory() {
         scopeSentenceOf(
             entries().length,
             groupedByDay().length,
-            query().trim() ? matches().length : null,
+            query().trim() || range() !== "all" ? matches().length : null,
         ),
     );
 
@@ -169,6 +196,8 @@ function useHistory() {
         entries,
         query,
         setQuery,
+        range,
+        setRange,
         matches,
         clear,
         remove,
@@ -221,6 +250,27 @@ function HistoryActions(props: { history: HistoryState }) {
     );
 }
 
+function RangeChips(props: { history: HistoryState }) {
+    return (
+        <div class={schematic.chips} role="group" aria-label="Show">
+            <For each={RANGES}>
+                {([value, label]) => (
+                    <button
+                        type="button"
+                        class={schematic.chip}
+                        aria-pressed={
+                            props.history.range() === value ? "true" : "false"
+                        }
+                        onClick={() => props.history.setRange(value)}
+                    >
+                        {label}
+                    </button>
+                )}
+            </For>
+        </div>
+    );
+}
+
 function FilterRow(props: {
     history: HistoryState;
     inputRef: (el: HTMLInputElement) => void;
@@ -244,11 +294,29 @@ function FilterRow(props: {
                 the eye does. The previous markup styled numbers and
                 words as separate spans, which announced "3pages2days"
                 and needed an aria-hidden copy plus a hidden sibling
-                to repair — two structures saying one sentence. */}
+                to repair: two structures saying one sentence. */}
             <p class={s.scopeStat} aria-live="polite">
                 {props.history.scopeSentence()}
             </p>
         </div>
+    );
+}
+
+function HistoryIntro(props: {
+    history: HistoryState;
+    inputRef: (el: HTMLInputElement) => void;
+}) {
+    return (
+        <Show when={props.history.entries().length > 0}>
+            <p class={schematic.lede}>
+                Find a page you visited earlier. Your history is stored on this
+                device.
+            </p>
+
+            <RangeChips history={props.history} />
+
+            <FilterRow history={props.history} inputRef={props.inputRef} />
+        </Show>
     );
 }
 
@@ -312,7 +380,7 @@ function DayMeter(props: { group: DayGroup }) {
                     {(n, i) => (
                         <span
                             class={`${s.dayMeterBar}${n() > 0 ? ` ${s.dayMeterBarOn}` : ""}${i % 6 === 0 ? ` ${s.dayMeterBarTick}` : ""}`}
-                            title={`${String(i).padStart(2, "0")}:00 — ${String(n())} ${n() === 1 ? "page" : "pages"}`}
+                            title={`${String(n())} ${n() === 1 ? "page" : "pages"} at ${String(i).padStart(2, "0")}:00`}
                             style={{
                                 // Lit hours start at 35% of the plot rather
                                 // than at zero: scaled from 0, a one-visit
@@ -428,17 +496,10 @@ export default function HistoryPage() {
 
             <HistoryFullNotice />
 
-            <Show when={history.entries().length > 0}>
-                <p class={schematic.lede}>
-                    Find a page you visited earlier. Your history is stored on
-                    this device.
-                </p>
-
-                <FilterRow
-                    history={history}
-                    inputRef={el => (filterInput = el)}
-                />
-            </Show>
+            <HistoryIntro
+                history={history}
+                inputRef={el => (filterInput = el)}
+            />
 
             <Show when={history.entries().length === 0}>
                 <NoHistory />

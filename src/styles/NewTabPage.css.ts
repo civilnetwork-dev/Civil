@@ -1,15 +1,6 @@
 import { globalStyle, style } from "@vanilla-extract/css";
 
-import {
-    BAND,
-    blend,
-    elevation,
-    GROUND,
-    KEY_COBALT,
-    LIFT,
-    PEBBLE,
-    RISE,
-} from "./material.css";
+import { blend, elevation, KEY_COBALT, LIFT, RISE } from "./material.css";
 import { FONT_SANS } from "./schematic.css";
 import { vars } from "./theme.css";
 
@@ -23,72 +14,19 @@ import { vars } from "./theme.css";
  * mineral per destination below the search well.
  */
 
-export const page = style(
-    blend(GROUND, {
-        minHeight: "100svh",
-        display: "flex",
-        flexDirection: "column",
-        padding: "24px 40px 18px",
-        color: vars.color.firn,
-        fontFamily: FONT_SANS,
-        "@media": { "(max-width: 600px)": { padding: "20px 20px 16px" } },
-    }),
-);
-
-export const header = style({
+// Inside the app shell, which lays the ground and carries the wordmark and the
+// links to Filter check and Settings.
+export const page = style({
+    minHeight: "100svh",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "16px",
-    animation: RISE,
+    flexDirection: "column",
+    padding: "24px 40px 18px",
+    color: vars.color.firn,
+    fontFamily: FONT_SANS,
+    "@media": {
+        "(max-width: 720px)": { minHeight: 0, padding: "20px 16px 16px" },
+    },
 });
-
-export const brand = style({
-    display: "inline-flex",
-    borderRadius: "6px",
-});
-
-export const utilities = style({
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-    gap: "10px",
-});
-
-// The lockup is cut from the same stone: two bands of sediment under the
-// letters and a contact shadow. drop-shadow follows the letter shapes, and
-// the mark is static, so the filter paints once. On hover the mark rises
-// inside the link; the link itself stays put, so its hit box cannot slide
-// out from under the pointer.
-globalStyle(`.${brand} svg`, {
-    filter: [
-        `drop-shadow(0 1px 0 ${BAND.light})`,
-        `drop-shadow(0 1px 0 ${BAND.dark})`,
-        "drop-shadow(0 6px 6px color-mix(in srgb, black 40%, transparent))",
-    ].join(" "),
-    translate: `0 ${elevation}`,
-    transition: LIFT,
-});
-globalStyle(`.${brand}:is(:hover, :focus-visible) svg`, {
-    vars: { [elevation]: "-2px" },
-});
-
-export const utilityLink = style(
-    blend(PEBBLE, {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        minHeight: "34px",
-        padding: "0 12px",
-        color: vars.color.snowmelt,
-        textDecoration: "none",
-        fontSize: "13px",
-        borderRadius: "10px",
-        selectors: {
-            "&:hover": { color: vars.color.firn },
-        },
-    }),
-);
 
 export const content = style({
     flex: 1,

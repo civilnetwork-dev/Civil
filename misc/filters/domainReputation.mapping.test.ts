@@ -1,4 +1,4 @@
-// How each vendor's raw answer maps to a BLOCK/ALLOW/UNKNOWN verdict — the
+// How each vendor's raw answer maps to a BLOCK/ALLOW/UNKNOWN verdict. The
 // layer that let meatballmanor.com through: Securly rated it a proxy but one
 // district's policy said ALLOW, and three other checkers reported "no data"
 // as ALLOW. Vendor clients are mocked; nothing here touches the network.
@@ -45,7 +45,7 @@ const check = (vendor: string) =>
 
 describe("securly", () => {
     it("blocks on a school-blocked category even when the probed policy allows", async () => {
-        // 256 = bit 8, "Anonymizers / Proxy / VPN" — the live rating.
+        // 256 = bit 8, "Anonymizers / Proxy / VPN": the live rating.
         Object.assign(securly, { decision: "ALLOW", categoryId: "256" });
         expect(await check("securly")).toBe("BLOCK");
     });

@@ -1,0 +1,14 @@
+{
+    "detector": {
+        "ignoreRules": [],
+        "ignoreFiles": [],
+        "ignoreValues": [
+            {
+                "rule": "design-system-font",
+                "value": "ibm plex mono",
+                "createdAt": "2026-10-26T03:37:06.079Z",
+                "reason": "DESIGN.md Typography names IBM Plex Mono (FONT_MONO) for addresses and technical data; finding is pre-existing code in useIframeManager error page"
+            }
+        ]
+    }
+}

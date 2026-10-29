@@ -60,22 +60,22 @@ function useUnfoldState() {
 /**
  * Depth on demand: a summary at rest, a dense block on intent.
  *
- * Three signals drive one derived state, but they are not peers — each has a
+ * Three signals drive one derived state, but they are not peers. Each has a
  * different authority over `open`:
  *
- *   pinned    — the only signal a user sets on purpose. Click (which is also
+ *   pinned: the only signal a user sets on purpose. Click (which is also
  *               how a <button> reports Enter/Space) sets it; a second click
  *               or Escape clears it. This is what makes the content survive
  *               the pointer leaving or focus moving on.
- *   hovered   — mouse convenience, and mouse only. `onPointerEnter`/
+ *   hovered: mouse convenience, and mouse only. `onPointerEnter`/
  *               `onPointerLeave` are gated on `pointerType === "mouse"`
  *               because mobile browsers synthesise a `mouseenter` before
  *               every tap's `click` but no matching `mouseleave` until the
- *               user touches somewhere else — treat touch as hover and the
+ *               user touches somewhere else: treat touch as hover and the
  *               toggle goes dead on the second tap (open, pinned clears,
  *               `hovered` is still stuck true). Pen is excluded for the same
  *               reason as touch.
- *   focusHeld — a hold, never an opener. `onFocusIn` only sets it when the
+ *   focusHeld: a hold, never an opener. `onFocusIn` only sets it when the
  *               region is already open (`pinned() || hovered()`); tabbing to
  *               a closed trigger must not reveal content nobody asked for.
  *               Once set, it keeps the region open while focus is anywhere
@@ -85,7 +85,7 @@ function useUnfoldState() {
  * open = pinned() || hovered() || focusHeld()
  *
  * Focus is tracked on the container rather than the trigger, via `focusin`/
- * `focusout` with a `relatedTarget` containment check on the latter — using
+ * `focusout` with a `relatedTarget` containment check on the latter: using
  * the trigger's own blur would collapse the region the instant focus moved
  * into the content it had just revealed.
  *
@@ -103,7 +103,7 @@ function useUnfoldState() {
  * replacement: `props.label` renders as visually-hidden (`srOnly`) text
  * *before* `props.summary` inside the button, rather than as `aria-label`.
  * An `aria-label` would discard the visible text from the accessible name
- * entirely, which fails WCAG 2.5.3 Label in Name and breaks voice control —
+ * entirely, which fails WCAG 2.5.3 Label in Name and breaks voice control:
  * a user saying "click chess.org" needs "chess.org" to actually be part of
  * the name their command is matched against.
  */

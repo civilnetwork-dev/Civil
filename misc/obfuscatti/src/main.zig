@@ -1,4 +1,4 @@
-//! `zig build run` playground — obfuscates a sample and prints the result,
+//! `zig build run` playground: obfuscates a sample and prints the result,
 //! the same role yuku's own src/main.zig plays for its parser.
 
 const std = @import("std");

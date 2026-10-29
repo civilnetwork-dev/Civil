@@ -47,9 +47,10 @@ describe("SetupPage", () => {
             expect(container.textContent).toContain("You're all set."),
         );
         expect(container.textContent).toContain("Bing");
-        expect(container.textContent).toContain(
-            "Automatic, starting with Bare",
+        const connection = [...container.querySelectorAll("dt")].find(
+            dt => dt.textContent === "Connection",
         );
+        expect(connection?.nextElementSibling?.textContent).toMatch(/^Bare/);
         expect(container.textContent).toContain("Show on new tabs only");
         expect(container.textContent).toContain(
             "You use Microsoft Edge, which searches with Bing.",

@@ -13,16 +13,17 @@ describe("Sheet", () => {
                 <p>body</p>
             </Sheet>
         ));
-        const root = container.firstElementChild!;
-        expect(root.className).toContain(s.sheet);
-        expect(root.className).toContain("extra");
-        expect(container.textContent).toContain("body");
+        // The sheet is the page column inside the app shell.
+        const sheet = container.querySelector(`.${s.sheet}`)!;
+        expect(sheet.className).toContain("extra");
+        expect(sheet.textContent).toContain("body");
         unmount();
     });
 
     it("draws no decoration around the content", () => {
         const { container, unmount } = renderSolid(() => <Sheet>x</Sheet>);
-        expect(container.querySelectorAll("[aria-hidden]")).toHaveLength(0);
+        const sheet = container.querySelector(`.${s.sheet}`)!;
+        expect(sheet.querySelectorAll("[aria-hidden]")).toHaveLength(0);
         unmount();
     });
 });

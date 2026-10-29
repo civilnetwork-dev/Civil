@@ -19,7 +19,7 @@ describe("isPrivateHost", () => {
     });
 
     it("does not over-block 172.x outside the private range", () => {
-        // 172.16.0.0–172.31.255.255 is private; 172.15 and 172.32 are public.
+        // 172.16.0.0-172.31.255.255 is private; 172.15 and 172.32 are public.
         expect(isPrivateHost("172.15.0.1")).toBe(false);
         expect(isPrivateHost("172.32.0.1")).toBe(false);
     });

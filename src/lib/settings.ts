@@ -1,4 +1,3 @@
-import { hostKey } from "$config/shared/hostKey";
 import type { Accessor } from "solid-js";
 
 import { createReactiveKey, lsRemove, lsSetRaw } from "~/lib/reactiveStorage";
@@ -7,9 +6,10 @@ import { createReactiveKey, lsRemove, lsSetRaw } from "~/lib/reactiveStorage";
  * Every choice Civil makes on the user's behalf, as one typed registry.
  *
  * Each setting is its own localStorage key. The legacy keys keep their names
- * and raw encoding (`transport`, `search`), because the separately bundled
- * scramjet bootstrap (misc/config/scramjet/scramjetInit.ts) reads them
- * directly. Everything is validated on the way out: localStorage is shared
+ * and raw encoding (`transport`, `search`), so values older builds saved still
+ * load, and the separately bundled scramjet bootstrap
+ * (misc/config/scramjet/scramjetInit.ts) reads `transport` directly.
+ * Everything is validated on the way out: localStorage is shared
  * with every script on the origin, proxied pages included, so a value that is
  * not one this build knows falls back to the default instead of reaching the
  * code that acts on it.
@@ -148,7 +148,6 @@ export const SETTINGS = {
     suggestLive: flag("civil:suggest-live", true),
     suggestHistory: flag("civil:suggest-history", true),
 
-    transportAuto: flag("civil:transport-auto", true),
     transport: choice("transport", TRANSPORTS, "epoxy"),
     transportSites: json<SiteRules>(
         "civil:transport-sites",
@@ -161,12 +160,11 @@ export const SETTINGS = {
     navTimeout: num("civil:nav-timeout", 15, [10, 15, 30, 60, 0]),
     /**
      * Epoxy's Wisp protocol. Version 2 is the owner's chosen default: it
-     * handles more sites, more reliably, with less latency. "auto" takes the
-     * best-proxy probe's per-site pick. misc/config/scramjet/scramjetInit.ts
-     * reads this key raw for the first transport, so keep its default in
-     * step with this one.
+     * handles more sites, more reliably, with less latency.
+     * misc/config/scramjet/scramjetInit.ts reads this key raw for the first
+     * transport, so keep its default in step with this one.
      */
-    wispVersion: choice("civil:wisp-version", ["2", "1", "auto"], "2"),
+    wispVersion: choice("civil:wisp-version", ["2", "1"], "2"),
 
     historyEnabled: flag("civil:history-enabled", true),
     historyLocation: choice(
@@ -212,8 +210,9 @@ export const SETTINGS = {
         "always",
     ),
     motion: choice("civil:motion", ["system", "reduce"], "system"),
+    /** Where an app from the Apps page opens: this tab, or a tab of its own. */
+    appsOpenIn: choice("civil:apps-open-in", ["current", "new"], "current"),
 
-    compatReports: flag("civil:compat-reports", true),
     filterDetect: flag("civil:filter-detect", true),
     /** PostHog product analytics, and the district lookup that feeds it. */
     analytics: flag("civil:analytics", true),
@@ -312,11 +311,22 @@ export function markSetupComplete(stamp = new Date().toISOString()): void {
     } catch {}
 }
 
-/** A hostname as the site rules and the best-proxy cache key it. A site rule
- *  also needs a dot, so a bare word typed into the field is not a site. */
+/**
+ * A hostname the way the site rules key it: lower-cased and without `www.`.
+ * Takes a bare host or a full URL. It also needs a dot, so a bare word typed
+ * into the field is not a site.
+ */
 export function normalizeHost(input: string): string | null {
-    const host = hostKey(input);
-    return host?.includes(".") ? host : null;
+    let raw = input.trim();
+    if (!raw) return null;
+    if (!/^[a-z][\w+.-]*:\/\//i.test(raw)) raw = `https://${raw}`;
+    try {
+        let host = new URL(raw).hostname.toLowerCase();
+        if (host.startsWith("www.")) host = host.slice(4);
+        return host.includes(".") ? host : null;
+    } catch {
+        return null;
+    }
 }
 
 export const SEARCH_ENGINES = {

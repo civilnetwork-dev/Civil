@@ -30,7 +30,7 @@ const region = (c: HTMLElement) =>
  * `pointerenter`/`pointerleave` carrying a `pointerType`. happy-dom does ship
  * a real `PointerEvent` constructor, but the fallback to `MouseEvent` plus
  * `Object.defineProperty` keeps this working on any DOM that only has
- * `MouseEvent` — the same defensiveness the tests below already use for
+ * `MouseEvent`: the same defensiveness the tests below already use for
  * `relatedTarget`, which happy-dom's `FocusEvent` also accepts natively.
  */
 function firePointer(
@@ -134,7 +134,7 @@ describe("Unfold naming and hover", () => {
 describe("Unfold focus", () => {
     // Was dispatching `focusin` on a closed region and expecting it to open.
     // Under the new model, focus alone never opens anything (that was
-    // Defect 2) — it only holds a region open once something else already
+    // Defect 2): it only holds a region open once something else already
     // opened it. So this now opens via click first, then checks focus
     // moving into the content doesn't close it back up.
     it("stays open while focus moves into the revealed content", () => {
@@ -166,8 +166,8 @@ describe("Unfold focus leaving", () => {
     // click instead would prove the opposite of the test's name, since
     // `pinned` alone would keep it open regardless of focus. So this opens
     // via hover, lets `focusHeld` pick up while it's still hovered, and only
-    // then removes hover — isolating `focusHeld` as the one thing keeping
-    // the region open — before finally moving focus outside entirely.
+    // then removes hover, isolating `focusHeld` as the one thing keeping
+    // the region open, before finally moving focus outside entirely.
     it("collapses when focus leaves the container entirely", () => {
         const { container, unmount } = mount();
         const root = container.firstElementChild as HTMLElement;
@@ -220,7 +220,7 @@ describe("Unfold touch", () => {
         // `mouseleave` arrives until the user touches somewhere else, so the
         // second tap cleared `pinned` while `hovered` stayed stuck true and
         // nothing closed. Dispatching only the pointer event makes this test
-        // pass against the buggy code too — verified — so both must be sent.
+        // pass against the buggy code too, verified, so both must be sent.
         root.dispatchEvent(firePointer("pointerenter", "touch"));
         root.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false }));
         flush();

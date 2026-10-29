@@ -3,7 +3,7 @@
  * rather than merely calling.
  *
  * These would otherwise fall to the universal stub, which resolves every
- * call to `undefined` — correct for an API nobody reads the result of, and
+ * call to `undefined`: correct for an API nobody reads the result of, and
  * fatal for these. Real bundles do `getProfileUserInfo(u => u.email)`,
  * `getPlatformInfo(i => i.os)`, `windows.getCurrent(w => w.id)`,
  * `management.getSelf(e => e.id)`, and each one dies on the property access.
@@ -11,7 +11,7 @@
  *
  * What each returns is what Chrome returns on the device this host models: a
  * managed Chromebook, with a profile that has granted nothing. Empty strings
- * for identity, not invented addresses — `getProfileUserInfo` really does
+ * for identity, not invented addresses. `getProfileUserInfo` really does
  * return `{ email: "", id: "" }` when the extension lacks the identity
  * permission or nobody is signed in, so a bundle branching on "am I signed
  * in" takes a branch it would genuinely take.
@@ -112,7 +112,7 @@ export function buildManagement(extensionId: string, manifest: ChromeManifest) {
 /**
  * `chrome.i18n`, reading the extension's own `_locales` when it ships them.
  * Chrome returns `""` for a key with no message, which is what a caller like
- * `getMessage("x").toUpperCase()` is written against — so an unknown key
+ * `getMessage("x").toUpperCase()` is written against, so an unknown key
  * yields an empty string rather than the key name or `undefined`.
  */
 export function buildI18n(messages: Record<string, { message?: string }>) {
@@ -142,13 +142,13 @@ export function buildI18n(messages: Record<string, { message?: string }>) {
 }
 
 /**
- * `chrome.extension` — MV2's alias for a handful of `chrome.runtime`
+ * `chrome.extension`: MV2's alias for a handful of `chrome.runtime`
  * members, still present in MV3 and still used by eight of the tracked
  * filters.
  *
  * `getURL` is the one that matters. Left to the universal stub it returns a
  * *proxy*, not a string, and the caller happily passes that proxy to
- * `XMLHttpRequest.open()` — which stringifies it into a URL pointing
+ * `XMLHttpRequest.open()`, which stringifies it into a URL pointing
  * nowhere. goguardian loads its Avro schemas exactly this way and then
  * parsed the resulting empty response, failing with `invalid name: ""`,
  * about as far from the real cause as an error can land.
@@ -212,7 +212,7 @@ function systemDisplay() {
 }
 
 /**
- * `chrome.system.*` — the device inventory fourteen of the tracked filters
+ * `chrome.system.*`: the device inventory fourteen of the tracked filters
  * ask for, and read straight into property accesses (`info.archName`,
  * `info.capacity`). The numbers describe the Chromebook this host already
  * models everywhere else: see `buildNavigator` in api/platform.ts, which
@@ -331,14 +331,14 @@ function uiCollections() {
  * no browsing history, no downloads, no cookie jar, no closed sessions.
  * Chrome answers those with an empty array; the universal stub answers with
  * `undefined`, and a bundle doing
- * `(await chrome.history.search({})).forEach(...)` dies on the difference —
+ * `(await chrome.history.search({})).forEach(...)` dies on the difference:
  * impero and securly both did.
  *
  * An empty list is not a placeholder here, it is the truth: nothing has been
  * browsed or downloaded inside this host. Bookmarks graduated out of this
  * group into their own file (api/bookmarks.ts) once a real vendor
  * (impero) turned out to read a value out of one rather than just iterate
- * an empty list — the same reason storage/managed storage aren't here
+ * an empty list: the same reason storage/managed storage aren't here
  * either.
  */
 export function buildEmptyCollections() {

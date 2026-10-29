@@ -74,7 +74,7 @@ describe("findFilterConfig", () => {
     /**
      * The real contract, and it is not "look up by key". Matching is
      * `input.includes(alias)`, and callers only ever pass names produced by
-     * extension detection (`misc/config/service/filterDetect.ts`) — never a
+     * extension detection (`misc/config/service/filterDetect.ts`): never a
      * FILTER_CONFIGS key. `findFilterConfig("lightspeed")` returns null, which
      * looks alarming and is fine: nothing asks that question.
      */
@@ -87,7 +87,7 @@ describe("findFilterConfig", () => {
 
     /**
      * Substring matching means a shorter alias swallows a longer one. Today no
-     * vendor's alias contains another's, so lookups are unambiguous — if that
+     * vendor's alias contains another's, so lookups are unambiguous: if that
      * ever changes, one vendor becomes permanently unreachable and nothing
      * throws.
      */

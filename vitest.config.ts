@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
 // for a chrome-extension:// specifier the default loader can't resolve on its
 // own) needs this Node flag to exist at all. Set here, before vitest spawns
 // its worker pool, rather than requiring `NODE_OPTIONS=--experimental-vm-
-// modules` from whoever runs `bun run test` — workers inherit `process.env`
+// modules` from whoever runs `bun run test`: workers inherit `process.env`
 // by default, so setting it this early is enough. Bun's own vm shim doesn't
 // need it, but vitest's pool runs its workers under plain Node regardless of
 // what invoked the CLI (see misc/extensionHost's own devDependency patch on
@@ -23,7 +23,7 @@ if (!(process.env.NODE_OPTIONS ?? "").includes(experimentalFlag)) {
  * Deliberately does NOT reuse vite.config.ts.
  *
  * That config runs the TanStack Router codegen, @solidjs/vite-plugin's start
- * mode, and Nitro, none of which a unit test run needs — and Nitro would try to
+ * mode, and Nitro, none of which a unit test run needs, and Nitro would try to
  * build a server bundle. Only the bare Solid JSX transform is shared, because
  * compiling Solid JSX is the one thing component tests genuinely require.
  */
@@ -35,7 +35,6 @@ export default defineConfig({
             "~": resolve(import.meta.dirname, "src"),
             $config: resolve(import.meta.dirname, "misc/config"),
             $tests: resolve(import.meta.dirname, "tests"),
-            $wasm: resolve(import.meta.dirname, "config/encoder"),
             "solid-js/web": "@solidjs/web",
             "solid-js/store": "solid-js",
         },

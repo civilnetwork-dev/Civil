@@ -96,26 +96,27 @@ export async function readSetupEnv(): Promise<SetupEnv> {
 
 const GB = 1024 ** 3;
 
-function searchPick(env: SetupEnv): SetupPicks["search"] {
-    return env.brave
-        ? {
-              value: "brave",
-              reason: "You use Brave, so Brave Search matches what you're used to.",
-          }
-        : /\bEdg\//.test(env.userAgent)
-          ? {
-                value: "bing",
-                reason: "You use Microsoft Edge, which searches with Bing.",
-            }
-          : env.privacySignal
-            ? {
-                  value: "ddg",
-                  reason: "Your browser asks sites not to track you, and DuckDuckGo doesn't.",
-              }
-            : {
-                  value: "google",
-                  reason: "The search engine most people know.",
-              };
+/** The engine this browser already searches with, or a private one on request. */
+function pickSearch(env: SetupEnv): SetupPick<"search"> {
+    if (env.brave) {
+        return {
+            value: "brave",
+            reason: "You use Brave, so Brave Search matches what you're used to.",
+        };
+    }
+    if (/\bEdg\//.test(env.userAgent)) {
+        return {
+            value: "bing",
+            reason: "You use Microsoft Edge, which searches with Bing.",
+        };
+    }
+    if (env.privacySignal) {
+        return {
+            value: "ddg",
+            reason: "Your browser asks sites not to track you, and DuckDuckGo doesn't.",
+        };
+    }
+    return { value: "google", reason: "The search engine most people know." };
 }
 
 function connectionPicks(
@@ -124,25 +125,16 @@ function connectionPicks(
     slow: boolean,
 ): Pick<
     SetupPicks,
-    | "search"
-    | "suggestLive"
-    | "transportAuto"
-    | "transport"
-    | "wispVersion"
-    | "navTimeout"
+    "search" | "suggestLive" | "transport" | "wispVersion" | "navTimeout"
 > {
     return {
-        search: searchPick(env),
+        search: pickSearch(env),
         suggestLive: env.saveData
             ? {
                   value: false,
                   reason: "Your browser is saving data, so suggestions stay off.",
               }
             : { value: true, reason: "Suggestions help you search faster." },
-        transportAuto: {
-            value: true,
-            reason: "Civil tests each new site and uses what works best.",
-        },
         transport: sockets
             ? {
                   value: "epoxy",
@@ -245,15 +237,8 @@ function displayPicks(
     };
 }
 
-function reportingPicks(): Pick<
-    SetupPicks,
-    "compatReports" | "filterDetect" | "analytics"
-> {
+function reportingPicks(): Pick<SetupPicks, "filterDetect" | "analytics"> {
     return {
-        compatReports: {
-            value: true,
-            reason: "Reports help Civil pick the best method for everyone.",
-        },
         filterDetect: {
             value: true,
             reason: "Civil checks for filters so it can warn you about them.",

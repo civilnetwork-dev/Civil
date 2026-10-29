@@ -26,9 +26,9 @@ function RestrictedNotice(props: {
             <p class={s.reason}>
                 {props.banReason || "This site is restricted by the proxy."}
             </p>
-            {/* The strike count is the actionable part of this page — it is
+            {/* The strike count is the actionable part of this page (it is
                 the difference between "try something else" and "one more and
-                you are locked out" — so it gets the gauge rather than the
+                you are locked out") so it gets the gauge rather than the
                 14px, 60%-opacity line of text it was. */}
             <Show when={props.status}>
                 {status => (

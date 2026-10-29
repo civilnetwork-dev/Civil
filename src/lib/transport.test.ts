@@ -16,34 +16,19 @@ const frame = () => ({});
 
 describe("resolveTransport", () => {
     it("uses the default when nothing else applies", () => {
-        expect(t.resolveTransport(frame(), "https://a.com", undefined)).toBe(
-            "epoxy",
-        );
+        expect(t.resolveTransport(frame(), "https://a.com")).toBe("epoxy");
+        settings.setSetting("transport", "libcurl");
+        expect(t.resolveTransport(frame(), "https://a.com")).toBe("libcurl");
+        expect(t.lastTransportChoice()).toMatchObject({
+            host: "a.com",
+            transport: "libcurl",
+            source: "default",
+        });
     });
 
-    it("takes the best-proxy pick only while automatic picking is on", () => {
-        expect(t.resolveTransport(frame(), "https://a.com", "libcurl")).toBe(
-            "libcurl",
-        );
-        settings.setSetting("transportAuto", false);
-        expect(t.resolveTransport(frame(), "https://a.com", "libcurl")).toBe(
-            "epoxy",
-        );
-        expect(t.wantsBestProxy("https://a.com")).toBe(false);
-    });
-
-    it("ignores a pick this build does not know", () => {
-        expect(t.resolveTransport(frame(), "https://a.com", "uv")).toBe(
-            "epoxy",
-        );
-    });
-
-    it("lets a site rule beat the automatic pick, and skips the probe", () => {
+    it("lets a site rule beat the default", () => {
         settings.setSetting("transportSites", { "a.com": "bare" });
-        expect(t.wantsBestProxy("https://www.a.com/x")).toBe(false);
-        expect(
-            t.resolveTransport(frame(), "https://www.a.com/x", "libcurl"),
-        ).toBe("bare");
+        expect(t.resolveTransport(frame(), "https://www.a.com/x")).toBe("bare");
         expect(t.lastTransportChoice()).toMatchObject({
             host: "a.com",
             transport: "bare",
@@ -55,12 +40,25 @@ describe("resolveTransport", () => {
         settings.setSetting("transportSites", { "a.com": "bare" });
         const f = frame();
         t.retryWith(f, "libcurl");
-        expect(t.resolveTransport(f, "https://a.com", "epoxy")).toBe("libcurl");
-        expect(t.resolveTransport(f, "https://a.com", "epoxy")).toBe("bare");
+        expect(t.resolveTransport(f, "https://a.com")).toBe("libcurl");
+        expect(t.resolveTransport(f, "https://a.com")).toBe("bare");
     });
 
     it("records nothing for a search", () => {
-        t.resolveTransport(frame(), "cats and dogs", undefined);
+        t.resolveTransport(frame(), "cats and dogs");
+        expect(t.lastTransportChoice()).toBeNull();
+    });
+
+    it("forgets a stored choice from the automatic picker older builds had", () => {
+        localStorage.setItem(
+            "civil:transport-last",
+            JSON.stringify({
+                host: "a.com",
+                transport: "libcurl",
+                source: "auto",
+                at: Date.now(),
+            }),
+        );
         expect(t.lastTransportChoice()).toBeNull();
     });
 });
@@ -72,38 +70,35 @@ describe("transportKey", () => {
         expect(t.transportKey("epoxy")).toBe("epoxy");
     });
 
-    it("follows the probe's pick when automatic, 2 without one", () => {
-        settings.setSetting("wispVersion", "auto");
-        expect(t.transportKey("epoxy", 1)).toBe("epoxy");
-        expect(t.transportKey("epoxy", 2)).toBe("epoxy@2");
-        expect(t.transportKey("epoxy")).toBe("epoxy@2");
-        // With automatic Wisp the probe matters even for a pinned site.
-        settings.setSetting("transportSites", { "a.com": "epoxy" });
-        expect(t.wantsBestProxy("https://a.com")).toBe(true);
-    });
-
     it("leaves libcurl and Bare alone", () => {
-        expect(t.transportKey("libcurl", 2)).toBe("libcurl");
-        expect(t.transportKey("bare", 2)).toBe("bare");
+        settings.setSetting("wispVersion", "2");
+        expect(t.transportKey("libcurl")).toBe("libcurl");
+        expect(t.transportKey("bare")).toBe("bare");
     });
 });
 
 describe("rotateFrom", () => {
     it("fails over from the method the load actually used", () => {
+        settings.setSetting("transport", "libcurl");
         const f = frame();
-        t.resolveTransport(f, "https://a.com", "libcurl");
+        t.resolveTransport(f, "https://a.com");
         expect(t.rotateFrom(f)).toBe("bare");
-        // The rest of the session follows the failover, over later picks.
-        expect(t.resolveTransport(frame(), "https://b.com", "epoxy")).toBe(
-            "bare",
-        );
-        expect(settings.getSetting("transport")).toBe("bare");
+        // The rest of the session follows the failover.
+        settings.setSetting("transport", "epoxy");
+        expect(t.resolveTransport(frame(), "https://b.com")).toBe("bare");
+    });
+
+    it("remembers the method it switched to", () => {
+        const f = frame();
+        t.resolveTransport(f, "https://a.com");
+        expect(t.rotateFrom(f)).toBe("libcurl");
+        expect(settings.getSetting("transport")).toBe("libcurl");
     });
 
     it("keeps the default when remembering is off", () => {
         settings.setSetting("transportRemember", false);
         const f = frame();
-        t.resolveTransport(f, "https://a.com", undefined);
+        t.resolveTransport(f, "https://a.com");
         expect(t.rotateFrom(f)).toBe("libcurl");
         expect(localStorage.getItem("transport")).toBeNull();
     });
@@ -111,16 +106,17 @@ describe("rotateFrom", () => {
     it("does not rotate when failover is off, pinned, or out of methods", () => {
         const pinned = frame();
         settings.setSetting("transportSites", { "a.com": "epoxy" });
-        t.resolveTransport(pinned, "https://a.com", undefined);
+        t.resolveTransport(pinned, "https://a.com");
         expect(t.rotateFrom(pinned)).toBeNull();
 
+        settings.setSetting("transport", "bare");
         const last = frame();
-        t.resolveTransport(last, "https://b.com", "bare");
+        t.resolveTransport(last, "https://b.com");
         expect(t.rotateFrom(last)).toBeNull();
 
         settings.setSetting("transportFailover", false);
         const off = frame();
-        t.resolveTransport(off, "https://c.com", undefined);
+        t.resolveTransport(off, "https://c.com");
         expect(t.rotateFrom(off)).toBeNull();
     });
 });
