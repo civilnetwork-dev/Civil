@@ -25,14 +25,20 @@ const ASSETS_HOST = "https://us-assets.i.posthog.com";
  * path verbatim, so without an allowlist this endpoint is an open relay to any
  * path on either PostHog host, not just the ingestion/asset surface
  * `posthog-js` actually uses. Verified against the installed posthog-js
- * (1.410.4) bundle itself, not assumed: `analyticsDefaultEndpoint` is
- * literally `/e/`, and the only other api_host-relative paths in it are
- * `/flags/?v=2` and `/array/<token>/config`. Session replay batches through
- * `/e/` too (as `$snapshot` events) in this version: there is no separate
- * `/s/`.
+ * (1.440.0) bundle and this project's remote config, not assumed. The SDK's
+ * default capture path is `/e/`, but the remote config
+ * (`/array/<token>/config`) moves capture to `analytics.endpoint`
+ * (`/i/v0/e/`) and session replay to `sessionRecording.endpoint` (`/s/`).
+ * While only `/e/` was allowed, both 404ed here in production and the events
+ * and recordings were lost. `/s/`, `/e/` and `/i/` are the prefixes the SDK's
+ * own request router treats as ingestion. Its `/api/` paths (surveys, product
+ * tours, web experiments, conversations) stay blocked: all are off for this
+ * project, so allow the one that gets switched on.
  */
 const ALLOWED_PREFIXES = [
-    "/e/", // capture, including session-replay $snapshot batches
+    "/e/", // capture, the SDK default
+    "/i/", // capture at /i/v0/e/ (remote config), logs, metrics
+    "/s/", // session replay (remote config)
     "/flags/", // feature flags
     "/array/", // remote config
     "/static/", // recorder, surveys, toolbar bundles

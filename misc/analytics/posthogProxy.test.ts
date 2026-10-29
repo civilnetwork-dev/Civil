@@ -66,6 +66,21 @@ describe("usePosthogProxy", () => {
             "payload",
         );
     });
+
+    it("routes the capture and replay paths remote config sets to ingestion", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(new Response("1", { status: 200 }));
+        vi.stubGlobal("fetch", fetchMock);
+
+        await relay("/i/v0/e/?ver=1.440.0", { method: "POST", body: "e" });
+        await relay("/s/?ver=1.440.0", { method: "POST", body: "s" });
+
+        expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
+            "https://us.i.posthog.com/i/v0/e/?ver=1.440.0",
+            "https://us.i.posthog.com/s/?ver=1.440.0",
+        ]);
+    });
 });
 
 describe("usePosthogProxy forwarded headers", () => {
