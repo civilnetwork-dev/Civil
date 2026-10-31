@@ -92,17 +92,20 @@
  * a domain.
  */
 
-import { checkAristotleDomain } from "./aristotle/checker";
+import { errAsync, type ResultAsync } from "neverthrow";
+
+import { checkAristotleFilter } from "./aristotle/checker";
 import { checkBlocksiUrl } from "./blocksi/checker";
+import type { Category } from "./categories";
 import { createCiscoSecurityChecker } from "./cisco/security/checker";
 import { createFortiGuardChecker } from "./fortiguard/checker";
 import { createIbossFilterChecker } from "./iboss/checker";
-import { checkLanSchoolNetsweeperDomain } from "./lanschool/netsweeperChecker";
+import { checkLanSchoolNetsweeperFilter } from "./lanschool/netsweeperChecker";
 import { checkLightspeedFilter } from "./lightspeed/checker";
 import { createLinewizeFilterChecker } from "./linewize/checker";
-import { checkStatus } from "./securly/broker";
-import { decodeSecurlyCategoryId } from "./securly/categories";
+import { checkSecurlyFilter } from "./securly/checker";
 import { env, toHost } from "./utils/vendorInput";
+import type { FilterError, FilterVerdict } from "./verdict";
 
 export type DomainVerdict = "BLOCK" | "ALLOW" | "UNKNOWN";
 
@@ -160,57 +163,68 @@ const SECURLY_EXTENSION_ID = "iheobagjkfklnlikgihanlhcddjoihkg";
  * of being wrong this way is one skipped domain; the cost of the other way
  * was a whole run against a domain every filter would refuse.
  *
- * Matched against each vendor's own category *names*, which is what every
- * checker below exposes (blocksi/fortiguard `categoryName`, lightspeed and
- * linewize `categories[]`, Securly via its bit names).
+ * Every checker reports categories in the one vocabulary (categories.ts), so
+ * this is one set rather than a pattern over every vendor's own wording.
  */
-const SCHOOL_BLOCKED_CATEGORY =
-    /prox|anonymi|vpn|porn|adult|nudit|sex|malware|phish|gambl|drug|weapon|violen|hate|terror|self-harm|suicide|illegal|peer-to-peer|p2p|bully|alcohol|tobacco|child safety/i;
+const SCHOOL_BLOCKED_CATEGORIES: ReadonlySet<Category> = new Set<Category>([
+    "Pornography",
+    "Nudity",
+    "Mature",
+    "Sex Education",
+    "Drugs",
+    "Alcohol & Tobacco",
+    "Gambling",
+    "Violence",
+    "Weapons",
+    "Hate Speech",
+    "Extremism",
+    "Self-Harm",
+    "Bullying",
+    "Child Abuse",
+    "Illegal Activity",
+    "Malware & Phishing",
+    "Proxy & VPN",
+    "File Sharing",
+]);
 
-const inSchoolBlockedCategory = (names: readonly (string | undefined)[]) =>
-    names.some(name => name && SCHOOL_BLOCKED_CATEGORY.test(name));
+/**
+ * A verdict as a reputation. No answer and "unknown" both abstain: that is
+ * how a Cisco DoH lookup without an Umbrella identity, a Linewize verdict
+ * server declining to classify, and Securly not recognising the probing
+ * school stay out of the sweep instead of reading as ALLOW.
+ */
+async function reputationOf(
+    check: ResultAsync<FilterVerdict, FilterError>,
+): Promise<DomainVerdict> {
+    const result = await check;
+    if (result.isErr()) return "UNKNOWN";
+    const { status, categories } = result.value;
+    if (
+        status === "blocked" ||
+        categories.some(category => SCHOOL_BLOCKED_CATEGORIES.has(category))
+    )
+        return "BLOCK";
+    return status === "unknown" ? "UNKNOWN" : "ALLOW";
+}
 
-/** vendor → its domain-reputation lookup. */
+/** vendor → its checker, asked about a bare domain. */
 const ACTIVE_CHECKERS: Record<
     string,
-    (domain: string) => Promise<DomainVerdict>
+    (domain: string) => ResultAsync<FilterVerdict, FilterError>
 > = {
-    async blocksi(domain) {
-        const r = await checkBlocksiUrl(domain);
-        if (r.isErr()) return "UNKNOWN";
-        const { blocked, categoryName, categoryGroup } = r.value;
-        return blocked || inSchoolBlockedCategory([categoryName, categoryGroup])
-            ? "BLOCK"
-            : "ALLOW";
-    },
-    async fortiguard(domain) {
-        fortiChecker ??= createFortiGuardChecker();
-        const r = await fortiChecker.checkUrl(domain);
-        if (r.isErr()) return "UNKNOWN";
-        const { blocked, categoryName, categoryGroup } = r.value;
-        return blocked || inSchoolBlockedCategory([categoryName, categoryGroup])
-            ? "BLOCK"
-            : "ALLOW";
-    },
-    async cisco(domain) {
-        ciscoChecker ??= createCiscoSecurityChecker();
-        const r = await ciscoChecker.checkUrl(domain);
-        // Without an authenticated Umbrella identity the checker only sees
-        // DoH resolve the name, which it reports as non-authoritative; that
-        // was being read as ALLOW: for pornhub.com included.
-        if (r.isErr() || !r.value.authoritative) return "UNKNOWN";
-        return r.value.blocked ? "BLOCK" : "ALLOW";
-    },
-    async lightspeed(domain) {
-        const r = await checkLightspeedFilter({ url: domain });
-        if (r.isErr() || r.value.verdict === "UNKNOWN") return "UNKNOWN";
-        return r.value.blocked || inSchoolBlockedCategory(r.value.categories)
-            ? "BLOCK"
-            : "ALLOW";
-    },
-    async iboss(domain) {
+    blocksi: domain => checkBlocksiUrl(domain),
+    fortiguard: domain =>
+        (fortiChecker ??= createFortiGuardChecker()).checkUrl(domain),
+    cisco: domain =>
+        (ciscoChecker ??= createCiscoSecurityChecker()).checkUrl(domain),
+    lightspeed: domain => checkLightspeedFilter({ url: domain }),
+    iboss(domain) {
         const securityKey = process.env.IBOSS_SECURITY_KEY;
-        if (!securityKey) return "UNKNOWN";
+        if (!securityKey)
+            return errAsync({
+                type: "CONFIG" as const,
+                message: "IBOSS_SECURITY_KEY is unset.",
+            });
         ibossChecker ??= createIbossFilterChecker({
             gatewayHost: env(
                 "CIVIL_REP_IBOSS_HOST",
@@ -219,54 +233,36 @@ const ACTIVE_CHECKERS: Record<
             securityKey,
             userEmail: env("CIVIL_REP_IBOSS_USER_EMAIL", "device@civil.local"),
         });
-        const r = await ibossChecker.checkUrl(domain);
-        return r.isOk() ? (r.value.blocked ? "BLOCK" : "ALLOW") : "UNKNOWN";
+        return ibossChecker.checkUrl(domain);
     },
-    async securly(domain) {
-        // The broker answers `UNKNOWN_SCHOOL` (no decision, no category)
-        // for an email at a domain that isn't a Securly customer, so the
-        // former `probe@civil.invalid` placeholder made this checker abstain
-        // on every domain. The identity below is the one this project's own
-        // securly/example.ts already probes with; only the rating is read.
-        const r = await checkStatus({
+    // The broker answers `UNKNOWN_SCHOOL` (no decision, no category) for an
+    // email at a domain that isn't a Securly customer, so the former
+    // `probe@civil.invalid` placeholder made this checker abstain on every
+    // domain. The identity below is the one this project's own
+    // securly/example.ts already probes with; only the rating is read.
+    securly: domain =>
+        checkSecurlyFilter({
             useremail: env(
                 "CIVIL_REP_SECURLY_EMAIL",
                 "spstudent1@d11.org",
             ) as `${string}@${string}.${string}`,
             host: toHost(domain) as `${string}.${string}`,
             extensionId: SECURLY_EXTENSION_ID,
-        });
-        if (r.isErr()) return "UNKNOWN";
-        const { decision, categoryId } = r.value;
-        if (decision === "DENY") return "BLOCK";
-        const labels = categoryId
-            ? decodeSecurlyCategoryId(categoryId).labels
-            : [];
-        if (inSchoolBlockedCategory(labels)) return "BLOCK";
-        if (decision === "ALLOW") return "ALLOW";
-        return "UNKNOWN";
-    },
-    async linewize(domain) {
+        }),
+    linewize(domain) {
         const region = env("CIVIL_REP_LINEWIZE_REGION", "syd-1");
         const deviceId = env(
             "CIVIL_REP_LINEWIZE_DEVICEID",
             "otorohanga.college.nz",
         );
-        const checker = createLinewizeFilterChecker({
+        return createLinewizeFilterChecker({
             verdictServerUrl: `https://mvgateway.${region}.linewize.net`,
             identity: "null",
             deviceId,
-        });
-        const r = await checker.checkUrl({ url: `https://${toHost(domain)}` });
-        // `method: "fallback"` is the verdict server declining to classify
-        // (no signatures, allow-by-default), not an allow it stands behind.
-        if (r.isErr() || r.value.method === "fallback") return "UNKNOWN";
-        return r.value.blocked || inSchoolBlockedCategory(r.value.categories)
-            ? "BLOCK"
-            : "ALLOW";
+        }).checkUrl({ url: `https://${toHost(domain)}` });
     },
-    lanschool: checkLanSchoolNetsweeperDomain,
-    aristotle: checkAristotleDomain,
+    lanschool: checkLanSchoolNetsweeperFilter,
+    aristotle: checkAristotleFilter,
 };
 
 /** The filters that can gate base-domain selection. */
@@ -278,7 +274,10 @@ export const DOMAIN_CHECKERS: VendorDomainChecker[] = Object.entries(
     ACTIVE_CHECKERS,
 ).map(([vendor, check]) => ({
     vendor,
-    check: (domain: string) => withTimeout(check(domain)),
+    // async, so a checker that throws while being built rejects (and reads
+    // as UNKNOWN) rather than throwing out of `check` itself.
+    check: (domain: string) =>
+        withTimeout((async () => reputationOf(check(domain)))()),
 }));
 
 export interface Classification {

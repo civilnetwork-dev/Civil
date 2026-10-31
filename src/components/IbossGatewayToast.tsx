@@ -25,7 +25,7 @@ async function submitGateway(
     const host = gatewayHost.trim();
     if (!host) return;
     await contribution.submit<{ gatewayHost: string }>(
-        "/api/iboss/submit-gateway",
+        "/api/iboss/submitGateway",
         {
             gatewayHost: host,
             securityKey: securityKey.trim() || undefined,

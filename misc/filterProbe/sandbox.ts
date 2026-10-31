@@ -56,7 +56,7 @@ export interface SandboxOptions {
     extensionDir: string;
     /** Base URL of the running Civil server (the tunnel URL, or local). */
     baseUrl: string;
-    /** The Civil route being tested, e.g. "/newtab". */
+    /** The Civil route being tested, e.g. "/newTab". */
     route: string;
     /** For the proxy route, the third-party URL to route through Civil. */
     proxyTarget?: string;

@@ -4,10 +4,12 @@
  * that writes its own `x-forwarded-for` must not be able to pick its address.
  */
 
+import type { IncomingMessage } from "node:http";
+
 import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { type AppEnv, clientIp, readJsonBody } from "./http";
+import { type AppEnv, clientIp, readJsonBody, requestIp } from "./http";
 
 async function ipFor(headers: Record<string, string>): Promise<string> {
     const app = new Hono<AppEnv>();
@@ -36,6 +38,25 @@ describe("clientIp", () => {
     it("falls back to the socket peer when the proxy sent no header", async () => {
         vi.stubEnv("REVERSE_PROXY", "true");
         expect(await ipFor({})).toBe("10.0.0.2");
+    });
+});
+
+describe("requestIp", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    const upgrade = (forwardedFor: string) =>
+        ({
+            headers: { "x-forwarded-for": forwardedFor },
+            socket: { remoteAddress: "10.0.0.2" },
+        }) as unknown as IncomingMessage;
+
+    it("applies clientIp's rule to a request Hono never saw", () => {
+        vi.stubEnv("REVERSE_PROXY", "");
+        expect(requestIp(upgrade("1.2.3.4"))).toBe("10.0.0.2");
+        vi.stubEnv("REVERSE_PROXY", "true");
+        expect(requestIp(upgrade("1.2.3.4, 198.51.100.9"))).toBe(
+            "198.51.100.9",
+        );
     });
 });
 

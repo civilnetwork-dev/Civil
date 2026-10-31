@@ -2,31 +2,24 @@
     "aristotle": {
         "displayName": "Aristotle K12",
         "domains": ["aristotleinsight.com"],
+        "blockPages": ["chrome-extension:blocked.html"],
         "blockMarkers": [
-            "blocked for a video",
-            "blocked by a teacher.",
-            "blocked by an administrator.",
-            "blocked by a guardian using AristotleK12 Parent.",
-            "blocked for a video to be blocked regardless of classification"
+            "The website you are attempting to reach has been blocked",
+            "cannot be reached while a block-by-default policy is in place",
+            "Internet browsing is currently restricted."
         ]
     },
     "blocksi": {
         "displayName": "Blocksi",
         "domains": ["blocksi.net", "appcontext.app"],
+        "blockPages": ["chrome-extension:blockPage.html"],
         "blockMarkers": [
-            "Page blocked, count updated",
-            "blocked by your administrator.",
+            "Blocksi | Access Denied",
             "Blocked by Youtube Keyword Filter",
             "Blocked by Blocksi web chat policy",
-            "Access denied for security reasons.",
-            "Access blocked due to YT access time restrictions.",
-            "Access blocked due to bedtime restrictions by parent.",
-            "Access blocked due to gaming access time restrictions",
+            "blocked by the school’s keyword filter list",
             "Access blocked due to general access time restrictions",
-            "Access blocked due to social media access time restric",
-            "Access blocked due to YT access time restrictions by p",
-            "Access blocked due to Google Games access time restric",
-            "blocked by the schoolâs keyword filter list, with id:"
+            "Access blocked due to bedtime restrictions"
         ]
     },
     "cisco": {
@@ -37,37 +30,67 @@
             "checkumbrella.com",
             "internetbadguys.com"
         ],
+        "blockPages": ["block.opendns.com/", "chrome-extension:blocked.html"],
         "blockMarkers": [
+            "This site is blocked due to content filtering.",
+            "This site was blocked due to the following categories:",
+            "Block Page ID",
             "This site is blocked due to a security threat.",
-            "site has been blocked to prevent an attack on your browser."
+            "SECURITY THREAT DETECTED AND BLOCKED",
+            "has been blocked to prevent an attack on"
         ]
     },
     "contentkeeper": {
         "displayName": "ContentKeeper",
         "domains": ["contentkeeper.com"],
-        "blockMarkers": []
+        "blockPages": ["wh.contentkeeper.net/"],
+        "blockMarkers": ["ContentKeeper Content Filtering"]
     },
     "fortiguard": {
         "displayName": "FortiGuard",
         "domains": ["fortinet.net", "fortiguard.net"],
-        "blockMarkers": ["This content was blocked due to policy setting"]
+        "blockPages": [
+            "chrome-extension:block.html",
+            "chrome-extension:blocked_page.htm",
+            "chrome-extension:blocked_page_FGD_down.htm",
+            "chrome-extension:blocksearch.html",
+            "chrome-extension:blockvideo.html"
+        ],
+        "blockMarkers": [
+            "Web Page Blocked!",
+            "administrator has blocked this category",
+            "has been configured to block unknown urls",
+            "the FortiGuard url rating service is inaccessible"
+        ]
     },
     "goguardian": {
         "displayName": "GoGuardian",
         "domains": ["goguardian.com"],
+        "blockPages": [
+            "blocked.goguardian.com/",
+            "chrome-extension:x3/x3-block.html"
+        ],
         "blockMarkers": [
-            "Blocked by School Admin",
-            "blocked by your school.",
-            "url was blocked by admin filter",
-            "url was blocked by parent filter",
-            "blocked due to domain settings",
-            "URL is restricted to the same domain and protocol as the * application docu"
+            "Page Blocked by School Admin",
+            "This page has been blocked by your school",
+            "Page blocked by your school",
+            "All attempts are logged."
         ]
     },
     "hapara": {
         "displayName": "Hāpara",
         "domains": ["hapara.com"],
-        "blockMarkers": []
+        "blockPages": [
+            "chrome-extension:blocked.html",
+            "chrome-extension:blocked_urls.html"
+        ],
+        "blockMarkers": [
+            "Hapara Highlights Extension - Blocked",
+            "Are you in the right place for learning?",
+            "There may be a better site to visit for now.",
+            "Your browsing is guided by",
+            "This page contains blocked content"
+        ]
     },
     "iboss": {
         "displayName": "iboss",
@@ -78,27 +101,55 @@
             "ibosstest.com",
             "iboss.com"
         ],
-        "blockMarkers": ["site has been restricted."]
+        "blockPages": [
+            "ibosscloud.com/syncCustomBranding/block_page/",
+            "ibossgov.com/syncCustomBranding/block_page/",
+            "chrome-extension:restricted.html"
+        ],
+        "blockMarkers": [
+            "Page Restricted",
+            "Access to the requested site has been restricted.",
+            "Group Number:"
+        ]
     },
     "impero": {
         "displayName": "Impero",
         "domains": ["imperosoftware.com"],
-        "blockMarkers": ["blocked for school code"]
+        "blockPages": ["chrome-extension:blocked.html"],
+        "blockMarkers": ["ask your teacher to whitelist the site"]
     },
     "imtlazarus": {
         "displayName": "IMTLazarus",
         "domains": ["imtlazarus.com"],
-        "blockMarkers": []
+        "blockPages": [
+            "chrome-extension:internettimelock.html",
+            "chrome-extension:limittimelock.html",
+            "chrome-extension:screentimelock.html"
+        ],
+        "blockMarkers": [
+            "Tiempo de internet excedido",
+            "Límite horario excedido"
+        ]
     },
     "interclass": {
         "displayName": "InterCLASS",
         "domains": ["interclasscloud.com"],
-        "blockMarkers": ["blocked by other connection holding version"]
+        "blockPages": ["chrome-extension:message-page.html"],
+        "blockMarkers": [
+            "ページがブロックされています",
+            "このWebサイトへのアクセスは制限されています。",
+            "利用時間が制限に達しました。"
+        ]
     },
     "lanschool": {
         "displayName": "LanSchool",
         "domains": ["lenovosoftware.com", "lanschool.com", "stone-ware.com"],
-        "blockMarkers": []
+        "blockPages": ["chrome-extension:blocked.html"],
+        "blockMarkers": [
+            "The requested website is blocked.",
+            "All websites are currently blocked.",
+            "Browse by IP Address is blocked"
+        ]
     },
     "lightspeed": {
         "displayName": "Lightspeed",
@@ -111,45 +162,80 @@
             "lsaccess.me",
             "lsurl.me"
         ],
+        "blockPages": [
+            "blocked.lsfilter.com/",
+            "block.lsclassroom.com/",
+            "lsrelay-config-production.s3.amazonaws.com/",
+            "chrome-extension:block_screen.html"
+        ],
         "blockMarkers": [
-            "blocked by the // active filter policy. We start tracking f"
+            "Lightspeed Systems - DNS Cloud Filter",
+            "your teacher has blocked this website for now",
+            "Your access to the internet has been suspended for",
+            "minutes for repeatedly attempting to visit blocked websites",
+            "it is on a custom block list",
+            "Internet access has been disabled on this device"
         ]
     },
     "linewize": {
         "displayName": "Linewize",
         "domains": ["linewize.net", "linewize.com", "familyzone.com"],
+        "blockPages": [
+            "linewize.net/blocked",
+            "chrome-extension:default-blocked.html",
+            "chrome-extension:block-page-ctiru.html",
+            "chrome-extension:block-page-iwf.html"
+        ],
         "blockMarkers": [
-            "URL not available in config",
-            "blocked due to focus lock mode.",
-            "access has been blocked by your school",
-            "blocked by other connection holding version",
-            "Access has been denied by your internet access provider becaus"
+            "has been blocked by your school",
+            "The Linewize Team",
+            "terrorist content identified through CTIRU safeguards",
+            "indecent images of children as identified by the Internet Watch Foundation"
         ]
     },
     "loilo": {
         "displayName": "LoiLo",
         "domains": ["loilonote.app", "loilo.tv"],
-        "blockMarkers": []
+        "blockPages": [
+            "chrome-extension:blocked.html",
+            "chrome-extension:blocked_night.html"
+        ],
+        "blockMarkers": ["Webフィルタによりブロックされました"]
     },
     "mobileguardian": {
         "displayName": "Mobile Guardian",
         "domains": ["mobileguardian.com"],
-        "blockMarkers": ["Blocked by Policy"]
+        "blockPages": ["chrome-extension:block.html"],
+        "blockMarkers": [
+            "Request access to this site",
+            "due to the device not having an internet connection"
+        ]
     },
     "netsupport": {
         "displayName": "NetSupport",
         "domains": ["classroom.cloud", "netsupportsoftware.com"],
-        "blockMarkers": []
+        "blockPages": ["chrome-extension:weblock.html"],
+        "blockMarkers": [
+            "Click Internet button for a list of approved web sites"
+        ]
     },
     "securly": {
         "displayName": "Securly",
         "domains": ["securly.com", "securly.io"],
+        "blockPages": [
+            "securly.com/blocked",
+            "chrome-extension:blocking/block.html",
+            "chrome-extension:blocking/screenlock.html"
+        ],
         "blockMarkers": [
-            "blocked by another connection",
-            "blocked by school policy. Please speak with an adult you tru",
+            "Looks like this page isn't allowed",
+            "for explanation of blocking details",
+            "Blocked by Category",
+            "Site is in policy Block List",
+            "Show more information about the blocked site",
             "This site has been blocked by a teacher",
-            "This site is not available during site lock",
             "This site has been blocked by the administrator",
+            "This site is not available during site lock",
             "This content has been blocked by your administrator"
         ]
     }

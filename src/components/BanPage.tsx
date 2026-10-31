@@ -2,20 +2,16 @@ import { Show } from "solid-js";
 
 import { IconBan } from "~/components/icons";
 import Specimen from "~/components/Specimen";
-import StrikeGauge from "~/components/StrikeGauge";
-import { createViolationsStatus } from "~/lib/violations";
+import { createBanStatus } from "~/lib/banStatus";
 
 import * as s from "~/styles/BanPage.css";
 
 /** The specimen wears the severity band's tone. */
 const SPECIMEN_TINT = { banned: "wine", restricted: "sandstone" } as const;
 
-type ViolationsStatus = ReturnType<ReturnType<typeof createViolationsStatus>>;
+type BanStatus = ReturnType<ReturnType<typeof createBanStatus>>;
 
-function RestrictedNotice(props: {
-    banReason: string;
-    status: ViolationsStatus;
-}) {
+function RestrictedNotice(props: { banReason: string }) {
     return (
         <>
             <span class={s.eyebrow}>
@@ -26,23 +22,9 @@ function RestrictedNotice(props: {
             <p class={s.reason}>
                 {props.banReason || "This site is restricted by the proxy."}
             </p>
-            {/* The strike count is the actionable part of this page (it is
-                the difference between "try something else" and "one more and
-                you are locked out") so it gets the gauge rather than the
-                14px, 60%-opacity line of text it was. */}
-            <Show when={props.status}>
-                {status => (
-                    <div class={s.gaugeSlot}>
-                        <StrikeGauge
-                            violations={status().violations}
-                            maxViolations={status().maxViolations}
-                        />
-                    </div>
-                )}
-            </Show>
             <div class={s.actions}>
-                <a class={s.link} href="/baninfo">
-                    View your proxy status
+                <a class={s.link} href="/banInfo">
+                    See the restricted list
                 </a>
                 {/* A filter's block page tells you to contact an
                     administrator. Civil's says which list this came from and
@@ -53,7 +35,7 @@ function RestrictedNotice(props: {
     );
 }
 
-function BannedNotice(props: { status: ViolationsStatus }) {
+function BannedNotice(props: { status: BanStatus }) {
     return (
         <>
             <span class={s.eyebrow}>
@@ -66,7 +48,7 @@ function BannedNotice(props: { status: ViolationsStatus }) {
                     "You have been permanently banned from this proxy."}
             </p>
             <div class={s.actions}>
-                <a class={s.link} href="/baninfo">
+                <a class={s.link} href="/banInfo">
                     View ban details
                 </a>
             </div>
@@ -75,7 +57,7 @@ function BannedNotice(props: { status: ViolationsStatus }) {
 }
 
 export default function BanPage({ banReason }: { banReason: string }) {
-    const status = createViolationsStatus();
+    const status = createBanStatus();
 
     const isPermanentlyBanned = () => status()?.banned === true;
     const tone = () => (isPermanentlyBanned() ? "banned" : "restricted");
@@ -93,12 +75,7 @@ export default function BanPage({ banReason }: { banReason: string }) {
 
                 <Show
                     when={isPermanentlyBanned()}
-                    fallback={
-                        <RestrictedNotice
-                            banReason={banReason}
-                            status={status()}
-                        />
-                    }
+                    fallback={<RestrictedNotice banReason={banReason} />}
                 >
                     <BannedNotice status={status()} />
                 </Show>

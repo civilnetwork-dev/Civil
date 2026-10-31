@@ -1,6 +1,8 @@
 import type { Context } from "hono";
+import type { Result } from "neverthrow";
 
 import type { AppEnv } from "../../http";
+import type { FilterError, FilterVerdict } from "../verdict";
 import { captureFilterError } from "./captureFilter";
 
 /**
@@ -26,4 +28,22 @@ export function respondFilterError(
               : 500;
 
     return c.text(`${error.type}: ${error.message}`, statusCode);
+}
+
+/**
+ * Answers a finished vendor check: the verdict itself, the one shape every
+ * `/filterCheck/*` route returns, or the failure as `respondFilterError`
+ * answers it. A verdict sends no event: the check page records the whole
+ * check as one `filter_check_completed`, not one event per vendor.
+ */
+export function respondFilterResult(
+    c: Context<AppEnv>,
+    filter: string,
+    url: string,
+    result: Result<FilterVerdict, FilterError>,
+    extra?: Record<string, unknown>,
+): Response {
+    if (result.isErr())
+        return respondFilterError(c, filter, url, result.error, extra);
+    return c.json(result.value);
 }

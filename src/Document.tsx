@@ -1,3 +1,4 @@
+import { runtimeScripts } from "$config/shared/runtimeScripts";
 import { HydrationScript, type JSX } from "@solidjs/web";
 import { For } from "solid-js";
 
@@ -5,15 +6,16 @@ import { PALETTE } from "./styles/palette";
 
 /**
  * Proxy runtime scripts, loaded only on the browser route, which hosts every
- * proxied frame. /newtab runs in a tab's same-origin frame on the browser's
+ * proxied frame. /newTab runs in a tab's same-origin frame on the browser's
  * main thread, so a copy there would cost each tab a WASM transport it never
  * uses.
  */
+// swUtils imports bare-mux as an ES module. Loading its UMD build here also
+// published an unused BareMux global that installed extension probes identify.
 const proxyScripts = [
-    "/baremux/index.js",
-    "/scramjet/scramjet.js",
-    "/scramjetController/controller.api.js",
-    "/scramjet_init.js",
+    runtimeScripts.engine,
+    runtimeScripts.controller,
+    runtimeScripts.start,
 ];
 
 function EmbossRelief() {

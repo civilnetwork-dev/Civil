@@ -55,7 +55,8 @@ function RouterLoadingAnimation() {
     );
 }
 
-/** An anonymous session, so the proxy can count strikes per account. */
+/** An anonymous session, so the proxy can record visits and honour an
+ *  administrator's ban per account. */
 async function ensureSession(): Promise<void> {
     try {
         const sessionRes = await fetch("/api/auth/get-session");
@@ -70,7 +71,7 @@ async function ensureSession(): Promise<void> {
 
 async function reportDistrict(lat: number, lon: number): Promise<void> {
     const distRes = await fetch(
-        `/api/school-districts/nearest?lat=${lat}&lon=${lon}`,
+        `/api/schoolDistricts/nearest?lat=${lat}&lon=${lon}`,
     );
     if (!distRes.ok) return;
     const { leaId, name, distanceKm } = (await distRes.json()) as {
@@ -83,8 +84,7 @@ async function reportDistrict(lat: number, lon: number): Promise<void> {
     localStorage.setItem("civil:district:lon", lon.toFixed(2));
 
     if (window.location.host === "civil.quartinal.me") {
-        const { default: posthog } = await import("posthog-js");
-        posthog.capture("school_district_detected", {
+        window.posthog?.capture("school_district_detected", {
             lea_id: leaId,
             district_name: name,
             distance_km: Math.round(distanceKm),
@@ -99,7 +99,7 @@ async function reportDistrict(lat: number, lon: number): Promise<void> {
 /** Looks up the school district once per rough location, for analytics. */
 async function detectDistrict(): Promise<void> {
     try {
-        const locRes = await fetch("/api/ip-location");
+        const locRes = await fetch("/api/ipLocation");
         if (!locRes.ok) return;
         const { lat, lon } = (await locRes.json()) as {
             lat: number;

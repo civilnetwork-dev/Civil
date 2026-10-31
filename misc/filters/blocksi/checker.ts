@@ -1,7 +1,13 @@
 import { ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
 
+import { toCategories } from "../categories";
 import { normalizeHttpUrl } from "../utils/normalizeHttpUrl";
+import {
+    type FilterError,
+    type FilterVerdict,
+    toFilterError,
+} from "../verdict";
 
 enum BlocksiAction {
     Allow = 0,
@@ -498,6 +504,21 @@ function createDecision(params: {
     };
 }
 
+function toVerdict(decision: BlocksiDecision): FilterVerdict {
+    return {
+        status: decision.blocked
+            ? "blocked"
+            : decision.warned
+              ? "warned"
+              : decision.allowed
+                ? "allowed"
+                : "unknown",
+        categories: toCategories([decision.categoryName]),
+        detail: decision.reason,
+        matched: decision.matchedRule ? [decision.matchedRule] : [],
+    };
+}
+
 class BlocksiFilterChecker {
     private readonly http: XiorInstance;
 
@@ -537,7 +558,11 @@ class BlocksiFilterChecker {
         });
     }
 
-    checkUrl(input: string): ResultAsync<BlocksiDecision, BlocksiError> {
+    checkUrl(input: string): ResultAsync<FilterVerdict, FilterError> {
+        return this.decide(input).map(toVerdict).mapErr(toFilterError);
+    }
+
+    private decide(input: string): ResultAsync<BlocksiDecision, BlocksiError> {
         const parsed = normalizeHttpUrl(input);
 
         if (parsed.isErr()) {
@@ -604,11 +629,13 @@ class BlocksiFilterChecker {
         });
     }
 
-    checkMany(urls: string[]): ResultAsync<BlocksiDecision[], BlocksiError> {
+    checkMany(urls: string[]): ResultAsync<FilterVerdict[], FilterError> {
         return ResultAsync.combine(urls.map(url => this.checkUrl(url)));
     }
 
-    getRemoteCategory(url: string): ResultAsync<number | null, BlocksiError> {
+    private getRemoteCategory(
+        url: string,
+    ): ResultAsync<number | null, BlocksiError> {
         return ResultAsync.fromPromise(
             this.fetchCategoryWithRetries(url),
 
@@ -745,6 +772,6 @@ export function createBlocksiFilterChecker(
 export function checkBlocksiUrl(
     url: string,
     options: BlocksiCheckerOptions = {},
-): ResultAsync<BlocksiDecision, BlocksiError> {
+): ResultAsync<FilterVerdict, FilterError> {
     return createBlocksiFilterChecker(options).checkUrl(url);
 }

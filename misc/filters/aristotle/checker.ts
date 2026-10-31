@@ -36,10 +36,12 @@
 
 import { randomUUID } from "node:crypto";
 
+import { err, ok, type Result, ResultAsync } from "neverthrow";
 import { WebSocket } from "ws";
 
-import type { DomainVerdict } from "../domainReputation";
+import { toCategories } from "../categories";
 import { env, toHost } from "../utils/vendorInput";
+import type { FilterError, FilterVerdict } from "../verdict";
 
 const CMD = { AUTHENTICATE: 0, CHECK_URL: 2 } as const;
 
@@ -63,17 +65,30 @@ function authenticateMessage(secret: string): string {
     });
 }
 
+type Finish = (result: Result<FilterVerdict, FilterError>) => void;
+
+const networkError = (message: string) =>
+    err({ type: "NETWORK" as const, message });
+
 /** Moves the exchange on by one reply: authenticated, then a verdict. */
 function onReply(
     ws: WebSocket,
     raw: WebSocket.RawData,
     target: string,
-    finish: (verdict: DomainVerdict) => void,
+    finish: Finish,
 ): void {
     try {
         const data = JSON.parse(raw.toString());
 
-        if (data.authenticated === false) return finish("UNKNOWN");
+        if (data.authenticated === false)
+            return finish(
+                ok({
+                    status: "unknown",
+                    categories: [],
+                    detail: "Aristotle refused the district credentials this checker uses.",
+                    matched: [],
+                }),
+            );
 
         if (data.authenticated === true) {
             ws.send(
@@ -88,38 +103,62 @@ function onReply(
 
         // A FilterResult reply: only a definite `block` is actionable.
         if (typeof data.block === "boolean") {
-            finish(data.block ? "BLOCK" : "ALLOW");
+            finish(
+                ok({
+                    status: data.block ? "blocked" : "allowed",
+                    categories: toCategories([
+                        typeof data.category === "string"
+                            ? data.category
+                            : undefined,
+                    ]),
+                    detail: data.block
+                        ? "Aristotle's filter blocks it."
+                        : "Aristotle's filter allows it.",
+                    matched: [],
+                }),
+            );
         }
     } catch {
-        finish("UNKNOWN");
+        finish(
+            err({ type: "PARSE", message: "Aristotle's reply wasn't JSON." }),
+        );
     }
 }
 
-export async function checkAristotleDomain(
-    domain: string,
-): Promise<DomainVerdict> {
+export function checkAristotleFilter(
+    url: string,
+): ResultAsync<FilterVerdict, FilterError> {
     const host = env("CIVIL_REP_ARISTOTLE_HOST", DEFAULT_HOST);
     const secret = env("CIVIL_REP_ARISTOTLE_SECRET", DEFAULT_SECRET);
-    const target = `https://${toHost(domain)}`;
+    const target = `https://${toHost(url)}`;
 
-    return new Promise(resolve => {
-        let settled = false;
-        const finish = (verdict: DomainVerdict) => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            try {
-                ws.close();
-            } catch {}
-            resolve(verdict);
-        };
+    return new ResultAsync(
+        new Promise(resolve => {
+            let settled = false;
+            const finish: Finish = result => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                try {
+                    ws.close();
+                } catch {}
+                resolve(result);
+            };
 
-        const ws = new WebSocket(`wss://${host}/wss/wf?ssId=${randomUUID()}`);
-        const timer = setTimeout(() => finish("UNKNOWN"), CONNECT_TIMEOUT_MS);
+            const ws = new WebSocket(
+                `wss://${host}/wss/wf?ssId=${randomUUID()}`,
+            );
+            const timer = setTimeout(
+                () => finish(networkError("Aristotle didn't answer in time.")),
+                CONNECT_TIMEOUT_MS,
+            );
 
-        ws.on("open", () => ws.send(authenticateMessage(secret)));
-        ws.on("message", raw => onReply(ws, raw, target, finish));
-        ws.on("error", () => finish("UNKNOWN"));
-        ws.on("close", () => finish("UNKNOWN"));
-    });
+            ws.on("open", () => ws.send(authenticateMessage(secret)));
+            ws.on("message", raw => onReply(ws, raw, target, finish));
+            ws.on("error", error => finish(networkError(error.message)));
+            ws.on("close", () =>
+                finish(networkError("Aristotle closed the socket unanswered.")),
+            );
+        }),
+    );
 }

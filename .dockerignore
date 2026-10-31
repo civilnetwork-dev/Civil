@@ -11,3 +11,5 @@ misc/obfuscatti/.zig-cache
 misc/obfuscatti/zig-out
 misc/obfuscatti/zig-pkg
 data/
+# Vendor extension packages kept for the filter audit (about 2 GB); the build never reads them.
+extensions

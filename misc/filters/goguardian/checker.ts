@@ -1,13 +1,18 @@
-import { err, ok, type Result, ResultAsync } from "neverthrow";
+import { err, errAsync, ok, type Result, ResultAsync } from "neverthrow";
 import { getDomain } from "tldts";
 import xior, { type XiorError } from "xior";
 import { z } from "zod";
 
+import {
+    type FilterError,
+    type FilterVerdict,
+    toFilterError,
+} from "../verdict";
 import { generateGoGuardianAuthToken } from "./generateAuthToken";
 
-export type GoGuardianVerdict = "ALLOW" | "BLOCK" | "UNKNOWN";
+type GoGuardianVerdict = "ALLOW" | "BLOCK" | "UNKNOWN";
 
-export type GoGuardianError =
+type GoGuardianError =
     | { type: "INVALID_URL"; message: string; input: string }
     | { type: "NETWORK"; message: string; status?: number; body?: unknown }
     | { type: "PARSE"; message: string; body?: unknown };
@@ -22,7 +27,7 @@ export interface GoGuardianCheckInput {
     text?: string;
 }
 
-export interface GoGuardianCheckResult {
+interface GoGuardianCheckResult {
     inputUrl: string;
     normalizedUrl: string;
     hostname: string;
@@ -262,25 +267,54 @@ function fetchAndScore(
     );
 }
 
+/**
+ * GoGuardian's models only ever match: a page no keyword hits is decided by
+ * the school's policy, which the models can't see, so it reads as unknown.
+ * The proxy model's keywords are what make a page "Proxy & VPN"; the threats
+ * model names no category.
+ */
+function toVerdict(result: GoGuardianCheckResult): FilterVerdict {
+    const matched = [
+        ...result.matchedProxyKeywords,
+        ...result.matchedThreatKeywords,
+    ];
+    if (result.verdict !== "BLOCK")
+        return {
+            status: "unknown",
+            categories: [],
+            detail: "No keyword in GoGuardian's models matched, so the school's own policy decides.",
+            matched,
+        };
+    return {
+        status: "blocked",
+        categories:
+            result.matchedProxyKeywords.length > 0 ? ["Proxy & VPN"] : [],
+        detail: `Matched GoGuardian's keyword models: ${matched.join(", ")}.`,
+        matched,
+    };
+}
+
 export function checkGoGuardianFilterAuthenticated(
     input: GoGuardianCheckInput,
     options: GoGuardianAuthCheckerOptions,
-): ResultAsync<GoGuardianCheckResult, GoGuardianError> {
+): ResultAsync<FilterVerdict, FilterError> {
     const normalized = normalizeUrl(input.url);
 
     if (!normalized) {
-        return ResultAsync.fromSafePromise(
-            Promise.resolve(
-                err({
-                    type: "INVALID_URL" as const,
-                    message: "Invalid URL.",
-                    input: input.url,
-                }),
-            ),
-        ).andThen(x => x);
+        return errAsync({
+            type: "INVALID_URL" as const,
+            message: "Invalid URL.",
+        });
     }
 
-    return resolveAuthToken(options).andThen(authToken =>
-        fetchAndScore(createModelClient(authToken, options), input, normalized),
-    );
+    return resolveAuthToken(options)
+        .andThen(authToken =>
+            fetchAndScore(
+                createModelClient(authToken, options),
+                input,
+                normalized,
+            ),
+        )
+        .map(toVerdict)
+        .mapErr(toFilterError);
 }

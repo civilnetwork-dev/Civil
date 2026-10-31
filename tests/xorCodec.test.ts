@@ -108,4 +108,18 @@ describe("as source text", () => {
         expect(encoded).toBe(encode(url));
         expect(rebuild(decode)(encoded)).toBe(url);
     });
+
+    it("never writes the literal Blocksi's proxy detector looks for", () => {
+        // Blocksi 4.9.16 `detectProxyUsage` redirects the tab and blocklists
+        // the origin when any request URL includes `hvtrs8`, which is what
+        // Ultraviolet's codec writes for `https:`. This codec escapes the colon
+        // before the XOR, so it writes `hvtrs%27`. Keep it that way.
+        for (const url of [
+            ...URLS,
+            "http://example.com/",
+            "https://hvtrs8.com/",
+        ]) {
+            expect(encode(url)).not.toContain("hvtrs8");
+        }
+    });
 });

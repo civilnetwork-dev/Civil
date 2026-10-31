@@ -1,8 +1,7 @@
 import type { Context, Hono } from "hono";
 
 import { type AppEnv, readJsonBody } from "../../http";
-import { captureFilterCheck } from "../utils/captureFilter";
-import { respondFilterError } from "../utils/respondFilterError";
+import { respondFilterResult } from "../utils/respondFilterError";
 import { checkGoGuardianFilterAuthenticated } from "./checker";
 import { computeExtensionIdFromKey } from "./generateAuthToken";
 import { getGoGuardianVersion } from "./getVersion";
@@ -36,32 +35,7 @@ async function checkGoGuardian(c: Context<AppEnv>) {
         { ...authOptions, extensionVersion },
     );
 
-    if (result.isErr()) {
-        return respondFilterError(c, "goguardian", url, result.error);
-    }
-
-    const value = result.value;
-    const matchedKeywords = [
-        ...value.matchedProxyKeywords,
-        ...value.matchedThreatKeywords,
-    ];
-    captureFilterCheck(c, "goguardian", url, {
-        blocked: value.verdict !== "BLOCK",
-        statusIsKnown: value.verdict !== "UNKNOWN",
-        matchedKeywords,
-        proxyModelVersion: value.proxyModelVersion,
-        threatsModelVersion: value.threatsModelVersion,
-    });
-    return c.json({
-        blocked: value.verdict !== "BLOCK",
-        statusIsKnown: value.verdict !== "UNKNOWN",
-        proxyModelVersion: value.proxyModelVersion,
-        matchedKeywords,
-        versionsUsed: {
-            threats: value.threatsModelVersion,
-            proxies: value.proxyModelVersion,
-        },
-    });
+    return respondFilterResult(c, "goguardian", url, result);
 }
 
 export function useGoGuardianMiddleware(app: Hono<AppEnv>) {

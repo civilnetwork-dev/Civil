@@ -32,10 +32,11 @@
     // Strata recipes, schematic styles and icon registry that DESIGN.md and
     // ICONS.md make the one source for every screen; the typed settings
     // registry and the storage events it rides on; the Hono environment and
-    // body/IP helpers every route shares; the chrome.* event type and bus
-    // helpers every emulated API is built from; and the component test mount
-    // AGENTS.md requires every DOM test to use. Splitting them would only move
-    // the same edges behind barrels.
+    // body/IP helpers every route shares; the verdict shape and category
+    // vocabulary every filter checker answers in; the chrome.* event type and
+    // bus helpers every emulated API is built from; and the component test
+    // mount AGENTS.md requires every DOM test to use. Splitting them would
+    // only move the same edges behind barrels.
     "health": {
         "ignore": [
             "src/styles/theme.css.ts",
@@ -45,6 +46,8 @@
             "src/lib/settings.ts",
             "src/lib/reactiveStorage.ts",
             "misc/http.ts",
+            "misc/filters/verdict.ts",
+            "misc/filters/categories.ts",
             "misc/browserApiEmulators/extensions/chrome/shim/event.ts",
             "misc/browserApiEmulators/extensions/chrome/shim/util.ts",
             "tests/helpers/renderSolid.ts"

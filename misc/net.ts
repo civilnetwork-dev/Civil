@@ -1,7 +1,7 @@
 /**
  * Hosts that must never be reachable through a server-side fetch.
  *
- * This is an SSRF guard, not a convenience filter. `/api/ext-proxy` takes a
+ * This is an SSRF guard, not a convenience filter. `/api/extProxy` takes a
  * user-supplied URL and fetches it from inside the network the app is
  * deployed in, so without this check a user could reach Postgres, Redis, the
  * metadata service of a cloud host, or anything else on the private network.

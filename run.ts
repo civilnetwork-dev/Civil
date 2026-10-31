@@ -21,14 +21,9 @@ import {
     resolveSessionFromRequest,
 } from "./misc/database/index";
 import { requireEnv, validateEnv } from "./misc/env";
-import type { AppEnv } from "./misc/http";
+import { type AppEnv, requestIp } from "./misc/http";
 import { isPrivateHost } from "./misc/net";
-import {
-    extractClientIp,
-    readViolationCount,
-    recordViolation,
-    VIOLATION_LIMIT,
-} from "./misc/violations";
+import { runtimeScriptRoutes } from "./misc/runtimeScripts";
 
 validateEnv();
 
@@ -64,7 +59,7 @@ import { createBareServer } from "@tomphttp/bare-server-node";
 import { XMLParser } from "fast-xml-parser";
 import { blue, yellow } from "picocolors";
 import { build } from "vite";
-import { type WebSocket as WsSocket, WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 import xior from "xior";
 
 import { useBlocksiMiddleware } from "./misc/filters/blocksi/middleware";
@@ -96,12 +91,24 @@ if (!existsSync(resolve(import.meta.dirname, "dist"))) {
 
 const app = new Hono<AppEnv>();
 const PORT = Number(process.env.PORT ?? 9876);
-const bare = createBareServer("/bare/");
+// bare-server-node's default limiter allows an IP ten keep-alive requests a
+// minute, then blocks it for a minute. It counts requests, not connections, so
+// one page's assets trip it within seconds, and a school's NAT puts every
+// student behind one address. Session replay showed Bare tabs dying on "Too
+// many keep-alive connections from this IP address". The cap stays as a flood
+// guard, far above what a full classroom sends.
+const bare = createBareServer("/bare/", {
+    connectionLimiter: {
+        maxConnectionsPerIP: 20_000,
+        windowDuration: 60,
+        blockDuration: 10,
+    },
+});
 const handleWithHono = getRequestListener(app.fetch);
 const server = createServer((req, res) => {
     if (req.url?.startsWith("/chii/") || req.url === "/chii") return;
-    // better-auth and the violation counters read the client address from
-    // these headers, and a direct connection carries neither.
+    // better-auth reads the client address from these headers, and a direct
+    // connection carries neither.
     if (!req.headers["x-forwarded-for"] && !req.headers["x-real-ip"]) {
         req.headers["x-forwarded-for"] = req.socket.remoteAddress ?? "";
     }
@@ -168,7 +175,7 @@ useHaparaMiddleware(app);
 useLightspeedMiddleware(app);
 useIbossMiddleware(app, { securityKey: requireEnv("IBOSS_SECURITY_KEY") });
 
-app.get("/api/ip-location", async c => {
+app.get("/api/ipLocation", async c => {
     const raw =
         c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
         c.req.header("x-real-ip") ||
@@ -186,13 +193,13 @@ app.get("/api/ip-location", async c => {
     }
 });
 
-app.route("/api/school-districts", createSchoolDistrictsRouter());
+app.route("/api/schoolDistricts", createSchoolDistrictsRouter());
 app.route("/api/goguardian", createGoGuardianKeysRouter());
 app.route("/api/iboss", createIbossGatewaysRouter());
 
 app.all("/health/*", c => c.json({ ok: true }));
 
-app.get("/api/ext-proxy", async c => {
+app.get("/api/extProxy", async c => {
     const target = c.req.query("url");
     if (!target) return c.json({ error: "url required" }, 400);
 
@@ -289,55 +296,22 @@ app.get("/api/favicon", async c => {
     }
 });
 
-app.all("/api/check-banned/*", c => {
+app.all("/api/checkBanned/*", c => {
     const url = c.req.query("url");
     if (!url) return c.json({ banned: false });
     const matched = matchBannedDomain(url);
     return c.json({ banned: matched !== null });
 });
 
-app.post("/api/violations", async c => {
-    const session = await resolveSessionFromHeaders(c.req.raw.headers);
-    if (!session?.user) return c.json({ ok: false }, 401);
-
-    const { violations, banned } = await recordViolation(
-        session.user.id,
-        extractClientIp(c.env.incoming),
-    );
-
+// Only an administrator bans (the GraphQL `banUser` mutation). A restricted
+// site is refused however often it is asked for, and never counts against
+// anyone.
+app.all("/api/banStatus/*", async c => {
+    const user = (await resolveSessionFromHeaders(c.req.raw.headers))?.user;
     return c.json({
-        ok: true,
-        violations,
-        banned,
-        maxViolations: VIOLATION_LIMIT,
-    });
-});
-
-app.all("/api/violations/*", async c => {
-    const session = await resolveSessionFromHeaders(c.req.raw.headers);
-
-    if (!session?.user) {
-        return c.json({
-            authenticated: false,
-            banned: false,
-            violations: 0,
-            maxViolations: VIOLATION_LIMIT,
-        });
-    }
-
-    const user = session.user;
-    const violations = await readViolationCount(
-        user.id,
-        extractClientIp(c.env.incoming),
-    );
-
-    return c.json({
-        authenticated: true,
-        banned: Boolean(user.isBanned),
-        banReason: user.banReason ?? null,
-        bannedAt: user.bannedAt ?? null,
-        violations,
-        maxViolations: VIOLATION_LIMIT,
+        banned: Boolean(user?.isBanned),
+        banReason: user?.banReason ?? null,
+        bannedAt: user?.bannedAt ?? null,
     });
 });
 
@@ -356,12 +330,14 @@ function staticDir(root: string, prefix = ""): MiddlewareHandler<AppEnv> {
         /\/\.(?!well-known\/)/.test(c.req.path) ? next() : serve(c, next);
 }
 
+app.route("/", runtimeScriptRoutes);
+
 const servicePathMaps: Record<string, string> = {
     "/scramjet": scramjetPath,
     "/scramjetController": scramjetControllerPath,
     "/epoxy": epoxyPath,
     "/libcurl": libcurlPath,
-    "/bare-transport": bareTransportPath,
+    "/bareTransport": bareTransportPath,
     "/baremux": baremuxPath,
     "/baremuxTransport": resolve(
         import.meta.dirname,
@@ -430,24 +406,6 @@ function toBuffer(data: Buffer | ArrayBuffer | Buffer[]): Buffer {
           : Buffer.from(data as ArrayBuffer);
 }
 
-/** Strikes the user for a blocked host, and drops the socket if that bans them. */
-function reportWispViolation(
-    ws: WsSocket,
-    userId: string | null,
-    clientIp: string | null,
-) {
-    if (!userId) return;
-    void recordViolation(userId, clientIp)
-        .then(({ banned }) => {
-            if (banned) {
-                try {
-                    ws.close(1008, "Banned for accessing restricted content");
-                } catch {}
-            }
-        })
-        .catch(() => {});
-}
-
 async function upgradeWisp(req: Request, socket: Socket, head: Buffer) {
     const session = await resolveSessionFromRequest(req);
     const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
@@ -459,12 +417,16 @@ async function upgradeWisp(req: Request, socket: Socket, head: Buffer) {
     }
 
     const wispVersion = req.headers["sec-websocket-protocol"] ? 2 : 1;
-    const clientIp = extractClientIp(req);
 
     wispWss.handleUpgrade(req, socket, head, ws => {
+        // Wisp refuses blocked hosts and does nothing else about them. It sees
+        // every stream, and the blocklist names ad and CDN hosts that ordinary
+        // sites load in the background (pubmatic.com, b-cdn.net,
+        // scorecardresearch.com): when it struck for them, the ads on a game
+        // page banned students for good within seconds. Nothing strikes now.
         const sessionId = routeUpgradeCallbacks(
             Buffer.alloc(0),
-            clientIp ?? "",
+            requestIp(req) ?? "",
             req.socket?.remotePort ?? 0,
             req.url ?? "/wisp/",
             wispVersion,
@@ -479,7 +441,6 @@ async function upgradeWisp(req: Request, socket: Socket, head: Buffer) {
                     ws.close();
                 } catch {}
             },
-            () => reportWispViolation(ws, userId, clientIp),
         );
 
         ws.on("message", data =>

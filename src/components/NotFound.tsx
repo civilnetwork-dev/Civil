@@ -1,8 +1,7 @@
+import { PROXY_PREFIX } from "$config/shared/runtimeScripts";
 import { createSignal, onSettled, Show } from "solid-js";
 
 import * as s from "~/styles/NotFound.css";
-
-const PROXY_PREFIXES = ["/~/scramjet/"];
 
 const RETRY_KEY = "__civil_proxy_retry";
 const RETRY_TIME_KEY = "__civil_proxy_retry_t";
@@ -22,7 +21,7 @@ function proxyRetryCount(): number {
 function shouldSelfHeal(): boolean {
     if (typeof window === "undefined") return false;
     const path = window.location.pathname;
-    if (!PROXY_PREFIXES.some(p => path.startsWith(p))) return false;
+    if (!path.startsWith(PROXY_PREFIX)) return false;
     return proxyRetryCount() < MAX_RETRIES;
 }
 

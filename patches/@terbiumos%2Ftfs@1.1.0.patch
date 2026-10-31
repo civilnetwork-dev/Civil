@@ -1,0 +1,12 @@
+diff --git a/src/fs/index.ts b/src/fs/index.ts
+index 76ed61dc4f3a422077fca69d0c20e6201a441787..85986d8f985725d64d9458d9e58fc737a1df57b0 100644
+--- a/src/fs/index.ts	
++++ b/src/fs/index.ts	
+@@ -394,7 +394,6 @@ export class FS {
+ 		const originalFile = String(file || "");
+ 		const normalizedPath = this.normalizePath(file);
+ 		const rootRelativePath = originalFile.startsWith("/") ? normalizedPath : `/${originalFile.replace(/^\/+/, "")}`;
+-		// @ts-expect-error type inference
+ 		const ext = (String(normalizedPath).split("?")[0].split("#")[0].split(".").pop() || "").toLowerCase();
+ 		if (typeof fTypeorcb === "string") {
+ 			type = fTypeorcb;

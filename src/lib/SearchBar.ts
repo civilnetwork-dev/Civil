@@ -79,7 +79,7 @@ class SearchBar extends EventEmitter<{
         }
 
         window.posthog?.capture(
-            "Internal site visit",
+            "internal_site_visit",
             this.isAbsoluteUrl(term)
                 ? { url: window.scramjet.decodeUrl(term) }
                 : { term },

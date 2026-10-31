@@ -39,6 +39,23 @@ describe("codebaseForApp", () => {
         ).toBe("https://rogueone.aristotleinsight.com/Student/x.crx");
     });
 
+    it("accepts vendor quote styles, reordered attributes and escaped URLs", () => {
+        const xml = `<gupdate>
+<app appid="other"><updatecheck codebase="https://wrong.test/x.crx" /></app>
+<app status='ok' appid='wanted'>
+<updatecheck version="4.1.246" codebase='https://vendor.test/x.crx?a=1&amp;b=2' />
+</app></gupdate>`;
+        expect(codebaseForApp(xml, "wanted")).toBe(
+            "https://vendor.test/x.crx?a=1&b=2",
+        );
+        expect(
+            codebaseForApp(
+                "<gupdate><app appid='wanted'><updatecheck status='noupdate' /></app></gupdate>",
+                "wanted",
+            ),
+        ).toBeUndefined();
+    });
+
     it("returns undefined for an id not in the response", () => {
         expect(codebaseForApp(MULTI_APP, "not-present")).toBeUndefined();
     });

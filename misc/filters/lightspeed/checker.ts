@@ -1,11 +1,15 @@
-import { err, ok, ResultAsync } from "neverthrow";
+import { err, errAsync, ok, ResultAsync } from "neverthrow";
 import { WebSocket } from "ws";
 import xior, { type XiorError } from "xior";
 import { z } from "zod";
 
 import { matchBannedDomain } from "../../database/bannedDomains";
-
-export type LightspeedVerdict = "BLOCKED" | "ALLOWED" | "UNKNOWN";
+import { toCategories } from "../categories";
+import {
+    type FilterError,
+    type FilterVerdict,
+    toFilterError,
+} from "../verdict";
 
 export type LightspeedError =
     | { type: "INVALID_URL"; message: string; input: string }
@@ -15,18 +19,6 @@ export type LightspeedError =
 export interface LightspeedCheckInput {
     url: string;
     blockedCategories?: string[];
-}
-
-export interface LightspeedCheckResult {
-    inputUrl: string;
-    normalizedUrl: string;
-    hostname: string;
-    verdict: LightspeedVerdict;
-    blocked: boolean;
-    categories: string[];
-    categoryId: number | null;
-    matchedCategory: string | null;
-    reason: string;
 }
 
 export interface LightspeedRelayConfig {
@@ -219,15 +211,6 @@ function relayLookupHost(
     });
 }
 
-function expandCategoryName(name: string): string[] {
-    const parts = name.split(".");
-    const out: string[] = [];
-    for (let i = parts.length; i >= 1; i--) {
-        out.push(parts.slice(0, i).join(".").toUpperCase());
-    }
-    return out;
-}
-
 function relayCategorize(
     normalizedUrl: string,
     options: LightspeedCheckerOptions,
@@ -260,18 +243,13 @@ function relayCategorize(
                 const names = new Set<string>();
                 for (const id of catIds) {
                     if (id === 0) continue;
-                    const name = taxonomy[String(id)];
-                    if (name) {
-                        for (const n of expandCategoryName(name)) names.add(n);
-                    } else {
-                        names.add(`CAT:${id}`);
-                    }
+                    names.add(taxonomy[String(id)] ?? `category ${id}`);
                 }
                 if (
                     matchBannedDomain(normalizedUrl) &&
-                    ![...names].some(c => /MATURE|ADULT|PORN/.test(c))
+                    ![...names].some(c => /mature|adult|porn/i.test(c))
                 ) {
-                    names.add("MATURE");
+                    names.add("mature");
                 }
                 return {
                     categories: [...names],
@@ -284,77 +262,47 @@ function relayCategorize(
 export function checkLightspeedFilter(
     input: LightspeedCheckInput,
     options: LightspeedCheckerOptions = {},
-): ResultAsync<LightspeedCheckResult, LightspeedError> {
+): ResultAsync<FilterVerdict, FilterError> {
     const normalizedUrl = normalizeLightspeedUrl(input.url);
-    let hostname: string;
-    try {
-        hostname = new URL(normalizedUrl).hostname;
-    } catch {
-        return ResultAsync.fromSafePromise(
-            Promise.resolve(
-                err<LightspeedCheckResult, LightspeedError>({
-                    type: "INVALID_URL",
-                    message: "Could not parse the provided URL.",
-                    input: input.url,
-                }),
-            ),
-        ).andThen(x => x);
-    }
+    if (!URL.canParse(normalizedUrl))
+        return errAsync({
+            type: "INVALID_URL" as const,
+            message: "Could not parse the provided URL.",
+        });
 
     const blockList = (
         input.blockedCategories ?? DEFAULT_BLOCKED_CATEGORIES
     ).map(c => c.toLowerCase());
 
-    const categorize = options.categorize
-        ? (u: string) =>
-              options.categorize!(u).map(cats => ({
-                  categories: cats.categories,
-                  categoryId: cats.categoryId,
-              }))
-        : (u: string) => relayCategorize(u, options);
+    const categorize =
+        options.categorize ?? ((u: string) => relayCategorize(u, options));
 
-    return categorize(normalizedUrl).map(({ categories, categoryId }) =>
-        judgeCategories(input.url, normalizedUrl, hostname, blockList, {
-            categories,
-            categoryId,
-        }),
-    );
+    return categorize(normalizedUrl)
+        .map(({ categories }) => judgeCategories(blockList, categories))
+        .mapErr(toFilterError);
 }
 
-function judgeCategories(
-    inputUrl: string,
-    normalizedUrl: string,
-    hostname: string,
-    blockList: string[],
-    found: { categories: string[]; categoryId: number | null },
-): LightspeedCheckResult {
-    const categories = [...new Set(found.categories.map(c => c.toUpperCase()))];
+/** Lightspeed's names nest ("security.proxy"), so a substring of the block
+ *  list catches a whole branch. */
+function judgeCategories(blockList: string[], names: string[]): FilterVerdict {
+    const unique = [...new Set(names)];
+    if (unique.length === 0)
+        return {
+            status: "unknown",
+            categories: [],
+            detail: "Lightspeed's relay returned no category: the site is unrated, or the relay was unreachable.",
+            matched: [],
+        };
 
-    const matchedCategory =
-        categories.find(cat => {
-            const lower = cat.toLowerCase();
-            return blockList.some(b => lower.includes(b));
-        }) ?? null;
-
-    const verdict: LightspeedVerdict = matchedCategory
-        ? "BLOCKED"
-        : categories.length > 0
-          ? "ALLOWED"
-          : "UNKNOWN";
-
+    const matched = unique.find(name =>
+        blockList.some(blocked => name.toLowerCase().includes(blocked)),
+    );
     return {
-        inputUrl,
-        normalizedUrl,
-        hostname,
-        verdict,
-        blocked: verdict === "BLOCKED",
-        categories,
-        categoryId: found.categoryId,
-        matchedCategory,
-        reason: matchedCategory
-            ? `Blocked category: ${matchedCategory}`
-            : categories.length > 0
-              ? `Allowed (categories: ${categories.join(", ")})`
-              : "Relay returned no category (uncategorized or unreachable)",
+        status: matched ? "blocked" : "allowed",
+        categories: toCategories(unique),
+        detail: matched
+            ? `Blocked category: ${matched}.`
+            : `Allowed categories: ${unique.join(", ")}.`,
+        matched: matched ? [matched] : [],
     };
 }

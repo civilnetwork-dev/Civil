@@ -1,17 +1,12 @@
 import { createAutoLinewizeFilterChecker } from "./checker";
 
-const checkerResult = await createAutoLinewizeFilterChecker({
+const result = await createAutoLinewizeFilterChecker({
     // Dont track me FBI pleeeeeaaasseeee
     identity: "shafferj@fultonschools.org",
-});
+}).andThen(checker => checker.checkUrl({ url: "https://pornhub.com" }));
 
-if (checkerResult.isErr()) {
-    console.error(checkerResult.error);
-    process.exit(1);
+if (result.isErr()) {
+    console.error(result.error);
+} else {
+    console.log(result.value);
 }
-
-const result = await checkerResult.value.checkUrl({
-    url: "https://pornhub.com",
-});
-
-console.log(result.isOk() ? result.value : result.error);

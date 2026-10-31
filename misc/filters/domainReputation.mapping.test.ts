@@ -1,40 +1,41 @@
-// How each vendor's raw answer maps to a BLOCK/ALLOW/UNKNOWN verdict. The
-// layer that let meatballmanor.com through: Securly rated it a proxy but one
+// How a vendor's answer becomes a BLOCK/ALLOW/UNKNOWN reputation. The layer
+// that let meatballmanor.com through: Securly rated it a proxy but one
 // district's policy said ALLOW, and three other checkers reported "no data"
 // as ALLOW. Vendor clients are mocked; nothing here touches the network.
-import { ok } from "neverthrow";
+import { okAsync } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
+
+import type { FilterVerdict } from "./verdict";
 
 const securly = vi.hoisted(() => ({
     decision: "ALLOW" as string,
     categoryId: undefined as string | undefined,
 }));
-const cisco = vi.hoisted(() => ({ authoritative: false, blocked: false }));
-const lightspeed = vi.hoisted(() => ({
-    verdict: "UNKNOWN" as string,
-    blocked: false,
-    categories: [] as string[],
-}));
-const linewize = vi.hoisted(() => ({
-    method: "fallback" as string | undefined,
-    blocked: false,
-    categories: [] as string[],
-}));
+const verdicts = vi.hoisted(() => {
+    const unknown = (): FilterVerdict => ({
+        status: "unknown",
+        categories: [],
+        detail: "",
+        matched: [],
+    });
+    return { cisco: unknown(), lightspeed: unknown(), linewize: unknown() };
+});
 
+// The real securly/checker.ts maps the broker's raw answer, bits included.
 vi.mock("./securly/broker", () => ({
-    checkStatus: async () => ok({ ...securly }),
+    checkStatus: () => okAsync({ kind: "standard", ...securly }),
 }));
 vi.mock("./cisco/security/checker", () => ({
     createCiscoSecurityChecker: () => ({
-        checkUrl: async () => ok({ ...cisco }),
+        checkUrl: () => okAsync(verdicts.cisco),
     }),
 }));
 vi.mock("./lightspeed/checker", () => ({
-    checkLightspeedFilter: async () => ok({ ...lightspeed }),
+    checkLightspeedFilter: () => okAsync(verdicts.lightspeed),
 }));
 vi.mock("./linewize/checker", () => ({
     createLinewizeFilterChecker: () => ({
-        checkUrl: async () => ok({ ...linewize }),
+        checkUrl: () => okAsync(verdicts.linewize),
     }),
 }));
 
@@ -63,24 +64,26 @@ describe("securly", () => {
 });
 
 describe("no data is not ALLOW", () => {
-    it("cisco: a non-authoritative DoH resolve abstains", async () => {
+    it("an unknown verdict abstains, a blocked one blocks", async () => {
         expect(await check("cisco")).toBe("UNKNOWN");
-        Object.assign(cisco, { authoritative: true, blocked: true });
+        verdicts.cisco.status = "blocked";
         expect(await check("cisco")).toBe("BLOCK");
     });
 
-    it("lightspeed: an UNKNOWN relay verdict abstains", async () => {
+    it("an allowed page in a school-blocked category is still a block", async () => {
         expect(await check("lightspeed")).toBe("UNKNOWN");
-        Object.assign(lightspeed, {
-            verdict: "ALLOW",
-            categories: ["Proxy Avoidance"],
+        Object.assign(verdicts.lightspeed, {
+            status: "allowed",
+            categories: ["Proxy & VPN"],
         });
         expect(await check("lightspeed")).toBe("BLOCK");
     });
 
-    it("linewize: a fallback-method verdict abstains", async () => {
-        expect(await check("linewize")).toBe("UNKNOWN");
-        Object.assign(linewize, { method: "signature", blocked: false });
+    it("an allowed page in a benign category is an allow", async () => {
+        Object.assign(verdicts.linewize, {
+            status: "allowed",
+            categories: ["Education"],
+        });
         expect(await check("linewize")).toBe("ALLOW");
     });
 });

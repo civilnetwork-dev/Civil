@@ -106,7 +106,10 @@ function startPostHog(posthog: typeof import("posthog-js").default): void {
     posthog.init("phc_s9hZNR8XnWnFGHTCSJEZv79HL4hiFqCiRrVXKVboAU2f", {
         api_host: `${window.location.origin}/api/relay`,
         ui_host: "https://us.posthog.com",
-        defaults: "2026-05-30",
+        defaults: "2026-08-30",
+        // Nothing reads feature flags, so skip their billed evaluation; /flags
+        // still runs and loads the remote config replay depends on.
+        advanced_disable_feature_flags: true,
         // Two exception classes seen in production error tracking are real
         // but not actionable, and this is where to drop them rather than
         // silently swallowing them earlier (autocapture still sees and
@@ -138,6 +141,9 @@ function startPostHog(posthog: typeof import("posthog-js").default): void {
             return isKnownBenign ? null : event;
         },
     });
+    // The npm build keeps its instance to itself; every `window.posthog?.`
+    // caller (swUtils, SearchBar, FilterCheckPage) was a silent no-op.
+    window.posthog = posthog;
 }
 
 // A proxied path (/~/...) loads this document only when the service worker

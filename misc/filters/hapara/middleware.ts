@@ -1,12 +1,10 @@
 import type { Context, Hono } from "hono";
 
 import { type AppEnv, readJsonBody } from "../../http";
-import { captureFilterCheck } from "../utils/captureFilter";
-import { respondFilterError } from "../utils/respondFilterError";
+import { respondFilterResult } from "../utils/respondFilterError";
 import {
     checkHaparaFilter,
     type HaparaCheckerOptions,
-    type HaparaCheckResult,
     type HaparaStudentInput,
 } from "./checker";
 
@@ -55,51 +53,7 @@ async function checkHapara(c: Context<AppEnv>) {
         { url, student: studentFor(body) },
         checkerOptions,
     );
-
-    if (result.isErr()) {
-        return respondFilterError(c, "hapara", url, result.error);
-    }
-    return respondHaparaVerdict(c, url, result.value);
-}
-
-function respondHaparaVerdict(
-    c: Context<AppEnv>,
-    url: string,
-    value: HaparaCheckResult,
-) {
-    const { verdict, sessionType, matchedDomain, teacherName } = value;
-    const { monitored, stateSource } = value;
-    const blocked = verdict === "BLOCKED" || verdict === "LOCKED";
-    const statusIsKnown = verdict !== "NO_SESSION";
-
-    captureFilterCheck(c, "hapara", url, {
-        verdict,
-        sessionType,
-        blocked,
-        statusIsKnown,
-        matchedDomain,
-        teacherName,
-        monitored,
-        stateSource,
-    });
-
-    return c.json({
-        verdict,
-        blocked,
-        statusIsKnown,
-        sessionType,
-        teacherName,
-        sessionStart: value.sessionStart,
-        sessionEnd: value.sessionEnd,
-        matchedDomain,
-        blockedDomains: value.blockedDomains,
-        allowedDomains: value.allowedDomains,
-        allowedLinks: value.allowedLinks,
-        monitored,
-        invalidCode: value.invalidCode,
-        whitelisted: value.whitelisted,
-        stateSource,
-    });
+    return respondFilterResult(c, "hapara", url, result);
 }
 
 export function useHaparaMiddleware(app: Hono<AppEnv>) {

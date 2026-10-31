@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 
 const BanInfoPage = clientOnly(() => import("~/components/BanInfoPage"));
 
-export const Route = createFileRoute("/baninfo")({
+export const Route = createFileRoute("/banInfo")({
     component: RouteComponent,
 });
 

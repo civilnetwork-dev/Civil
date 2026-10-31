@@ -79,7 +79,7 @@ describe("IbossGatewayToast", () => {
         await settle();
 
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-        expect(url).toBe("/api/iboss/submit-gateway");
+        expect(url).toBe("/api/iboss/submitGateway");
         expect(JSON.parse(init.body as string)).toEqual({
             gatewayHost: "cn1-vnsg2.ibosscloud.com",
             securityKey: "secret",
@@ -152,7 +152,7 @@ describe("GoGuardianManifestToast", () => {
         await settle();
 
         const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-        expect(url).toBe("/api/goguardian/submit-manifest-key");
+        expect(url).toBe("/api/goguardian/submitManifestKey");
         expect(JSON.parse(init.body as string)).toEqual({
             manifestKey: "MIIBIjAN",
             leaId: "4702220",

@@ -20,7 +20,7 @@ function isProductionHost(): boolean {
 function trackFilterInformation(data: FilterCheckResult): void {
     if (data.type === "CHECK_FILTERS_RESULT") {
         if (isProductionHost()) {
-            window.posthog?.capture("Filter information", {
+            window.posthog?.capture("filters_detected", {
                 filters: data.filters,
             });
         }
@@ -115,6 +115,18 @@ function hasSharedWorker(): boolean {
     );
 }
 
+/**
+ * bare-mux records its worker path in localStorage under `bare-mux-path`, for
+ * BareClient instances to find. Civil creates none, and Aristotle Student
+ * reads the key as a proxy marker, so it is removed as soon as bare-mux has
+ * set it.
+ */
+function forgetBareMuxPath(): void {
+    try {
+        localStorage.removeItem("bare-mux-path");
+    } catch {}
+}
+
 async function setupBareMux(): Promise<void> {
     // bare-mux adds listeners to navigator.serviceWorker, so it throws a
     // TypeError when the browser has no service worker. registerSw already
@@ -129,12 +141,14 @@ async function setupBareMux(): Promise<void> {
     }
 
     const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
+    forgetBareMuxPath();
     const bareServerUrl = `${location.origin}/bare/`;
 
     async function setTransport(): Promise<void> {
         await connection.setTransport("/baremuxTransport/index.mjs", [
             bareServerUrl,
         ]);
+        forgetBareMuxPath();
     }
 
     await setTransport();

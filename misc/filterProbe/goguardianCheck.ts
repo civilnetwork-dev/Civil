@@ -102,18 +102,14 @@ export async function checkGoGuardianRoute(
         );
     }
 
-    const { verdict, matchedProxyKeywords, matchedThreatKeywords } =
-        result.value;
-    if (verdict !== "BLOCK")
+    const { status, matched } = result.value;
+    if (status !== "blocked")
         return { vendor: "goguardian", route, flagged: false };
 
     return {
         vendor: "goguardian",
         route,
         flagged: true,
-        signal: {
-            kind: "keyword-match",
-            keywords: [...matchedProxyKeywords, ...matchedThreatKeywords],
-        },
+        signal: { kind: "keyword-match", keywords: matched },
     };
 }

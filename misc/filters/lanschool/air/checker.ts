@@ -5,6 +5,12 @@ import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorInstance } from "xior";
 import { z } from "zod";
 
+import {
+    type FilterError,
+    type FilterVerdict,
+    toFilterError,
+} from "../../verdict";
+
 const DEFAULT_LSA_CHROME_INSTALLER_URL =
     "https://api-lsa.lenovosoftware.com/0/lsa/lanschool/clientInstaller/chrome";
 
@@ -220,9 +226,35 @@ export function decisionFromWebLimitReply(
     );
 }
 
+/** LanSchool decides per teacher's limit, never by category. */
+function toVerdict(decision: LanSchoolDecision): FilterVerdict {
+    if (decision.status === "allowed")
+        return {
+            status: "allowed",
+            categories: [],
+            detail: "LanSchool allows it.",
+            matched: [],
+        };
+    return {
+        status: "blocked",
+        categories: [],
+        detail: decision.redirectUrl
+            ? `LanSchool blocks it and sends the tab to ${decision.redirectUrl}.`
+            : "LanSchool blocks it.",
+        matched: [],
+    };
+}
+
 export function checkLanSchoolUrl(
     url: string,
     options: LanSchoolCheckerOptions = {},
+): ResultAsync<FilterVerdict, FilterError> {
+    return decide(url, options).map(toVerdict).mapErr(toFilterError);
+}
+
+function decide(
+    url: string,
+    options: LanSchoolCheckerOptions,
 ): ResultAsync<LanSchoolDecision, LanSchoolError> {
     if (!options.nativeWebLimit) {
         return ResultAsync.fromSafePromise(

@@ -17,41 +17,60 @@
  * domain didn't surface this node, so shayderrr's finding is the source.
  */
 
-import type { DomainVerdict } from "../domainReputation";
+import { ResultAsync } from "neverthrow";
+
+import { toHost } from "../utils/vendorInput";
+import type { FilterError, FilterVerdict } from "../verdict";
 
 const DEFAULT_NODE = "https://filter.coopacademiescloud.netsweeper.com:3431/";
 const TIMEOUT_MS = 10_000;
 
-const toHost = (domain: string): string =>
-    domain
-        .replace(/^https?:\/\//, "")
-        .replace(/\/.*$/, "")
-        .trim();
+/** Netsweeper's reply: "ALLOW…", or a block page URL carrying `&cat=<id>`.
+ *  Civil has no table of Netsweeper's category ids, so none is named. */
+function toVerdict(reply: string): FilterVerdict {
+    if (reply.startsWith("ALLOW"))
+        return {
+            status: "allowed",
+            categories: [],
+            detail: "LanSchool's Netsweeper node allows it.",
+            matched: [],
+        };
+    const category = /&cat=([^&\s]+)/.exec(reply)?.[1];
+    return category === undefined
+        ? {
+              status: "unknown",
+              categories: [],
+              detail: "LanSchool's Netsweeper node gave no verdict.",
+              matched: [],
+          }
+        : {
+              status: "blocked",
+              categories: [],
+              detail: `LanSchool's Netsweeper node blocks it as category ${category}.`,
+              matched: [],
+          };
+}
 
-export async function checkLanSchoolNetsweeperDomain(
-    domain: string,
-): Promise<DomainVerdict> {
+async function askNode(url: string): Promise<string> {
     const node = process.env.CIVIL_REP_LANSCHOOL_URL || DEFAULT_NODE;
     // The exact payload shayderrr's checker sends: a fixed "policy" prefix and
     // trailer around the target URL, base64-encoded onto the path.
     const payload = Buffer.from(
-        `001 https://${toHost(domain)} - - - - 3372822944`,
+        `001 https://${toHost(url)} - - - - 3372822944`,
     ).toString("base64");
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const res = await fetch(node + payload, {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Netsweeper node answered ${res.status}`);
+    return res.text();
+}
 
-    try {
-        const res = await fetch(node + payload, { signal: controller.signal });
-        if (!res.ok) return "UNKNOWN";
-        const text = await res.text();
-
-        if (text.startsWith("ALLOW")) return "ALLOW";
-        // A block redirects into a `...&cat=<id>` categorisation URL.
-        return text.includes("&cat=") ? "BLOCK" : "UNKNOWN";
-    } catch {
-        return "UNKNOWN";
-    } finally {
-        clearTimeout(timer);
-    }
+export function checkLanSchoolNetsweeperFilter(
+    url: string,
+): ResultAsync<FilterVerdict, FilterError> {
+    return ResultAsync.fromPromise(askNode(url), (error): FilterError => ({
+        type: "NETWORK",
+        message: error instanceof Error ? error.message : String(error),
+    })).map(toVerdict);
 }

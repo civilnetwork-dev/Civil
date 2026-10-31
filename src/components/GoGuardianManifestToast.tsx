@@ -85,7 +85,7 @@ async function submitManifestKey(
     const key = manifestKey.trim();
     if (!key) return;
     await contribution.submit<{ extensionId: string }>(
-        "/api/goguardian/submit-manifest-key",
+        "/api/goguardian/submitManifestKey",
         {
             manifestKey: key,
             leaId: props.leaId,

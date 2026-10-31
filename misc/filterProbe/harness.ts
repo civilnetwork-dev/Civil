@@ -671,6 +671,7 @@ function describeSignal(verdict: Verdict): string {
     const s = verdict.signal;
     if (!s) return "flagged";
     if (s.kind === "redirect") return `redirected to ${s.finalHost}`;
+    if (s.kind === "block-page") return `sent to its block page ${s.finalUrl}`;
     if (s.kind === "marker") return `block marker "${s.marker}"`;
     if (s.kind === "keyword-match")
         return `keyword match: ${s.keywords.join(", ")}`;

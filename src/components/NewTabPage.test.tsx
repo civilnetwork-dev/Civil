@@ -40,7 +40,7 @@ describe("NewTabPage", () => {
             "/extensions",
         ]);
         expect(
-            container.querySelector('a[href="/checkfilters"]'),
+            container.querySelector('a[href="/checkFilters"]'),
         ).not.toBeNull();
         expect(container.textContent).toContain(
             "Ads keep Civil free and open source.",

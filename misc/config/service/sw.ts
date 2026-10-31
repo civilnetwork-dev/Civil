@@ -5,6 +5,7 @@ import {
 } from "$config/shared/dnrNavMatch";
 import { DNR_NAV_DIR, type DnrNavRule } from "$config/shared/dnrNavRules";
 import { getExtensionFile } from "$config/shared/extensionFile";
+import { PROXY_PREFIX } from "$config/shared/runtimeScripts";
 import { decode, encode } from "$config/shared/xorCodec";
 
 importScripts("/scramjetController/controller.sw.js");
@@ -97,7 +98,7 @@ async function checkDNRNavRedirect(
 function proxyRedirectUrl(requestUrl: string, targetUrl: string): string {
     const origin = self.location.origin;
 
-    if (requestUrl.startsWith(origin + SCRAMJET_PREFIX)) {
+    if (requestUrl.startsWith(origin + PROXY_PREFIX)) {
         const requestPath = new URL(requestUrl).pathname;
         const framePrefix = requestPath.slice(
             0,
@@ -463,8 +464,6 @@ async function injectChiiPreamble(
     }
 }
 
-const SCRAMJET_PREFIX = "/~/scramjet/";
-
 /** The real-origin `/civil-ext/` request a proxied URL decodes to, or null. */
 function unwrapCivilExt(originalUrl: string): Request | null {
     try {
@@ -483,9 +482,9 @@ function decodeProxiedUrl(encodedUrl: string): string | null {
     try {
         const origin = self.location.origin;
 
-        if (encodedUrl.startsWith(origin + SCRAMJET_PREFIX)) {
+        if (encodedUrl.startsWith(origin + PROXY_PREFIX)) {
             const afterPrefix = encodedUrl
-                .slice((origin + SCRAMJET_PREFIX).length)
+                .slice((origin + PROXY_PREFIX).length)
                 .split("?")[0];
             const segments = afterPrefix.split("/").filter(Boolean);
             const lastSegment = segments[segments.length - 1];
@@ -513,7 +512,7 @@ async function checkBanned(originalUrl: string): Promise<boolean> {
 
     try {
         const res = await fetch(
-            `/api/check-banned?url=${encodeURIComponent(originalUrl)}`,
+            `/api/checkBanned?url=${encodeURIComponent(originalUrl)}`,
         );
         const data: { banned: boolean } = await res.json();
         bannedCache.set(hostname, {
@@ -528,14 +527,14 @@ async function checkBanned(originalUrl: string): Promise<boolean> {
 
 /**
  * Build the block response for a restricted domain: /ban redirect for a
- * top-level document navigation (recording a strike), 403 otherwise.
+ * top-level document navigation, 403 otherwise. Either way the site is only
+ * refused: nothing counts against the student, however often they ask.
  *
  * Gate on request.destination === "document", not request.mode === "navigate".
  * A subframe navigation also has mode "navigate". So a page that embeds a
- * restricted tracker host redirects that iframe to /ban, boots the whole app
- * inside the tracker frame, and posts a violation strike the user did not earn.
- * Only a top-level navigation has destination "document". An embedded frame has
- * destination "iframe".
+ * restricted tracker host would redirect that iframe to /ban and boot the
+ * whole app inside the tracker frame. Only a top-level navigation has
+ * destination "document". An embedded frame has destination "iframe".
  */
 function bannedBlockResponse(target: string, request: Request): Response {
     if (request.destination === "document") {
@@ -543,11 +542,6 @@ function bannedBlockResponse(target: string, request: Request): Response {
         try {
             hostname = new URL(target).hostname;
         } catch {}
-        void fetch(`${self.location.origin}/api/violations`, {
-            method: "POST",
-            credentials: "include",
-            keepalive: true,
-        }).catch(() => {});
         return Response.redirect(
             `${self.location.origin}/ban?reason=${encodeURIComponent(`${hostname} is restricted by this proxy`)}`,
             302,
@@ -561,7 +555,7 @@ function bannedBlockResponse(target: string, request: Request): Response {
  * domain and block it. Closes the search-result / interstitial bypass: a request
  * to an allowed URL (e.g. google.com/url?q=<banned>) whose response redirects to
  * a banned domain would otherwise never be seen by the request-side checkBanned.
- * Handles both proxy-rewritten Location values (/~/scramjet/<enc>) and absolute
+ * Handles both proxy-rewritten Location values (<prefix><enc>) and absolute
  * real URLs.
  */
 async function guardBannedRedirect(
@@ -723,7 +717,7 @@ async function swResponse(event: FetchEvent) {
     const civilResponse = await civilPathResponse(request, url);
     if (civilResponse) return civilResponse;
 
-    if (!url.pathname.startsWith(SCRAMJET_PREFIX)) {
+    if (!url.pathname.startsWith(PROXY_PREFIX)) {
         return fetch(request);
     }
 
