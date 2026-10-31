@@ -64,7 +64,7 @@ zig-out/
 # Maintenance Files
 MAINTENANCE.md
 # Agent scratch: worktrees and per-session state
-.claude/
+.claude/*
 .superpowers/
 
 # local .env backups taken before dev-only edits
@@ -109,3 +109,9 @@ graphify-out/
 
 # Future Folders
 .understand-anything/
+
+# Keep Claude Launch for other contributors
+!.claude/launch.json
+
+# Random Secret Files
+NUL

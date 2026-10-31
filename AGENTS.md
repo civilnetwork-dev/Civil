@@ -58,12 +58,12 @@ Hono app = whole backend. `@hono/node-server` adapts to `node:http` server, whic
 1. validates env (`misc/env.ts`);
 2. mounts PostHog relay (`misc/analytics/posthogProxy.ts`) before compression + 100 kB body limit, so capture payloads pass unparsed;
 3. mounts `misc/database` (better-auth at `/api/auth/*`, GraphQL at `/graphql`, visit tracking) + per-vendor middleware from `misc/filters/*`;
-4. serves proxy APIs (`/api/check-banned`, `/api/violations`, `/api/ext-proxy`, others), Mercury Workshop runtimes direct from `node_modules` (`/scramjet`, `/scramjetController`, `/epoxy`, `/libcurl`, `/bare-transport`, `/baremux`), `dist-config/`, `dist/client/`;
+4. serves proxy APIs (`/api/checkBanned`, `/api/banStatus`, `/api/extProxy`, others), Mercury Workshop runtimes direct from `node_modules` (`/scramjet`, `/scramjetController`, `/epoxy`, `/libcurl`, `/bareTransport`, `/baremux`), `dist-config/`, `dist/client/`;
 5. hands all other requests to SSR handler `vite build` emits at `dist/nitro/vite/services/ssr/server.js`.
 
 `misc/http.ts` = route helpers. `clientIp` resolves visitor address like Express `trust proxy: 1`: socket peer, or behind `REVERSE_PROXY` last `x-forwarded-for` entry. `readJsonBody` returns `{}` for missing/malformed body.
 
-WebSocket upgrades ending `/wisp/` → native Wisp server (`misc/wisp/native`, Rust via napi) after ban check. Server gets banned-domain list as hostname blacklist; violation callback records strikes (`misc/violations.ts`). Upgrades ending `/suggestions` serve search suggestions. `/api/ext-proxy` rejects private hosts via `isPrivateHost` (`misc/net.ts`), follows redirects manually so every hop rechecked.
+WebSocket upgrades ending `/wisp/` → native Wisp server (`misc/wisp/native`, Rust via napi) after ban check. Server gets banned-domain list (porn-domains) as hostname blacklist, refuses those hosts. Restricted site never strikes or bans: Wisp, service worker (`/ban` redirect, 403), `/api/trackVisit` only refuse, any number of times. Only admin bans (GraphQL `banUser`); `/api/banStatus` reports it. Upgrades ending `/suggestions` serve search suggestions. `/api/extProxy` rejects private hosts via `isPrivateHost` (`misc/net.ts`), follows redirects manually so every hop rechecked.
 
 ### Frontend: `src/`
 
@@ -71,7 +71,7 @@ SolidJS 2 (RCs, pinned exact) + TanStack Solid Router. Routes = files in `src/ro
 
 `Document.tsx` = whole HTML document; both entries render it. `entry-server.tsx` streams it with fresh router per request, since shared router rendered wrong route on overlapping requests. `entry-client.tsx` hydrates `document`. One-side-only stuff goes via Document's trailing `scripts` slot, so no hydration claim shifts.
 
-`/` = browser itself (`BrowserChrome`, client-only), only route loading proxy runtime scripts. Internal pages (`/newtab`, `/history`, `/bookmarks`, `/settings`) each run as separate document in tab's same-origin iframe. Pages and chrome share no memory: coordinate via localStorage (`src/lib/reactiveStorage.ts`, storage events) + `civil:navigate` messages.
+`/` = browser itself (`BrowserChrome`, client-only), only route loading proxy runtime scripts. Internal pages (`/newTab`, `/history`, `/bookmarks`, `/settings`) each run as separate document in tab's same-origin iframe. Pages and chrome share no memory: coordinate via localStorage (`src/lib/reactiveStorage.ts`, storage events) + `civil:navigate` messages.
 
 - `src/lib/settings.ts` = typed registry of all settings. Each setting own localStorage key, validated on read since proxied pages share origin. `transport` and `search` keep legacy raw keys so older builds' values load. Separately bundled `misc/config/scramjet/scramjetInit.ts` reads `transport` and `civil:wisp-version` raw.
 - `src/lib/transport.ts` picks transport per proxied navigation in one place: error page retry pick, then per-site rule, session failover, then user default. No automatic per-site pick; user chooses method + Wisp version.
@@ -81,6 +81,8 @@ SolidJS 2 (RCs, pinned exact) + TanStack Solid Router. Routes = files in `src/ro
 ### Proxy runtime bundles: `misc/config/` into `dist-config/`
 
 `misc/config/bundle.js` builds these outside Vite with Rollup: service worker (`service/sw.ts` → `sw.js`), `scramjet_init.js`, bare-mux transport module. First two carry URL codec (`shared/xorCodec.ts`). Its `encode`/`decode` must stay self-contained: scramjet controller copies them into proxied frames as source text. Output format fixed: saved history + bookmarks hold encoded addresses. Bundler only strips types (oxc-transform); `tsc` type checks. Vite dev server no rebuild of these, so run `bun run build:configs` after editing `misc/config/`.
+
+Public names stay neutral because installed filter extensions scan them (`docs/research/`). Page loads engine through `/_runtime/*` (`shared/runtimeScripts.ts`); `misc/runtimeScripts.ts` renames engine globals, IndexedDB name, DOM attributes in served bytes (`neutralizeEngineNames`); proxied frames live under `PROXY_PREFIX`. Scramjet bump that adds an engine-named identifier fails `misc/runtimeScripts.test.ts`: extend the rename table, load a proxied page in a real browser, never leave upstream name. `$scramjet$` message keys (`$scramjet$data`, `$scramjet$messagetype`) stay: service worker + extension shim read them.
 
 ### Styles
 
@@ -128,6 +130,19 @@ After `vite build`, `misc/vite/obfuscateAssets.ts` obfuscates `dist/client/_buil
 - Required env vars listed in four places that must agree: `REQUIRED_ENV` in `misc/env.ts`, `.env.example`, app env in `docker-compose.yml`, defaults in `tests/setup.ts`.
 - `docker-compose.yml` publishes Postgres + Redis on `127.0.0.1` only. Keep prefix, else they listen on all interfaces.
 - Logo changes hit every copy together: `src/components/Wordmark.tsx`, `public/assets/civil-wordmark.{svg,png}`, `public/favicon.ico`, `MARK_STONE` + `MARK_DOOR` in `src/components/LoadingAnimation.tsx`.
+- Route paths (API + pages) camelCase, no hyphens: `/api/trackVisit`, `/filterCheck/securly`, `/newTab`, `/checkFilters`. Rename = every caller, incl. `misc/config/` bundles (`bun run build:configs`). Router matches case-insensitively (TanStack `caseSensitive` default off), so old lowercase page URLs in saved sessions + history still load; keep it off. `browser:` addresses stay lowercase, Chrome-style (`browser:newtab`), mapped in `src/lib/browserUrls.ts`. Exceptions: paths third parties own (`/api/auth/*` from better-auth, PostHog relay paths).
+
+## Skills, subagents and tools
+
+- Playwright MCP screenshots → `.playwright-mcp/` (gitignored), absolute paths.
+- Every subagent run `/caveman ultra` whole run, skill-asked or started for speed. Subagent writing/changing code also run `/ponytail full` with Caveman.
+- Real-creativity work (e.g. UI redesign) → `/adhd` skill.
+- UI redesign: Taste (`design-taste-frontend`) + Impeccable skills with `/adhd`. Unless owner named 2+ liked reference sites, run `/interview-me` to find them, then pull design components via `/extract-design` + other Designlang commands. Add other skills where help.
+- Request or stored memory about how people actually use Civil → check PostHog for evidence via PostHog skills.
+- All saves to Hindsight compressed with Caveman first, save tokens on Hindsight Cloud account. Uncompressed Hindsight memory/document → compress with Caveman too.
+- Functions, variables, other code → look up via JCodeMunch MCP server. Stuff likely deep in Markdown file >50 lines → JDocMunch MCP server.
+- Before any Fallow task, check Fallow skills (`fallow`, `fallow-review`, `fallow-setup`, rest) for one covering it; use it.
+- Fallow health stays 100: no function, `describe` or `it` callback >60 lines. Hoist test tables to module scope.
 
 ## Gotchas
 

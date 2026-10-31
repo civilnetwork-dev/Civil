@@ -22,6 +22,9 @@
  *     upstream in how Civil serves or rewrites the flagged route: the route's
  *     own source, the proxy rewrite layer, and the vendor handler that is
  *     meant to neutralise that content script.
+ *   - A `block-page` (the tab sent to the block page inside the vendor's own
+ *     extension) is the same: the filter decided locally, with no backend
+ *     request to block, so it gets the in-place suggestions.
  */
 
 import { existsSync, readFileSync } from "node:fs";

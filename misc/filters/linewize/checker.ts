@@ -4,6 +4,13 @@ import { err, errAsync, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
 import { z } from "zod";
 
+import { toCategories } from "../categories";
+import {
+    type FilterError,
+    type FilterStatus,
+    type FilterVerdict,
+    toFilterError,
+} from "../verdict";
 import { getLatestLinewizeConnectVersion } from "./getLatestVersion";
 
 const LINEWIZE_CONNECT_CHROME_ID = "ddfbkhpmcdbciejenfcolaaiebnjcbfc";
@@ -19,7 +26,7 @@ const LINEWIZE_REGIONS = [
 
 export type LinewizeRegion = (typeof LINEWIZE_REGIONS)[number];
 
-export type Verdict = "ALLOW" | "BLOCK" | "WARN" | "BYPASS" | "UNKNOWN";
+type Verdict = "ALLOW" | "BLOCK" | "WARN" | "BYPASS" | "UNKNOWN";
 
 export type CheckerError =
     | { type: "INVALID_URL"; message: string }
@@ -61,16 +68,13 @@ type CheckInput = {
     };
 };
 
-type CheckResult = {
-    verdict: Verdict;
-    rawVerdict: string;
-    allowed: boolean;
-    blocked: boolean;
-    method?: string;
-    ttl?: number;
-    categories: string[];
-    reason?: string;
-    raw: unknown;
+/** A bypass code lets the page through, so it reads as allowed. */
+const STATUSES: Record<Verdict, FilterStatus> = {
+    ALLOW: "allowed",
+    BLOCK: "blocked",
+    WARN: "warned",
+    BYPASS: "allowed",
+    UNKNOWN: "unknown",
 };
 
 type NetworkStatus = {
@@ -511,23 +515,25 @@ function discoverLinewizeConfig(
 export function createAutoLinewizeFilterChecker(
     config: AutoLinewizeCheckerConfig,
     client: XiorInstance = xior.create(),
-): ResultAsync<LinewizeFilterChecker, CheckerError> {
-    return discoverLinewizeConfig(config, client).map(discovered => {
-        return new LinewizeFilterChecker(
-            {
-                verdictServerUrl: discovered.verdictServerUrl,
-                identity: config.identity,
-                deviceId: discovered.deviceId,
-                chromeId: config.chromeId ?? LINEWIZE_CONNECT_CHROME_ID,
-                extensionVersion: discovered.extensionVersion,
-                timeoutMs: config.timeoutMs,
-                isDelegationActive: config.isDelegationActive,
-                isOnNetwork: config.isOnNetwork,
-                authToken: config.authToken,
-            },
-            client,
-        );
-    });
+): ResultAsync<LinewizeFilterChecker, FilterError> {
+    return discoverLinewizeConfig(config, client)
+        .map(discovered => {
+            return new LinewizeFilterChecker(
+                {
+                    verdictServerUrl: discovered.verdictServerUrl,
+                    identity: config.identity,
+                    deviceId: discovered.deviceId,
+                    chromeId: config.chromeId ?? LINEWIZE_CONNECT_CHROME_ID,
+                    extensionVersion: discovered.extensionVersion,
+                    timeoutMs: config.timeoutMs,
+                    isDelegationActive: config.isDelegationActive,
+                    isOnNetwork: config.isOnNetwork,
+                    authToken: config.authToken,
+                },
+                client,
+            );
+        })
+        .mapErr(toFilterError);
 }
 
 class LinewizeFilterChecker {
@@ -558,17 +564,17 @@ class LinewizeFilterChecker {
         this.client = client;
     }
 
-    checkUrl(input: CheckInput): ResultAsync<CheckResult, CheckerError> {
+    checkUrl(input: CheckInput): ResultAsync<FilterVerdict, FilterError> {
         return this.requestVerdict("/get/verdict", input);
     }
 
     checkClassroomPolicy(
         input: CheckInput,
-    ): ResultAsync<CheckResult, CheckerError> {
+    ): ResultAsync<FilterVerdict, FilterError> {
         return this.requestVerdict("/check/classroom/verdict", input);
     }
 
-    checkMany(inputs: CheckInput[]): ResultAsync<CheckResult[], CheckerError> {
+    checkMany(inputs: CheckInput[]): ResultAsync<FilterVerdict[], FilterError> {
         return ResultAsync.combine(inputs.map(input => this.checkUrl(input)));
     }
 
@@ -608,11 +614,11 @@ class LinewizeFilterChecker {
     private requestVerdict(
         path: string,
         input: CheckInput,
-    ): ResultAsync<CheckResult, CheckerError> {
+    ): ResultAsync<FilterVerdict, FilterError> {
         const parsedUrl = toUrl(input.url);
 
         if (parsedUrl.isErr()) {
-            return errAsync(parsedUrl.error);
+            return errAsync(toFilterError(parsedUrl.error));
         }
 
         const requestUrl = new URL(`${this.config.verdictServerUrl}${path}`);
@@ -628,7 +634,9 @@ class LinewizeFilterChecker {
                     : undefined,
             }),
             mapXiorError,
-        ).andThen(response => this.parseVerdictResponse(response.data));
+        )
+            .andThen(response => this.parseVerdictResponse(response.data))
+            .mapErr(toFilterError);
     }
 
     private setVerdictParams(
@@ -667,7 +675,7 @@ class LinewizeFilterChecker {
 
     private parseVerdictResponse(
         raw: unknown,
-    ): Result<CheckResult, CheckerError> {
+    ): Result<FilterVerdict, CheckerError> {
         const parsed = VerdictResponseSchema.safeParse(raw);
 
         if (!parsed.success) {
@@ -679,18 +687,23 @@ class LinewizeFilterChecker {
         }
 
         const verdict = normalizeVerdict(parsed.data.verdict);
-        const blocked = verdict === "BLOCK";
+        const categories = toCategories(normalizeCategories(parsed.data));
+
+        // `method: "fallback"` is the verdict server declining to classify
+        // (no signature, allow by default), not an allow it stands behind.
+        if (parsed.data.method === "fallback")
+            return ok({
+                status: "unknown",
+                categories,
+                detail: "Linewize's verdict server declined to classify it and allows it by default.",
+                matched: [],
+            });
 
         return ok({
-            verdict,
-            rawVerdict: String(parsed.data.verdict ?? "UNKNOWN"),
-            allowed: !blocked,
-            blocked,
-            method: parsed.data.method,
-            ttl: parsed.data.ttl,
-            categories: normalizeCategories(parsed.data),
-            reason: parsed.data.reason,
-            raw,
+            status: STATUSES[verdict],
+            categories,
+            detail: `Linewize answered ${verdict}${parsed.data.reason ? `: ${parsed.data.reason}` : ""}.`,
+            matched: [],
         });
     }
 }

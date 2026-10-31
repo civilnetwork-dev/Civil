@@ -20,7 +20,6 @@ const result = await checkGoGuardianFilterAuthenticated(
 
 if (result.isErr()) {
     console.error(result.error);
-    process.exit(1);
+} else {
+    console.log(result.value);
 }
-
-console.log(result.value);

@@ -1,3 +1,5 @@
+import type { IncomingMessage } from "node:http";
+
 import type { HttpBindings } from "@hono/node-server";
 import type { Context } from "hono";
 
@@ -16,10 +18,26 @@ export type AppEnv = { Bindings: HttpBindings };
  * came from the client and can be forged.
  */
 export function clientIp(c: Context<AppEnv>): string | undefined {
-    const peer = c.env.incoming.socket.remoteAddress;
+    return resolveIp(
+        c.env.incoming.socket.remoteAddress,
+        c.req.header("x-forwarded-for"),
+    );
+}
+
+/** `clientIp` for a request Hono never routes: a WebSocket upgrade. */
+export function requestIp(req: IncomingMessage): string | undefined {
+    return resolveIp(
+        req.socket.remoteAddress,
+        req.headers["x-forwarded-for"]?.toString(),
+    );
+}
+
+function resolveIp(
+    peer: string | undefined,
+    forwardedFor: string | undefined,
+): string | undefined {
     if (!process.env.REVERSE_PROXY) return peer;
-    const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1);
-    return forwarded?.trim() || peer;
+    return forwardedFor?.split(",").at(-1)?.trim() || peer;
 }
 
 /**

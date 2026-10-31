@@ -1,7 +1,13 @@
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorError, type XiorInstance } from "xior";
 
+import { toCategories } from "../categories";
 import { normalizeHttpUrl } from "../utils/normalizeHttpUrl";
+import {
+    type FilterError,
+    type FilterVerdict,
+    toFilterError,
+} from "../verdict";
 import {
     DEFAULT_CLOUD_CATEGORIZATION_SSL_PORT,
     DIRECT_FILTER_INTRINSIC_BYPASS_LIST,
@@ -210,6 +216,16 @@ function createDecision(params: {
     };
 }
 
+/** A cloud error is still "blocked": the connector fails closed for 30s. */
+function toVerdict(decision: IbossDecision): FilterVerdict {
+    return {
+        status: decision.blocked ? "blocked" : "allowed",
+        categories: toCategories([decision.categoryName]),
+        detail: decision.reason,
+        matched: decision.matchedRule ? [decision.matchedRule] : [],
+    };
+}
+
 class IbossFilterChecker {
     private readonly http: XiorInstance;
 
@@ -345,7 +361,11 @@ class IbossFilterChecker {
         return null;
     }
 
-    checkUrl(input: string): ResultAsync<IbossDecision, IbossError> {
+    checkUrl(input: string): ResultAsync<FilterVerdict, FilterError> {
+        return this.decide(input).map(toVerdict).mapErr(toFilterError);
+    }
+
+    private decide(input: string): ResultAsync<IbossDecision, IbossError> {
         const parsed = normalizeHttpUrl(input);
 
         if (parsed.isErr()) {
@@ -402,7 +422,7 @@ class IbossFilterChecker {
         });
     }
 
-    checkMany(urls: string[]): ResultAsync<IbossDecision[], IbossError> {
+    checkMany(urls: string[]): ResultAsync<FilterVerdict[], FilterError> {
         return ResultAsync.combine(urls.map(url => this.checkUrl(url)));
     }
 
@@ -507,6 +527,6 @@ export function createIbossFilterChecker(
 export function checkIbossUrl(
     url: string,
     options: IbossCheckerOptions,
-): ResultAsync<IbossDecision, IbossError> {
+): ResultAsync<FilterVerdict, FilterError> {
     return createIbossFilterChecker(options).checkUrl(url);
 }

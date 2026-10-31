@@ -24,9 +24,9 @@ import * as s from "~/styles/FilterCheckPage.css";
  *
  * The unfold carries the detail string, which is where the backend's typed
  * error discriminant surfaces. Every checker under misc/filters/ returns a
- * neverthrow Result with an error union (INVALID_URL | NETWORK | PARSE) and
- * vendor-specific verdicts; the previous card UI flattened all of it into a
- * colour.
+ * neverthrow Result of one verdict shape (misc/filters/verdict.ts) or an
+ * error union (INVALID_URL | NETWORK | PARSE | CONFIG); the previous card UI
+ * flattened all of it into a colour.
  */
 
 /**

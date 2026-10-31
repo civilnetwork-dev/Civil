@@ -1,3 +1,5 @@
+import { PROXY_PREFIX } from "$config/shared/runtimeScripts";
+
 import {
     dispatchExtensionBrowserEvent,
     extensionChromeTabId,
@@ -9,12 +11,7 @@ import { iframeSetCurrentSrc } from "~/api/iframe";
 import { displayUrl, gstaticFavicon, normalizeNav } from "~/lib/browserHelpers";
 import { isInternalUrl, resolveUrl } from "~/lib/browserUrls";
 import type searchBar from "~/lib/SearchBar";
-import {
-    getSetting,
-    isTransport,
-    TRANSPORTS,
-    type TransportName,
-} from "~/lib/settings";
+import { getSetting, isTransport, type TransportName } from "~/lib/settings";
 import { tabManager } from "~/lib/TabManager";
 import { retryWith, rotateFrom, usedTransport } from "~/lib/transport";
 
@@ -23,7 +20,7 @@ type BarInstance = ReturnType<typeof searchBar>;
 function decodeProxyUrl(href: string): string {
     try {
         const url = new URL(href);
-        if (url.pathname.startsWith("/~/scramjet/")) {
+        if (url.pathname.startsWith(PROXY_PREFIX)) {
             const encoded = url.pathname.split("/").findLast(Boolean);
             if (encoded && window.scramjet?.decodeUrl) {
                 return window.scramjet.decodeUrl(encoded);
@@ -74,54 +71,12 @@ function extensionTab(
  * first paint but well inside the patience that produced those rage clicks.
  */
 
-const CONNECTION_ERROR_STYLE = `
-:root{color-scheme:dark}
-body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
-background:#22262F;color:#C2C6D2;
-font:400 14px/1.55 "IBM Plex Sans",system-ui,sans-serif}
-main{max-width:34rem;padding:2rem}
-h1{margin:0 0 .75rem;font-size:15px;font-weight:600;letter-spacing:.02em;color:#EDF1FB}
-p{margin:0 0 .75rem}
-code{font-family:"IBM Plex Mono",ui-monospace,monospace;color:#E29B69}
-.rule{height:1px;background:#434751;margin:1.25rem 0}
-button,a.btn{font:inherit;color:#EDF1FB;background:transparent;border:1px solid #434751;
-padding:.45rem .9rem;cursor:pointer;text-decoration:none;display:inline-block}
-button:hover,a.btn:hover{border-color:#4295E4;color:#4295E4}
-a{color:#4295E4}
-.keys{display:flex;flex-wrap:wrap;gap:.5rem}
-.muted{color:#8C919E;font-size:12px}
-`;
+const CONNECTION_ERROR_PATH = "/connectionError";
 
-/**
- * Rendered into the frame itself rather than over it: the frame is the thing
- * that failed, and an overlay would leave a blank page underneath for anyone
- * who dismissed it. Reload alone re-runs the method that just failed, so the
- * page offers every method by name.
- */
-function connectionErrorDoc(url: string, used?: TransportName): string {
-    const safeUrl = url.replace(/[<&>"]/g, c => `&#${c.charCodeAt(0)};`);
-    const keys = TRANSPORTS.map(
-        t =>
-            `<button type="button" data-transport="${t}">${t === used ? `Try ${t} again` : `Try ${t}`}</button>`,
-    ).join("");
-
-    return `<!doctype html><meta charset="utf-8"><title>Can't connect</title>
-<style>${CONNECTION_ERROR_STYLE}</style>
-<main>
-  <h1>Can't reach ${safeUrl}</h1>
-  <p>The connection to Civil's proxy opened but never delivered the page${used ? ` over <code>${used}</code>` : ""}. Reloading won't help on its own, because the connection method has to change.</p>
-  <div class="rule"></div>
-  <p>Try another connection method.</p>
-  <p class="keys">${keys}</p>
-  <p class="muted">If every method fails, the network's filter is probably blocking Civil, not the site. <a href="/checkfilters" target="_top">Check this network</a></p>
-</main>
-<script>
-document.querySelectorAll("button[data-transport]").forEach(function (key) {
-  key.addEventListener("click", function () {
-    parent.postMessage({ type: "civil:nav-retry", transport: key.dataset.transport }, location.origin);
-  });
-});
-</script>`;
+/** The page (src/routes/connectionError.tsx) offering every method by hand. */
+function connectionErrorUrl(url: string, used?: TransportName): string {
+    const search = new URLSearchParams({ url, used: used ?? "" });
+    return `${window.location.origin}${CONNECTION_ERROR_PATH}?${search}`;
 }
 
 /** Tells the extensions a tab started loading `url`. */
@@ -143,15 +98,37 @@ function announceNavigationStart(id: string, url: string): void {
     ]);
 }
 
-/** Reports the visit, and shows the ban page if it got the user banned. */
+/** What /api/trackVisit says about a navigation. */
+type VisitVerdict = {
+    userBanned?: boolean;
+    banReason?: string | null;
+    /** The restricted host the server refused. Refused only: asking again
+     *  costs the student nothing. */
+    restricted?: string;
+};
+
+const banPageUrl = (reason: string) =>
+    `${window.location.origin}/ban?reason=${encodeURIComponent(reason)}`;
+
+/** Reports the visit, and shows the ban page for a restricted site or a ban. */
 function trackVisit(id: string, url: string, iframe: HTMLIFrameElement): void {
-    void fetch("/api/track-visit", {
+    void fetch("/api/trackVisit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: normalizeNav(url) }),
     })
         .then(res => res.json())
-        .then((data: { userBanned?: boolean; banReason?: string | null }) => {
+        .then((data: VisitVerdict) => {
+            if (data.restricted) {
+                tabManager.updateTab(id, {
+                    isLoading: false,
+                    title: "Site restricted",
+                });
+                iframe.src = banPageUrl(
+                    `${data.restricted} is restricted by this proxy`,
+                );
+                return;
+            }
             if (!data.userBanned) return;
             tabManager.updateTab(id, {
                 isLoading: false,
@@ -159,7 +136,7 @@ function trackVisit(id: string, url: string, iframe: HTMLIFrameElement): void {
             });
 
             if (!data.banReason) return;
-            iframe.src = `${window.location.origin}/ban?reason=${encodeURIComponent(data.banReason)}`;
+            iframe.src = banPageUrl(data.banReason);
         })
         .catch(() => {});
 }
@@ -223,9 +200,11 @@ function loadedHref(el: HTMLIFrameElement): string | undefined {
     try {
         href = el.contentWindow?.location.href;
     } catch {}
-    // `about:srcdoc` is the connection-error page: a Civil artefact, not
-    // somewhere the user went, so it stays out of history.
-    if (!href || href === "about:blank" || href === "about:srcdoc")
+    if (!href || href === "about:blank") return undefined;
+    // The connection error page is a Civil artefact, not somewhere the user
+    // went: it stays out of history, and the tab keeps the address that
+    // failed, ready to retry.
+    if (href.startsWith(`${window.location.origin}${CONNECTION_ERROR_PATH}`))
         return undefined;
     return href;
 }
@@ -326,9 +305,6 @@ class IframeManager {
         if (!iframe) return;
 
         this.clearNavTimer(id);
-        // A frame left holding the error page keeps rendering it: `srcdoc`
-        // outranks whatever `src` the proxy sets next.
-        iframe.removeAttribute("srcdoc");
         announceNavigationStart(id, url);
         tabManager.updateTab(id, { url, isLoading: true, title: "Loading…" });
 
@@ -371,8 +347,7 @@ class IframeManager {
                 isLoading: false,
                 title: "Can't connect",
             });
-            iframe.removeAttribute("src");
-            iframe.srcdoc = connectionErrorDoc(target, usedTransport(iframe));
+            iframe.src = connectionErrorUrl(target, usedTransport(iframe));
         }, seconds * 1000);
         this.navTimers.set(nav.id, timer);
     }

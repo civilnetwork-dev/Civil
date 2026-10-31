@@ -1,6 +1,7 @@
 /** Civil's own pages, by the `browser:` address the chrome shows for each. */
 export const BROWSER_URLS: Record<string, string> = {
-    "browser:newtab": `${window.location.origin}/newtab`,
+    "browser:newtab": `${window.location.origin}/newTab`,
+    "browser:checkfilters": `${window.location.origin}/checkFilters`,
     "browser:settings": `${window.location.origin}/settings`,
     "browser:history": `${window.location.origin}/history`,
     "browser:apps": `${window.location.origin}/apps`,
@@ -26,6 +27,7 @@ export function isNewtabUrl(url: string) {
     const newtab = BROWSER_URLS["browser:newtab"];
     return (
         url === newtab ||
+        // Sessions saved before the route was camelCased.
         url === `${window.location.origin}/newtab` ||
         url === "browser:newtab" ||
         url === "browser://newtab"

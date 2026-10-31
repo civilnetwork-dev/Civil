@@ -15,7 +15,9 @@ function RouteComponent() {
     const { reason } = Route.useSearch()();
     return (
         <>
-            <Title>Banned | Civil Proxy</Title>
+            {/* The page also shows a refused site, so the tab must not tell
+                a student who only asked for one that they are banned. */}
+            <Title>Blocked | Civil Proxy</Title>
             <Meta
                 name="description"
                 content="Access to this content has been restricted."

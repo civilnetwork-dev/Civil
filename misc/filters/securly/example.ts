@@ -1,15 +1,13 @@
-import { checkStatus } from "./broker";
-import { decodeSecurlyCategoryId } from "./categories";
+import { checkSecurlyFilter } from "./checker";
 
-const checkResult = await checkStatus({
+const result = await checkSecurlyFilter({
     useremail: "spstudent1@d11.org",
     host: "pornhub.com",
     extensionId: "ckecmkbnoanpgplccmnoikfmpcdladkc",
 });
 
-if (checkResult.isErr()) {
-    console.error(checkResult.error);
+if (result.isErr()) {
+    console.error(result.error);
 } else {
-    console.log(checkResult.value);
-    console.log(decodeSecurlyCategoryId(checkResult.value.categoryId!));
+    console.log(result.value);
 }

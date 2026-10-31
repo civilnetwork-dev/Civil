@@ -12,12 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppsRouteImport } from './routes/apps'
 import { Route as BanRouteImport } from './routes/ban'
-import { Route as BaninfoRouteImport } from './routes/baninfo'
+import { Route as BanInfoRouteImport } from './routes/banInfo'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
-import { Route as CheckfiltersRouteImport } from './routes/checkfilters'
+import { Route as CheckFiltersRouteImport } from './routes/checkFilters'
+import { Route as ConnectionErrorRouteImport } from './routes/connectionError'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as HistoryRouteImport } from './routes/history'
-import { Route as NewtabRouteImport } from './routes/newtab'
+import { Route as NewTabRouteImport } from './routes/newTab'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
 
@@ -36,9 +37,9 @@ const BanRoute = BanRouteImport.update({
   path: '/ban',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BaninfoRoute = BaninfoRouteImport.update({
-  id: '/baninfo',
-  path: '/baninfo',
+const BanInfoRoute = BanInfoRouteImport.update({
+  id: '/banInfo',
+  path: '/banInfo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookmarksRoute = BookmarksRouteImport.update({
@@ -46,9 +47,14 @@ const BookmarksRoute = BookmarksRouteImport.update({
   path: '/bookmarks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CheckfiltersRoute = CheckfiltersRouteImport.update({
-  id: '/checkfilters',
-  path: '/checkfilters',
+const CheckFiltersRoute = CheckFiltersRouteImport.update({
+  id: '/checkFilters',
+  path: '/checkFilters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectionErrorRoute = ConnectionErrorRouteImport.update({
+  id: '/connectionError',
+  path: '/connectionError',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExtensionsRoute = ExtensionsRouteImport.update({
@@ -61,9 +67,9 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NewtabRoute = NewtabRouteImport.update({
-  id: '/newtab',
-  path: '/newtab',
+const NewTabRoute = NewTabRouteImport.update({
+  id: '/newTab',
+  path: '/newTab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -81,12 +87,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
-  '/baninfo': typeof BaninfoRoute
+  '/banInfo': typeof BanInfoRoute
   '/bookmarks': typeof BookmarksRoute
-  '/checkfilters': typeof CheckfiltersRoute
+  '/checkFilters': typeof CheckFiltersRoute
+  '/connectionError': typeof ConnectionErrorRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
-  '/newtab': typeof NewtabRoute
+  '/newTab': typeof NewTabRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
 }
@@ -94,12 +101,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
-  '/baninfo': typeof BaninfoRoute
+  '/banInfo': typeof BanInfoRoute
   '/bookmarks': typeof BookmarksRoute
-  '/checkfilters': typeof CheckfiltersRoute
+  '/checkFilters': typeof CheckFiltersRoute
+  '/connectionError': typeof ConnectionErrorRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
-  '/newtab': typeof NewtabRoute
+  '/newTab': typeof NewTabRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
 }
@@ -108,12 +116,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/apps': typeof AppsRoute
   '/ban': typeof BanRoute
-  '/baninfo': typeof BaninfoRoute
+  '/banInfo': typeof BanInfoRoute
   '/bookmarks': typeof BookmarksRoute
-  '/checkfilters': typeof CheckfiltersRoute
+  '/checkFilters': typeof CheckFiltersRoute
+  '/connectionError': typeof ConnectionErrorRoute
   '/extensions': typeof ExtensionsRoute
   '/history': typeof HistoryRoute
-  '/newtab': typeof NewtabRoute
+  '/newTab': typeof NewTabRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
 }
@@ -123,12 +132,13 @@ export interface FileRouteTypes {
     | '/'
     | '/apps'
     | '/ban'
-    | '/baninfo'
+    | '/banInfo'
     | '/bookmarks'
-    | '/checkfilters'
+    | '/checkFilters'
+    | '/connectionError'
     | '/extensions'
     | '/history'
-    | '/newtab'
+    | '/newTab'
     | '/settings'
     | '/setup'
   fileRoutesByTo: FileRoutesByTo
@@ -136,12 +146,13 @@ export interface FileRouteTypes {
     | '/'
     | '/apps'
     | '/ban'
-    | '/baninfo'
+    | '/banInfo'
     | '/bookmarks'
-    | '/checkfilters'
+    | '/checkFilters'
+    | '/connectionError'
     | '/extensions'
     | '/history'
-    | '/newtab'
+    | '/newTab'
     | '/settings'
     | '/setup'
   id:
@@ -149,12 +160,13 @@ export interface FileRouteTypes {
     | '/'
     | '/apps'
     | '/ban'
-    | '/baninfo'
+    | '/banInfo'
     | '/bookmarks'
-    | '/checkfilters'
+    | '/checkFilters'
+    | '/connectionError'
     | '/extensions'
     | '/history'
-    | '/newtab'
+    | '/newTab'
     | '/settings'
     | '/setup'
   fileRoutesById: FileRoutesById
@@ -163,12 +175,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppsRoute: typeof AppsRoute
   BanRoute: typeof BanRoute
-  BaninfoRoute: typeof BaninfoRoute
+  BanInfoRoute: typeof BanInfoRoute
   BookmarksRoute: typeof BookmarksRoute
-  CheckfiltersRoute: typeof CheckfiltersRoute
+  CheckFiltersRoute: typeof CheckFiltersRoute
+  ConnectionErrorRoute: typeof ConnectionErrorRoute
   ExtensionsRoute: typeof ExtensionsRoute
   HistoryRoute: typeof HistoryRoute
-  NewtabRoute: typeof NewtabRoute
+  NewTabRoute: typeof NewTabRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
 }
@@ -196,11 +209,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof BanRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/baninfo': {
-      id: '/baninfo'
-      path: '/baninfo'
-      fullPath: '/baninfo'
-      preLoaderRoute: typeof BaninfoRouteImport
+    '/banInfo': {
+      id: '/banInfo'
+      path: '/banInfo'
+      fullPath: '/banInfo'
+      preLoaderRoute: typeof BanInfoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookmarks': {
@@ -210,11 +223,18 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof BookmarksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/checkfilters': {
-      id: '/checkfilters'
-      path: '/checkfilters'
-      fullPath: '/checkfilters'
-      preLoaderRoute: typeof CheckfiltersRouteImport
+    '/checkFilters': {
+      id: '/checkFilters'
+      path: '/checkFilters'
+      fullPath: '/checkFilters'
+      preLoaderRoute: typeof CheckFiltersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connectionError': {
+      id: '/connectionError'
+      path: '/connectionError'
+      fullPath: '/connectionError'
+      preLoaderRoute: typeof ConnectionErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/extensions': {
@@ -231,11 +251,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/newtab': {
-      id: '/newtab'
-      path: '/newtab'
-      fullPath: '/newtab'
-      preLoaderRoute: typeof NewtabRouteImport
+    '/newTab': {
+      id: '/newTab'
+      path: '/newTab'
+      fullPath: '/newTab'
+      preLoaderRoute: typeof NewTabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -259,12 +279,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppsRoute: AppsRoute,
   BanRoute: BanRoute,
-  BaninfoRoute: BaninfoRoute,
+  BanInfoRoute: BanInfoRoute,
   BookmarksRoute: BookmarksRoute,
-  CheckfiltersRoute: CheckfiltersRoute,
+  CheckFiltersRoute: CheckFiltersRoute,
+  ConnectionErrorRoute: ConnectionErrorRoute,
   ExtensionsRoute: ExtensionsRoute,
   HistoryRoute: HistoryRoute,
-  NewtabRoute: NewtabRoute,
+  NewTabRoute: NewTabRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
 }

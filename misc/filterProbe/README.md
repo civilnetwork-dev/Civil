@@ -80,16 +80,21 @@ after a vendor ships a release.
 After a filter has had its fifteen seconds on a proxied route, `detect.ts`
 asks the task's two questions of what the page became:
 
-1. **`location.href`** landed on one of the vendor's own domains: the filter
-   redirected the tab to its block page. Those domains are
+1. **`location.href`** landed on one of the vendor's own domains, or on one
+   of its block pages: the filter redirected the tab there. The domains are
    `filterVendorDomains` in `../filters/filterBlockerMiddleware.ts`, the same
-   list the proxy blocks, so the blocklist and the detector cannot drift.
+   list the proxy blocks, so the blocklist and the detector cannot drift. The
+   block pages (`blockPages` in `probeData.json`) matter most for the vendors
+   that keep theirs inside the extension, `chrome-extension://<id>/blocked.html`,
+   whose host is an extension id no domain list can name.
 2. **the page text** carries one of the vendor's block markers, or the
    vendor's name in a blocking phrase: the filter's content script blocked in
-   place. The markers are scraped from each vendor's own bundle by
-   `buildProbeData.ts` into `probeData.json`; the generic ones ("Access
-   Denied") are dropped, because the proxy route fetches a real third-party
-   site and those would false-positive.
+   place. The markers are what each vendor's block page actually says: for a
+   hosted page (Securly's `*.securly.com/blocked`, GoGuardian's
+   `blocked.goguardian.com`, ...) read from the newest Wayback Machine
+   captures across every subdomain, for an in-extension page read from the
+   bundle. Generic lines ("Access Denied") are left out, because the proxy
+   route fetches a real third-party site and those would false-positive.
 
 Attribution is never in doubt: exactly one filter is installed per run, so
 "flagged" is always "flagged by the vendor under test".
@@ -99,7 +104,7 @@ Attribution is never in doubt: exactly one filter is installed per run, so
 | File                  | Job                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------ |
 | `vendors.ts`          | The id→vendor map, display names, and each vendor's primary extension                                  |
-| `buildProbeData.ts`   | Scans the bundles → `probeData.json` (domains + block markers per vendor)                              |
+| `buildProbeData.ts`   | Writes `probeData.json` (domains, block pages, markers), then checks it against Wayback + bundles     |
 | `probeData.json`      | The committed answer; the bundles stay out of the repo                                                 |
 | `downloadBundles.ts`  | Fetches the raw bundles off Filter-Sources' `extensions.json` (Omaha + CRX)                            |
 | `detect.ts`           | Pure verdict: did vendor V flag this observation?                                                      |

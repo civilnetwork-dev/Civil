@@ -4,7 +4,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 
 const NewTabPage = clientOnly(() => import("~/components/NewTabPage.tsx"));
 
-export const Route = createFileRoute("/newtab")({
+export const Route = createFileRoute("/newTab")({
     component: RouteComponent,
 });
 

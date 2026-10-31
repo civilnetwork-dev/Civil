@@ -4,6 +4,7 @@ import {
     FILTER_CONFIGS,
     findFilterConfig,
     formatRetryAfter,
+    parseVerdict,
     prettifyFilterName,
 } from "./filterCheckVendors";
 
@@ -41,11 +42,36 @@ describe("FILTER_CONFIGS", () => {
         }
     });
 
-    it("exposes buildPayload and parseResult as functions on every vendor", () => {
+    it("exposes buildPayload as a function on every vendor", () => {
         for (const [key, config] of Object.entries(FILTER_CONFIGS)) {
             expect(typeof config.buildPayload, key).toBe("function");
-            expect(typeof config.parseResult, key).toBe("function");
         }
+    });
+});
+
+/** Every route answers misc/filters/verdict.ts's shape, so one reader. */
+describe("parseVerdict", () => {
+    it("reads a verdict as the ledger shows it", () => {
+        expect(
+            parseVerdict({
+                status: "blocked",
+                categories: ["Proxy & VPN"],
+                detail: "Blocked category: security.proxy.",
+                matched: ["security.proxy"],
+            }),
+        ).toEqual({
+            status: "blocked",
+            categories: ["Proxy & VPN"],
+            detail: "Blocked category: security.proxy.",
+        });
+    });
+
+    it("makes anything else an error row rather than a guess", () => {
+        expect(parseVerdict({ blocked: true }).status).toBe("error");
+        expect(parseVerdict({ status: "error", detail: "x" }).status).toBe(
+            "error",
+        );
+        expect(parseVerdict(null).status).toBe("error");
     });
 });
 
@@ -112,6 +138,17 @@ describe("prettifyFilterName", () => {
         for (const key of Object.keys(FILTER_CONFIGS)) {
             expect(prettifyFilterName(key).length, key).toBeGreaterThan(0);
         }
+    });
+
+    it("spaces camelCase IDs and keeps each vendor's own spelling", () => {
+        expect(prettifyFilterName("securlyClassroom")).toBe(
+            "Securly Classroom",
+        );
+        expect(prettifyFilterName("lightspeedFilterAgent")).toBe(
+            "Lightspeed Filter Agent",
+        );
+        expect(prettifyFilterName("goguardian")).toBe("GoGuardian");
+        expect(prettifyFilterName("iboss")).toBe("iboss");
     });
 });
 

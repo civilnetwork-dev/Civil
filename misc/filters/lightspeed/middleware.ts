@@ -1,8 +1,7 @@
 import type { Hono } from "hono";
 
 import { type AppEnv, readJsonBody } from "../../http";
-import { captureFilterCheck } from "../utils/captureFilter";
-import { respondFilterError } from "../utils/respondFilterError";
+import { respondFilterResult } from "../utils/respondFilterError";
 import {
     checkLightspeedFilter,
     type LightspeedCheckerOptions,
@@ -35,35 +34,6 @@ export function useLightspeedMiddleware(app: Hono<AppEnv>) {
             options,
         );
 
-        if (result.isErr()) {
-            return respondFilterError(c, "lightspeed", url, result.error);
-        }
-
-        const {
-            verdict,
-            blocked,
-            categories,
-            matchedCategory,
-            reason,
-            hostname,
-        } = result.value;
-
-        captureFilterCheck(c, "lightspeed", url, {
-            verdict,
-            blocked,
-            statusIsKnown: verdict !== "UNKNOWN",
-            matchedCategory,
-            categories,
-        });
-
-        return c.json({
-            verdict,
-            blocked,
-            statusIsKnown: verdict !== "UNKNOWN",
-            categories,
-            matchedCategory,
-            reason,
-            hostname,
-        });
+        return respondFilterResult(c, "lightspeed", url, result);
     });
 }

@@ -326,8 +326,9 @@ async fn proxy_stream(
         (total, per_host)
     };
 
-    // Check the hostname blacklist before DNS so a banned host always records a
-    // strike (matching the old JS behavior) and we skip a pointless lookup.
+    // Check the hostname blacklist before DNS so a banned host always reaches
+    // `on_blocked` and we skip a pointless lookup. run.ts passes no callback:
+    // a blocked host is refused, and nothing strikes for it.
     if filter::hostname_blocked(&opts, &hostname) {
         log::warn!("[{conn_id}] blocked stream to {hostname}:{port}");
         if let Some(ref cb) = on_blocked {

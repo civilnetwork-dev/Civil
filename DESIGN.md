@@ -136,7 +136,7 @@ Every UI icon exported from components/icons, drawn three times from one path so
 
 Large icons = Specimens (components/Specimen.tsx): palette-tinted tile, strata edge in own tone + grain, holding one glyph embossed by `#civil-emboss` filter declared once per document in Document.tsx. Hover specimen, or its link/button: tile tilt toward reader, glyph lift on own plane, sheen sweep once across face; keyboard focus same. Tile sit in still mount = actual hover target; at rest carry same transform functions as tilt at zero, so tilt interpolate smooth from first frame. Leaving, sheen snap out of view, no backward sweep.
 
-Standalone /newtab offer browser-entry link. Framed new-tab shortcuts use civil:navigate messages so parent tab history and title stay correct. Modified clicks keep native link behavior.
+Standalone /newTab offer browser-entry link. Framed new-tab shortcuts use civil:navigate messages so parent tab history and title stay correct. Modified clicks keep native link behavior.
 
 Filter chips (`chips`, `chip` in schematic.css.ts) = flat pills, talus hairline, one wrapping row under page lede; chosen chip (`aria-pressed="true"`) take scree face. Used by Apps catalog categories, History ranges (All time, Today, Last 7 days), Bookmarks scope (All, Recent), Settings jump links; links may.
 

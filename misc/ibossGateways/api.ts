@@ -41,7 +41,7 @@ async function getGateway(c: Context) {
 }
 
 /**
- * POST /api/iboss/submit-gateway
+ * POST /api/iboss/submitGateway
  * Body: { gatewayHost, leaId?, districtName?, securityKey?, port?, source? }
  * Validates the host shape, upserts by (host, leaId).
  */
@@ -100,6 +100,6 @@ async function submitGateway(c: Context) {
 export function createIbossGatewaysRouter() {
     const router = new Hono();
     router.get("/gateway", getGateway);
-    router.post("/submit-gateway", submitGateway);
+    router.post("/submitGateway", submitGateway);
     return router;
 }

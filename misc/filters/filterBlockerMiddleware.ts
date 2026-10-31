@@ -7,9 +7,10 @@ type Domain = `${string}.${string}`;
 
 /**
  * The registrable domains each tracked filter vendor phones home to:
- * telemetry, policy fetch, classification, licensing. Blocking them at the
- * proxy is what keeps a filter extension from reporting the session or
- * pulling down a fresh block-list mid-flight.
+ * telemetry, policy fetch, classification, licensing. This middleware only
+ * rejects matching Host headers on requests that reach Civil. It cannot
+ * intercept an installed extension's direct requests to its own backend or
+ * prevent privileged DOM inspection; the filter audit documents those paths.
  *
  * Grouped by *vendor*, not by extension id: several vendors ship two or three
  * extensions (Cisco's Security/Umbrella, Lightspeed's Filter/Insight,

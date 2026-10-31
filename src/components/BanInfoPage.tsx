@@ -4,51 +4,40 @@ import { IconBan, IconLoader } from "~/components/icons";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
-import StrikeGauge from "~/components/StrikeGauge";
-import { createViolationsStatus } from "~/lib/violations";
+import { createBanStatus } from "~/lib/banStatus";
 
 import * as s from "~/styles/BanInfoPage.css";
 import * as schematic from "~/styles/schematic.css";
 
 const PAGE_SIZE = 50;
 
+/** Only an administrator's ban shows here: asking for a site on the list is
+ *  refused, never counted. */
 function StatusSection() {
-    const status = createViolationsStatus();
+    const status = createBanStatus();
 
     return (
-        <Show when={status()}>
+        <Show when={status()?.banned}>
             <div class={s.statusBlock}>
-                <Show
-                    when={status()!.banned}
-                    fallback={
-                        <StrikeGauge
-                            violations={status()!.violations}
-                            maxViolations={status()!.maxViolations}
-                        />
-                    }
-                >
-                    <div class={s.banned}>
-                        <IconBan size={20} class={s.bannedIcon} />
-                        <div class={s.bannedInfo}>
-                            <span class={s.bannedTitle}>
-                                Your account has been banned
+                <div class={s.banned}>
+                    <IconBan size={20} class={s.bannedIcon} />
+                    <div class={s.bannedInfo}>
+                        <span class={s.bannedTitle}>
+                            Your account has been banned
+                        </span>
+                        <Show when={status()!.banReason}>
+                            <span class={s.bannedDetail}>
+                                Reason: {status()!.banReason}
                             </span>
-                            <Show when={status()!.banReason}>
-                                <span class={s.bannedDetail}>
-                                    Reason: {status()!.banReason}
-                                </span>
-                            </Show>
-                            <Show when={status()!.bannedAt}>
-                                <span class={s.bannedDetail}>
-                                    Banned on:{" "}
-                                    {new Date(
-                                        status()!.bannedAt!,
-                                    ).toLocaleString()}
-                                </span>
-                            </Show>
-                        </div>
+                        </Show>
+                        <Show when={status()!.bannedAt}>
+                            <span class={s.bannedDetail}>
+                                Banned on:{" "}
+                                {new Date(status()!.bannedAt!).toLocaleString()}
+                            </span>
+                        </Show>
                     </div>
-                </Show>
+                </div>
             </div>
         </Show>
     );

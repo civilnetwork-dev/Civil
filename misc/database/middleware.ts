@@ -1,7 +1,8 @@
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 
 import { type AppEnv, clientIp, readJsonBody } from "../http";
 import { auth } from "./auth";
+import { matchBannedDomain } from "./bannedDomains";
 import { yoga } from "./graphql";
 import { getUser, isUserBanned } from "./models/user";
 import { recordVisit } from "./models/visit";
@@ -30,50 +31,66 @@ function dropEmptyBody(request: Request): Request {
     });
 }
 
+/**
+ * Records a navigation the student asked for in a tab. A restricted site is
+ * not recorded: the answer names it instead, so the tab can say why rather
+ * than sit on the blank page the service worker's 403 leaves (it sees tab
+ * navigations as iframe loads). A restricted site is only ever refused, never
+ * held against the student: asking for one any number of times costs nothing.
+ */
+async function trackVisit(c: Context<AppEnv>) {
+    const session = await resolveSessionFromHeaders(c.req.raw.headers);
+    if (!session?.user)
+        return c.json(
+            {
+                ok: false,
+                userBanned: false,
+                banReason: null,
+                error: "unauthorized",
+            },
+            401,
+        );
+
+    const userId = (session.user as { id: string }).id;
+    if (await isUserBanned(userId)) {
+        const user = await getUser(userId);
+        return c.json({
+            ok: false,
+            userBanned: true,
+            banReason: user?.banReason ?? null,
+        });
+    }
+
+    const { url } = await readJsonBody<{ url: string }>(c);
+    if (!url)
+        return c.json(
+            {
+                ok: false,
+                userBanned: false,
+                banReason: null,
+                error: "url required",
+            },
+            400,
+        );
+
+    const restricted = matchBannedDomain(url);
+    if (restricted)
+        return c.json({
+            ok: false,
+            userBanned: false,
+            banReason: null,
+            restricted,
+        });
+
+    await recordVisit(userId, url, clientIp(c) ?? null);
+    return c.json({ ok: true, userBanned: false, banReason: null });
+}
+
 export function createDatabaseMiddleware() {
     const router = new Hono<AppEnv>();
 
     router.all("/api/auth/*", c => auth.handler(dropEmptyBody(c.req.raw)));
-
-    router.post("/api/track-visit", async c => {
-        const session = await resolveSessionFromHeaders(c.req.raw.headers);
-        if (!session?.user)
-            return c.json(
-                {
-                    ok: false,
-                    userBanned: false,
-                    banReason: null,
-                    error: "unauthorized",
-                },
-                401,
-            );
-
-        const userId = (session.user as { id: string }).id;
-        if (await isUserBanned(userId)) {
-            const user = await getUser(userId);
-            return c.json({
-                ok: false,
-                userBanned: true,
-                banReason: user?.banReason ?? null,
-            });
-        }
-
-        const { url } = await readJsonBody<{ url: string }>(c);
-        if (!url)
-            return c.json(
-                {
-                    ok: false,
-                    userBanned: false,
-                    banReason: null,
-                    error: "url required",
-                },
-                400,
-            );
-
-        await recordVisit(userId, url, clientIp(c) ?? null);
-        return c.json({ ok: true, userBanned: false, banReason: null });
-    });
-
+    router.post("/api/trackVisit", trackVisit);
     router.all("/graphql", c => yoga.fetch(c.req.raw));
 
     return router;

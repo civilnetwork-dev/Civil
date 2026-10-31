@@ -5,6 +5,11 @@
  * them being this table. It lives in lib/ rather than beside the component
  * because it is data and request-shaping, not rendering, and because vendor
  * APIs drift, so this is the file that changes when a checker breaks.
+ *
+ * What comes back needs no table: every `/filterCheck/*` route answers with
+ * the same verdict (misc/filters/verdict.ts), categories already in Civil's
+ * one vocabulary (misc/filters/categories.ts), so `parseVerdict` reads them
+ * all.
  */
 
 export type FilterStatus =
@@ -43,17 +48,49 @@ export function formatRetryAfter(seconds: number): string {
     return `in about ${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
+const VERDICT_STATUSES: ReadonlySet<unknown> = new Set<FilterStatus>([
+    "allowed",
+    "blocked",
+    "warned",
+    "unknown",
+]);
+
+/** A `/filterCheck/*` verdict, checked on the way in: anything else is an
+ *  error row, not a guess at what the vendor meant. */
+export function parseVerdict(
+    data: unknown,
+): Pick<FilterResult, "status" | "detail" | "categories"> {
+    const verdict = (data ?? {}) as {
+        status?: unknown;
+        detail?: unknown;
+        categories?: unknown;
+    };
+    if (
+        !VERDICT_STATUSES.has(verdict.status) ||
+        typeof verdict.detail !== "string"
+    )
+        return {
+            status: "error",
+            detail: "The check answered in a shape Civil doesn't know.",
+        };
+    return {
+        status: verdict.status as FilterStatus,
+        detail: verdict.detail,
+        categories: Array.isArray(verdict.categories)
+            ? verdict.categories.filter(
+                  (category): category is string =>
+                      typeof category === "string",
+              )
+            : [],
+    };
+}
+
 export type FilterConfig = {
     name: string;
     aliases: string[];
     needsEmail?: boolean;
     endpoint: string;
     buildPayload: (url: string, email: string) => Record<string, unknown>;
-    parseResult: (data: unknown) => {
-        status: FilterStatus;
-        detail: string;
-        categories?: string[];
-    };
 };
 
 const SECURLY_EXTENSION_ID = "ckecmkbnoanpgplccmnoikfmpcdladkc";
@@ -77,97 +114,24 @@ export const FILTER_CONFIGS: Record<string, FilterConfig> = {
                 extensionId: SECURLY_EXTENSION_ID,
             };
         },
-        parseResult: (data: any) => {
-            const dec = data?.decision;
-            const cats: string[] = Array.isArray(data?.categories)
-                ? (data.categories as string[])
-                : [];
-            if (dec?.allowed)
-                return {
-                    status: "allowed",
-                    detail: "Access allowed",
-                    categories: cats,
-                };
-            if (dec?.paused)
-                return {
-                    status: "warned",
-                    detail: "Access paused",
-                    categories: cats,
-                };
-            if (dec?.errored)
-                return {
-                    status: "error",
-                    detail: "Filter error",
-                    categories: cats,
-                };
-            if (!dec?.decisionIsKnown)
-                return {
-                    status: "unknown",
-                    detail: "Decision unknown",
-                    categories: cats,
-                };
-            return {
-                status: "blocked",
-                detail: "Access blocked",
-                categories: cats,
-            };
-        },
     },
     goguardian: {
         name: "GoGuardian",
         aliases: ["goguardian"],
         endpoint: "/filterCheck/goguardian",
         buildPayload: url => ({ url }),
-        parseResult: (data: any) => {
-            const keywords: string[] = Array.isArray(data?.matchedKeywords)
-                ? (data.matchedKeywords as string[])
-                : [];
-            if (!data?.statusIsKnown)
-                return { status: "unknown", detail: "Status unknown" };
-            const blocked = data?.blocked === false;
-            return {
-                status: blocked ? "blocked" : "allowed",
-                detail: blocked
-                    ? `Blocked${keywords.length ? ` - ${keywords.join(", ")}` : ""}`
-                    : "Allowed",
-            };
-        },
     },
     blocksi: {
         name: "Blocksi",
         aliases: ["blocksi"],
         endpoint: "/filterCheck/blocksi",
         buildPayload: url => ({ url }),
-        parseResult: (data: any) => ({
-            status: (data?.blocked
-                ? "blocked"
-                : data?.warned
-                  ? "warned"
-                  : "allowed") as FilterStatus,
-            detail:
-                (data?.reason as string | undefined) ??
-                (data?.blocked ? "Blocked" : "Allowed"),
-            categories: data?.categoryName
-                ? [data.categoryName as string]
-                : undefined,
-        }),
     },
     fortiguard: {
         name: "FortiGuard",
         aliases: ["fortiguard", "fortinet"],
         endpoint: "/filterCheck/fortiguard",
         buildPayload: url => ({ url }),
-        parseResult: (data: any) => ({
-            status: (data?.blocked
-                ? "blocked"
-                : data?.warned
-                  ? "warned"
-                  : "allowed") as FilterStatus,
-            detail: `Verdict: ${(data?.verdict as string | undefined) ?? "unknown"}`,
-            categories: data?.categoryName
-                ? [data.categoryName as string]
-                : undefined,
-        }),
     },
     linewize: {
         name: "Linewize",
@@ -175,26 +139,6 @@ export const FILTER_CONFIGS: Record<string, FilterConfig> = {
         needsEmail: true,
         endpoint: "/filterCheck/linewize",
         buildPayload: (url, email) => ({ url, identity: email }),
-        parseResult: (data: any) => {
-            const cats: string[] = Array.isArray(data?.categories)
-                ? (data.categories as string[])
-                : [];
-            if (!data?.verdictIsKnown)
-                return {
-                    status: "unknown",
-                    detail: "Verdict unknown",
-                    categories: cats,
-                };
-            return {
-                status: data?.blocked ? "blocked" : "allowed",
-                detail: data?.blocked ? "Blocked" : "Allowed",
-                categories: cats,
-            } satisfies {
-                status: FilterStatus;
-                detail: string;
-                categories: string[];
-            };
-        },
     },
     hapara: {
         name: "Hapara",
@@ -202,48 +146,6 @@ export const FILTER_CONFIGS: Record<string, FilterConfig> = {
         needsEmail: true,
         endpoint: "/filterCheck/hapara",
         buildPayload: (url, email) => ({ url, email }),
-        parseResult: (data: any) => {
-            const verdict = data?.verdict as string | undefined;
-            const parts: string[] = [];
-            if (data?.sessionType) parts.push(`session: ${data.sessionType}`);
-            if (data?.teacherName) parts.push(`teacher: ${data.teacherName}`);
-            if (data?.matchedDomain)
-                parts.push(`matched: ${data.matchedDomain}`);
-            const suffix = parts.length ? ` (${parts.join(", ")})` : "";
-
-            switch (verdict) {
-                case "BLOCKED":
-                    return {
-                        status: "blocked" as FilterStatus,
-                        detail: `Blocked${suffix}`,
-                    };
-                case "LOCKED":
-                    return {
-                        status: "blocked" as FilterStatus,
-                        detail: `Locked to teacher-approved tabs${suffix}`,
-                    };
-                case "PAUSED":
-                    return {
-                        status: "warned" as FilterStatus,
-                        detail: `Screen paused by teacher${suffix}`,
-                    };
-                case "ALLOWED":
-                    return {
-                        status: "allowed" as FilterStatus,
-                        detail: `Allowed${suffix}`,
-                    };
-                case "UNMONITORED":
-                    return {
-                        status: "allowed" as FilterStatus,
-                        detail: "Not monitored right now (outside monitoring hours)",
-                    };
-                default:
-                    return {
-                        status: "unknown" as FilterStatus,
-                        detail: "No active session - status unknown",
-                    };
-            }
-        },
     },
     iboss: {
         name: "iboss",
@@ -251,51 +153,12 @@ export const FILTER_CONFIGS: Record<string, FilterConfig> = {
         needsEmail: true,
         endpoint: "/filterCheck/iboss",
         buildPayload: (url, email) => ({ url, userEmail: email }),
-        parseResult: (data: any) => {
-            if (!data?.statusIsKnown) {
-                return {
-                    status: "unknown" as FilterStatus,
-                    detail: data?.needsSecurityKey
-                        ? "Gateway known, but a security key is needed for a live check"
-                        : data?.error
-                          ? `Filter error: ${String(data.error).slice(0, 80)}`
-                          : "Status unknown",
-                };
-            }
-            return {
-                status: (data?.blocked ? "blocked" : "allowed") as FilterStatus,
-                detail:
-                    (data?.reason as string | undefined) ??
-                    (data?.blocked ? "Blocked" : "Allowed"),
-                categories: data?.categoryName
-                    ? [data.categoryName as string]
-                    : undefined,
-            };
-        },
     },
     lightspeed: {
         name: "Lightspeed Filter",
         aliases: ["lightspeedfilter"],
         endpoint: "/filterCheck/lightspeed",
         buildPayload: url => ({ url }),
-        parseResult: (data: any) => {
-            const cats: string[] = Array.isArray(data?.categories)
-                ? (data.categories as string[])
-                : [];
-            if (!data?.statusIsKnown)
-                return {
-                    status: "unknown",
-                    detail: "Category unknown",
-                    categories: cats,
-                };
-            return {
-                status: data?.blocked ? "blocked" : "allowed",
-                detail: data?.blocked
-                    ? `Blocked${data?.matchedCategory ? ` - ${data.matchedCategory}` : ""}`
-                    : "Allowed",
-                categories: cats,
-            };
-        },
     },
 };
 
@@ -309,7 +172,28 @@ export function findFilterConfig(name: string): [string, FilterConfig] | null {
     return null;
 }
 
+/** Detected filter IDs (misc/config/service/filterDetect.ts) whose vendor
+ *  spells its name in a way splitting the camelCase can't recover. */
+const FILTER_NAMES: Record<string, string> = {
+    goguardian: "GoGuardian",
+    fortiguard: "FortiGuard",
+    contentkeeper: "ContentKeeper",
+    ckAuthenticatorG3: "ContentKeeper Authenticator G3",
+    iboss: "iboss",
+    lanschool: "LanSchool",
+    lanschoolWebHelper: "LanSchool Web Helper",
+    interclassFilteringService: "InterCLASS Filtering Service",
+    intersafeGatewayConnectionAgent: "InterSafe Gateway Connection Agent",
+    imtLazarus: "IMT Lazarus",
+    loiLoWebFilters: "LoiLo Web Filters",
+    netsupportSchoolStudent: "NetSupport School Student",
+    classroomdotcloudStudent: "classroom.cloud Student",
+    lockdownBrowser: "LockDown Browser",
+    lockdownBrowserAPClassroomEdition: "LockDown Browser AP Classroom Edition",
+};
+
 export function prettifyFilterName(key: string): string {
+    if (FILTER_NAMES[key]) return FILTER_NAMES[key];
     const spaced = key
         .replace(/([a-z\d])([A-Z])/g, "$1 $2")
         .replace(/[_-]+/g, " ")

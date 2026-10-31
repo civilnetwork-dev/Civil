@@ -35,19 +35,20 @@ export const CATEGORY_BIT_NAMES: Record<number, string> = {
     33: "Peer-to-peer / Illegal downloads",
     34: "Nudity / Partial nudity",
     35: "Lifestyle / Personal blogs",
-    36: "Non-cacheable / always re-broker",
     37: "Health / drugs classifier group",
     38: "Bullying / Cyberbullying",
     39: "Alcohol / Tobacco",
     40: "Safe-for-work Adult",
-    41: "Unknown high-order category",
 } as const;
 
+/** Bits that flag how to treat a page rather than say what it is about. */
 export const SHARED_BIT_NAMES: Record<number, string> = {
     16: "Shared classifier flag",
     23: "Shared app/content flag",
     25: "Shared web/content flag",
     26: "Shared known-site flag",
+    36: "Non-cacheable / always re-broker",
+    41: "Unknown high-order category",
     42: "Shared high-order classifier flag",
 } as const;
 

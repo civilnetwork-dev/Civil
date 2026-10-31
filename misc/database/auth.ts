@@ -19,6 +19,18 @@ export const auth = betterAuth({
     secret: requireEnv("BETTER_AUTH_SECRET"),
     baseURL: optionalEnv("BETTER_AUTH_URL", "http://localhost:9876"),
     basePath: "/api/auth",
+    // A POST that carries any cookie gets better-auth's Origin check, and
+    // PostHog and the ad scripts set cookies before the anonymous sign-in in
+    // __root.tsx runs. With only BETTER_AUTH_URL trusted, production answered
+    // that sign-in 403 INVALID_ORIGIN, so students went without a session and
+    // every trackVisit after it failed. Civil answers on whatever
+    // host it was reached by, so trust the request's own host. A cross-site
+    // Origin still fails.
+    trustedOrigins: request => {
+        if (!request) return [];
+        const { host } = new URL(request.url);
+        return [`https://${host}`, `http://${host}`];
+    },
     advanced: {
         database: {
             generateId: "uuid",

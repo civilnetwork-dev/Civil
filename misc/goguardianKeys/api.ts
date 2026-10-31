@@ -7,7 +7,7 @@ import { computeExtensionIdFromKey } from "../filters/goguardian/generateAuthTok
 import { readJsonBody } from "../http";
 
 /**
- * GET /api/goguardian/manifest-key?leaId=<leaId>
+ * GET /api/goguardian/manifestKey?leaId=<leaId>
  * Returns the known extensionId for a given school district LEA ID.
  */
 async function getManifestKey(c: Context) {
@@ -30,7 +30,7 @@ async function getManifestKey(c: Context) {
 }
 
 /**
- * POST /api/goguardian/submit-manifest-key
+ * POST /api/goguardian/submitManifestKey
  * Body: { manifestKey: string, leaId?: string, districtName?: string }
  * Computes extensionId from the key, upserts to DB, returns extensionId.
  */
@@ -69,7 +69,7 @@ async function submitManifestKey(c: Context) {
 
 export function createGoGuardianKeysRouter() {
     const router = new Hono();
-    router.get("/manifest-key", getManifestKey);
-    router.post("/submit-manifest-key", submitManifestKey);
+    router.get("/manifestKey", getManifestKey);
+    router.post("/submitManifestKey", submitManifestKey);
     return router;
 }

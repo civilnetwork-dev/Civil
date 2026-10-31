@@ -7,14 +7,7 @@ const result = await checkHaparaFilter({
 });
 
 if (result.isErr()) {
-    console.error("Filter check failed:", result.error);
-    process.exit(1);
+    console.error(result.error);
+} else {
+    console.log(result.value);
 }
-
-const r = result.value;
-console.log("URL:", r.inputUrl);
-console.log("Verdict:", r.verdict);
-console.log("Blocked:", r.verdict === "BLOCKED" || r.verdict === "LOCKED");
-console.log("Session:", r.sessionType ?? "none");
-console.log("Monitored:", r.monitored);
-console.log("Whitelisted:", r.whitelisted);

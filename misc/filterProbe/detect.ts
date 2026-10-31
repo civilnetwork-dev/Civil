@@ -19,7 +19,8 @@
  *      a real destination host to check the same way).
  *   2. `location.href`: a filter that blocks redirects the tab to its own
  *      block page, so a final URL whose host sits under one of the vendor's
- *      domains is the clearest DOM-observable "flagged".
+ *      domains, or on one of its `blockPages` (most live inside the
+ *      extension itself), is the clearest DOM-observable "flagged".
  *   3. a vendor block marker in the page text: a content script that blocks
  *      *in place* (rewrites the page or throws up an overlay) leaves its
  *      block-page wording behind. `pageText` is enriched with alt/aria/title
@@ -44,7 +45,7 @@ const PROBE_DATA = probeDataJson as ProbeData;
 
 /** What the sandbox reports back for one proxied route under one filter. */
 export interface PageObservation {
-    /** The route that was opened, e.g. "/newtab". */
+    /** The route that was opened, e.g. "/newTab". */
     route: string;
     /** `window.location.href` after the filter has had its fifteen seconds. */
     finalUrl: string;
@@ -75,6 +76,11 @@ export interface PageObservation {
 
 export type FlagSignal =
     | { kind: "redirect"; domain: string; finalHost: string }
+    /** The tab landed on one of the vendor's own block pages
+     *  (`probeData.json`'s `blockPages`): most filters keep theirs inside
+     *  the extension (`chrome-extension://<id>/blocked.html`), whose host is
+     *  an extension id no domain list can name. */
+    | { kind: "block-page"; page: string; finalUrl: string }
     | { kind: "marker"; marker: string }
     | { kind: "vendor-name"; phrase: string }
     /** GoGuardian only (misc/filterProbe/goguardianCheck.ts): its own
@@ -147,6 +153,37 @@ function probeFailed(observation: PageObservation): boolean {
     );
 }
 
+/**
+ * The vendor block page `url` is on, if any. A hosted page, `host/path`,
+ * matches that host or any subdomain with a path under it; an extension page,
+ * `chrome-extension:file`, matches that file in any extension, since the id
+ * differs per install and per locale folder.
+ */
+function blockPageOf(url: string, probe: VendorProbe): string | undefined {
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return undefined;
+    }
+    return probe.blockPages.find(page => {
+        if (page.startsWith("chrome-extension:"))
+            return (
+                parsed.protocol === "chrome-extension:" &&
+                parsed.pathname.endsWith(
+                    `/${page.slice("chrome-extension:".length)}`,
+                )
+            );
+        const slash = page.indexOf("/");
+        return (
+            hostUnderDomain(
+                parsed.hostname.toLowerCase(),
+                page.slice(0, slash),
+            ) && parsed.pathname.startsWith(page.slice(slash))
+        );
+    });
+}
+
 /** 1. The filter's own declarativeNetRequest rules, asked directly: a match
  *  here needed no rendered page and no wait at all. */
 function dnrSignal(
@@ -158,12 +195,15 @@ function dnrSignal(
     if (action === "redirect" && redirectUrl) {
         const finalHost = hostOf(redirectUrl);
         // Prefer the canonical probe domain when the redirect lands under
-        // one; otherwise the host itself is the finding: a DNR redirect
-        // nobody's curated yet, which is exactly the top-ranked case
-        // predictFix already has a suggestion for.
-        const domain =
-            probe.domains.find(d => hostUnderDomain(finalHost, d)) ?? finalHost;
-        return { kind: "redirect", domain, finalHost };
+        // one, then a known block page (one inside the extension has no
+        // domain to block); otherwise the host itself is the finding: a DNR
+        // redirect nobody's curated yet, which is exactly the top-ranked
+        // case predictFix already has a suggestion for.
+        const domain = probe.domains.find(d => hostUnderDomain(finalHost, d));
+        if (domain) return { kind: "redirect", domain, finalHost };
+        const page = blockPageOf(redirectUrl, probe);
+        if (page) return { kind: "block-page", page, finalUrl: redirectUrl };
+        return { kind: "redirect", domain: finalHost, finalHost };
     }
     if (action === "block" && matchedRuleId !== null) {
         return { kind: "dnr-block", matchedRuleId };
@@ -180,6 +220,18 @@ function redirectSignal(
     const finalHost = hostOf(observation.finalUrl);
     const domain = probe.domains.find(d => hostUnderDomain(finalHost, d));
     return domain ? { kind: "redirect", domain, finalHost } : undefined;
+}
+
+/** 2b. Sent to one of the vendor's own block pages that no vendor domain
+ *  covers: one inside its extension, or one on shared hosting. */
+function blockPageSignal(
+    observation: PageObservation,
+    probe: VendorProbe,
+): FlagSignal | undefined {
+    const page = blockPageOf(observation.finalUrl, probe);
+    return page
+        ? { kind: "block-page", page, finalUrl: observation.finalUrl }
+        : undefined;
 }
 
 /** 3. A vendor block marker in the page text. */
@@ -255,6 +307,7 @@ export function detectFlagging(
     const signal =
         dnrSignal(observation, probe) ??
         redirectSignal(observation, probe) ??
+        blockPageSignal(observation, probe) ??
         markerSignal(observation, probe) ??
         vendorNameSignal(observation, probe) ??
         domReplacedSignal(observation);

@@ -2,7 +2,7 @@ import { Meta, Title } from "@solidjs/meta";
 import { clientOnly } from "@solidjs/web";
 import { createFileRoute } from "@tanstack/solid-router";
 
-export const Route = createFileRoute("/checkfilters")({
+export const Route = createFileRoute("/checkFilters")({
     component: RouteComponent,
 });
 

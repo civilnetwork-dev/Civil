@@ -32,8 +32,8 @@ const CIVIL_DIR = join(import.meta.dirname, "..", "..");
 
 function observe(partial: Partial<PageObservation>): PageObservation {
     return {
-        route: "/newtab",
-        finalUrl: "https://abc123.mooo.com/newtab",
+        route: "/newTab",
+        finalUrl: "https://abc123.mooo.com/newTab",
         pageText: "Civil: new tab",
         originalLength: 20,
         status: 200,
@@ -212,6 +212,85 @@ describe("detectFlagging declarativeNetRequest", () => {
     });
 });
 
+/**
+ * Most filters block by sending the tab to a page inside their own extension,
+ * whose host is an extension id no domain list can name. Before `blockPages`
+ * the redirect check missed every one of them.
+ */
+describe("detectFlagging block pages", () => {
+    it("flags a tab sent to the block page inside the vendor's extension", () => {
+        const finalUrl =
+            "chrome-extension://ponmlkjihgfedcba/blocked.html?index=2";
+        const verdict = detectFlagging(observe({ finalUrl }), "lanschool");
+        expect(verdict.signal).toEqual({
+            kind: "block-page",
+            page: "chrome-extension:blocked.html",
+            finalUrl,
+        });
+    });
+
+    it("flags a hosted block page on shared hosting no vendor domain covers", () => {
+        const finalUrl =
+            "https://lsrelay-config-production.s3.amazonaws.com/050d6872/block_screen.html";
+        expect(
+            detectFlagging(observe({ finalUrl }), "lightspeed").signal?.kind,
+        ).toBe("block-page");
+    });
+
+    it("leaves another vendor's extension page alone", () => {
+        const finalUrl = "chrome-extension://ponmlkjihgfedcba/options.html";
+        expect(detectFlagging(observe({ finalUrl }), "lanschool").flagged).toBe(
+            false,
+        );
+    });
+
+    it("names a declarativeNetRequest redirect into the extension's own block page", () => {
+        const redirectUrl =
+            "chrome-extension://abcdefghijklmnop/blockPage.html";
+        const verdict = detectFlagging(
+            observe({
+                dnrMatch: { action: "redirect", matchedRuleId: 4, redirectUrl },
+            }),
+            "blocksi",
+        );
+        expect(verdict.signal).toEqual({
+            kind: "block-page",
+            page: "chrome-extension:blockPage.html",
+            finalUrl: redirectUrl,
+        });
+    });
+});
+
+/** probeData.json against what vendors' block pages really say and where they
+ *  really are: buildProbeData.ts says where each was read. */
+describe("probe data from the real block pages", () => {
+    it("reads Securly's real block page, as the Wayback Machine has it", () => {
+        // Lines every one of the twelve newest *.securly.com/blocked captures
+        // (Oct–Nov 2025) shares.
+        const pageText = [
+            "Blocked Page",
+            "Looks like this page isn't allowed",
+            "This page has been blocked.",
+            "Blocking details",
+            "Reason: Blocked by Category",
+            "Refer to KB article for explanation of blocking details",
+        ].join("\n");
+        const verdict = detectFlagging(observe({ pageText }), "securly");
+        expect(verdict.signal).toEqual({
+            kind: "marker",
+            marker: "Looks like this page isn't allowed",
+        });
+    });
+
+    it("writes every block page as host/path or chrome-extension:file", () => {
+        for (const vendor of VENDORS)
+            for (const page of PROBE_DATA[vendor]!.blockPages)
+                expect(page, vendor).toMatch(
+                    /^(chrome-extension:[\w./-]+|[a-z0-9.-]+\.[a-z]+\/[\w./-]*)$/,
+                );
+    });
+});
+
 describe("detectFlagging page shrinkage", () => {
     it("flags a page that collapsed to a short fraction of what was served, even with no known marker", () => {
         const pageText = "Access is not permitted here.";
@@ -328,14 +407,14 @@ describe("sandbox observeRoute", () => {
         const observation = await observeRoute({
             extensionDir: dir,
             baseUrl: "https://abc.mooo.com",
-            route: "/newtab",
+            route: "/newTab",
             waitMs: 0,
             fetchImpl: (async () =>
                 new Response("<body>Civil new tab</body>", {
                     status: 200,
                 })) as unknown as typeof fetch,
         });
-        expect(observation.route).toBe("/newtab");
+        expect(observation.route).toBe("/newTab");
         expect(observation.pageText).toContain("Civil new tab");
         expect(detectFlagging(observation, "securly").flagged).toBe(false);
     });
@@ -345,7 +424,7 @@ describe("sandbox observeRoute", () => {
         const observation = await observeRoute({
             extensionDir: dir,
             baseUrl: "https://abc.mooo.com",
-            route: "/newtab",
+            route: "/newTab",
             waitMs: 0,
             fetchImpl: (async () =>
                 new Response(
@@ -367,7 +446,7 @@ describe("sandbox observeRoute verdicts", () => {
         const observation = await observeRoute({
             extensionDir: dir,
             baseUrl: "https://dnr-blocked.example",
-            route: "/newtab",
+            route: "/newTab",
             waitMs: 0,
             fetchImpl: (async () =>
                 new Response("<body>irrelevant</body>", {
@@ -390,7 +469,7 @@ describe("sandbox observeRoute verdicts", () => {
         const observation = await observeRoute({
             extensionDir: dir,
             baseUrl: "https://abc.mooo.com",
-            route: "/newtab",
+            route: "/newTab",
             waitMs: 0,
             fetchImpl: (async () => {
                 throw new Error("ECONNRESET");
@@ -415,7 +494,7 @@ describe.skipIf(!haveBundles)("real filter bundles", () => {
         return observeRoute({
             extensionDir: dir,
             baseUrl: "https://probe.mooo.com",
-            route: "/newtab",
+            route: "/newTab",
             waitMs: 0,
             fetchImpl: (async () =>
                 new Response(`<body>${body}</body>`, {

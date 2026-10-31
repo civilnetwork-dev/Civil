@@ -2,9 +2,14 @@ import { err, ok, type Result, ResultAsync } from "neverthrow";
 import xior, { type XiorInstance } from "xior";
 import { z } from "zod";
 
+import { toCategories } from "../categories";
+import {
+    type FilterError,
+    type FilterStatus,
+    type FilterVerdict,
+    toFilterError,
+} from "../verdict";
 import { getCachedClientKey } from "./generateClientKey";
-
-export type Verdict = "ALLOW" | "BLOCK" | "WARN" | "UNKNOWN";
 
 export type FortiGuardCheckerConfig = {
     clientKey?: string;
@@ -20,22 +25,6 @@ export type FortiGuardCheckerConfig = {
     blockCategories?: readonly number[];
     warnCategories?: readonly number[];
     http?: XiorInstance;
-};
-
-type FortiGuardCheckResult = {
-    url: string;
-    normalizedUrl: string;
-    hostname: string;
-    verdict: Verdict;
-    allowed: boolean;
-    blocked: boolean;
-    warned: boolean;
-    categoryId: number | null;
-    categoryName: string;
-    categoryGroup: string;
-    source: "fortiguard";
-    resolvedConfig: ResolvedFortiGuardConfig;
-    raw: unknown;
 };
 
 export type ResolvedFortiGuardConfig = {
@@ -495,20 +484,22 @@ export function createFortiGuardChecker(
 
     const checkUrl = (
         input: string | URL,
-    ): ResultAsync<FortiGuardCheckResult, FortiGuardCheckerError> => {
-        return resolveConfig().andThen(resolvedConfig =>
-            ResultAsync.fromPromise(
-                requestRating(input, resolvedConfig, http),
-                (cause): FortiGuardCheckerError => ({
-                    type: "NETWORK_ERROR",
-                    message:
-                        cause instanceof Error
-                            ? cause.message
-                            : "FortiGuard request failed",
-                    cause,
-                }),
-            ).andThen(raw => parseRating(input, raw, resolvedConfig)),
-        );
+    ): ResultAsync<FilterVerdict, FilterError> => {
+        return resolveConfig()
+            .andThen(resolvedConfig =>
+                ResultAsync.fromPromise(
+                    requestRating(input, resolvedConfig, http),
+                    (cause): FortiGuardCheckerError => ({
+                        type: "NETWORK_ERROR",
+                        message:
+                            cause instanceof Error
+                                ? cause.message
+                                : "FortiGuard request failed",
+                        cause,
+                    }),
+                ).andThen(raw => parseRating(input, raw, resolvedConfig)),
+            )
+            .mapErr(toFilterError);
     };
 
     return { checkUrl, resolveConfig };
@@ -698,7 +689,7 @@ function parseRating(
     originalInput: string | URL,
     raw: unknown,
     config: ResolvedFortiGuardConfig,
-): Result<FortiGuardCheckResult, FortiGuardCheckerError> {
+): Result<FilterVerdict, FortiGuardCheckerError> {
     const rating = extractRating(raw);
     if (rating.isErr()) return err(rating.error);
     const data = rating.value;
@@ -711,29 +702,25 @@ function parseRating(
     const fallbackUrl = normalizeUrl(originalInput);
     if (fallbackUrl.isErr()) return err(fallbackUrl.error);
 
-    const ratedUrl =
-        typeof data === "object" && data.url
-            ? normalizeUrl(data.url).unwrapOr(fallbackUrl.value)
-            : fallbackUrl.value;
-
     const category =
         categoryId == null ? undefined : FORTIGUARD_CATEGORIES[categoryId];
-    const verdict = decideVerdict(categoryId, config);
+    const status = decideStatus(categoryId, config);
+
+    if (categoryId == null)
+        return ok({
+            status,
+            categories: [],
+            detail: "FortiGuard returned no rating.",
+            matched: [],
+        });
 
     return ok({
-        url: ratedUrl.href,
-        normalizedUrl: ratedUrl.href,
-        hostname: ratedUrl.hostname,
-        verdict,
-        allowed: verdict === "ALLOW",
-        blocked: verdict === "BLOCK",
-        warned: verdict === "WARN",
-        categoryId,
-        categoryName: category?.name ?? "Unknown",
-        categoryGroup: category?.group ?? "Unknown",
-        source: "fortiguard",
-        resolvedConfig: config,
-        raw,
+        status,
+        categories: category ? toCategories([category.name]) : ["Other"],
+        detail: category
+            ? `FortiGuard rates it ${category.name} (${category.group}).`
+            : `FortiGuard rates it category ${categoryId}, which Civil has no name for.`,
+        matched: [],
     });
 }
 
@@ -768,17 +755,17 @@ function parseCategoryId(value: unknown): number | null {
     return null;
 }
 
-function decideVerdict(
+function decideStatus(
     categoryId: number | null,
     config: Pick<
         ResolvedFortiGuardConfig,
         "blockCategories" | "warnCategories"
     >,
-): Verdict {
-    if (categoryId == null) return "UNKNOWN";
-    if (config.blockCategories.includes(categoryId)) return "BLOCK";
-    if (config.warnCategories.includes(categoryId)) return "WARN";
-    return "ALLOW";
+): FilterStatus {
+    if (categoryId == null) return "unknown";
+    if (config.blockCategories.includes(categoryId)) return "blocked";
+    if (config.warnCategories.includes(categoryId)) return "warned";
+    return "allowed";
 }
 
 function ensureTrailingSlash(value: string): string {

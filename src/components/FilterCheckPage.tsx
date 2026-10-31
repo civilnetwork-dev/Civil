@@ -22,6 +22,7 @@ import {
     type FilterStatus,
     findFilterConfig,
     formatRetryAfter,
+    parseVerdict,
     prettifyFilterName,
 } from "~/lib/filterCheckVendors";
 import { checkFiltersNow } from "~/lib/swUtils";
@@ -93,7 +94,7 @@ async function checkFilter(
         return {
             filterKey: key,
             filterName: config.name,
-            ...config.parseResult(data),
+            ...parseVerdict(data),
         };
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Network error";
@@ -121,7 +122,7 @@ interface District {
 }
 
 async function fetchDistrict(): Promise<District | null> {
-    const locRes = await fetch("/api/ip-location");
+    const locRes = await fetch("/api/ipLocation");
     if (!locRes.ok) return null;
     const { lat, lon } = (await locRes.json()) as {
         lat: number;
@@ -129,7 +130,7 @@ async function fetchDistrict(): Promise<District | null> {
     };
 
     const distRes = await fetch(
-        `/api/school-districts/nearest?lat=${lat}&lon=${lon}`,
+        `/api/schoolDistricts/nearest?lat=${lat}&lon=${lon}`,
     );
     if (!distRes.ok) return null;
     return (await distRes.json()) as District;
@@ -140,7 +141,7 @@ async function submitAutoGateway(
     leaId: string,
     districtName: string | null,
 ) {
-    await fetch("/api/iboss/submit-gateway", {
+    await fetch("/api/iboss/submitGateway", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -178,7 +179,7 @@ async function lookupManifestKey(
     onMissing: () => void,
 ) {
     const keyRes = await fetch(
-        `/api/goguardian/manifest-key?leaId=${encodeURIComponent(leaId)}`,
+        `/api/goguardian/manifestKey?leaId=${encodeURIComponent(leaId)}`,
     );
     if (keyRes.ok) {
         const { extensionId } = (await keyRes.json()) as {
@@ -250,15 +251,6 @@ function reportCompleted(
     urlHostname: string,
     durationMs: number,
 ) {
-    for (const result of mapped) {
-        if (result.status === "error") {
-            window.posthog?.captureException(
-                new Error(`filter_check_error: ${result.filterKey}`),
-                { extra: { detail: result.detail } },
-            );
-        }
-    }
-
     window.posthog?.capture("filter_check_completed", {
         url_hostname: urlHostname,
         duration_ms: durationMs,
@@ -562,7 +554,11 @@ function DetectedFilters(props: { detected: string[] }) {
                     fallback={<Anno muted>None detected</Anno>}
                 >
                     <For each={props.detected} keyed={false}>
-                        {f => <span class={s.specimenChip}>{f()}</span>}
+                        {f => (
+                            <span class={s.specimenChip}>
+                                {prettifyFilterName(f())}
+                            </span>
+                        )}
                     </For>
                 </Show>
             </div>

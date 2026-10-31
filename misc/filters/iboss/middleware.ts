@@ -2,8 +2,17 @@ import type { Context, Hono } from "hono";
 
 import { getLatestIbossGateway } from "../../database/models/ibossGateway";
 import { type AppEnv, readJsonBody } from "../../http";
-import { captureFilterCheck, captureFilterError } from "../utils/captureFilter";
+import { respondFilterResult } from "../utils/respondFilterError";
+import type { FilterVerdict } from "../verdict";
 import { createIbossFilterChecker, type IbossCheckerOptions } from "./checker";
+
+/** A district Civil can't ask iboss about yet: no check ran, so no verdict. */
+const unchecked = (detail: string): FilterVerdict => ({
+    status: "unknown",
+    categories: [],
+    detail,
+    matched: [],
+});
 
 /**
  * District mode: resolves the stored gateway + key by LEA id. Answers with a
@@ -17,22 +26,18 @@ async function withDistrictGateway(
     const row = await getLatestIbossGateway(leaId);
     if (!row) {
         return c.json(
-            {
-                statusIsKnown: false,
-                error: "No iboss gateway for this district",
-            },
-            404,
+            unchecked("Civil hasn't found this district's iboss gateway yet."),
         );
     }
 
     // Host known, but categorization needs the account key, which
     // auto-detection can't obtain. Surface as "unknown", not an error.
     if (!row.securityKey) {
-        return c.json({
-            statusIsKnown: false,
-            needsSecurityKey: true,
-            gatewayHost: row.gatewayHost,
-        });
+        return c.json(
+            unchecked(
+                `Gateway known (${row.gatewayHost}), but a live check needs the district's security key.`,
+            ),
+        );
     }
 
     return {
@@ -57,21 +62,8 @@ async function checkIboss(
         );
     }
 
-    const ibossCheckResult =
-        await createIbossFilterChecker(options).checkUrl(url);
-
-    if (ibossCheckResult.isErr()) {
-        captureFilterError(c, "iboss", url, ibossCheckResult.error);
-        return c.json(
-            {
-                statusIsKnown: false,
-                error: ibossCheckResult.error.message,
-            },
-            502,
-        );
-    }
-    captureFilterCheck(c, "iboss", url, { result: ibossCheckResult.value });
-    return c.json({ statusIsKnown: true, ...ibossCheckResult.value });
+    const result = await createIbossFilterChecker(options).checkUrl(url);
+    return respondFilterResult(c, "iboss", url, result);
 }
 
 /**

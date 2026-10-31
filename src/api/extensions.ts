@@ -658,7 +658,7 @@ function compareVersions(a: string, b: string): number {
  * direct browser fetch is blocked; the server relays it instead.
  */
 function extProxyFetch(target: string): Promise<Response> {
-    return fetch(`/api/ext-proxy?url=${encodeURIComponent(target)}`);
+    return fetch(`/api/extProxy?url=${encodeURIComponent(target)}`);
 }
 
 /**

@@ -3,6 +3,13 @@ import { WebSocket } from "ws";
 import xior, { type XiorError } from "xior";
 import { z } from "zod";
 
+import {
+    type FilterError,
+    type FilterStatus,
+    type FilterVerdict,
+    toFilterError,
+} from "../verdict";
+
 export type HaparaSessionType = "filter" | "focus" | "lock" | "pausescreen";
 export type HaparaFocusType = "whole_site" | "links";
 
@@ -508,6 +515,13 @@ function fetchHaparaBusState(
 export function checkHaparaFilter(
     input: HaparaCheckInput,
     options: HaparaCheckerOptions = {},
+): ResultAsync<FilterVerdict, FilterError> {
+    return decide(input, options).map(toVerdict).mapErr(toFilterError);
+}
+
+function decide(
+    input: HaparaCheckInput,
+    options: HaparaCheckerOptions,
 ): ResultAsync<HaparaCheckResult, HaparaError> {
     const normalizedUrlStr = normalizeHaparaUrl(input.url);
     let parsedUrl: URL;
@@ -557,6 +571,35 @@ export function checkHaparaFilter(
             input.url,
         ),
     );
+}
+
+/** Hāpara decides only inside a class session, so its answers are about the
+ *  session, never a category. */
+const VERDICTS: Record<HaparaVerdict, [FilterStatus, string]> = {
+    BLOCKED: ["blocked", "Blocked by the teacher's session"],
+    LOCKED: ["blocked", "Locked to the tabs the teacher allows"],
+    PAUSED: ["warned", "Screen paused by the teacher"],
+    ALLOWED: ["allowed", "Allowed by the teacher's session"],
+    UNMONITORED: [
+        "allowed",
+        "Not monitored right now, outside monitoring hours",
+    ],
+    NO_SESSION: ["unknown", "No class session is running, so nothing decides"],
+};
+
+function toVerdict(result: HaparaCheckResult): FilterVerdict {
+    const [status, label] = VERDICTS[result.verdict];
+    const parts = [
+        result.sessionType && `session: ${result.sessionType}`,
+        result.teacherName && `teacher: ${result.teacherName}`,
+        result.matchedDomain && `matched: ${result.matchedDomain}`,
+    ].filter(Boolean);
+    return {
+        status,
+        categories: [],
+        detail: parts.length ? `${label} (${parts.join(", ")}).` : `${label}.`,
+        matched: result.matchedDomain ? [result.matchedDomain] : [],
+    };
 }
 
 function fetchStudentState(

@@ -1,0 +1,15 @@
+diff --git a/dist/BareServer.js b/dist/BareServer.js
+index 7812fab9d1d92ab56992ea930d4d9e4144fff999..3ed09338aae6b973a454daba3d5bb8a4b1060a1a 100644
+--- a/dist/BareServer.js	
++++ b/dist/BareServer.js	
+@@ -277,6 +277,10 @@ class Server extends node_events_1.default {
+             const body = node_stream_1.Readable.fromWeb(response.body);
+             body.pipe(res);
+             res.on('close', () => body.destroy());
++            // A remote that drops mid-body errors `body`, which pipe() leaves
++            // unhandled and `res` open forever: the page's request hangs.
++            // Reset the client's response so its fetch fails at once.
++            body.on('error', () => res.destroy());
+         }
+         else
+             res.end();

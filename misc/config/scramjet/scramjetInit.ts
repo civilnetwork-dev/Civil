@@ -1,5 +1,9 @@
 /// <reference types="@mercuryworkshop/scramjet-controller" />
-import genProxyPath from "$config/shared/genProxyPath";
+import {
+    engineNames,
+    PROXY_PREFIX,
+    runtimeScripts,
+} from "$config/shared/runtimeScripts";
 import { decode, encode } from "$config/shared/xorCodec";
 
 declare global {
@@ -10,10 +14,17 @@ declare global {
     }
 }
 
-const { Controller } = $scramjetController;
-const proxyPath = genProxyPath("/", "scramjet");
-const spf = `${proxyPath}scramjet.`;
-const controllerPath = genProxyPath("/", "scramjetController");
+// misc/runtimeScripts.ts serves the bundles with their globals renamed, so
+// the upstream names are never defined here.
+const runtime = globalThis as unknown as Record<string, any>;
+const { Controller } = runtime[engineNames.controller];
+
+// bare-mux publishes its worker path here, and Aristotle Student reads the key
+// as a proxy marker. Nothing in Civil reads it back (see forgetBareMuxPath in
+// src/lib/swUtils.ts), so drop whatever an earlier visit left behind.
+try {
+    localStorage.removeItem("bare-mux-path");
+} catch {}
 
 // The controller copies these into every proxied frame and worker as source
 // text, which is why shared/xorCodec.ts keeps both functions self-contained.
@@ -43,7 +54,7 @@ async function buildTransport(key: string, wispUrl: string) {
     switch (key) {
         case "bare": {
             const { default: BareTransport } = await import(
-                `${location.origin}/bare-transport/index.mjs`
+                `${location.origin}/bareTransport/index.mjs`
             );
             const t = new BareTransport(new URL(`${location.origin}/bare/`));
             await t.init();
@@ -126,21 +137,30 @@ function createController(
     serviceworker: ServiceWorker,
     transport: Awaited<ReturnType<typeof createTransport>>,
 ) {
-    const { defaultConfig } = $scramjet;
+    const { defaultConfig } = runtime[engineNames.engine];
 
     return new Controller({
         serviceworker,
         transport,
         config: {
-            prefix: "/~/scramjet/",
-            scramjetPath: `${spf}js`,
-            injectPath: `${controllerPath}controller.inject.js`,
-            wasmPath: `${spf}wasm`,
-            virtualWasmPath: "scramjet.wasm.js",
+            prefix: PROXY_PREFIX,
+            scramjetPath: runtimeScripts.engine,
+            injectPath: runtimeScripts.frame,
+            wasmPath: runtimeScripts.wasm,
+            virtualWasmPath: engineNames.wasmScript,
             codec,
         },
         scramjetConfig: {
             ...defaultConfig,
+            // Rewritten page code calls these helpers by name, so every proxied
+            // frame defines them on its window: `$scramjet$wrap` and the rest.
+            // The engine takes the names from config, which lets them drop the
+            // engine's name.
+            globals: Object.fromEntries(
+                Object.entries(defaultConfig.globals as Record<string, string>)
+                    .map(([key, name]) => [key, name.replace("$scramjet", "$rt")]),
+            ),
+            maskedfiles: [engineNames.wasmScript],
             flags: {
                 ...defaultConfig.flags,
                 rewriterLogs: false,
@@ -156,6 +176,69 @@ function createController(
     });
 }
 
+function openCookieStore(name: string): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        // Version and store name are the controller's own: it opens the same
+        // database with the same schema.
+        const request = indexedDB.open(name, 1);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains("state")) {
+                request.result.createObjectStore("state");
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+function cookieRecord(
+    db: IDBDatabase,
+    mode: IDBTransactionMode,
+    use: (store: IDBObjectStore) => IDBRequest,
+): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+        const request = use(db.transaction("state", mode).objectStore("state"));
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ * The controller keeps proxied sites' cookies in IndexedDB. Earlier builds
+ * named that database after the engine, and Aristotle Student matches
+ * /scramjet/ against `indexedDB.databases()`. Move the saved cookies to the
+ * neutral name once, then delete the old database, so nobody loses a login.
+ */
+async function retireLegacyDatabase(): Promise<void> {
+    const { database, legacyDatabase } = engineNames;
+    try {
+        const known = await indexedDB.databases?.();
+        if (known && !known.some(db => db.name === legacyDatabase)) return;
+
+        const legacy = await openCookieStore(legacyDatabase);
+        const saved = await cookieRecord(legacy, "readonly", store =>
+            store.get("cookies"),
+        );
+        legacy.close();
+        if (saved) {
+            const current = await openCookieStore(database);
+            // Keep newer cookies if this build already saved some.
+            const existing = await cookieRecord(current, "readonly", store =>
+                store.get("cookies"),
+            );
+            if (!existing) {
+                await cookieRecord(current, "readwrite", store =>
+                    store.put(saved, "cookies"),
+                );
+            }
+            current.close();
+        }
+    } catch (error) {
+        console.warn("[civil] could not move saved cookies", error);
+    }
+    indexedDB.deleteDatabase(legacyDatabase);
+}
+
 async function initScramjet() {
     // Same check as registerSw in src/lib/swUtils.ts. Without it the first
     // read of navigator.serviceWorker throws a TypeError.
@@ -164,6 +247,8 @@ async function initScramjet() {
             "Service workers are not supported, so scramjet cannot start.",
         );
     }
+
+    await retireLegacyDatabase();
 
     const [registration, transport] = await Promise.all([
         navigator.serviceWorker.ready,

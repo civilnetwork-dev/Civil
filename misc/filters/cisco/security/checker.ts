@@ -1,5 +1,19 @@
-import { err, ok, type Result, ResultAsync } from "neverthrow";
+import {
+    err,
+    errAsync,
+    ok,
+    okAsync,
+    type Result,
+    ResultAsync,
+} from "neverthrow";
 import xior, { type XiorInstance } from "xior";
+
+import { toCategories } from "../../categories";
+import {
+    type FilterError,
+    type FilterVerdict,
+    toFilterError,
+} from "../../verdict";
 
 export type CiscoVerdict =
     | "POLICY_ALLOW"
@@ -504,48 +518,59 @@ function cacheKeyFor(hostname: string, config: CiscoCheckerConfig): string {
     ].join(":");
 }
 
+/**
+ * Only an authenticated policy lookup, or DNS landing on Umbrella's block
+ * page, is an answer. Without one, DoH resolving the name normally says
+ * nothing about policy, so it reads as unknown, never allowed: that read as
+ * allowed for pornhub.com once.
+ */
+function toVerdict(result: CiscoCheckResult): FilterVerdict {
+    return {
+        status: result.blocked
+            ? "blocked"
+            : result.authoritative && result.allowed
+              ? "allowed"
+              : "unknown",
+        categories: toCategories([result.category]),
+        detail: result.reason,
+        matched: result.ruleName ? [result.ruleName] : [],
+    };
+}
+
 export function createCiscoSecurityChecker(config: CiscoCheckerConfig = {}) {
     const dohServer = config.dohServer ?? DEFAULT_DOH_SERVER;
     const timeoutMs = config.timeoutMs ?? 10_000;
     const cacheTtlMs = config.cacheTtlMs ?? 60_000;
     const blockIpSet = config.blockIpSet ?? DEFAULT_BLOCK_IPS;
 
-    const client: XiorInstance = xior.create({
-        timeout: timeoutMs,
-    });
+    const client: XiorInstance = xior.create({ timeout: timeoutMs });
+    const cache = createMemoryCache<FilterVerdict>();
 
-    const cache = createMemoryCache<CiscoCheckResult>();
-
-    function checkUrl(
-        url: string,
-    ): ResultAsync<CiscoCheckResult, CiscoCheckerError> {
+    function checkUrl(url: string): ResultAsync<FilterVerdict, FilterError> {
         const normalized = normalizeUrl(url);
-
-        if (normalized.isErr()) {
-            return ResultAsync.fromSafePromise(
-                Promise.resolve(err(normalized.error)),
-            ).andThen(result => result);
-        }
+        if (normalized.isErr())
+            return errAsync(toFilterError(normalized.error));
 
         const normalizedUrl = normalized.value;
         const hostname = normalizedUrl.hostname.toLowerCase();
         const cacheKey = cacheKeyFor(hostname, config);
         const cached = cache.get(cacheKey);
+        if (cached) return okAsync(cached);
 
-        if (cached) {
-            return ResultAsync.fromSafePromise(Promise.resolve(cached));
-        }
-
-        return queryDns(client, dohServer, hostname).andThen(dns =>
-            queryPolicy(config, normalizedUrl).map(policy => {
-                const result = policy
+        const answer = (dns: CiscoDnsResponse) =>
+            queryPolicy(config, normalizedUrl).map(policy =>
+                policy
                     ? policyToCheckResult(url, normalizedUrl, policy, dns)
-                    : dnsToCheckResult(url, normalizedUrl, dns, blockIpSet);
-
-                cache.set(cacheKey, result, cacheTtlMs);
-                return result;
-            }),
-        );
+                    : dnsToCheckResult(url, normalizedUrl, dns, blockIpSet),
+            );
+        return queryDns(client, dohServer, hostname)
+            .andThen(answer)
+            .map(result => {
+                const verdict = toVerdict(result);
+                cache.set(cacheKey, verdict, cacheTtlMs);
+                return verdict;
+            })
+            .mapErr(toFilterError);
     }
 
     async function checkMany(urls: readonly string[]) {
@@ -556,9 +581,5 @@ export function createCiscoSecurityChecker(config: CiscoCheckerConfig = {}) {
         cache.clear();
     }
 
-    return {
-        checkUrl,
-        checkMany,
-        clearCache,
-    };
+    return { checkUrl, checkMany, clearCache };
 }

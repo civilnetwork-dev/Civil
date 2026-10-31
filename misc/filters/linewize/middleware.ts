@@ -1,8 +1,10 @@
 import type { Context, Hono } from "hono";
 
 import { type AppEnv, readJsonBody } from "../../http";
-import { captureFilterCheck } from "../utils/captureFilter";
-import { respondFilterError } from "../utils/respondFilterError";
+import {
+    respondFilterError,
+    respondFilterResult,
+} from "../utils/respondFilterError";
 import { createAutoLinewizeFilterChecker as createLinewizeFilterChecker } from "./checker";
 
 async function checkLinewize(c: Context<AppEnv>) {
@@ -26,25 +28,8 @@ async function checkLinewize(c: Context<AppEnv>) {
     }
 
     const checkResult = await linewizeCheckerResult.value.checkUrl({ url });
-
-    if (checkResult.isErr()) {
-        return respondFilterError(c, "linewize", url, checkResult.error, {
-            phase: "url_check",
-        });
-    }
-
-    const { verdict, categories, raw } = checkResult.value;
-    const verdictIsKnown = verdict !== "UNKNOWN";
-    captureFilterCheck(c, "linewize", url, {
-        blocked: verdict === "BLOCK",
-        verdictIsKnown,
-        categories,
-    });
-    return c.json({
-        blocked: verdict === "BLOCK",
-        verdictIsKnown,
-        categories,
-        raw,
+    return respondFilterResult(c, "linewize", url, checkResult, {
+        phase: "url_check",
     });
 }
 

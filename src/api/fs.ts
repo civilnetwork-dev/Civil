@@ -2,41 +2,6 @@ import { TFS } from "@terbiumos/tfs/browser";
 
 let _ready: Promise<TFS> | null = null;
 
-const STORE_FILE = ".TFS_STORE";
-
-// Default contents of the .TFS_STORE metadata file, matching what the
-// @terbiumos/tfs FS constructor seeds when the file is absent.
-const DEFAULT_STORE = {
-    "/.TFS_STORE": { perms: ["r"], uid: 0, gid: 0 },
-};
-
-/**
- * Seed the .TFS_STORE metadata file before any TFS operation runs.
- *
- * The @terbiumos/tfs FS constructor seeds this file in a promise nothing
- * awaits, so the first reads and writes on the /extensions page can land on the
- * OPFS handle while that seed is still in flight. That surfaces as an unhandled
- * NotReadableError, or a JSON parse error on a zero-byte store. Writing a valid
- * store here first, and closing the writable, means the constructor finds the
- * file already present and only reads it. A store that exists but is empty or
- * corrupt is repaired.
- */
-async function seedStore(root: FileSystemDirectoryHandle): Promise<void> {
-    const handle = await root.getFileHandle(STORE_FILE, { create: true });
-    const file = await handle.getFile();
-    if (file.size > 0) {
-        try {
-            JSON.parse(await file.text());
-            return;
-        } catch {
-            // Rewrite a truncated or corrupt store.
-        }
-    }
-    const writable = await handle.createWritable();
-    await writable.write(JSON.stringify(DEFAULT_STORE, null, 2));
-    await writable.close();
-}
-
 async function initTFS(): Promise<TFS> {
     if (typeof TFS !== "function") {
         const mod = await import("@terbiumos/tfs/browser");
@@ -60,21 +25,20 @@ async function initTFS(): Promise<TFS> {
         throw e;
     }
 
-    await seedStore(root);
-
+    // 1.1.0-dev.1 seeded its .TFS_STORE metadata in a promise nothing awaited,
+    // so this module wrote the store itself first. 1.1 queues the metadata
+    // load (now .TSD, migrating and deleting any .TFS_STORE) behind `ready`.
     const tfs = new TFS(root);
-    // Hand out the instance only once the store reads back, so no caller races
-    // the constructor's own metadata read.
-    await tfs.fs.promises.readFile(STORE_FILE, "utf8");
+    await tfs.ready;
     return tfs;
 }
 
 /**
- * Return the shared TFS instance, seeded and ready.
+ * Return the shared TFS instance, ready.
  *
  * Access is gated behind a single init promise: concurrent callers all await
- * the same ready instance, and none proceed before the .TFS_STORE seed
- * settles. A failed init is not cached, so a later call retries.
+ * the same ready instance, and none proceed before TFS's metadata loads. A
+ * failed init is not cached, so a later call retries.
  */
 export function getTFS(): Promise<TFS> {
     if (!_ready) {

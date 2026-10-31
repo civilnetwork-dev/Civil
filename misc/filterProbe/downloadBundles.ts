@@ -39,6 +39,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { XMLParser } from "fast-xml-parser";
 import { unzipSync } from "fflate";
 
 const EXTENSIONS_JSON_URL =
@@ -78,20 +79,14 @@ export function buildOmahaUrl(
  * around.
  */
 export function codebaseForApp(xml: string, id: string): string | undefined {
-    const appAt = xml.indexOf(`<app appid="${id}"`);
-    if (appAt === -1) return undefined;
-    const afterApp = xml.slice(appAt);
-    const ownEnd = afterApp.indexOf("</app>");
-    const nextApp = afterApp.indexOf(
-        "<app appid=",
-        `<app appid="${id}"`.length,
-    );
-    const boundary = [ownEnd, nextApp].filter(i => i >= 0);
-    const scoped = afterApp.slice(
-        0,
-        boundary.length ? Math.min(...boundary) : afterApp.length,
-    );
-    return /codebase="([^"]+)"/.exec(scoped)?.[1];
+    // GoGuardian, Hapara and Lightspeed use single-quoted XML attributes.
+    // Parse XML instead of depending on quote style or attribute order.
+    const parsed = new XMLParser({ ignoreAttributes: false }).parse(xml);
+    const apps = parsed?.gupdate?.app;
+    const entries = Array.isArray(apps) ? apps : [apps];
+    const app = entries.find(entry => entry?.["@_appid"] === id);
+    const codebase = app?.updatecheck?.["@_codebase"];
+    return typeof codebase === "string" ? codebase : undefined;
 }
 
 /**

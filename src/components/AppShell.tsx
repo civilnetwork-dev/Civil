@@ -17,12 +17,12 @@ import * as s from "~/styles/AppShell.css";
 type Destination = { path: string; label: string; icon: typeof IconWorld };
 
 const PLACES: Destination[] = [
-    { path: "/newtab", label: "New Tab", icon: IconWorld },
+    { path: "/newTab", label: "New Tab", icon: IconWorld },
     { path: "/apps", label: "Apps", icon: IconApps },
     { path: "/bookmarks", label: "Bookmarks", icon: IconBookmark },
     { path: "/history", label: "History", icon: IconClock },
     { path: "/extensions", label: "Extensions", icon: IconPuzzle },
-    { path: "/checkfilters", label: "Filter check", icon: IconSearch },
+    { path: "/checkFilters", label: "Filter check", icon: IconSearch },
 ];
 const SETTINGS: Destination = {
     path: "/settings",
@@ -84,10 +84,10 @@ export default function AppShell(props: { children: JSX.Element }) {
         <div class={s.shell}>
             <nav class={s.sidebar} aria-label="Civil">
                 <a
-                    href="/newtab"
+                    href="/newTab"
                     class={s.brand}
                     aria-label="Civil Proxy, New Tab"
-                    onClick={event => go(event, "/newtab")}
+                    onClick={event => go(event, "/newTab")}
                 >
                     <Wordmark width={164} />
                 </a>

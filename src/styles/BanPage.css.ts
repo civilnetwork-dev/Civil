@@ -90,12 +90,6 @@ export const reason = style({
     color: vars.color.firn,
 });
 
-export const gaugeSlot = style({
-    margin: "22px 0 0",
-    paddingTop: "18px",
-    borderTop: RULE.hair,
-});
-
 export const actions = style({
     display: "flex",
     alignItems: "center",
