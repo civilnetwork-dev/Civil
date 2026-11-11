@@ -460,6 +460,12 @@ server.on("upgrade", async (req: Request, socket: Socket, head: Buffer) => {
             wss.handleUpgrade(req, socket, head, ws => {
                 wss.emit("connection", ws, req);
             });
+        } else if (!req.url?.startsWith("/chii/")) {
+            // Chii answers its own upgrades from a listener of its own. Any
+            // other upgrade used to get no reply, and with an `upgrade`
+            // listener attached Node leaves the socket open until the client
+            // gives up.
+            socket.end("HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n");
         }
     } catch (err) {
         console.error("WebSocket upgrade error:", err);

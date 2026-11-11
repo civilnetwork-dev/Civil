@@ -57,9 +57,11 @@ function extensionTab(
 /**
  * A proxied navigation that never fires `load`.
  *
- * The transport can die *after* it initialises (epoxy's wisp socket comes back
- * `400 != 101` at connect time, long past `createTransport`'s init-time
- * fallback) and when it does, `sframe.go()` resolves, nothing loads, and the
+ * The transport can die *after* it initialises (the Wisp socket drops, or
+ * something between Civil and the student closes it, long past
+ * `createTransport`'s init-time fallback; the `400 != 101` errors PostHog
+ * shows are proxied sites refusing their own WebSockets, which is not this)
+ * and when it does, `sframe.go()` resolves, nothing loads, and the
  * tab sits on "Loading…" against a blank frame forever. Session replay shows
  * exactly what people do next: they hammer Reload, which re-runs the same dead
  * transport and changes nothing.

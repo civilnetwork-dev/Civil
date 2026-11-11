@@ -1,5 +1,5 @@
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 867dd5f4dce161a41f834e9902b0daed492fe41e..b321e92f10a8d78eb0ae356c79a5341077bfd11e 100644
+index 867dd5f4dce161a41f834e9902b0daed492fe41e..9d5905276d283207cc073ba9e3e30ba0dea40354 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -179,6 +179,9 @@ function makeMutClosure(arg0, arg1, dtor, f) {
@@ -12,13 +12,28 @@ index 867dd5f4dce161a41f834e9902b0daed492fe41e..b321e92f10a8d78eb0ae356c79a53410
      state.cnt++;
      try {
        return f(state.a, state.b, ...args);
-@@ -1558,6 +1561,9 @@ var EpoxyTransport = class {
+@@ -1558,13 +1561,22 @@ var EpoxyTransport = class {
        protocols,
        headersObj
      );
 +    // epoxy-tls already hands a failed connect to onerror, then rejects too.
 +    // Unhandled, that rejection reached PostHog once per refused WebSocket.
-+    ws.catch(() => {});
++    // send and close used to re-await it, and scramjet-controller calls them
++    // without awaiting (a page closes its socket once told the connect
++    // failed), so each call re-threw the same refusal, unhandled.
++    const opened = ws.catch(() => null);
++    const warn = (error) => console.warn("[epoxy] websocket", error);
      return [
        async (data) => {
          if (data instanceof Blob) data = await data.arrayBuffer();
+-        (await ws).send(data);
++        const socket = await opened;
++        if (socket) await socket.send(data).catch(warn);
+       },
+       async (code, reason) => {
+-        (await ws).close(code, reason || "");
++        const socket = await opened;
++        if (socket) await socket.close(code, reason || "").catch(warn);
+       }
+     ];
+   }

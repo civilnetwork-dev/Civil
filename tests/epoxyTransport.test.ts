@@ -112,6 +112,44 @@ class RefusingWispSocket {
     close() {}
 }
 
+/** Opens a page WebSocket through epoxy against a Wisp server that refuses it. */
+async function refusedConnect() {
+    vi.stubGlobal("WebSocket", RefusingWispSocket);
+
+    const { default: EpoxyTransport } =
+        await import("@mercuryworkshop/epoxy-transport");
+    const transport = new EpoxyTransport({ wisp: "ws://127.0.0.1:1/" });
+    await transport.init();
+
+    const onopen = vi.fn();
+    const onerror = vi.fn();
+    const [send, close] = transport.connect(
+        new URL("ws://example.com/"),
+        [],
+        [],
+        onopen,
+        () => {},
+        () => {},
+        onerror,
+    );
+    await vi.waitFor(() => expect(onerror).toHaveBeenCalled());
+    return { onopen, onerror, send, close };
+}
+
+/** Runs `body`, then returns every promise rejection nobody handled. */
+async function unhandledDuring(body: () => Promise<void>) {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+        await body();
+        await new Promise(resolve => setTimeout(resolve, 50));
+    } finally {
+        process.off("unhandledRejection", onUnhandled);
+    }
+    return unhandled;
+}
+
 /**
  * A proxied page's WebSocket goes out over a Wisp stream, and the remote
  * site answers the upgrade itself. Sites that refuse it (400, 404) used to
@@ -120,37 +158,30 @@ class RefusingWispSocket {
  */
 describe("epoxy transport when a site refuses a WebSocket", () => {
     it("reports the refusal through onerror and leaves nothing unhandled", async () => {
-        const unhandled: unknown[] = [];
-        const onUnhandled = (reason: unknown) => unhandled.push(reason);
-        process.on("unhandledRejection", onUnhandled);
+        let socket: Awaited<ReturnType<typeof refusedConnect>> | undefined;
+        const unhandled = await unhandledDuring(async () => {
+            socket = await refusedConnect();
+        });
 
-        vi.stubGlobal("WebSocket", RefusingWispSocket);
-
-        const { default: EpoxyTransport } =
-            await import("@mercuryworkshop/epoxy-transport");
-        const transport = new EpoxyTransport({ wisp: "ws://127.0.0.1:1/" });
-        await transport.init();
-
-        const onopen = vi.fn();
-        const onerror = vi.fn();
-        transport.connect(
-            new URL("ws://example.com/"),
-            [],
-            [],
-            onopen,
-            () => {},
-            () => {},
-            onerror,
+        expect(String(socket!.onerror.mock.calls[0]![0])).toContain(
+            "400 != 101",
         );
+        expect(socket!.onopen).not.toHaveBeenCalled();
+        expect(unhandled).toEqual([]);
+    });
 
-        try {
-            await vi.waitFor(() => expect(onerror).toHaveBeenCalled());
-            await new Promise(resolve => setTimeout(resolve, 50));
-            expect(String(onerror.mock.calls[0]![0])).toContain("400 != 101");
-            expect(onopen).not.toHaveBeenCalled();
-            expect(unhandled).toEqual([]);
-        } finally {
-            process.off("unhandledRejection", onUnhandled);
-        }
+    // The page's WebSocket shim closes (and may flush queued sends) once it
+    // hears of the failure, and scramjet-controller calls these without
+    // awaiting them. Each call re-awaited the failed connect and re-threw its
+    // error, so the refusal still reached PostHog as unhandled.
+    it("lets the page send and close on the refused socket", async () => {
+        const unhandled = await unhandledDuring(async () => {
+            const { send, close } = await refusedConnect();
+            void send(new ArrayBuffer(4));
+            void send(new Blob(["queued"]));
+            void close(1000, "");
+        });
+
+        expect(unhandled).toEqual([]);
     });
 });
