@@ -2,6 +2,7 @@
 import { hydrate } from "@solidjs/web";
 
 import { extensionsSyncExternalKeys } from "~/api/extensions";
+import { aliasRelayScript, RELAY_PATH } from "~/lib/analyticsRelay";
 import { onLsChange } from "~/lib/reactiveStorage";
 import { getSetting, needsSetup, SETTINGS } from "~/lib/settings";
 
@@ -100,12 +101,12 @@ async function applyAnalytics(): Promise<void> {
 
 function startPostHog(posthog: typeof import("posthog-js").default): void {
     // Capture goes through a same-origin path this app proxies to PostHog, so
-    // ad blockers cannot tell it from any other app request. The path must
-    // match POSTHOG_PROXY_PREFIX in misc/analytics/posthogProxy.ts. ui_host
-    // keeps toolbar and links pointing at the real PostHog UI.
+    // ad blockers cannot tell it from any other app request. ui_host keeps
+    // toolbar and links pointing at the real PostHog UI.
     posthog.init("phc_s9hZNR8XnWnFGHTCSJEZv79HL4hiFqCiRrVXKVboAU2f", {
-        api_host: `${window.location.origin}/api/relay`,
+        api_host: `${window.location.origin}${RELAY_PATH}`,
         ui_host: "https://us.posthog.com",
+        prepare_external_dependency_script: aliasRelayScript,
         defaults: "2026-08-30",
         // Nothing reads feature flags, so skip their billed evaluation; /flags
         // still runs and loads the remote config replay depends on.
