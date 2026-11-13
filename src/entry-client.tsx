@@ -2,7 +2,6 @@
 import { hydrate } from "@solidjs/web";
 
 import { extensionsSyncExternalKeys } from "~/api/extensions";
-import { aliasRelayScript, RELAY_PATH } from "~/lib/analyticsRelay";
 import { onLsChange } from "~/lib/reactiveStorage";
 import { getSetting, needsSetup, SETTINGS } from "~/lib/settings";
 
@@ -93,6 +92,12 @@ async function applyAnalytics(): Promise<void> {
     }
     if (!analyticsStarted) {
         analyticsStarted = true;
+        // Bundle the session recorder instead of letting the SDK fetch it at
+        // runtime. EasyPrivacy and AdGuard block `/posthog-recorder.js` on any
+        // host, relay included, so visitors with uBlock Origin sent events
+        // but never recorded a replay. Must load before init, or the SDK
+        // fetches the blocked file itself.
+        await import("posthog-js/dist/posthog-recorder");
         startPostHog(posthog);
     }
     // An opt-out persists in PostHog's own storage across visits.
@@ -101,12 +106,12 @@ async function applyAnalytics(): Promise<void> {
 
 function startPostHog(posthog: typeof import("posthog-js").default): void {
     // Capture goes through a same-origin path this app proxies to PostHog, so
-    // ad blockers cannot tell it from any other app request. ui_host keeps
-    // toolbar and links pointing at the real PostHog UI.
+    // ad blockers cannot tell it from any other app request. The path must
+    // match POSTHOG_PROXY_PREFIX in misc/analytics/posthogProxy.ts. ui_host
+    // keeps toolbar and links pointing at the real PostHog UI.
     posthog.init("phc_s9hZNR8XnWnFGHTCSJEZv79HL4hiFqCiRrVXKVboAU2f", {
-        api_host: `${window.location.origin}${RELAY_PATH}`,
+        api_host: `${window.location.origin}/api/relay`,
         ui_host: "https://us.posthog.com",
-        prepare_external_dependency_script: aliasRelayScript,
         defaults: "2026-08-30",
         // Nothing reads feature flags, so skip their billed evaluation; /flags
         // still runs and loads the remote config replay depends on.

@@ -10,22 +10,9 @@ import { type AppEnv, clientIp } from "../http";
  * same-origin path is served by this app, so a blocker cannot tell it apart
  * from any other app request.
  *
- * This value must match `RELAY_PATH` in `src/lib/analyticsRelay.ts`.
+ * This value must match `api_host` in `src/entry-client.tsx`.
  */
 const POSTHOG_PROXY_PREFIX = "/api/relay";
-
-/**
- * Neutral alias for `/static/`. A first-party host is not enough on its own:
- * EasyPrivacy and AdGuard Tracking Protection block the file name
- * `/posthog-recorder.js` on any host, so a visitor with uBlock Origin got
- * events but never loaded the session recorder, and no replay was stored.
- * The client sends every SDK script here as the base64url of its path under
- * `/static/` (`aliasRelayScript` in `src/lib/analyticsRelay.ts`).
- */
-const ASSET_ALIAS_PREFIX = "/asset/";
-/** An optional version folder, then a `.js` file name. No segment can be `.`
- *  or `..`, so a decoded alias cannot leave `/static/` on the assets host. */
-const ASSET_NAME = /^(?:[\w-][\w.-]*\/)?[\w-][\w.-]*\.js$/;
 
 /** PostHog capture, flags, session recording, and remote config. */
 const INGESTION_HOST = "https://us.i.posthog.com";
@@ -112,21 +99,6 @@ const NULL_BODY_STATUSES = new Set([204, 205, 304]);
  *  ever gets a say. */
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
-/** The upstream path for a relay path, or `undefined` when the relay must
- *  not forward it. */
-function upstreamPath(path: string): string | undefined {
-    if (path.startsWith(ASSET_ALIAS_PREFIX)) {
-        const name = Buffer.from(
-            path.slice(ASSET_ALIAS_PREFIX.length),
-            "base64url",
-        ).toString();
-        return ASSET_NAME.test(name) ? `/static/${name}` : undefined;
-    }
-    return ALLOWED_PREFIXES.some(prefix => path.startsWith(prefix))
-        ? path
-        : undefined;
-}
-
 function buildForwardHeaders(c: Context<AppEnv>): Headers {
     const headers = new Headers();
     c.req.raw.headers.forEach((value, name) => {
@@ -156,8 +128,10 @@ const UPSTREAM_TIMEOUT_MS = 10_000;
 
 async function relay(c: Context<AppEnv>): Promise<Response> {
     const url = new URL(c.req.url);
-    const path = upstreamPath(url.pathname.slice(POSTHOG_PROXY_PREFIX.length));
-    if (!path) return c.body(null, 404);
+    const path = url.pathname.slice(POSTHOG_PROXY_PREFIX.length);
+    if (!ALLOWED_PREFIXES.some(prefix => path.startsWith(prefix))) {
+        return c.body(null, 404);
+    }
     const upstream = path.startsWith("/static/") ? ASSETS_HOST : INGESTION_HOST;
     const hasBody = c.req.method !== "GET" && c.req.method !== "HEAD";
 

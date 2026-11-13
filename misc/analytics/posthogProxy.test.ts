@@ -83,38 +83,6 @@ describe("usePosthogProxy", () => {
     });
 });
 
-describe("usePosthogProxy asset alias", () => {
-    it("serves an aliased script from the assets host's /static/", async () => {
-        const fetchMock = vi
-            .fn()
-            .mockResolvedValue(new Response("ok", { status: 200 }));
-        vi.stubGlobal("fetch", fetchMock);
-        const alias = Buffer.from("posthog-recorder.js").toString("base64url");
-
-        const res = await relay(`/asset/${alias}?v=1.440.0`);
-
-        expect(res.status).toBe(200);
-        expect(fetchMock.mock.calls[0]?.[0]).toBe(
-            "https://us-assets.i.posthog.com/static/posthog-recorder.js?v=1.440.0",
-        );
-    });
-
-    it.each([
-        ["../flags/x.js", "a path that leaves /static/"],
-        ["array.json", "a file that is not a script"],
-        ["", "an empty name"],
-    ])("404s an alias of %s (%s)", async name => {
-        const fetchMock = vi.fn();
-        vi.stubGlobal("fetch", fetchMock);
-
-        const alias = Buffer.from(name).toString("base64url");
-        const res = await relay(`/asset/${alias}`);
-
-        expect(res.status).toBe(404);
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
-});
-
 describe("usePosthogProxy forwarded headers", () => {
     it("strips cookie and authorization from forwarded headers", async () => {
         const fetchMock = vi
