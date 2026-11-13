@@ -43,6 +43,14 @@ const allow = async (domain: string): Promise<Classification> => ({
     domain,
     blocked: false,
     by: [],
+    allowedBy: ["blocksi"],
+});
+
+const abstain = async (domain: string): Promise<Classification> => ({
+    domain,
+    blocked: false,
+    by: [],
+    allowedBy: [],
 });
 
 function tmp(): string {
@@ -59,8 +67,8 @@ describe("pickTunnelDomain", () => {
         ]);
         const classify = vi.fn(async (d: string): Promise<Classification> =>
             d === "blocked.com"
-                ? { domain: d, blocked: true, by: ["blocksi"] }
-                : { domain: d, blocked: false, by: [] },
+                ? { domain: d, blocked: true, by: ["blocksi"], allowedBy: [] }
+                : allow(d),
         );
 
         const picked = await pickTunnelDomain({
@@ -101,6 +109,27 @@ describe("pickTunnelDomain", () => {
 });
 
 describe("pickTunnelDomain choice", () => {
+    it("prefers an affirmative rating over an all-unknown candidate", async () => {
+        const picked = await pickTunnelDomain({
+            client: fakeClient([dom("rated.com", 1), dom("unknown.com", 2)]),
+            classify: domain =>
+                domain === "rated.com" ? allow(domain) : abstain(domain),
+            cacheDir: tmp(),
+            random: () => 0,
+            concurrency: 1,
+        });
+        expect(picked.name).toBe("rated.com");
+    });
+
+    it("keeps the fallback when all checkers abstain", async () => {
+        const picked = await pickTunnelDomain({
+            client: fakeClient([dom("unknown.com", 1)]),
+            classify: abstain,
+            cacheDir: tmp(),
+        });
+        expect(picked.name).toBe("unknown.com");
+    });
+
     it("randomises the pick among survivors", async () => {
         const domains = [dom("a.com", 1), dom("b.com", 2), dom("c.com", 3)];
         const low = await pickTunnelDomain({
@@ -125,6 +154,7 @@ describe("pickTunnelDomain choice", () => {
             domain: d,
             blocked: true,
             by: ["cisco"],
+            allowedBy: [],
         });
         await expect(
             pickTunnelDomain({ client, classify, cacheDir: tmp() }),
@@ -148,8 +178,8 @@ describe("pickTunnelDomain batches", () => {
         const classify = async (d: string): Promise<Classification> => {
             calls++;
             return calls < 5
-                ? { domain: d, blocked: true, by: ["securly"] }
-                : { domain: d, blocked: false, by: [] };
+                ? { domain: d, blocked: true, by: ["securly"], allowedBy: [] }
+                : allow(d);
         };
 
         const picked = await pickTunnelDomain({

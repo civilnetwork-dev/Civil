@@ -18,6 +18,10 @@ const TEST_ENV_DEFAULTS: Record<string, string> = {
     PATREON_CLIENT_ID: "test-client-id",
     PATREON_CLIENT_SECRET: "test-client-secret",
     IBOSS_SECURITY_KEY: "test-iboss-key",
+    // Optional ClassLink stays disabled unless a test configures a mock provider.
+    CLASSLINK_ISSUER: "",
+    CLASSLINK_CLIENT_ID: "",
+    CLASSLINK_CLIENT_SECRET: "",
 };
 
 for (const [key, value] of Object.entries(TEST_ENV_DEFAULTS)) {

@@ -48,6 +48,7 @@ import {
     WISP_TRAITS,
 } from "~/components/settingOptions";
 import Specimen, { type Glyph, type Tint } from "~/components/Specimen";
+import ClassLinkAccount from "~/components/ui/ClassLinkAccount";
 import { Wordmark } from "~/components/Wordmark";
 import {
     getSetting,
@@ -904,6 +905,9 @@ export default function SetupPage() {
                     </p>
                 </Show>
 
+                <Show when={phase() === "welcome"}>
+                    <ClassLinkAccount page="/setup" />
+                </Show>
                 <SetupFooter flow={flow} />
                 <Show when={phase() === "welcome"}>
                     <p class={s.why}>

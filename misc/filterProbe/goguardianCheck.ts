@@ -3,22 +3,9 @@
  * (misc/filters/goguardian/checker.ts) rather than the sandboxed-extension
  * path every other vendor here uses.
  *
- * GoGuardian's actual "smart filtering" isn't a live, per-page cloud
- * classification call: `checker.ts` shows it's authenticate once, download
- * the current proxy/threat keyword models, then match them *locally* against
- * the URL/title/text. That local match is what a real admin.js decides with,
- * so running it directly against Civil's real page content is a genuine
- * verdict, not a fabricated one: the same reasoning that already justified
- * `misc/filters/goguardian/middleware.ts`'s live `/filterCheck/goguardian`
- * endpoint using this exact license, per real request, in production. This
- * reuses that same, already-shipped call pattern; it isn't a new exposure.
- *
- * misc/extensionHost has no seeding hook this would even use: there is no
- * managed-storage gate here to get past and no content-script DOM state to
- * observe. GoGuardian's own admin.js (loaded harmlessly by the sandboxed
- * path for the other detection channels (redirects, DOM markers) still
- * gets its turn there too) never needed fixing; its actual decision logic
- * doesn't run where the sandbox could see it.
+ * The authenticated checker downloads legacy keyword models and scores the
+ * page locally. A hit gives the probe a keyword signal. Enforcement depends
+ * on school policy and is evaluated separately by the extension.
  */
 
 import { checkGoGuardianFilterAuthenticated } from "../filters/goguardian/checker";
@@ -102,9 +89,8 @@ export async function checkGoGuardianRoute(
         );
     }
 
-    const { status, matched } = result.value;
-    if (status !== "blocked")
-        return { vendor: "goguardian", route, flagged: false };
+    const { matched } = result.value;
+    if (!matched.length) return { vendor: "goguardian", route, flagged: false };
 
     return {
         vendor: "goguardian",

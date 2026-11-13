@@ -40,6 +40,15 @@ export const filterVendorDomains = {
         "internetbadguys.com",
     ],
     contentkeeper: ["contentkeeper.com"],
+    classlink: [
+        "analytics-events.apis.classlink.com",
+        "beta-analytics-events.apis.classlink.com",
+        "analytics-log.classlink.io",
+        "analytics-log-beta.classlink.io",
+    ],
+    dyknow: ["studentontask.com"],
+    gopherbuddy: [],
+    prisma: ["classifier.talon-sec.com", "classifier-auf.talon-sec.com"],
     fortiguard: ["fortinet.net", "fortiguard.net"],
     goguardian: ["goguardian.com"],
     hapara: ["hapara.com"],
@@ -69,6 +78,16 @@ export const filterVendorDomains = {
     netsupport: ["classroom.cloud", "netsupportsoftware.com"],
     securly: ["securly.com", "securly.io"],
 } as const satisfies Record<string, readonly Domain[]>;
+
+/** Shared Google infrastructure also serves functional traffic; match only the topic. */
+const filterVendorPaths = [
+    {
+        hostname: "pubsub.googleapis.com",
+        pathname:
+            "/v1/projects/gopher-buddy-prod/topics/session-ingest:publish",
+        method: "POST",
+    },
+];
 
 /** Every vendor domain, flattened: the middleware's default blocklist. */
 const domainsToBlock: readonly Domain[] =
@@ -121,7 +140,16 @@ export function createFilterBlockerMiddleware(options?: {
 
         const hostname = normalizeHostname(rawHost);
 
-        if (isBlockedHostname(hostname, domains)) {
+        const blockedHost = isBlockedHostname(hostname, domains);
+        const blockedPath =
+            options?.domains === undefined &&
+            filterVendorPaths.some(
+                target =>
+                    target.hostname === hostname &&
+                    target.pathname === c.req.path &&
+                    target.method === c.req.method,
+            );
+        if (blockedHost || blockedPath) {
             posthog.capture({
                 distinctId: clientIp(c) ?? "unknown",
                 event: "filter_hostname_blocked",
@@ -130,7 +158,9 @@ export function createFilterBlockerMiddleware(options?: {
             return c.json(
                 {
                     blocked: true,
-                    reason: "Requested hostname matches a blocked domain.",
+                    reason: blockedHost
+                        ? "Requested hostname matches a blocked domain."
+                        : "Requested path matches a blocked telemetry destination.",
                     hostname,
                 },
                 403,

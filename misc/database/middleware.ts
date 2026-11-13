@@ -1,8 +1,9 @@
 import { type Context, Hono } from "hono";
 
 import { type AppEnv, clientIp, readJsonBody } from "../http";
-import { auth } from "./auth";
+import { auth, classLinkConfig } from "./auth";
 import { matchBannedDomain } from "./bannedDomains";
+import { classLinkAvailable } from "./classlink";
 import { yoga } from "./graphql";
 import { getUser, isUserBanned } from "./models/user";
 import { recordVisit } from "./models/visit";
@@ -89,6 +90,12 @@ async function trackVisit(c: Context<AppEnv>) {
 export function createDatabaseMiddleware() {
     const router = new Hono<AppEnv>();
 
+    router.get("/api/authProviders", c => {
+        c.header("Cache-Control", "no-store");
+        return c.json({
+            classlink: classLinkAvailable(classLinkConfig, c.req.raw),
+        });
+    });
     router.all("/api/auth/*", c => auth.handler(dropEmptyBody(c.req.raw)));
     router.post("/api/trackVisit", trackVisit);
     router.all("/graphql", c => yoga.fetch(c.req.raw));

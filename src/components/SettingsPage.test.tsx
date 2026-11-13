@@ -1,12 +1,27 @@
 import { renderSolid } from "$tests/helpers/renderSolid";
 // @vitest-environment happy-dom
 import { IDBFactory } from "fake-indexeddb";
+import { onSettled } from "solid-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import SettingsPage from "./SettingsPage";
 
+const account = vi.hoisted(() => ({ available: true }));
+vi.mock("./ui/ClassLinkAccount", () => ({
+    default: (props: {
+        page: string;
+        onAvailable?: (available: boolean) => void;
+    }) => {
+        onSettled(() => {
+            props.onAvailable?.(account.available);
+        });
+        return <span data-auth-page={props.page} />;
+    },
+}));
+
 beforeEach(() => {
     localStorage.clear();
+    account.available = true;
     globalThis.indexedDB = new IDBFactory();
 });
 
@@ -30,13 +45,36 @@ const choose = (select: HTMLSelectElement, text: string) => {
     select.dispatchEvent(new Event("change", { bubbles: true }));
 };
 
+it.each([false, true])(
+    "shows the Account section and jump link only when available=%s",
+    async available => {
+        account.available = available;
+        const { container, unmount } = renderSolid(() => <SettingsPage />);
+        const section = container.querySelector("#account") as HTMLElement;
+        await vi.waitFor(() => expect(section.hidden).toBe(!available));
+        expect(
+            !!container.querySelector(
+                'nav[aria-label="Settings sections"] a[href="#account"]',
+            ),
+        ).toBe(available);
+        expect(container.querySelector("#search")?.hasAttribute("hidden")).toBe(
+            false,
+        );
+        unmount();
+    },
+);
+
 describe("SettingsPage", () => {
     it("shows every group", () => {
         const { container, unmount } = renderSolid(() => <SettingsPage />);
+        expect(
+            container.querySelector('[data-auth-page="/settings"]'),
+        ).not.toBeNull();
         const titles = [...container.querySelectorAll("h2")].map(
             h => h.textContent,
         );
         expect(titles).toEqual([
+            "Account",
             "Search",
             "Connection",
             "History",

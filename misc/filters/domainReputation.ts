@@ -204,7 +204,8 @@ async function reputationOf(
         categories.some(category => SCHOOL_BLOCKED_CATEGORIES.has(category))
     )
         return "BLOCK";
-    return status === "unknown" ? "UNKNOWN" : "ALLOW";
+    // A warning can be a student-specific pause, so it supplies no allow.
+    return status === "allowed" ? "ALLOW" : "UNKNOWN";
 }
 
 /** vendor → its checker, asked about a bare domain. */
@@ -285,6 +286,8 @@ export interface Classification {
     blocked: boolean;
     /** Vendors that returned BLOCK. */
     by: string[];
+    /** Vendors that returned ALLOW. An empty list can mean all abstained. */
+    allowedBy: string[];
 }
 
 /**
@@ -309,5 +312,8 @@ export async function classifyDomain(
         }),
     );
     const by = verdicts.filter(v => v.verdict === "BLOCK").map(v => v.vendor);
-    return { domain, blocked: by.length > 0, by };
+    const allowedBy = verdicts
+        .filter(v => v.verdict === "ALLOW")
+        .map(v => v.vendor);
+    return { domain, blocked: by.length > 0, by, allowedBy };
 }

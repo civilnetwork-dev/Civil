@@ -7,6 +7,15 @@ export const runtimeScripts = {
     wasm: "/_runtime/engine.wasm",
 } as const;
 
+/** Transport URLs also reach extension resource-timing collectors. */
+export const runtimeAssets = {
+    bare: "/_runtime/request",
+    libcurl: "/_runtime/channel",
+    epoxy: "/_runtime/socket",
+    mux: "/_runtime/worker",
+    muxTransport: "/_runtime/bridge",
+} as const;
+
 /**
  * Where proxied pages live. Every proxied frame's address starts with this
  * path, so an extension that reads frame navigations (webNavigation, a content

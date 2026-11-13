@@ -107,9 +107,13 @@ type CiscoCheckerError =
 const DEFAULT_DOH_SERVER = "https://doh.sse.cisco.com/dns-query";
 
 const DEFAULT_BLOCK_IPS = new Set([
+    // Cisco Umbrella block page addresses, support document 224799.
     "146.112.61.104",
     "146.112.61.105",
-    "146.112.255.155",
+    "146.112.61.106",
+    "146.112.61.107",
+    "146.112.61.108",
+    "146.112.61.110",
 ]);
 
 type CacheEntry<T> = {
@@ -363,13 +367,7 @@ function dnsToCheckResult(
         answer => answer.data,
     );
 
-    const policyBlockObserved =
-        addresses.some(ip => blockIpSet.has(ip)) ||
-        cnames.some(name =>
-            /block|blocked|proxy|policy|opendns|umbrella|hit-nxdomain/i.test(
-                name,
-            ),
-        );
+    const policyBlockObserved = addresses.some(ip => blockIpSet.has(ip));
 
     const verdict: CiscoVerdict =
         raw.Status !== 0
@@ -509,13 +507,16 @@ function queryPolicy(
     );
 }
 
-function cacheKeyFor(hostname: string, config: CiscoCheckerConfig): string {
-    return [
-        hostname,
-        config.policyIdentity?.organizationId ?? "no-org",
-        config.policyIdentity?.deviceId ?? "no-device",
-        config.policyChecker ? "policy" : "dns",
-    ].join(":");
+function cacheKeyFor(url: URL, config: CiscoCheckerConfig): string {
+    const identity = config.policyIdentity;
+    // DNS answers belong to a hostname. The policy callback sees the full URL.
+    if (!identity || !config.policyChecker)
+        return `dns:${url.hostname.toLowerCase()}`;
+    return JSON.stringify([
+        identity.organizationId,
+        identity.deviceId,
+        url.href,
+    ]);
 }
 
 /**
@@ -553,7 +554,7 @@ export function createCiscoSecurityChecker(config: CiscoCheckerConfig = {}) {
 
         const normalizedUrl = normalized.value;
         const hostname = normalizedUrl.hostname.toLowerCase();
-        const cacheKey = cacheKeyFor(hostname, config);
+        const cacheKey = cacheKeyFor(normalizedUrl, config);
         const cached = cache.get(cacheKey);
         if (cached) return okAsync(cached);
 

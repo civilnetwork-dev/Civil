@@ -1,0 +1,7 @@
+{
+    "manifest_version": 3,
+    "name": "Failed content host fixture",
+    "version": "1.0.0",
+    "background": { "service_worker": "missing.js" },
+    "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content.js"] }]
+}

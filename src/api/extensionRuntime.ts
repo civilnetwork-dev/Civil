@@ -891,7 +891,7 @@ export async function buildExtensionPageSrcDoc(
 
     const rewrittenHtml = rewriteRootRelativeExtensionUrls(html, base);
 
-    // Inline all local scripts/stylesheets - prevents Nitro 404 pages from
+    // Inline all local scripts/stylesheets - prevents SSR 404 pages from
     // being returned for asset requests that bypass the SW.
     const inlinedHtml = await inlineHtmlAssets(rewrittenHtml, ext.id, pageDir);
 

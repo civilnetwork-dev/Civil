@@ -60,6 +60,7 @@ import {
     WISP_OPTIONS,
     WISP_TRAITS,
 } from "~/components/settingOptions";
+import ClassLinkAccount from "~/components/ui/ClassLinkAccount";
 import { onLsChange } from "~/lib/reactiveStorage";
 import {
     getSetting,
@@ -81,6 +82,7 @@ import * as c from "~/styles/SettingControls.css";
 import * as s from "~/styles/SettingsPage.css";
 
 const SECTIONS = [
+    ["account", "Account"],
     ["search", "Search"],
     ["connection", "Connection"],
     ["history", "History"],
@@ -116,6 +118,7 @@ const otherThan = (loc: HistoryLocation): HistoryLocation =>
 function Section(props: {
     id: string;
     title: string;
+    hidden?: boolean;
     /** Set between the title and the tablet, such as a notice. */
     before?: JSX.Element;
     children: JSX.Element;
@@ -123,6 +126,7 @@ function Section(props: {
     return (
         <section
             id={props.id}
+            hidden={props.hidden}
             class={s.section}
             aria-labelledby={`${props.id}-title`}
         >
@@ -1065,6 +1069,7 @@ export default function SettingsPage() {
             );
         }
     };
+    const [classLinkAvailable, setClassLinkAvailable] = createSignal(false);
     const page: Page = { save, setNote };
     const hist = useHistoryControls(page);
 
@@ -1076,7 +1081,11 @@ export default function SettingsPage() {
             </p>
 
             <nav class={s.jump} aria-label="Settings sections">
-                <For each={SECTIONS}>
+                <For
+                    each={SECTIONS.filter(
+                        ([id]) => id !== "account" || classLinkAvailable(),
+                    )}
+                >
                     {([id, title]) => (
                         <a class={schematic.chip} href={`#${id}`}>
                             {title}
@@ -1085,6 +1094,16 @@ export default function SettingsPage() {
                 </For>
             </nav>
 
+            <Section
+                id="account"
+                title="Account"
+                hidden={!classLinkAvailable()}
+            >
+                <ClassLinkAccount
+                    page="/settings"
+                    onAvailable={setClassLinkAvailable}
+                />
+            </Section>
             <SearchSection save={save} />
             <ConnectionSection save={save} />
             <HistorySection page={page} hist={hist} />

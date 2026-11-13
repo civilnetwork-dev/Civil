@@ -23,20 +23,40 @@ async function run(
     host: string | undefined,
     opts?: Parameters<typeof createFilterBlockerMiddleware>[0],
     header: "host" | "x-forwarded-host" = "host",
+    request: { path?: string; method?: string } = {},
 ): Promise<{ blocked: boolean; status: number }> {
     const app = new Hono<AppEnv>();
     app.use(createFilterBlockerMiddleware(opts));
-    app.get("*", c => c.text("passed"));
+    app.all("*", c => c.text("passed"));
 
     const res = await app.request(
-        "/",
-        { headers: host === undefined ? {} : { [header]: host } },
+        request.path ?? "/",
+        {
+            method: request.method ?? "GET",
+            headers: host === undefined ? {} : { [header]: host },
+        },
         {
             incoming: { socket: { remoteAddress: "1.2.3.4" } },
         } as unknown as AppEnv["Bindings"],
     );
     return { blocked: res.status === 403, status: res.status };
 }
+
+it("preserves the caller's explicit domain-list override for telemetry paths", async () => {
+    expect(
+        (
+            await run(
+                "pubsub.googleapis.com",
+                { domains: ["custom-filter.test"] },
+                "host",
+                {
+                    method: "POST",
+                    path: "/v1/projects/gopher-buddy-prod/topics/session-ingest:publish",
+                },
+            )
+        ).status,
+    ).toBe(200);
+});
 
 const allDomains = Object.values(filterVendorDomains).flat();
 
@@ -104,3 +124,46 @@ describe("createFilterBlockerMiddleware hosts", () => {
         ).toBe(false);
     });
 });
+
+const functionalHosts = [
+    "launchpad.classlink.com",
+    "nodeapi.classlink.com",
+    "myapps.classlink.com",
+    "teacherconsole.classlink.com",
+    "gopher-buddy-prod.appspot.com",
+    "amplifiedlabs.zendesk.com",
+    "pubsub.googleapis.com",
+    "oauth.dyknow.me",
+    "diag.dyknow.com",
+];
+
+it.each(functionalHosts)(
+    "preserves authentication and support on %s",
+    async host => {
+        expect((await run(host)).status).toBe(200);
+    },
+);
+
+const gopherTopic =
+    "/v1/projects/gopher-buddy-prod/topics/session-ingest:publish";
+const topicRequests = [
+    ["pubsub.googleapis.com", gopherTopic + "?key=test", "POST", 403],
+    ["pubsub.googleapis.com", gopherTopic, "GET", 200],
+    [
+        "pubsub.googleapis.com",
+        "/v1/projects/other/topics/session-ingest:publish",
+        "POST",
+        200,
+    ],
+    ["pubsub.googleapis.com", gopherTopic + "/other", "POST", 200],
+    ["other.pubsub.googleapis.com", gopherTopic, "POST", 200],
+] as const;
+
+it.each(topicRequests)(
+    "scopes telemetry blocking to %s%s %s",
+    async (host, path, method, status) => {
+        expect(
+            (await run(host, undefined, "host", { path, method })).status,
+        ).toBe(status);
+    },
+);

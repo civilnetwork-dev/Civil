@@ -1,0 +1,9 @@
+[json-peek]
+source = 'registry:json-peek@0.1.0'
+version = '0.1.0'
+hash = '6a6aa0c6a5d1'
+
+[test-summary]
+source = 'registry:test-summary@0.1.0'
+version = '0.1.0'
+hash = 'fcb761231621'

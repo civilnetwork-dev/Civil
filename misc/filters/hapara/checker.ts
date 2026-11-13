@@ -223,26 +223,76 @@ function matchesDomainList(url: URL, domainList: string[]): string | null {
     return null;
 }
 
+function googleFocusId(url: URL): string | undefined {
+    const { hostname, pathname, search } = url;
+    switch (hostname) {
+        case "docs.google.com":
+            // The public Forms ID follows /d/e/, unlike an editor ID.
+            if (pathname.startsWith("/forms/")) {
+                return (
+                    pathname.match(/^\/forms\/(?:u\/0\/)?d\/e\/([^/]+)/)?.[1] ??
+                    pathname.match(
+                        /^\/forms\/(?:u\/0\/)?d\/(?!e(?:\/|$))([^/]+)/,
+                    )?.[1]
+                );
+            }
+            return pathname.match(/\/d\/([^/]+)/)?.[1];
+        case "drive.google.com":
+            return pathname === "/open"
+                ? search.match(/^\?id=([^&/]+)$/)?.[1]
+                : pathname.match(/\/d\/([^/]+)/)?.[1];
+        case "classroom.google.com":
+            return pathname.match(/^\/c\/[^/]+\/a\/([^/]+)/)?.[1];
+        default:
+            return undefined;
+    }
+}
+
+function matchesGoogleFocusAlias(link: string, input: string): boolean {
+    const allowed = URL.parse(link);
+    const candidate = URL.parse(input);
+    if (!allowed || !candidate) return false;
+    if (
+        !/^https?:$/.test(allowed.protocol) ||
+        !/^https?:$/.test(candidate.protocol)
+    )
+        return false;
+
+    if (
+        allowed.origin === "https://accounts.google.com" &&
+        candidate.origin === allowed.origin
+    )
+        return true;
+
+    const id = googleFocusId(allowed);
+    if (id !== undefined) return id === googleFocusId(candidate);
+
+    const query = link.indexOf("?");
+    const inputQuery = input.indexOf("?");
+    return (
+        allowed.hostname.endsWith(".google.com") &&
+        query !== -1 &&
+        inputQuery !== -1 &&
+        link.slice(0, query) === input.slice(0, inputQuery)
+    );
+}
+
 function matchesLinkList(
     normalizedInputUrl: string,
     links: string[],
 ): string | null {
-    const lower = normalizedInputUrl.toLowerCase();
-
-    for (const link of links) {
-        try {
-            const normalizedLink = normalizeHaparaUrl(link).toLowerCase();
-
-            if (
-                lower === normalizedLink ||
-                lower.startsWith(`${normalizedLink}/`)
-            ) {
-                return link;
-            }
-        } catch {}
-    }
-
-    return null;
+    // Highlights treats HTTP and HTTPS as equivalent and ignores a final
+    // slash. Focus links compare the remaining text exactly.
+    const comparable = (url: string) =>
+        url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const input = comparable(normalizedInputUrl);
+    return (
+        links.find(
+            link =>
+                comparable(link) === input ||
+                matchesGoogleFocusAlias(link, normalizedInputUrl),
+        ) ?? null
+    );
 }
 
 function toNetworkError(error: unknown): HaparaError {

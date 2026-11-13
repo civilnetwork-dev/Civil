@@ -9,6 +9,7 @@
 import type {
     Alarm,
     MessageSender,
+    SyntheticTab,
 } from "../browserApiEmulators/extensions/chrome/types";
 import type { ActionCall, CapturedMessage } from "./types";
 
@@ -59,11 +60,24 @@ interface ScheduledAlarm extends Alarm {
  *  bundles are written against, and to them a two-argument dispatch makes
  *  `sendResponse` arrive as `undefined`, so every reply they try to send
  *  throws instead. */
+type SyntheticMessageSender = Omit<MessageSender, "tab"> & {
+    tab?: SyntheticTab;
+};
+
 export type RuntimeMessageListener = (
     message: unknown,
-    sender: MessageSender,
+    sender: SyntheticMessageSender,
     sendResponse: (response: unknown) => void,
-) => boolean | undefined;
+) => boolean | undefined | PromiseLike<unknown>;
+
+export type BeforeNavigateListener = (details: {
+    tabId: number;
+    url: string;
+    frameId: number;
+    frameType: "outermost_frame";
+    parentFrameId: number;
+    timeStamp: number;
+}) => void | Promise<void>;
 
 export class ExtensionState {
     readonly storage: Record<StorageArea, Map<string, unknown>> = {
@@ -75,12 +89,20 @@ export class ExtensionState {
 
     /** What `chrome.runtime.onMessage` listeners receive as their `sender`.
      *  Set by `buildRuntime`, which is the only place that knows the id. */
-    messageSender: MessageSender = {};
+    messageSender: SyntheticMessageSender = {};
 
     readonly dynamicRules = new Map<number, DNRRuleset>();
     readonly sessionRules = new Map<number, DNRRuleset>();
     readonly alarms = new Map<string, ScheduledAlarm>();
     readonly messageListeners = new Set<RuntimeMessageListener>();
+    readonly beforeNavigateListeners = new Set<BeforeNavigateListener>();
+    tabRemoved = false;
+    runtimeError?: string;
+    asyncContainmentIncomplete?: string;
+
+    reportError(error: unknown): void {
+        this.runtimeError ??= `Filter background failed: ${error instanceof Error ? error.message : String(error)}`;
+    }
     readonly installedListeners = new Set<
         (details: { reason: string }) => void
     >();

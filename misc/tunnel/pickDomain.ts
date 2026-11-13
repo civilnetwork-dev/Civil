@@ -4,8 +4,8 @@
  *
  * FreeDNS' registry is the candidate pool (misc/tunnel/freedns `getRegistry`);
  * misc/filters/domainReputation says whether a filter blocks a bare domain.
- * A domain survives if no filter blocks it. Among the survivors the pick is
- * random, so we never hand filters one fixed hostname to learn.
+ * A domain survives if no filter blocks it. Prefer candidates with an
+ * affirmative rating within the batch, then choose randomly within that pool.
  *
  * ## The cache is the block set
  *
@@ -159,17 +159,18 @@ export async function pickTunnelDomain(
         const batch = fresh.slice(start, start + batchSize);
         checked += batch.length;
 
-        const survivors: RegistryDomain[] = [];
+        const rated: RegistryDomain[] = [];
+        const unrated: RegistryDomain[] = [];
         await mapLimit(batch, concurrency, async d => {
             const result = await classify(d.domain);
             if (result.blocked) {
                 cache.setKey(d.domain, result.by);
                 newBlocks++;
             } else {
-                survivors.push(d);
+                (result.allowedBy.length > 0 ? rated : unrated).push(d);
             }
         });
-
+        const survivors = rated.length > 0 ? rated : unrated;
         if (survivors.length > 0) {
             if (newBlocks > 0) cache.save();
             const chosen = survivors[Math.floor(random() * survivors.length)]!;

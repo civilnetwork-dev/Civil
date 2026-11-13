@@ -1,0 +1,6 @@
+{
+    "manifest_version": 3,
+    "name": "Async content startup fixture",
+    "version": "1.0.0",
+    "content_scripts": [{ "matches": ["<all_urls>"], "js": ["content.js"] }]
+}

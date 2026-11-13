@@ -47,13 +47,25 @@ import {
     compileScript,
     loadExtension,
 } from "../extensionHost";
+import { shouldLeaveMissing } from "../extensionHost/api/stub";
+import {
+    ASYNC_CONTAINMENT_INCOMPLETE,
+    containVmRejections,
+} from "../extensionHost/asyncErrors";
+
+const pageRejections = new WeakMap<Window, (() => void) | undefined>();
 import type { ExtensionHandle } from "../extensionHost/types";
 import { VENDOR_EMULATION } from "../extensionHost/vendorEmulation";
 import type { PageObservation } from "./detect";
+import { probeRouteUrl } from "./routes";
 
 export interface SandboxOptions {
     /** Unpacked extension folder for the one filter under test. */
     extensionDir: string;
+    /** Catalog folder for fixture policy when the bundle lives under a version directory. */
+    extensionFolder?: string;
+    /** Catalog ID for bundles that derive URLs or configuration from their own ID. */
+    extensionId?: string;
     /** Base URL of the running Civil server (the tunnel URL, or local). */
     baseUrl: string;
     /** The Civil route being tested, e.g. "/newTab". */
@@ -80,9 +92,18 @@ export interface SandboxOptions {
 
 interface ContentScript {
     matches: string[];
+    exclude_matches?: string[];
+    include_globs?: string[];
+    exclude_globs?: string[];
     js?: string[];
-    runAt?: string;
+    run_at?: string;
 }
+
+const INJECTION_ORDER: Record<string, number> = {
+    document_start: 0,
+    document_end: 1,
+    document_idle: 2,
+};
 
 /** The page fetch, retried a couple of times with a short backoff before
  *  giving up: a bare transient tunnel blip must not be laundered into a
@@ -93,12 +114,27 @@ async function fetchPageWithRetry(
     doFetch: typeof fetch,
     url: string,
     attempts = 3,
-): Promise<{ html: string; status: number; fetchError?: string }> {
+): Promise<{
+    html: string;
+    status: number;
+    fetchError?: string;
+    networkRedirectUrl?: string;
+}> {
     let lastError: unknown;
     for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
-            const res = await doFetch(url);
-            return { html: await res.text(), status: res.status };
+            const res = await doFetch(url, { redirect: "manual" });
+            const location = res.headers.get("location");
+            const networkRedirectUrl = res.redirected
+                ? res.url
+                : location && [301, 302, 303, 307, 308].includes(res.status)
+                  ? (URL.parse(location, url)?.href ?? location)
+                  : undefined;
+            return {
+                html: await res.text(),
+                status: res.status,
+                networkRedirectUrl,
+            };
         } catch (error) {
             lastError = error;
             if (attempt < attempts)
@@ -165,6 +201,33 @@ function matchesPattern(pattern: string, url: string): boolean {
     return pathRe.test(u.pathname + u.search);
 }
 
+function matchesGlob(pattern: string, url: string): boolean {
+    // Chromium's MatchPattern treats ? as optional and honors backslash escapes.
+    const escaped = pattern.replace(
+        /\\(.)|([*?]+)|./gu,
+        (token, literal, wildcards) => {
+            if (wildcards)
+                return wildcards.includes("*")
+                    ? ".*"
+                    : `.{0,${wildcards.length}}`;
+            return (literal ?? token).replace(/[.*+?^{}$()|[\]\\]/g, "\\$&");
+        },
+    );
+    return new RegExp(`^${escaped}$`, "u").test(url);
+}
+
+function matchesContentScript(script: ContentScript, url: string): boolean {
+    return (
+        !!script.matches?.some(pattern => matchesPattern(pattern, url)) &&
+        !script.exclude_matches?.some(pattern =>
+            matchesPattern(pattern, url),
+        ) &&
+        (!script.include_globs?.length ||
+            script.include_globs.some(glob => matchesGlob(glob, url))) &&
+        !script.exclude_globs?.some(glob => matchesGlob(glob, url))
+    );
+}
+
 const noopEvent = {
     addListener: () => {},
     removeListener: () => {},
@@ -172,7 +235,8 @@ const noopEvent = {
 };
 
 const universalStub: unknown = new Proxy(() => undefined, {
-    get: (_t, p) => (p === "then" ? undefined : universalStub),
+    get: (_t, p) =>
+        p === "then" || shouldLeaveMissing(p) ? undefined : universalStub,
     apply: () => undefined,
 });
 
@@ -181,13 +245,16 @@ const universalStub: unknown = new Proxy(() => undefined, {
 // that kills the content script at whatever point it first reaches it.
 function stubbed(target: Record<string, unknown>) {
     return new Proxy(target, {
-        get: (t, prop) =>
-            typeof prop === "string" && prop in t ? t[prop] : universalStub,
+        get: (t, prop) => {
+            if (typeof prop === "string" && prop in t) return t[prop];
+            if (shouldLeaveMissing(prop)) return undefined;
+            return universalStub;
+        },
     });
 }
 
 /** runtime.sendMessage from a content script, delivered to the background. */
-function contentSendMessage(handle: ExtensionHandle) {
+function contentSendMessage(handle: ExtensionHandle, pageUrl: string) {
     return (...args: unknown[]) => {
         const message =
             typeof args[0] === "string" && args.length > 1 ? args[1] : args[0];
@@ -198,7 +265,7 @@ function contentSendMessage(handle: ExtensionHandle) {
         // not the content script's to crash on: swallow it to undefined,
         // the same result Chrome gives the sender when a listener errors.
         const p = handle
-            .sendMessage(message)
+            .sendMessage(message, pageUrl)
             .then(r => r.response)
             .catch(() => undefined);
         if (cb) {
@@ -212,7 +279,8 @@ function contentSendMessage(handle: ExtensionHandle) {
 /** A minimal content-script `chrome`, bridged to the loaded background for
  *  messaging and answering everything else the way the extension host's
  *  universal stub does: do nothing, never throw. */
-function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
+function contentChrome(handle: ExtensionHandle, pageUrl: string): unknown {
+    const extensionId = handle.id;
     const port = {
         name: "",
         postMessage: () => {},
@@ -227,7 +295,7 @@ function contentChrome(handle: ExtensionHandle, extensionId: string): unknown {
         // Read for its result, so a stub's `undefined` won't do: bundles
         // pull `version` and `name` off it during startup (mobileguardian).
         getManifest: () => handle.manifest,
-        sendMessage: contentSendMessage(handle),
+        sendMessage: contentSendMessage(handle, pageUrl),
         onMessage: noopEvent,
         connect: () => port,
         lastError: undefined,
@@ -308,14 +376,14 @@ function createScriptRunner(target: InjectionTarget) {
  * rather than its unconfigured one.
  */
 async function loadFilterBackground(
-    extensionDir: string,
+    { extensionDir, extensionId, allowNetwork = false }: SandboxOptions,
     emulation: (typeof VENDOR_EMULATION)[string] | undefined,
     runScript: ReturnType<typeof createScriptRunner>,
-    allowNetwork: boolean,
-): Promise<ExtensionHandle | undefined> {
+): Promise<{ handle?: ExtensionHandle; backgroundError?: string }> {
     try {
-        return await loadExtension({
+        const handle = await loadExtension({
             dir: extensionDir,
+            extensionId,
             managedStorage: emulation?.managedStorage,
             initialStorage: emulation?.initialStorage,
             initialBookmarks: emulation?.initialBookmarks,
@@ -323,8 +391,11 @@ async function loadFilterBackground(
             runScript,
             allowNetwork,
         });
-    } catch {
-        return undefined;
+        return { handle };
+    } catch (error) {
+        return {
+            backgroundError: `Filter background failed to load: ${error instanceof Error ? error.message : String(error)}`,
+        };
     }
 }
 
@@ -344,8 +415,8 @@ async function loadFilterBackground(
  * they're injected by `runInContext` below, entirely outside happy-dom's own
  * script pipeline, which these settings don't gate.
  */
-function createPageWindow(pageUrl: string): Window {
-    return new Window({
+function createPageWindow(pageUrl: string, channels: MessageChannel[]): Window {
+    const window = new Window({
         url: pageUrl,
         console: buildFreshConsole(),
         settings: {
@@ -358,6 +429,70 @@ function createPageWindow(pageUrl: string): Window {
             // whole multi-vendor sweep on one vendor's async bug (GoGuardian's
             // admin.js _reRun, scheduled off a chrome.storage stub call).
         },
+    });
+    // happy-dom lacks MessageChannel. LoiLo uses it to schedule work.
+    Object.assign(window, {
+        MessageChannel: class extends MessageChannel {
+            constructor() {
+                super();
+                channels.push(this);
+            }
+        },
+    });
+    containPageCallbacks(window);
+    pageRejections.set(
+        window,
+        containVmRejections(window as unknown as vm.Context, error =>
+            reportPageError(window, error),
+        ),
+    );
+    return window;
+}
+
+function reportPageError(window: Window, error: unknown): void {
+    const cause = error instanceof Error ? error : new Error(String(error));
+    window.dispatchEvent(
+        new window.ErrorEvent("error", {
+            error: cause,
+            message: cause.message,
+        }),
+    );
+}
+
+function runPageCallback(window: Window, callback: () => unknown): void {
+    try {
+        void Promise.resolve(callback()).catch(error =>
+            reportPageError(window, error),
+        );
+    } catch (error) {
+        reportPageError(window, error);
+    }
+}
+
+function containPageCallbacks(window: Window): void {
+    // VM promises fail happy-dom's host-realm instanceof Promise check.
+    const schedule = (method: "setTimeout" | "setInterval") => {
+        const original = window[method].bind(window);
+        return (
+            callback: ((...args: unknown[]) => unknown) | string,
+            ms?: number,
+            ...args: unknown[]
+        ) =>
+            original(
+                typeof callback === "function"
+                    ? () => runPageCallback(window, () => callback(...args))
+                    : () =>
+                          runPageCallback(window, () => window.eval(callback)),
+                ms,
+                ...args,
+            );
+    };
+    const microtask = window.queueMicrotask.bind(window);
+    Object.assign(window, {
+        setTimeout: schedule("setTimeout"),
+        setInterval: schedule("setInterval"),
+        queueMicrotask: (callback: () => unknown) =>
+            microtask(() => runPageCallback(window, callback)),
     });
 }
 
@@ -419,16 +554,16 @@ function fillNavigator(window: Window): void {
     }
 }
 
-/** Runs one content script file in the page; a throw is the script's own. */
+/** Runs one content script and retains any failure for the verdict. */
 async function runContentScript(
     window: Window,
     filePath: string,
     extId: string,
     extensionDir: string,
-): Promise<void> {
-    const code = await readFile(filePath, "utf8").catch(() => "");
-    if (!code) return;
+): Promise<string | undefined> {
     try {
+        const code = await readFile(filePath, "utf8");
+        if (!code) return undefined;
         // compileScript (extensionHost/host.ts) gives dynamic import() a real
         // resolver and bundles a script through esbuild when a plain
         // vm.Script can't compile it at all (an ES module, or a static import
@@ -440,40 +575,59 @@ async function runContentScript(
             extensionId: extId,
             extensionDir,
         });
-        compiled.runInContext(window as unknown as vm.Context);
-    } catch {
-        // A content script that throws in this reduced environment has still
-        // had its chance to redirect or rewrite; keep going.
+        const result = compiled.runInContext(window as unknown as vm.Context);
+        void Promise.resolve(result).catch(error =>
+            reportPageError(window, error),
+        );
+    } catch (error) {
+        return `Filter content script ${basename(filePath)} failed: ${error instanceof Error ? error.message : String(error)}`;
     }
+    return undefined;
 }
 
-/** The content scripts that match this URL, run in manifest order. */
+/** Run matching scripts by injection phase, preserving order within a phase. */
 async function runContentScripts(
     window: Window,
     handle: ExtensionHandle | undefined,
     extensionDir: string,
     extId: string,
     pageUrl: string,
-): Promise<void> {
+): Promise<string | undefined> {
     const manifest = handle?.manifest ?? (await readManifest(extensionDir));
-    const scripts = (manifest.content_scripts ?? []) as ContentScript[];
-    const chrome = handle ? contentChrome(handle, handle.id) : undefined;
+    const scripts = (
+        (manifest.content_scripts ?? []) as ContentScript[]
+    ).toSorted(
+        (left, right) =>
+            (INJECTION_ORDER[left.run_at ?? "document_idle"] ?? 2) -
+            (INJECTION_ORDER[right.run_at ?? "document_idle"] ?? 2),
+    );
+    const chrome = handle ? contentChrome(handle, pageUrl) : undefined;
     if (chrome) {
         (window as unknown as Record<string, unknown>).chrome = chrome;
         (window as unknown as Record<string, unknown>).browser = chrome;
     }
 
+    let contentScriptError: string | undefined;
+    const injected = new Set<string>();
+    const documentUrl = new URL(pageUrl).href;
     for (const script of scripts) {
-        if (!script.matches?.some(p => matchesPattern(p, pageUrl))) continue;
+        if (!matchesContentScript(script, documentUrl)) continue;
         for (const file of script.js ?? []) {
-            await runContentScript(
+            const filePath = join(extensionDir, file);
+            // Chromium injects each file once per frame and run location.
+            const key = `${script.run_at ?? "document_idle"}:${filePath}`;
+            if (injected.has(key)) continue;
+            injected.add(key);
+            const error = await runContentScript(
                 window,
-                join(extensionDir, file),
+                filePath,
                 extId,
                 extensionDir,
             );
+            contentScriptError ??= error;
         }
     }
+    return contentScriptError;
 }
 
 /**
@@ -484,69 +638,81 @@ async function runContentScripts(
  * happy-dom window to render it. A real tab would already be showing that
  * URL, so it's what a redirect check should see too.
  */
-function finalUrlOf(handle: ExtensionHandle | undefined, window: Window) {
-    return handle && handle.tabUrl !== "about:blank"
+function finalUrlOf(
+    handle: ExtensionHandle | undefined,
+    window: Window,
+    pageUrl: string,
+) {
+    return handle && handle.tabUrl !== pageUrl
         ? handle.tabUrl
         : String(window.location.href);
 }
 
-/**
- * Cancels happy-dom's pending timers/microtasks before closing, so a content
- * script's deferred callback can't fire against a freed window. `abort`
- * exists on happy-dom's control object; guard it in case the shape changes.
- */
+/** Close the detached page and cancel work that outlived the observation. */
 async function closePageWindow(
     window: Window,
     handle: ExtensionHandle | undefined,
 ): Promise<void> {
-    const control = (
-        window as unknown as { happyDOM?: { abort?: () => Promise<void> } }
-    ).happyDOM;
     try {
-        await control?.abort?.();
-    } catch {
-        // best-effort teardown
+        // abort() leaves the page open, allowing scripts to enqueue more work.
+        await window.happyDOM.close();
+    } finally {
+        pageRejections.get(window)?.();
+        pageRejections.delete(window);
+        handle?.dispose();
     }
-    window.close();
-    handle?.dispose();
-}
-
-/** The URL the page is fetched from: for the proxy route, the third-party
- *  target routed through Civil; otherwise Civil's own page. */
-function pageUrlFor({ baseUrl, route, proxyTarget }: SandboxOptions): string {
-    return proxyTarget
-        ? `${baseUrl.replace(/\/$/, "")}${route}${encodeURIComponent(proxyTarget)}`
-        : `${baseUrl.replace(/\/$/, "")}${route}`;
 }
 
 /** Writes the served page, lets the filter act on it, and reads the result. */
 async function observePage(
     window: Window,
     handle: ExtensionHandle | undefined,
-    page: { html: string; pageUrl: string; extId: string },
+    page: {
+        html: string;
+        pageUrl: string;
+        extId: string;
+        interrupted?: boolean;
+    },
     options: SandboxOptions,
 ): Promise<Omit<PageObservation, "status" | "fetchError">> {
     const { extensionDir, route, waitMs = 15_000 } = options;
+    let runtimeError: string | undefined;
+    window.addEventListener("error", event => {
+        if (event instanceof window.ErrorEvent)
+            runtimeError ??= `Filter content script failed: ${event.message}`;
+    });
     window.document.write(page.html);
-    // The served page's own rendered-text length, before any content script
+    // The served page's own rich text, before any content script
     // has had a chance to touch it: the dom-replaced heuristic's baseline
     // (detect.ts).
-    const originalLength = window.document.body?.textContent?.length ?? 0;
+    const originalPageText = extractRichText(window);
 
-    await runContentScripts(
-        window,
-        handle,
-        extensionDir,
-        page.extId,
-        page.pageUrl,
-    );
+    const contentScriptError =
+        !handle || handle.runtimeError || handle.tabRemoved || page.interrupted
+            ? undefined
+            : await runContentScripts(
+                  window,
+                  handle,
+                  extensionDir,
+                  page.extId,
+                  page.pageUrl,
+              );
     await new Promise(resolve => setTimeout(resolve, waitMs));
 
     return {
         route,
-        finalUrl: finalUrlOf(handle, window),
+        contentScriptError: contentScriptError ?? runtimeError,
+        asyncContainmentIncomplete:
+            handle?.asyncContainmentIncomplete ??
+            (!pageRejections.get(window)
+                ? ASYNC_CONTAINMENT_INCOMPLETE
+                : undefined),
+        tabRemoved: handle?.tabRemoved,
+        extensionId: page.extId,
+        finalUrl: finalUrlOf(handle, window, page.pageUrl),
         pageText: extractRichText(window),
-        originalLength,
+        originalPageText,
+        originalLength: originalPageText.length,
         // The filter's own configured block rules, asked directly whether
         // they'd block this exact page URL: a real, deterministic check
         // that needed none of the rendering above. Only meaningful when the
@@ -562,45 +728,107 @@ async function observePage(
 export async function observeRoute(
     options: SandboxOptions,
 ): Promise<PageObservation> {
-    const { extensionDir, allowNetwork = false } = options;
-    const doFetch = options.fetchImpl ?? fetch;
-    const pageUrl = pageUrlFor(options);
+    const { baseUrl, route, proxyTarget } = options;
+    const pageUrl = probeRouteUrl(baseUrl, route, proxyTarget);
+    const { html, status, fetchError, networkRedirectUrl } =
+        await fetchPageWithRetry(options.fetchImpl ?? fetch, pageUrl);
+    if (networkRedirectUrl) {
+        return {
+            route: options.route,
+            finalUrl: networkRedirectUrl,
+            networkRedirectUrl,
+            pageText: "",
+            originalLength: 0,
+            status,
+        };
+    }
+    return {
+        ...(await observeFetchedPage(options, { html, pageUrl })),
+        status,
+        fetchError,
+    };
+}
 
-    const emulation = VENDOR_EMULATION[basename(extensionDir)];
-    const target: InjectionTarget = { extId: "a".repeat(32), extensionDir };
-    const handle = await loadFilterBackground(
+function requestObservation(
+    observed: Omit<PageObservation, "status" | "fetchError">,
+    pageUrl: string,
+    request: ReturnType<ExtensionHandle["dispatchRequest"]> | undefined,
+    backgroundError: string | undefined,
+): Omit<PageObservation, "status" | "fetchError"> {
+    return {
+        ...observed,
+        finalUrl:
+            observed.finalUrl === pageUrl
+                ? (request?.redirectUrl ?? observed.finalUrl)
+                : observed.finalUrl,
+        backgroundError:
+            backgroundError ??
+            request?.incomplete ??
+            (request?.redirectUrl
+                ? "Filter request redirected navigation; destination was not loaded"
+                : undefined),
+        webRequestCancelled: request?.cancelled,
+        unreplayedBlockingRequest: false,
+    };
+}
+
+async function observeFetchedPage(
+    options: SandboxOptions,
+    { html, pageUrl }: { html: string; pageUrl: string },
+): Promise<Omit<PageObservation, "status" | "fetchError">> {
+    const { extensionDir, allowNetwork = false } = options;
+    const emulation =
+        VENDOR_EMULATION[options.extensionFolder ?? basename(extensionDir)];
+    const target: InjectionTarget = {
+        extId: options.extensionId ?? "a".repeat(32),
         extensionDir,
+    };
+    const { handle, backgroundError } = await loadFilterBackground(
+        options,
         emulation,
         createScriptRunner(target),
-        allowNetwork,
     );
     target.extId = handle?.id ?? target.extId;
-    const extId = target.extId;
-
-    const { html, status, fetchError } = await fetchPageWithRetry(
-        doFetch,
-        pageUrl,
-    );
-
-    const window = createPageWindow(pageUrl);
+    const channels: MessageChannel[] = [];
+    const window = createPageWindow(pageUrl, channels);
     target.win = window as unknown as Record<string, unknown>;
     containPageNetwork(
         target.win,
-        extId,
+        target.extId,
         extensionDir,
         emulation,
         allowNetwork,
     );
     fillNavigator(window);
     try {
+        let navigationError: string | undefined;
+        handle?.notifyBeforeNavigate(pageUrl, error => {
+            navigationError ??= `Filter navigation listener failed: ${error instanceof Error ? error.message : String(error)}`;
+        });
+        const request = handle?.dispatchRequest(pageUrl);
         const observed = await observePage(
             window,
             handle,
-            { html, pageUrl, extId },
+            {
+                html,
+                pageUrl,
+                extId: target.extId,
+                interrupted:
+                    request?.cancelled || Boolean(request?.redirectUrl),
+            },
             options,
         );
-        return { ...observed, status, fetchError };
+        return requestObservation(
+            observed,
+            pageUrl,
+            request,
+            backgroundError ?? handle?.runtimeError ?? navigationError,
+        );
     } finally {
+        for (const { port1, port2 } of channels) {
+            port1.close();
+            port2.close();
+        }
         await closePageWindow(window, handle);
     }
 }

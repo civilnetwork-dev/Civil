@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { loadExtension } from "./host";
 import { loadManifest, ManifestError, resolveBackground } from "./manifest";
@@ -19,6 +19,20 @@ async function flushMicrotasks(times = 10): Promise<void> {
 }
 
 describe("loadExtension end-to-end", () => {
+    it("clears timers scheduled by a worker that throws during startup", async () => {
+        vi.useFakeTimers();
+        try {
+            const before = vi.getTimerCount();
+            const dir = join(__dirname, "fixtures", "failing-extension");
+            await expect(loadExtension({ dir })).rejects.toThrow(
+                "Synthetic startup failure",
+            );
+            expect(vi.getTimerCount()).toBe(before);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("runs the background service worker and exposes its manifest", async () => {
         const ext = await loadExtension({ dir: FIXTURE_DIR });
         expect(ext.manifest.name).toBe("Sample Filter Extension");
@@ -49,6 +63,25 @@ describe("loadExtension end-to-end", () => {
         expect(result.handled).toBe(false);
     });
 });
+
+it.each([
+    ["ping-promise", { reply: "pong-promise" }],
+    ["ping-promise-callback", "pong-promise-callback"],
+])(
+    "delivers a Promise-backed message reply for %s",
+    async (message, response) => {
+        const ext = await loadExtension({ dir: FIXTURE_DIR });
+        try {
+            expect(await ext.sendMessage(message)).toEqual({
+                message,
+                response,
+                handled: true,
+            });
+        } finally {
+            ext.dispose();
+        }
+    },
+);
 
 describe("loadExtension storage, alarms and DNR", () => {
     it("seeds and reads chrome.storage.local", async () => {

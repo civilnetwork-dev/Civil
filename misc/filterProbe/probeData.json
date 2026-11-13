@@ -1,4 +1,33 @@
 {
+    "prisma": {
+        "displayName": "Prisma Browser",
+        "domains": ["classifier.talon-sec.com", "classifier-auf.talon-sec.com"],
+        "blockPages": ["chrome-extension:block.html"],
+        "blockMarkers": []
+    },
+    "dyknow": {
+        "displayName": "Dyknow Cloud",
+        "domains": ["studentontask.com"],
+        "blockPages": ["studentontask.com/"],
+        "blockMarkers": []
+    },
+    "gopherbuddy": {
+        "displayName": "Gopher Buddy",
+        "domains": [],
+        "blockPages": [],
+        "blockMarkers": []
+    },
+    "classlink": {
+        "displayName": "ClassLink",
+        "domains": [
+            "analytics-events.apis.classlink.com",
+            "beta-analytics-events.apis.classlink.com",
+            "analytics-log.classlink.io",
+            "analytics-log-beta.classlink.io"
+        ],
+        "blockPages": [],
+        "blockMarkers": []
+    },
     "aristotle": {
         "displayName": "Aristotle K12",
         "domains": ["aristotleinsight.com"],
@@ -214,7 +243,10 @@
     "netsupport": {
         "displayName": "NetSupport",
         "domains": ["classroom.cloud", "netsupportsoftware.com"],
-        "blockPages": ["chrome-extension:weblock.html"],
+        "blockPages": [
+            "chrome-extension:weblock.html",
+            "chrome-extension:ApprovedWebList.htm"
+        ],
         "blockMarkers": [
             "Click Internet button for a list of approved web sites"
         ]

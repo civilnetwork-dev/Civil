@@ -16,7 +16,10 @@ import Anno from "~/components/schematic/Anno";
 import Rule from "~/components/schematic/Rule";
 import Sheet from "~/components/schematic/Sheet";
 import TitleBlock from "~/components/schematic/TitleBlock";
+import Unfold from "~/components/schematic/Unfold";
 import {
+    FILTER_CONFIGS,
+    FILTER_NAMES,
     type FilterConfig,
     type FilterResult,
     type FilterStatus,
@@ -429,7 +432,7 @@ function useFilterCheck(
 
     const handleCheck = async () => {
         const rawUrl = url().trim();
-        if (!rawUrl) return;
+        if (!rawUrl || activeConfigs().length === 0) return;
         setLoading(true);
         setChecked(false);
         setResults([]);
@@ -541,9 +544,52 @@ function TitleActions(props: { rescanning: boolean; onRescan: () => void }) {
     );
 }
 
-function DetectedFilters(props: { detected: string[] }) {
+function ManualFilters(props: {
+    selected: string[];
+    onChange: (keys: string[]) => void;
+}) {
+    const toggle = (key: string) =>
+        props.onChange(
+            props.selected.includes(key)
+                ? props.selected.filter(value => value !== key)
+                : [...props.selected, key],
+        );
+    return (
+        <Unfold
+            label="Choose filters"
+            summary={<span aria-hidden="true">Choose filters</span>}
+        >
+            <p class={schematic.lede}>
+                Choose a vendor when automatic detection is unavailable. Manual
+                choices do not mean an extension is installed. Some vendors
+                cannot provide a site verdict.
+            </p>
+            <div class={schematic.chips}>
+                <For each={Object.keys({ ...FILTER_CONFIGS, ...FILTER_NAMES })}>
+                    {key => (
+                        <button
+                            type="button"
+                            class={schematic.chip}
+                            aria-pressed={
+                                props.selected.includes(key) ? "true" : "false"
+                            }
+                            onClick={() => toggle(key)}
+                        >
+                            {FILTER_CONFIGS[key]?.name ??
+                                prettifyFilterName(key)}
+                        </button>
+                    )}
+                </For>
+            </div>
+        </Unfold>
+    );
+}
+
+function DetectedFilters(props: { detected: string[]; selected: string[] }) {
     const unsupported = createMemo(() =>
-        props.detected.filter(f => !findFilterConfig(f)),
+        [...new Set([...props.detected, ...props.selected])].filter(
+            f => !findFilterConfig(f),
+        ),
     );
     return (
         <>
@@ -551,7 +597,13 @@ function DetectedFilters(props: { detected: string[] }) {
             <div class={s.specimenRow}>
                 <Show
                     when={props.detected.length > 0}
-                    fallback={<Anno muted>None detected</Anno>}
+                    fallback={
+                        <Anno muted>
+                            Automatic detection is unavailable or found no
+                            supported extension. Choose filters below to check
+                            them.
+                        </Anno>
+                    }
                 >
                     <For each={props.detected} keyed={false}>
                         {f => (
@@ -609,9 +661,10 @@ function usePageCheck(
     filters: ReturnType<typeof useDetectedFilters>,
     district: DistrictState,
     gg: ReturnType<typeof useGoGuardianKey>,
+    manual: () => string[],
 ) {
     const activeConfigs = createMemo<[string, FilterConfig][]>(() =>
-        activeConfigsOf(filters.detectedFilters()),
+        activeConfigsOf([...filters.detectedFilters(), ...manual()]),
     );
 
     const needsEmail = createMemo(() =>
@@ -627,7 +680,7 @@ function usePageCheck(
         }),
     );
 
-    return { needsEmail, check };
+    return { needsEmail, activeConfigs, check };
 }
 
 function FilterCheckTitle(props: {
@@ -661,7 +714,13 @@ export default function FilterCheckPage() {
     const gg = useGoGuardianKey(district, filters.detectedFilters);
     const iboss = useIbossGateway(district, filters.detectedFilters);
 
-    const { needsEmail, check } = usePageCheck(filters, district, gg);
+    const [manual, setManual] = createSignal<string[]>([]);
+    const { needsEmail, activeConfigs, check } = usePageCheck(
+        filters,
+        district,
+        gg,
+        manual,
+    );
 
     return (
         <>
@@ -684,13 +743,18 @@ export default function FilterCheckPage() {
                     address to check.
                 </p>
 
-                <DetectedFilters detected={filters.detectedFilters()} />
+                <DetectedFilters
+                    detected={filters.detectedFilters()}
+                    selected={manual()}
+                />
+                <ManualFilters selected={manual()} onChange={setManual} />
 
                 <FilterCheckForm
                     needsEmail={needsEmail()}
                     email={check.email()}
                     url={check.url()}
                     loading={check.loading()}
+                    hasFilters={activeConfigs().length > 0}
                     onEmail={check.setEmail}
                     onUrl={check.setUrl}
                     onSubmit={() => void check.handleCheck()}

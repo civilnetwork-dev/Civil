@@ -64,7 +64,7 @@ export type BrokerDecision =
     | "UNKNOWN";
 
 export interface BrokerResponse {
-    kind?: "standard" | "failed_open";
+    kind?: "standard" | "failed_open" | "cluster_unavailable";
     raw?: string;
     fields?: readonly string[];
     mode?: string;
@@ -331,25 +331,32 @@ export function checkStatus(
             message: "Failed to resolve cluster.",
             cause,
         }))
-        .andThen(clusterUrl =>
-            getExtensionVersion(input.extensionId).andThen(extensionVersion => {
-                const params = buildBrokerParams(
-                    input,
-                    clusterUrl,
-                    extensionVersion,
-                );
+        .andThen(clusterUrl => {
+            if (clusterUrl === null)
+                return ok<BrokerResponse, BrokerError>({
+                    kind: "cluster_unavailable",
+                    decision: "UNKNOWN",
+                });
+            return getExtensionVersion(input.extensionId).andThen(
+                extensionVersion => {
+                    const params = buildBrokerParams(
+                        input,
+                        clusterUrl,
+                        extensionVersion,
+                    );
 
-                return ResultAsync.fromPromise(
-                    xior.get<string>(`${clusterUrl}/broker`, {
-                        responseType: "text",
-                        params,
-                    }),
-                    (cause): BrokerError => ({
-                        type: "BROKER_FETCH_ERROR",
-                        message: "Failed to fetch broker response.",
-                        cause,
-                    }),
-                ).map(response => parseBrokerResponse(response.data));
-            }),
-        );
+                    return ResultAsync.fromPromise(
+                        xior.get<string>(`${clusterUrl}/broker`, {
+                            responseType: "text",
+                            params,
+                        }),
+                        (cause): BrokerError => ({
+                            type: "BROKER_FETCH_ERROR",
+                            message: "Failed to fetch broker response.",
+                            cause,
+                        }),
+                    ).map(response => parseBrokerResponse(response.data));
+                },
+            );
+        });
 }

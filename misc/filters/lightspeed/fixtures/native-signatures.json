@@ -1,0 +1,153 @@
+{
+    "sourceVersion": "4.4.10.1792039522",
+    "sourceWasmSha256": "0b45f4e211ef5096e43249ea57a6b04c208be3b66cd21d7386a1bd5ecf3a523d",
+    "cases": [
+        {
+            "name": "valid Ed25519",
+            "message": "{\"action\":\"host_lookup\",\"request\":{\"host\":\"example.invalid\"},\"nonce\":\"synthetic-nonce\",\"cat\":1}",
+            "signature": "PM+i3LJpoXv4B07cPE+8aOGWwtz/DIfOtLxTaQpkP+9DDFlWQCAnYMcXga7UqaLboxMCbtx0F0Pex5jjh2pgBw==",
+            "publicKey": "bzgkEX88xRQ2dVQdzIDaDw/PR+vY5so2QKTUB/ZPjMQ=",
+            "expected": true
+        },
+        {
+            "name": "canonical wire order",
+            "message": "{\"action\":\"host_lookup\",\"cat\":1,\"nonce\":\"synthetic-nonce\",\"request\":{\"host\":\"example.invalid\"}}",
+            "signature": "PM+i3LJpoXv4B07cPE+8aOGWwtz/DIfOtLxTaQpkP+9DDFlWQCAnYMcXga7UqaLboxMCbtx0F0Pex5jjh2pgBw==",
+            "publicKey": "bzgkEX88xRQ2dVQdzIDaDw/PR+vY5so2QKTUB/ZPjMQ=",
+            "expected": true
+        },
+        {
+            "name": "received order is not signed order",
+            "message": "{\"action\":\"host_lookup\",\"request\":{\"host\":\"example.invalid\"},\"nonce\":\"synthetic-nonce\",\"cat\":1}",
+            "signature": "xHLlFkrwfBRmzrmFkGu4orMRj9FZ7ubScdAB9kWrSzp/XeINxD5a8KWv5hJwQY4niGi37rWf5u33da0tmhzjAQ==",
+            "publicKey": "bzgkEX88xRQ2dVQdzIDaDw/PR+vY5so2QKTUB/ZPjMQ=",
+            "expected": false
+        },
+        {
+            "name": "whitespace normalization",
+            "message": "{\n  \"action\": \"host_lookup\",\n  \"request\": {\n    \"host\": \"example.invalid\"\n  },\n  \"nonce\": \"synthetic-nonce\",\n  \"cat\": 1\n}",
+            "signature": "PM+i3LJpoXv4B07cPE+8aOGWwtz/DIfOtLxTaQpkP+9DDFlWQCAnYMcXga7UqaLboxMCbtx0F0Pex5jjh2pgBw==",
+            "publicKey": "bzgkEX88xRQ2dVQdzIDaDw/PR+vY5so2QKTUB/ZPjMQ=",
+            "expected": true
+        },
+        {
+            "name": "changed category",
+            "message": "{\"action\":\"host_lookup\",\"request\":{\"host\":\"example.invalid\"},\"nonce\":\"synthetic-nonce\",\"cat\":28}",
+            "signature": "PM+i3LJpoXv4B07cPE+8aOGWwtz/DIfOtLxTaQpkP+9DDFlWQCAnYMcXga7UqaLboxMCbtx0F0Pex5jjh2pgBw==",
+            "publicKey": "bzgkEX88xRQ2dVQdzIDaDw/PR+vY5so2QKTUB/ZPjMQ=",
+            "expected": false
+        },
+        {
+            "name": "changed signature",
+            "message": "{\"action\":\"host_lookup\",\"request\":{\"host\":\"example.invalid\"},\"nonce\":\"synthetic-nonce\",\"cat\":1}",
+            "signature": "Pc+i3LJpoXv4B07cPE+8aOGWwtz/DIfOtLxTaQpkP+9DDFlWQCAnYMcXga7UqaLboxMCbtx0F0Pex5jjh2pgBw==",
+            "publicKey": "bzgkEX88xRQ2dVQdzIDaDw/PR+vY5so2QKTUB/ZPjMQ=",
+            "expected": false
+        },
+        {
+            "name": "wrong Ed25519 key",
+            "message": "{\"action\":\"host_lookup\",\"request\":{\"host\":\"example.invalid\"},\"nonce\":\"synthetic-nonce\",\"cat\":1}",
+            "signature": "PM+i3LJpoXv4B07cPE+8aOGWwtz/DIfOtLxTaQpkP+9DDFlWQCAnYMcXga7UqaLboxMCbtx0F0Pex5jjh2pgBw==",
+            "publicKey": "BAA70v2AxAx73wHEhkhlwtgD2Hl2j3HJWM3MqVx3fQ8=",
+            "expected": false
+        },
+        {
+            "name": "invalid signature encoding",
+            "message": "{\"action\":\"host_lookup\",\"request\":{\"host\":\"example.invalid\"},\"nonce\":\"synthetic-nonce\",\"cat\":1}",
+            "signature": "%",
+            "publicKey": "bzgkEX88xRQ2dVQdzIDaDw/PR+vY5so2QKTUB/ZPjMQ=",
+            "expected": false
+        },
+        {
+            "name": "invalid public-key encoding",
+            "message": "{\"action\":\"host_lookup\",\"request\":{\"host\":\"example.invalid\"},\"nonce\":\"synthetic-nonce\",\"cat\":1}",
+            "signature": "PM+i3LJpoXv4B07cPE+8aOGWwtz/DIfOtLxTaQpkP+9DDFlWQCAnYMcXga7UqaLboxMCbtx0F0Pex5jjh2pgBw==",
+            "publicKey": "%",
+            "expected": false
+        },
+        {
+            "name": "nested objects and arrays",
+            "message": "{\"z\":[{\"y\":2,\"a\":1},null,true],\"a\":{\"z\":false,\"b\":\"hello\"}}",
+            "signature": "8gsopXD/nCJYinX8cWzXHGZ6zY8pEygVyJHQOyFNYZ3IxTqqTr9LI+m9EF1bdTkT/FflakBsERVMbe4cvwFuCw==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "integer-like keys",
+            "message": "{\"2\":2,\"10\":10,\"01\":1,\"a\":0}",
+            "signature": "h8TXlWGBdMZKEMh6G1mQlan8YpHnnQwHI+FBqJN6n0uY6mG7qpFHw7iOb7SVMAa+6eRBT1SbEPvO3ktWEZgiDg==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "HTML escapes",
+            "message": "{\"text\":\"<script>& \\\"quoted\\\" >\"}",
+            "signature": "ZdHt6hyGU420yq4FxJukjfQ8tCW4vEPXHxIN02cbMI2pcwn4ULwEl/npjeiLwEvxvKbAH7Wb7ETasO5NJINZDg==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "line separators",
+            "message": "{\"text\":\"a b c\\n\\t\\r\\b\\f\"}",
+            "signature": "elaJ9Y3FVETqXD29w20JMoGgcR/NTKrOtfRaWxgkmY5YPJdWWzesgBtmB6lKVeaBlbv+2XeKDflcZH8h0GOODQ==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "Unicode sorting",
+            "message": "{\"𐀀\":1,\"\":2,\"é\":3,\"a\":4}",
+            "signature": "7aGDu8kvjoaDhu5pVXZT5tC/1ngW9Wv3w+B7SfPtgiFOFb8WRnzxWxeR7xGTNdO1puyamavQHH0SiVd9SbqWAw==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "unpaired surrogate values",
+            "message": "{\"value\":\"\\ud800\"}",
+            "signature": "Ca5poHgA3aT3rEvaYB9k67aAyih3HRYGUIgyMk+kA1AvRsIYvktSNnUzPrzGY3xgT6gDrUGmCawK1+UGqRE0CQ==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": false
+        },
+        {
+            "name": "unpaired surrogate keys",
+            "message": "{\"\\ud800\":1,\"b\":2}",
+            "signature": "M54JuPZRyWujOe4JrsfFGFuGcQSd5R02r9eEpfYeslLF/X1Fepv6LGkYRuWsEFbh19Rt/UwVNFOTkg00t6bTAA==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": false
+        },
+        {
+            "name": "floating point cutoffs",
+            "message": "{\"values\":[1e-7,0.000001,100000000000000000000,1e+21,1e+23,1.2345678901234567,1000000000000000100]}",
+            "signature": "ZSZ7iUGC/dmYmSkkNIYxqPJvGgLWkHEzN13ymhC1t7zUpbmuOvXwqaQQPj3LKbRUP5S5ZLOj9/++rujTHJzSDQ==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "negative zero JS serialization",
+            "message": "{\"value\":0}",
+            "signature": "+EHOjMG4JI/fPn1koV/ccKqswJyqcrXBqO1Ma3Yew/O2eSWSofqWOxcYplM9rhxKCUqjYZ3gktB+gQ/iceuMBw==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "unknown additional fields",
+            "message": "{\"action\":\"host_lookup\",\"cat\":1,\"extras\":{\"nested\":[\"<x>\",{\"z\":4,\"a\":1}]}}",
+            "signature": "SeLGzXWzUVSDcgGfQyrHr8MbHVGdR2N4FuHVCz/ZPWnqM9v5RGvoe5j0zs35isjLozJ9NXErFBT0pWLF3hfJBg==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "RFC 8785 primitives",
+            "message": "{\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\\\\\"/\",\"literals\":[null,true,false]}",
+            "signature": "2x2AFEnU95kDQt9tIIHMTG6pmjnRcnrYQb/0yf/SLV5SPFBXqYaZHxqRMfg+4LajBInmjnNRX17pcKkjUEnJAg==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        },
+        {
+            "name": "RFC 8785 property sorting",
+            "message": "{\"1\":\"One\",\"€\":\"Euro Sign\",\"\\r\":\"Carriage Return\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\",\"😀\":\"Emoji: Grinning Face\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\"}",
+            "signature": "SQTjepYOesgp914GDVNj8TaCy/xgh6JV/aF21m29JoS1T2Xv3ohV0f6HQKI4u2gWI9k9YUwvxB+eAH36bHIbCg==",
+            "publicKey": "M8PERomqdM5bAPmOdjH7+7UCFTMTXPgRLsHPZod7ADM=",
+            "expected": true
+        }
+    ]
+}

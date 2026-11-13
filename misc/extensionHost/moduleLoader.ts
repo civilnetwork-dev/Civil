@@ -21,7 +21,13 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { dirname, resolve as resolvePath } from "node:path";
+import {
+    dirname,
+    isAbsolute,
+    relative,
+    resolve as resolvePath,
+    sep,
+} from "node:path";
 import * as vm from "node:vm";
 
 /** `vm.SourceTextModule` is still marked experimental in @types/node: the
@@ -54,31 +60,36 @@ export interface ModuleLoaderOptions {
  *  anything this host has no business trying to serve (a bare/npm-style
  *  specifier: the same "resolve to nothing runnable" call `compileScript`'s
  *  own esbuild fallback already makes for those). */
-function resolveSpecifier(
+export function resolveSpecifier(
     specifier: string,
     referencingPath: string,
     extensionId: string,
     extensionDir: string,
 ): string | undefined {
     const extensionPrefix = `chrome-extension://${extensionId}/`;
+    let resolved: string;
     if (specifier.startsWith(extensionPrefix)) {
-        const relative = decodeURIComponent(
+        const path = decodeURIComponent(
             specifier.slice(extensionPrefix.length).split(/[?#]/)[0] ?? "",
         );
-        const resolved = resolvePath(extensionDir, relative);
-        // Nothing outside the extension directory, matching buildFetch's own
-        // containment for the same URL shape.
-        return resolved.startsWith(resolvePath(extensionDir))
-            ? resolved
-            : undefined;
+        resolved = resolvePath(extensionDir, path);
+    } else if (specifier.startsWith("//")) {
+        return undefined;
+    } else if (specifier.startsWith("/") || specifier.startsWith(".")) {
+        const path = decodeURIComponent(specifier.split(/[?#]/)[0]!);
+        resolved = specifier.startsWith("/")
+            ? resolvePath(extensionDir, "." + path)
+            : resolvePath(dirname(referencingPath), path);
+    } else {
+        // A bare specifier is a Node-only branch, not a packaged browser file.
+        return undefined;
     }
-    if (specifier.startsWith(".") || specifier.startsWith("/")) {
-        return resolvePath(dirname(referencingPath), specifier);
-    }
-    // A bare specifier (an npm-style package name): nothing this host
-    // resolves; matches compileScript's own esbuild plugin, which sends the
-    // same shape to an empty module rather than failing the whole load.
-    return undefined;
+    // Nothing outside the extension directory, matching buildFetch's own
+    // containment for the same URL shape.
+    const path = relative(resolvePath(extensionDir), resolved);
+    return path !== ".." && !path.startsWith(".." + sep) && !isAbsolute(path)
+        ? resolved
+        : undefined;
 }
 
 function emptyModule(identifier: string, context: vm.Context): vm.Module {

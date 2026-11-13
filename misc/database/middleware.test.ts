@@ -5,7 +5,9 @@
  * bare `fetch(url, { method: "POST" })` is not refused with 415.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => vi.unstubAllEnvs());
 
 const handler = vi.hoisted(() =>
     vi.fn(async (request: Request) =>
@@ -16,7 +18,10 @@ const visits = vi.hoisted(() => ({
     recordVisit: vi.fn(async () => {}),
     isUserBanned: vi.fn(async () => false),
 }));
-vi.mock("./auth", () => ({ auth: { handler } }));
+vi.mock("./auth", () => ({
+    auth: { handler },
+    classLinkConfig: { authOrigin: "https://civil.example" },
+}));
 vi.mock("./graphql", () => ({ yoga: { fetch: () => new Response() } }));
 vi.mock("./session", () => ({
     resolveSessionFromHeaders: async () => ({ user: { id: "student" } }),
@@ -32,6 +37,61 @@ vi.mock("./bannedDomains", () => ({
             ? "restricted.example"
             : null,
 }));
+
+it("advertises ClassLink only on the canonical host without leaking configuration", async () => {
+    const router = createDatabaseMiddleware();
+    const enabled = await router.request(
+        "https://civil.example/api/authProviders",
+    );
+    expect(await enabled.json()).toEqual({ classlink: true });
+    expect(enabled.headers.get("cache-control")).toBe("no-store");
+    const mirror = await router.request(
+        "https://mirror.example/api/authProviders",
+    );
+    expect(await mirror.json()).toEqual({ classlink: false });
+});
+
+it("uses the configured reverse proxy's scheme for ClassLink availability", async () => {
+    vi.stubEnv("REVERSE_PROXY", "true");
+    const router = createDatabaseMiddleware();
+    const request = async (
+        host: string,
+        scheme?: string,
+        origin = "https://civil.example",
+    ) => {
+        const response = await router.request(
+            `http://${host}/api/authProviders`,
+            {
+                headers: {
+                    origin,
+                    "x-forwarded-host": "civil.example",
+                    ...(scheme ? { "x-forwarded-proto": scheme } : {}),
+                },
+            },
+        );
+        return response.json();
+    };
+    expect(await request("civil.example", "http, https")).toEqual({
+        classlink: true,
+    });
+    expect(await request("civil.example", "https, http")).toEqual({
+        classlink: false,
+    });
+    expect(await request("civil.example", "unknown")).toEqual({
+        classlink: false,
+    });
+    expect(await request("civil.example")).toEqual({ classlink: false });
+    expect(await request("mirror.example", "https")).toEqual({
+        classlink: false,
+    });
+    expect(
+        await request("civil.example", "https", "https://mirror.example"),
+    ).toEqual({ classlink: false });
+    vi.stubEnv("REVERSE_PROXY", undefined);
+    expect(await request("civil.example", "https")).toEqual({
+        classlink: false,
+    });
+});
 
 import { createDatabaseMiddleware } from "./middleware";
 

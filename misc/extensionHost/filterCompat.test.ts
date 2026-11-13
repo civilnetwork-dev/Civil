@@ -16,7 +16,6 @@
  * them happens to be present.
  */
 
-import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -634,88 +633,6 @@ const BUNDLE_ROOT =
 const haveBundles = existsSync(BUNDLE_ROOT);
 
 /**
- * What a filter needs before it will run its configured code path rather than
- * its "I am not set up" path.
- *
- * Lightspeed Insight refuses to start without an enterprise policy and two
- * replies from its own server, so without this it runs about four statements
- * and stops, which would make every observation of it an observation of an
- * extension that gave up.
- *
- * All three pieces come from reading the bundle, not from guessing:
- *
- *   - `schema.json` in the bundle declares the whole managed-policy surface:
- *     `EntitlementKey` and `Env`, both strings, nothing else. `js/utils.js`
- *     rejects when the value is empty, so any non-empty string gets past it:
- *     hence a random one here. It is a placeholder, not a real tenant's key,
- *     and it never leaves the process.
- *   - `Env` selects one of the bundle's own `env/{dev,qa,prod}.json` files
- *     for its endpoints, which `fetch` already serves from disk.
- *   - `js/api.js` then calls `verifyUrl/{key}` and
- *     `agentConfigUrl/{platform}/{key}` and throws on anything but 2xx. Those
- *     are the two replies below. The config fields are the ones
- *     `background.js` actually reads, and `speedTestActive: false` keeps its
- *     `client.wasm` speed-test engine (a Go/QUIC build: decompiling it shows
- *     `Lightspeed-Systems/insight-speedtest` and no entitlement logic at all)
- *     from trying to open QUIC connections that this host has no network for.
- *
- * `vendorEmulation.ts` (shared with misc/filterProbe/sandbox.ts, so a
- * bundle's configured/enrolled state is the same in both places it's tested)
- * carries the same idea for Securly, iboss, Linewize and Aristotle.
- */
-const VENDOR_SETUP: Record<
-    string,
-    {
-        managedStorage?: Record<string, unknown>;
-        initialStorage?: Record<string, unknown>;
-        initialBookmarks?: { title: string; url: string }[];
-        network?: (request: {
-            url: string;
-            method: string;
-        }) => Response | undefined | Promise<Response | undefined>;
-    }
-> = {
-    ...VENDOR_EMULATION,
-    lightspeedInsightAgent: {
-        managedStorage: {
-            EntitlementKey: randomUUID(),
-            Env: "prod",
-        },
-        network: ({ url }) => {
-            const json = (body: unknown) =>
-                new Response(JSON.stringify(body), {
-                    status: 200,
-                    headers: { "content-type": "application/json" },
-                });
-            if (url.includes("/agentconfig/keys/verify")) return json({});
-            if (url.includes("/agentconfig/v2"))
-                return json({
-                    active: true,
-                    speedTestActive: false,
-                    locationDataActive: false,
-                    collectPII: false,
-                    log: false,
-                    sendInterval: 300,
-                    checkinInterval: 3600,
-                    inactiveTimeout: 900,
-                    minCheck: 60,
-                    maxCheck: 600,
-                    maxAge: 86400,
-                    maxPayload: 100,
-                    payloadActivityMaxCount: 100,
-                    adaptiveLimit: 10,
-                    chunkSize: 1024,
-                    chunkCount: 4,
-                    endpointURL: "https://agent.catchon.test/collect",
-                    digitalEquityURL: "https://agent.catchon.test/equity",
-                    speedTestURL: "https://agent.catchon.test/speed",
-                });
-            return undefined;
-        },
-    },
-};
-
-/**
  * Errors a bundle still reports after startup. Usually the bundle's own
  * behavior rather than a gap in the host: pinned rather than hidden, so a
  * change in either direction shows up as a failing test.
@@ -747,7 +664,7 @@ const KNOWN_ASYNC_FAILURES: Record<string, RegExp> = {
  */
 async function startupProblems(
     dir: string,
-    setup?: (typeof VENDOR_SETUP)[string],
+    setup?: (typeof VENDOR_EMULATION)[string],
 ): Promise<string[]> {
     const problems: string[] = [];
     const describeError = (error: unknown) =>
@@ -827,7 +744,7 @@ describe.skipIf(!haveBundles)("real vendor bundles", () => {
                 FILTERS[name]!.background,
             );
 
-            const problems = await startupProblems(dir, VENDOR_SETUP[name]);
+            const problems = await startupProblems(dir, VENDOR_EMULATION[name]);
             const known = KNOWN_ASYNC_FAILURES[name];
             if (known) {
                 expect(problems.join(" | ")).toMatch(known);

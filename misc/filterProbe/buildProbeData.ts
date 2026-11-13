@@ -73,6 +73,10 @@ type BlockPages = Pick<VendorProbe, "blockPages" | "blockMarkers">;
 
 /** Read October 2026; the source of each is in the file comment. */
 const BLOCK_PAGES: Record<string, BlockPages> = {
+    prisma: { blockPages: ["chrome-extension:block.html"], blockMarkers: [] },
+    dyknow: { blockPages: ["studentontask.com/"], blockMarkers: [] },
+    gopherbuddy: { blockPages: [], blockMarkers: [] },
+    classlink: { blockPages: [], blockMarkers: [] },
     aristotle: {
         blockPages: ["chrome-extension:blocked.html"],
         blockMarkers: [
@@ -240,7 +244,10 @@ const BLOCK_PAGES: Record<string, BlockPages> = {
         ],
     },
     netsupport: {
-        blockPages: ["chrome-extension:weblock.html"],
+        blockPages: [
+            "chrome-extension:weblock.html",
+            "chrome-extension:ApprovedWebList.htm",
+        ],
         blockMarkers: [
             "Click Internet button for a list of approved web sites",
         ],

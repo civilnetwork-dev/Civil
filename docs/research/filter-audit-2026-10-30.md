@@ -1,12 +1,14 @@
 # Filter extension audit, 30 October 2026
 
+**Continuation:** [1 November audit and implementation](filter-audit-2026-11-01.md) records the newer evidence inventory, omitted Lightspeed helper, further client/server fixes, and real-browser checks. The table below is the initial acquisition snapshot; later group reports and that continuation supersede its historical-coverage and remaining-work statements.
+
 Status: partial. The client/server fixes below are implemented and checked, including a second pass on 30 October that replaced the engine names and the proxy path prefix, and that **corrects one first-pass claim** (Blocksi, below). The requested multi-version, every-important-file investigation is **not complete**: older binaries are missing for most extensions, five update services supplied no package, some native or large bundled code remains unanalyzed, and no managed-device enforcement test has been run. These findings do not establish universal undetectability.
 
 ## Targets and provenance
 
 The requested [Filter-Sources catalog](https://github.com/civilnetwork-dev/Filter-Sources/blob/00e749c43b6d0793b56dce2e7fe917881dfcfd57/extensions.json) contains 28 extension IDs. Catalog commit: `00e749c43b6d0793b56dce2e7fe917881dfcfd57`, 26 October 2026. Git blob: `e050d4565e59c5bef8317e75e9d430fb498ff097`.
 
-Local evidence lives under the ignored `extensions/filter-audit-2026-10-30/` directory. Each extension has its own `acquisition.json`, update XML, preserved cached package, downloaded CRX when available, and unpacked latest package. Acquisition records contain per-file SHA-256 values and original download URLs. Cached packages came from the pre-existing user archive; their acquisition and release dates are unknown unless separately corroborated. A manifest version alone does not prove age, package authenticity, or unchanged source bytes. CRX signatures have not been verified.
+Local evidence for the original pass lived under the ignored `extensions/filter-audit-2026-10-30/` directory. Each extension had its own `acquisition.json`, update XML, preserved cached package, downloaded CRX when available, and unpacked latest package. Acquisition records contain per-file SHA-256 values and original download URLs. Cached packages came from the pre-existing user archive; their acquisition and release dates are unknown unless separately corroborated. A manifest version alone does not prove age, package authenticity, or unchanged source bytes. The initial pass had not verified CRX signatures; later checks are recorded in the group reports. The original ignored directory was absent on 1 November, when available current packages and signatures were independently revalidated; see the continuation for the exact surviving evidence.
 
 The initial live acquisition downloaded 23 current update-channel packages. Five Google update responses said `noupdate`; the same five still supplied no codebase when queried with Chrome 109, Chrome 131, and ChromeOS 131 client parameters. Exact queries and responses are in `legacy-update-probes.json`. This does not prove that no newer package exists through another distribution channel.
 
@@ -35,7 +37,7 @@ Filter-Sources was created on 24 August 2026 and has no catalog history before 3
 | Impero | 4.0.286 | 4.0.286 | Embedded package is the same version |
 | IMTLazarus | 26.4 | 26.9 | Dated older release unavailable so far |
 | InterCLASS | 6.4.2026.0501 | 6.5.2026.1014 | Dated older release unavailable so far |
-| LanSchool Air | 2.25.0.20424 | 2.25.0.22463 | Dated older release unavailable so far |
+| LanSchool Air | 2.25.0.20424 | 2.25.0.22463 | Vendor dates 2.25.0.20424 to 21 July 2025. See the 2 November provenance follow-up. |
 | LanSchool Student | 8.0.2.15 | 8.0.2.15 | Older/intermediate unavailable so far |
 | LanSchool Web Helper | 9.2.0.2 | 9.2.0.2 | Older/intermediate unavailable so far |
 | Lightspeed Filter Agent | 4.4.6.1785883975 | 4.4.10.1792039522 | Dated older release unavailable so far |

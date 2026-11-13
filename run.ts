@@ -349,14 +349,13 @@ Object.entries(servicePathMaps).forEach(([route, path]) => {
     app.use(`${route}/*`, staticDir(path, route));
 });
 
-// Nitro names each Vite service entry after the file the environment built.
-// The SSR environment's entry is @solidjs/vite-plugin's `virtual:solid-ssr-handler`,
-// which emits as `server`; its default export is the Fetchable
-// `{ fetch(request) }` that the catch-all route below hands each request to.
-const { default: ssrHandler } =
-    (await import("./dist/nitro/vite/services/ssr/server.js")) as {
-        default: { fetch(request: globalThis.Request): Promise<Response> };
-    };
+// `vite build` emits the SSR environment's entry, @solidjs/vite-plugin's
+// `virtual:solid-ssr-handler`, as dist/server/server.js; its default export is
+// the Fetchable `{ fetch(request) }` that the catch-all route below hands each
+// request to.
+const { default: ssrHandler } = (await import("./dist/server/server.js")) as {
+    default: { fetch(request: globalThis.Request): Promise<Response> };
+};
 
 app.use(staticDir(resolve(import.meta.dirname, "dist/client")));
 app.use(staticDir(resolve(import.meta.dirname, "dist/client/_build")));

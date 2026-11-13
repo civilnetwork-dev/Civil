@@ -1,0 +1,8 @@
+{
+    "manifest_version": 3,
+    "name": "Web request coverage fixture",
+    "version": "1.0.0",
+    "permissions": ["webRequest", "webRequestBlocking"],
+    "host_permissions": ["https://probe.invalid/granted-path/*"],
+    "background": { "service_worker": "background.js" }
+}

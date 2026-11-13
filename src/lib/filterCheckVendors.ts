@@ -98,7 +98,7 @@ const SECURLY_EXTENSION_ID = "ckecmkbnoanpgplccmnoikfmpcdladkc";
 export const FILTER_CONFIGS: Record<string, FilterConfig> = {
     securly: {
         name: "Securly",
-        aliases: ["securly"],
+        aliases: ["securly", "securlyextension"],
         needsEmail: true,
         endpoint: "/filterCheck/securly",
         buildPayload: (url, email) => {
@@ -156,7 +156,7 @@ export const FILTER_CONFIGS: Record<string, FilterConfig> = {
     },
     lightspeed: {
         name: "Lightspeed Filter",
-        aliases: ["lightspeedfilter"],
+        aliases: ["lightspeedfilter", "lightspeedfilteragent"],
         endpoint: "/filterCheck/lightspeed",
         buildPayload: url => ({ url }),
     },
@@ -165,7 +165,7 @@ export const FILTER_CONFIGS: Record<string, FilterConfig> = {
 export function findFilterConfig(name: string): [string, FilterConfig] | null {
     const lower = name.toLowerCase();
     for (const [key, config] of Object.entries(FILTER_CONFIGS)) {
-        if (config.aliases.some(alias => lower.includes(alias))) {
+        if (key.toLowerCase() === lower || config.aliases.includes(lower)) {
             return [key, config];
         }
     }
@@ -174,7 +174,7 @@ export function findFilterConfig(name: string): [string, FilterConfig] | null {
 
 /** Detected filter IDs (misc/config/service/filterDetect.ts) whose vendor
  *  spells its name in a way splitting the camelCase can't recover. */
-const FILTER_NAMES: Record<string, string> = {
+export const FILTER_NAMES: Record<string, string> = {
     goguardian: "GoGuardian",
     fortiguard: "FortiGuard",
     contentkeeper: "ContentKeeper",
@@ -188,6 +188,11 @@ const FILTER_NAMES: Record<string, string> = {
     loiLoWebFilters: "LoiLo Web Filters",
     netsupportSchoolStudent: "NetSupport School Student",
     classroomdotcloudStudent: "classroom.cloud Student",
+    prismaBrowser: "Prisma Browser",
+    dyknowCloud: "Dyknow Cloud",
+    gopherBuddyPremium: "Gopher Buddy Premium",
+    classlinkAnalyticsPlus: "ClassLink Analytics+",
+    classlinkOneClick: "ClassLink OneClick",
     lockdownBrowser: "LockDown Browser",
     lockdownBrowserAPClassroomEdition: "LockDown Browser AP Classroom Edition",
 };

@@ -1,0 +1,8 @@
+{
+    "name": "@tanstack/solid-router",
+    "version": "2.0.0-rc.9",
+    "dependencies": {
+        "@tanstack/history": "1.162.1",
+        "@tanstack/router-core": "1.171.22"
+    }
+}

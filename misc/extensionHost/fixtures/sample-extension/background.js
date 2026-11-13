@@ -18,6 +18,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         Promise.resolve().then(() => sendResponse("pong-async"));
         return true; // keep the channel open for the async response
     }
+    if (message === "ping-promise") {
+        return Promise.resolve({ reply: "pong-promise" });
+    }
+    if (message === "ping-promise-callback") {
+        return Promise.resolve()
+            .then(() => Promise.resolve())
+            .then(() => sendResponse("pong-promise-callback"));
+    }
     if (message === "whoami") {
         sendResponse(sender.id);
         return false;

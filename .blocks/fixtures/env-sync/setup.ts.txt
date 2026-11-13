@@ -1,0 +1,8 @@
+const TEST_ENV_DEFAULTS: Record<string, string> = {
+    DATABASE_URL: "postgresql://civil:test@127.0.0.1:5432/civil_test",
+    BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long",
+};
+
+for (const [key, value] of Object.entries(TEST_ENV_DEFAULTS)) {
+    process.env[key] ??= value;
+}

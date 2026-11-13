@@ -6,8 +6,9 @@ source that has to change.
 
 One filter _vendor_ at a time, not one extension id: several vendors ship two
 or three extensions against the same backend (Cisco, Lightspeed, Securly,
-LanSchool, Aristotle, GoGuardian), so the eighteen vendors are what actually
-differ. `vendors.ts` is where that id→vendor collapse lives.
+LanSchool, Aristotle), so vendor groups are what actually differ.
+`vendors.ts` is where that id→vendor mapping lives. Legacy Gopher Buddy and
+Gopher Premium belong to their own group.
 
 ## Two ways to run it
 
@@ -36,6 +37,12 @@ the subdomain, when it finishes:
 FREEDNS_EMAIL=… FREEDNS_PASSWORD=… bun misc/filterProbe/harness.ts
 ```
 
+The runner's HTTP client can observe Civil's application pages. It
+reports the proxy document cell as incomplete because the browser's
+service worker produces that document. The process exits nonzero for
+an incomplete sweep. A vendor's known domain block can still cover the
+proxy path before the browser runs.
+
 It needs what CI does not have by default, a database and Redis for `run.ts`
 and FreeDNS credentials, and says which is missing rather than half-running.
 Three things it now handles itself: the bundles (downloaded and cached), the
@@ -58,22 +65,37 @@ to look up, so they don't participate.
 
 ## The bundles
 
-The twenty-eight vendor extensions are never committed (~200MB, and
-third-party) so they are fetched on demand and, in the Blacksmith workflow,
-kept warm in the cache: the same "download on the first run, cache thereafter"
+The upstream catalog's twenty-eight extensions and Civil's additional entries
+are never committed (third-party), so they are fetched on demand and, in the
+Blacksmith workflow, kept warm in the cache: the same "download on the first
+run, cache thereafter"
 shape [Filter-Sources](https://github.com/civilnetwork-dev/Filter-Sources) uses
 for them, and this repo's `.gitignore` keeps `/extensions/` out.
 
 Filter-Sources' own cache can't be reused here: it keeps _deobfuscated `.js`_
 snapshots for diffing, without the `manifest.json` or assets the sandbox needs
 to actually run a filter. So `downloadBundles.ts` fetches raw copies: using
-Filter-Sources' `extensions.json` as the folder → id → update-URL list, then
-Chrome's Omaha protocol and CRX unpacking (the same steps as that repo's
+Filter-Sources' `extensions.json` plus `extensionCatalog.ts` additions as the
+folder → id → update-URL list, then Chrome's Omaha protocol or a direct vendor
+CRX response. It verifies the publisher-bound ID before unpacking (the same
+Omaha and CRX steps as that repo's
 `omaha.zig`/`crx.zig`, in TypeScript, because that Zig tool isn't callable from
 here). What it does _not_ do is regenerate `probeData.json`: that stays
 committed, small, and the offline suite's only input, exactly like the
 extension host's `filterApiSurface.json`. Rerun `buildProbeData.ts` by hand
 after a vendor ships a release.
+
+For offline comparisons of unpacked versions, call `observeRoute` with
+the version directory as `extensionDir`. Pass the Filter-Sources
+`extensionFolder` and `extensionId` to select the same fixture policy
+and runtime identity for each version. The page fetch can be stubbed
+with `fetchImpl`. Extension network access defaults to offline.
+
+To replay a browser-captured proxy document, pass the captured URL's
+origin as `baseUrl` and its complete path and query as `route`. Pass
+the captured HTML through `fetchImpl`. Keep the frame-specific path
+segments from the capture. The `proxyTarget` option constructs a URL
+for fixtures that do not need those segments.
 
 ## How a "flag" is decided
 
@@ -96,8 +118,10 @@ asks the task's two questions of what the page became:
    bundle. Generic lines ("Access Denied") are left out, because the proxy
    route fetches a real third-party site and those would false-positive.
 
-Attribution is never in doubt: exactly one filter is installed per run, so
-"flagged" is always "flagged by the vendor under test".
+Each run loads one extension. Marker and text-collapse checks compare the
+original page with the result so an already-present block message does not
+become extension evidence. Startup errors and unsupported behavior remain
+inconclusive unless an independent block signal is observed.
 
 ## The files
 
@@ -116,10 +140,27 @@ Attribution is never in doubt: exactly one filter is installed per run, so
 
 ## The ceiling, stated
 
-`sandbox.ts` is not a browser: it reuses the extension host and happy-dom, so
-it observes a filter that blocks by redirect (a `location` assignment) or by
-rewriting the DOM (the text it leaves), but not one that needs a real renderer
-to act. The prediction is a ranked pointer list, not a patch. And the domain
-half of the detector is only as current as the middleware blocklist and
-`probeData.json`: rerun `buildProbeData.ts` after a vendor ships a new
-release.
+`sandbox.ts` is not a browser: it reuses the extension host and happy-dom.
+Besides redirects and DOM changes, it dispatches a synthetic top-frame GET to
+eligible `webRequest.onBeforeRequest` listeners before content scripts run.
+The declared permission model and listener URL, resource type, tab and window
+filters decide eligibility. Synchronous cancellation and valid redirects are
+observed; asynchronous blocking returns, listener failures and conflicting
+redirects remain incomplete. This does not intercept the fixture's HTTP fetch
+or establish managed Chrome timing and permission behavior. Child-frame
+requests, other request stages and renderer-dependent paths remain outside
+this replay. No fake graphics API supplies a policy verdict.
+
+Returned and detached worker/content failures remain diagnostics, never allow
+verdicts. Node uses disposable per-VM rejection tracking. Bun currently lacks
+that V8 hook; direct observations expose `asyncContainmentIncomplete` and remain
+incomplete. The research runner uses one extension per child and proves its
+external rejection collector before producing a separately labeled assessment.
+Its raw observations and capability limits remain in the receipt.
+
+The prediction is a ranked pointer list, not a patch. The domain half of the
+detector is only as current as the middleware blocklist and `probeData.json`:
+rerun `buildProbeData.ts` after a vendor ships a new release. The
+[9 November catalog replay](../../docs/research/filter-audit-2026-11-09-probe.md)
+records the retained-version matrix, code hashes, errors and observation
+limits; it does not establish every input or deployed policy.

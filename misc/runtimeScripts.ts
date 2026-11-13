@@ -2,11 +2,16 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { serveStatic } from "@hono/node-server/serve-static";
+import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 import { Hono } from "hono";
 import { etag } from "hono/etag";
 
-import { engineNames, runtimeScripts } from "./config/shared/runtimeScripts";
+import {
+    engineNames,
+    runtimeAssets,
+    runtimeScripts,
+} from "./config/shared/runtimeScripts";
 
 const root = resolve(import.meta.dirname, "..");
 const controllerDist = resolve(
@@ -68,5 +73,36 @@ runtimeScriptRoutes.get(
     runtimeScripts.wasm,
     serveStatic({ path: resolve(scramjetPath, "scramjet.wasm") }),
 );
+const assetDirectories = {
+    [runtimeAssets.bare]: resolve(
+        root,
+        "node_modules/@mercuryworkshop/bare-transport/dist",
+    ),
+    [runtimeAssets.libcurl]: resolve(
+        root,
+        "node_modules/@mercuryworkshop/libcurl-transport/dist",
+    ),
+    [runtimeAssets.epoxy]: resolve(
+        root,
+        "node_modules/@mercuryworkshop/epoxy-transport/dist",
+    ),
+    [runtimeAssets.mux]: baremuxPath,
+    [runtimeAssets.muxTransport]: resolve(
+        root,
+        "dist-config/baremux-transport",
+    ),
+};
+// Lightspeed's helper reads script sources and resource timing entries. Serve
+// transport modules and their relative assets directly under the same prefix.
+for (const [prefix, directory] of Object.entries(assetDirectories)) {
+    runtimeScriptRoutes.get(
+        `${prefix}/*`,
+        serveStatic({
+            root: directory,
+            rewriteRequestPath: path => path.slice(prefix.length),
+        }),
+    );
+}
+
 // A missing runtime file must stay a 404 instead of falling through to SSR.
 runtimeScriptRoutes.all("/_runtime/*", c => c.notFound());

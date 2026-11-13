@@ -98,11 +98,8 @@ describe("findFilterConfig", () => {
     });
 
     /**
-     * The real contract, and it is not "look up by key". Matching is
-     * `input.includes(alias)`, and callers only ever pass names produced by
-     * extension detection (`misc/config/service/filterDetect.ts`): never a
-     * FILTER_CONFIGS key. `findFilterConfig("lightspeed")` returns null, which
-     * looks alarming and is fine: nothing asks that question.
+     * Detection names and manual configuration keys both resolve exactly.
+     * Related classroom or analytics extensions must not select a classifier.
      */
     it("resolves the detection names the service worker actually emits", () => {
         expect(findFilterConfig("lightspeedFilterAgent")?.[0]).toBe(
@@ -112,10 +109,8 @@ describe("findFilterConfig", () => {
     });
 
     /**
-     * Substring matching means a shorter alias swallows a longer one. Today no
-     * vendor's alias contains another's, so lookups are unambiguous: if that
-     * ever changes, one vendor becomes permanently unreachable and nothing
-     * throws.
+     * Keep aliases separate even though lookup now uses exact matches.
+     * Detection must not silently select a different vendor after an alias edit.
      */
     it("keeps aliases free of substring collisions across vendors", () => {
         const all = Object.entries(FILTER_CONFIGS).flatMap(([key, c]) =>
@@ -131,6 +126,13 @@ describe("findFilterConfig", () => {
             }
         }
     });
+});
+
+it("does not classify related products by a vendor substring", () => {
+    expect(findFilterConfig("securlyClassroom")).toBeNull();
+    expect(findFilterConfig("lightspeedClassroom")).toBeNull();
+    expect(findFilterConfig("prefixclasslinkOneClick")).toBeNull();
+    expect(findFilterConfig("gopherBuddy")).toBeNull();
 });
 
 describe("prettifyFilterName", () => {

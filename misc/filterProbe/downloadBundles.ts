@@ -36,11 +36,14 @@
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { XMLParser } from "fast-xml-parser";
 import { unzipSync } from "fflate";
+
+import { verifiedCrxZip } from "./crxSignature";
+import { extensionEntries, type ExtensionEntry } from "./extensionCatalog";
 
 const EXTENSIONS_JSON_URL =
     "https://raw.githubusercontent.com/civilnetwork-dev/Filter-Sources/main/extensions.json";
@@ -49,12 +52,6 @@ const EXTENSIONS_JSON_URL =
  *  the response depends on it (see the note in Filter-Sources' omaha.zig); the
  *  request just has to carry a plausible one. */
 const PRODVERSION = "151.0.7922.173";
-
-interface ExtensionEntry {
-    folder: string;
-    id: string;
-    updateUrl: string;
-}
 
 /** The Omaha request Chrome itself sends, asking with an ancient local version
  *  so the server always returns the full record rather than "noupdate". */
@@ -118,40 +115,84 @@ async function loadEntries(): Promise<ExtensionEntry[]> {
     const local = process.env.CIVIL_EXTENSIONS_JSON;
     if (local) {
         const { readFileSync } = await import("node:fs");
-        return JSON.parse(readFileSync(local, "utf8"));
+        return extensionEntries(JSON.parse(readFileSync(local, "utf8")));
     }
     const res = await fetch(EXTENSIONS_JSON_URL);
     if (!res.ok)
         throw new Error(
             `could not fetch extensions.json (${res.status}); set CIVIL_EXTENSIONS_JSON to a local copy`,
         );
-    return res.json() as Promise<ExtensionEntry[]>;
+    return extensionEntries((await res.json()) as ExtensionEntry[]);
+}
+
+async function downloadPackage(entry: ExtensionEntry): Promise<Uint8Array> {
+    const url =
+        entry.source === "crx" || entry.source === "manifest"
+            ? entry.updateUrl
+            : buildOmahaUrl(entry.updateUrl, entry.id);
+    const response = await fetch(url);
+    if (!response.ok)
+        throw new Error(`Update request failed: ${response.status}`);
+    if (entry.source === "crx")
+        return new Uint8Array(await response.arrayBuffer());
+    const codebase = codebaseForApp(await response.text(), entry.id);
+    if (!codebase || new URL(codebase).protocol !== "https:")
+        throw new Error("No HTTPS package for the expected extension ID");
+    const packageResponse = await fetch(codebase);
+    if (!packageResponse.ok)
+        throw new Error(`Package request failed: ${packageResponse.status}`);
+    return new Uint8Array(await packageResponse.arrayBuffer());
+}
+
+export function unpackPackage(
+    crx: Uint8Array,
+    entry: ExtensionEntry,
+    dir: string,
+) {
+    const signed = String.fromCharCode(...crx.subarray(0, 4)) === "Cr24";
+    if (entry.source && !signed)
+        throw new Error("Expected a signed CRX package");
+    const zip = signed ? verifiedCrxZip(crx, entry.id) : zipFromCrx(crx);
+    const files = Object.entries(unzipSync(zip));
+    const manifest = files.find(([path]) => path === "manifest.json");
+    if (!manifest) throw new Error("Package manifest is missing");
+    const parsed = JSON.parse(new TextDecoder().decode(manifest[1]));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+        throw new Error("Package manifest is invalid");
+    const root = resolve(dir);
+    for (const [path] of files) {
+        if (
+            path.includes("\\") ||
+            path.includes(":") ||
+            !resolve(root, path).startsWith(root + sep)
+        )
+            throw new Error("Package file escapes the extension directory");
+    }
+    // Write the cache marker last so a failed extraction is retried.
+    files.sort(
+        ([left], [right]) =>
+            Number(left === "manifest.json") -
+            Number(right === "manifest.json"),
+    );
+    for (const [path, data] of files) {
+        if (path.endsWith("/") || data.length === 0) continue;
+        const abs = resolve(root, path);
+        mkdirSync(dirname(abs), { recursive: true });
+        writeFileSync(abs, data);
+    }
 }
 
 async function downloadOne(
     entry: ExtensionEntry,
     dest: string,
 ): Promise<"downloaded" | "cached" | "failed"> {
-    const dir = join(dest, entry.folder);
-    if (existsSync(join(dir, "manifest.json"))) return "cached";
-
     try {
-        const omaha = await fetch(buildOmahaUrl(entry.updateUrl, entry.id));
-        const codebase = codebaseForApp(await omaha.text(), entry.id);
-        if (!codebase) return "failed";
-
-        const crxRes = await fetch(codebase);
-        if (!crxRes.ok) return "failed";
-        const crx = new Uint8Array(await crxRes.arrayBuffer());
-
-        const files = unzipSync(zipFromCrx(crx));
-        for (const [path, data] of Object.entries(files)) {
-            if (path.endsWith("/") || data.length === 0) continue;
-            const abs = join(dir, path);
-            mkdirSync(dirname(abs), { recursive: true });
-            writeFileSync(abs, data);
-        }
-        return existsSync(join(dir, "manifest.json")) ? "downloaded" : "failed";
+        if (!/^[a-z0-9_-]+$/i.test(entry.folder))
+            throw new Error("Invalid extension folder");
+        const dir = join(dest, entry.folder);
+        if (existsSync(join(dir, "manifest.json"))) return "cached";
+        unpackPackage(await downloadPackage(entry), entry, dir);
+        return "downloaded";
     } catch {
         return "failed";
     }

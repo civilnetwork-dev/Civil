@@ -15,7 +15,9 @@ The package also ships `ckauth_unstripped_x86_64.nexe` (5,774,801 bytes), SHA-25
 | Section | Virtual address | Bytes | SHA-256 |
 |---|---|---|---|
 | `.text` | `0x20080` | 1,251,872 | `50e9cf0c4d2bd2235b6e2a24d35a721cbc13c2d4387ac0a233847648c3bc15d1` |
-| `.rodata` | `0x10020000` | 93,528 | `4b84bae92dfcc99a8be323672ab8128c5fb1b1d23e7a9915ed6016e9e979a854` |
+| `.rodata` | `0x10020200` | 93,528 | `4b84bae92dfcc99a8be323672ab8128c5fb1b1d23e7a9915ed6016e9e979a854` |
+
+The `.rodata` address was corrected from `0x10020000` on 1 November after re-reading the ELF section header. See the [native follow-up](filter-audit-2026-11-01-native.md) for the fresh identity checks and additional decompilation.
 
 That correspondence supports mapping the shipped symbol table's names to the selected addresses in the stripped program. It does not authenticate a vendor signature or recover original C++ source.
 

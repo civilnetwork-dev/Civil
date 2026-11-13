@@ -40,12 +40,17 @@ import {
     buildNetworkingAttributes,
 } from "./api/enterprise";
 import { buildPlatform, type TimerHandle } from "./api/platform";
-import { buildRuntime, dispatchMessage } from "./api/runtime";
+import { buildRuntime, dispatchMessage, registry } from "./api/runtime";
 import { buildScripting } from "./api/scripting";
 import { buildSockets } from "./api/sockets";
 import { buildStorage } from "./api/storage";
 import { withFallback } from "./api/stub";
 import { buildTabs } from "./api/tabs";
+import { buildWebRequest } from "./api/webRequest";
+import {
+    ASYNC_CONTAINMENT_INCOMPLETE,
+    containVmRejections,
+} from "./asyncErrors";
 import {
     backgroundScriptsFromPage,
     extensionUrl,
@@ -54,7 +59,7 @@ import {
     randomExtensionId,
     resolveBackground,
 } from "./manifest";
-import { createModuleLoader } from "./moduleLoader";
+import { createModuleLoader, resolveSpecifier } from "./moduleLoader";
 import { ExtensionState } from "./state";
 import type { ExtensionHandle, LoadOptions } from "./types";
 
@@ -135,16 +140,48 @@ export async function compileScript(
         return new vm.Script(code, scriptOptions);
     } catch (error) {
         if (!(error instanceof SyntaxError)) throw error;
-        const bundled = await bundleWithEsbuild(entryPath);
+        const bundled = await bundleWithEsbuild(entryPath, linking);
         if (bundled === undefined) throw error;
         return new vm.Script(bundled, scriptOptions);
     }
+}
+
+function extensionRootImports(
+    linking: CompileLinking,
+): import("esbuild").Plugin {
+    return {
+        name: "extension-root-imports",
+        setup(build) {
+            build.onResolve(
+                { filter: /^(?:\.|\/|chrome-extension:)/ },
+                args => {
+                    if (args.kind === "entry-point") return null;
+                    const path = resolveSpecifier(
+                        args.path,
+                        args.importer,
+                        linking.extensionId,
+                        linking.extensionDir,
+                    );
+                    return path
+                        ? { path }
+                        : {
+                              errors: [
+                                  {
+                                      text: "Module import is outside this extension",
+                                  },
+                              ],
+                          };
+                },
+            );
+        },
+    };
 }
 
 /** Bundles `entryPath` into one classic IIFE, or returns `undefined` if
  *  esbuild produced nothing: the caller decides what to fall back to. */
 async function bundleWithEsbuild(
     entryPath: string,
+    linking: CompileLinking,
 ): Promise<string | undefined> {
     // Also a devDependency, and imported lazily for the same reason happy-dom
     // is: nothing outside this fallback needs a bundler.
@@ -158,6 +195,7 @@ async function bundleWithEsbuild(
         target: "es2022",
         logLevel: "silent",
         plugins: [
+            extensionRootImports(linking),
             {
                 // Isomorphic libraries inside a vendor bundle keep their
                 // Node branches: aristotleStudent's imports `node-fetch`,
@@ -268,6 +306,7 @@ type ApiContext = {
     manifest: Manifest;
     state: ExtensionState;
     tab: SyntheticTab;
+    webRequest: ReturnType<typeof buildWebRequest>;
     options: LoadOptions;
     messages: Messages;
 };
@@ -326,13 +365,35 @@ function readableNamespaces({
  */
 function buildChromeApi(ctx: ApiContext) {
     const { extensionId, manifest, state, tab, options } = ctx;
+    const beforeNavigate = registry(state.beforeNavigateListeners);
     return withFallback({
         runtime: namespace(buildRuntime({ extensionId, manifest, state })),
         storage: namespace(buildStorage(state)),
         alarms: namespace(buildAlarms(state)),
         action: namespace(buildAction(state.actionCalls)),
         browserAction: namespace(buildAction(state.actionCalls)),
-        tabs: namespace(buildTabs(() => tab)),
+        tabs: namespace(
+            buildTabs(
+                () => tab,
+                () => {
+                    state.tabRemoved = true;
+                },
+            ),
+        ),
+        webNavigation: withFallback({
+            onBeforeNavigate: {
+                ...beforeNavigate,
+                addListener(
+                    listener: Parameters<typeof beforeNavigate.addListener>[0],
+                    filter?: { url?: unknown[] },
+                ) {
+                    // URL-filtered subscriptions need the browser matcher.
+                    if (!filter?.url?.length)
+                        beforeNavigate.addListener(listener);
+                },
+            },
+        }),
+        webRequest: namespace(ctx.webRequest.api),
         bookmarks: namespace(buildBookmarks(options.initialBookmarks)),
         scripting: namespace(buildScripting(options.runScript)),
         ...readableNamespaces(ctx),
@@ -414,6 +475,10 @@ async function runBackground({
     // Populate the generated background page with the script tags Chrome
     // would have put there, before any of them runs.
     for (const [filename] of sources) platform.addScriptElement(filename);
+    platform.observePackagedScripts?.((code, filename) => {
+        const result = new vm.Script(code, { filename }).runInContext(context);
+        void Promise.resolve(result).catch(error => state.reportError(error));
+    });
 
     for (const [filename, code] of sources) {
         const script = await compileScript(code, join(extensionDir, filename), {
@@ -421,15 +486,18 @@ async function runBackground({
             extensionId,
             extensionDir,
         });
-        script.runInContext(context);
+        const result = script.runInContext(context);
+        void Promise.resolve(result).catch(error => state.reportError(error));
     }
 
     // Fired once, after every background file's synchronous top-level body
     // has finished registering its listeners, including any onInstalled
     // listener itself. Real Chrome fires this exactly once per extension
     // install, which loading it into this host is the closest equivalent of.
-    for (const listener of state.installedListeners)
-        listener({ reason: "install" });
+    for (const listener of state.installedListeners) {
+        const result = listener({ reason: "install" });
+        void Promise.resolve(result).catch(error => state.reportError(error));
+    }
 }
 
 type HandleParts = {
@@ -439,9 +507,76 @@ type HandleParts = {
     state: ExtensionState;
     api: ChromeApi;
     tab: SyntheticTab;
+    webRequest: ReturnType<typeof buildWebRequest>;
     timers: Set<TimerHandle>;
     platform: Awaited<ReturnType<typeof buildPlatform>>;
 };
+
+function disposeBackground(
+    timers: Set<TimerHandle>,
+    platform: HandleParts["platform"],
+): void {
+    // The virtual clock owns no real timers, but the sandbox's
+    // `setTimeout`/`setInterval` do, and a vendor bundle's startup
+    // polling loop outlives the load that created it. The DOM, when
+    // there is one, runs a timer queue of its own that only closing
+    // the window drains.
+    for (const handle of timers) clearTimeout(handle);
+    timers.clear();
+    platform.dispose();
+}
+
+function notifyBeforeNavigate(
+    { state, tab }: HandleParts,
+    url: string,
+    onError: (error: unknown) => void,
+): void {
+    tab.url = url;
+    state.tabRemoved = false;
+    const timeStamp = Date.now();
+    // Registrations made during dispatch apply to the next event.
+    const listeners = Array.from(state.beforeNavigateListeners);
+    for (const listener of listeners) {
+        try {
+            const result = listener({
+                tabId: tab.id,
+                url,
+                frameId: 0,
+                frameType: "outermost_frame",
+                parentFrameId: -1,
+                timeStamp,
+            });
+            if (result) void Promise.resolve(result).catch(onError);
+        } catch (cause) {
+            onError(cause);
+        }
+    }
+}
+
+async function captureMessage(
+    parts: HandleParts,
+    message: unknown,
+    pageUrl?: string,
+) {
+    const sender =
+        pageUrl === undefined
+            ? parts.state.messageSender
+            : {
+                  id: parts.extensionId,
+                  url: pageUrl,
+                  origin: new URL(pageUrl).origin,
+                  frameId: 0,
+                  tab: { ...parts.tab, url: pageUrl },
+              };
+    const result = await dispatchMessage(parts.state, message, sender);
+    const captured = {
+        message,
+        response: result.response,
+        handled: result.handled,
+    };
+    parts.state.capturedMessages.push(captured);
+    return captured;
+}
 
 function createHandle(parts: HandleParts): ExtensionHandle {
     const { state, tab, timers, platform } = parts;
@@ -456,21 +591,32 @@ function createHandle(parts: HandleParts): ExtensionHandle {
             return state.snapshotStorage(area);
         },
         storage: parts.api.storage,
-        async sendMessage(message) {
-            const result = await dispatchMessage(state, message);
-            const captured = {
-                message,
-                response: result.response,
-                handled: result.handled,
-            };
-            state.capturedMessages.push(captured);
-            return captured;
+        async sendMessage(message, pageUrl) {
+            return captureMessage(parts, message, pageUrl);
         },
         matchRequest(url, opts) {
             return matchUrl(state, url, opts);
         },
+        hasUnreplayedBlockingRequest(url) {
+            return parts.webRequest.matchesMainFrame(url);
+        },
+        dispatchRequest(url) {
+            return parts.webRequest.dispatchMainFrame(url);
+        },
+        notifyBeforeNavigate(url, onError) {
+            notifyBeforeNavigate(parts, url, onError);
+        },
         get tabUrl() {
             return tab.url;
+        },
+        get tabRemoved() {
+            return state.tabRemoved;
+        },
+        get runtimeError() {
+            return state.runtimeError;
+        },
+        get asyncContainmentIncomplete() {
+            return state.asyncContainmentIncomplete;
         },
         get actionCalls() {
             return state.actionCalls;
@@ -479,16 +625,62 @@ function createHandle(parts: HandleParts): ExtensionHandle {
             return state.sentMessages;
         },
         dispose() {
-            // The virtual clock owns no real timers, but the sandbox's
-            // `setTimeout`/`setInterval` do, and a vendor bundle's startup
-            // polling loop outlives the load that created it. The DOM, when
-            // there is one, runs a timer queue of its own that only closing
-            // the window drains.
-            for (const handle of timers) clearTimeout(handle);
-            timers.clear();
-            platform.dispose();
+            disposeBackground(timers, platform);
         },
     };
+}
+
+async function backgroundPlatform(
+    ctx: ApiContext,
+    background: ResolvedBackground,
+    target: ExtensionHandle["target"],
+    timers: Set<TimerHandle>,
+) {
+    return buildPlatform({
+        manifestVersion: ctx.manifest.manifest_version as 2 | 3,
+        extensionId: ctx.extensionId,
+        extensionDir: ctx.options.dir,
+        dom: background.type === "scripts" || background.type === "page",
+        allowNetwork: ctx.options.allowNetwork ?? false,
+        network: ctx.options.network,
+        target,
+        backgroundPath: background.files[0] ?? "background.js",
+        timers,
+        onError: error => ctx.state.reportError(error),
+    });
+}
+
+function backgroundContext(
+    ctx: ApiContext,
+    background: ResolvedBackground,
+    api: ChromeApi,
+    platform: Awaited<ReturnType<typeof buildPlatform>>,
+): vm.Context {
+    const sandbox = createSandbox(platform.globals, api, background);
+    const context = vm.createContext(sandbox);
+    const stop = containVmRejections(context, error =>
+        ctx.state.reportError(error),
+    );
+    if (!stop)
+        ctx.state.asyncContainmentIncomplete = ASYNC_CONTAINMENT_INCOMPLETE;
+    const dispose = platform.dispose;
+    platform.dispose = () => {
+        stop?.();
+        dispose();
+    };
+    // `importScripts` and `self.location` both resolve against the background
+    // entry's own directory, not the extension root: a worker at
+    // `js/worker.js` calling `importScripts("base64.js")` means
+    // `js/base64.js`. Resolving from the root instead is what made
+    // lanschoolWebHelper fail on a file that is right there next to its
+    // worker.
+    installImportScripts(
+        sandbox,
+        context,
+        ctx.options.dir,
+        dirname(background.files[0] ?? "background.js"),
+    );
+    return context;
 }
 
 export async function loadExtension(
@@ -498,37 +690,24 @@ export async function loadExtension(
     const background = resolveBackground(manifest);
     const target = options.target ?? "chrome";
     const extensionId = options.extensionId ?? randomExtensionId();
-
     const state = createState(options);
     const tab = createSyntheticTab();
+    const webRequest = buildWebRequest(manifest, tab);
     const messages = await readMessages(options.dir);
-    const ctx = { extensionId, manifest, state, tab, options, messages };
+    const ctx = {
+        extensionId,
+        manifest,
+        state,
+        tab,
+        webRequest,
+        options,
+        messages,
+    };
     const api = buildChromeApi(ctx);
-
     const timers = new Set<TimerHandle>();
     const sources = await readBackgroundSources(options.dir, background);
-    const entryPath = background.files[0] ?? "background.js";
-    const platform = await buildPlatform({
-        manifestVersion: manifest.manifest_version as 2 | 3,
-        extensionId,
-        extensionDir: options.dir,
-        dom: background.type === "scripts" || background.type === "page",
-        allowNetwork: options.allowNetwork ?? false,
-        network: options.network,
-        target,
-        backgroundPath: entryPath,
-        timers,
-    });
-
-    const sandbox = createSandbox(platform.globals, api, background);
-    const context = vm.createContext(sandbox);
-    // `importScripts` and `self.location` both resolve against the background
-    // entry's own directory, not the extension root: a worker at
-    // `js/worker.js` calling `importScripts("base64.js")` means
-    // `js/base64.js`. Resolving from the root instead is what made
-    // lanschoolWebHelper fail on a file that is right there next to its
-    // worker.
-    installImportScripts(sandbox, context, options.dir, dirname(entryPath));
+    const platform = await backgroundPlatform(ctx, background, target, timers);
+    const context = backgroundContext(ctx, background, api, platform);
     await runBackground({
         sources,
         platform,
@@ -536,16 +715,9 @@ export async function loadExtension(
         state,
         extensionId,
         extensionDir: options.dir,
+    }).catch(error => {
+        disposeBackground(timers, platform);
+        throw error;
     });
-
-    return createHandle({
-        extensionId,
-        manifest,
-        target,
-        state,
-        api,
-        tab,
-        timers,
-        platform,
-    });
+    return createHandle({ ...ctx, target, api, timers, platform });
 }

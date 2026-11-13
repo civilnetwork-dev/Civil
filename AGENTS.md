@@ -59,7 +59,7 @@ Hono app = whole backend. `@hono/node-server` adapts to `node:http` server, whic
 2. mounts PostHog relay (`misc/analytics/posthogProxy.ts`) before compression + 100 kB body limit, so capture payloads pass unparsed;
 3. mounts `misc/database` (better-auth at `/api/auth/*`, GraphQL at `/graphql`, visit tracking) + per-vendor middleware from `misc/filters/*`;
 4. serves proxy APIs (`/api/checkBanned`, `/api/banStatus`, `/api/extProxy`, others), Mercury Workshop runtimes direct from `node_modules` (`/scramjet`, `/scramjetController`, `/epoxy`, `/libcurl`, `/bareTransport`, `/baremux`), `dist-config/`, `dist/client/`;
-5. hands all other requests to SSR handler `vite build` emits at `dist/nitro/vite/services/ssr/server.js`.
+5. hands all other requests to SSR handler `vite build` emits at `dist/server/server.js`.
 
 `misc/http.ts` = route helpers. `clientIp` resolves visitor address like Express `trust proxy: 1`: socket peer, or behind `REVERSE_PROXY` last `x-forwarded-for` entry. `readJsonBody` returns `{}` for missing/malformed body.
 
@@ -67,7 +67,7 @@ WebSocket upgrades ending `/wisp/` → native Wisp server (`misc/wisp/native`, R
 
 ### Frontend: `src/`
 
-SolidJS 2 (RCs, pinned exact) + TanStack Solid Router. Routes = files in `src/routes/`; router plugin generates `src/routeTree.gen.ts`. `@solidjs/vite-plugin` runs start mode with SSR, Nitro packages output (`vite.config.ts`).
+SolidJS 2 (RCs, pinned exact) + TanStack Solid Router. Routes = files in `src/routes/`; router plugin generates `src/routeTree.gen.ts`. `@solidjs/vite-plugin` runs start mode with SSR (`vite.config.ts`); plain `vite build` writes client to `dist/client`, SSR handler to `dist/server/server.js`. No Nitro.
 
 `Document.tsx` = whole HTML document; both entries render it. `entry-server.tsx` streams it with fresh router per request, since shared router rendered wrong route on overlapping requests. `entry-client.tsx` hydrates `document`. One-side-only stuff goes via Document's trailing `scripts` slot, so no hydration claim shifts.
 
@@ -80,7 +80,7 @@ SolidJS 2 (RCs, pinned exact) + TanStack Solid Router. Routes = files in `src/ro
 
 ### Proxy runtime bundles: `misc/config/` into `dist-config/`
 
-`misc/config/bundle.js` builds these outside Vite with Rollup: service worker (`service/sw.ts` → `sw.js`), `scramjet_init.js`, bare-mux transport module. First two carry URL codec (`shared/xorCodec.ts`). Its `encode`/`decode` must stay self-contained: scramjet controller copies them into proxied frames as source text. Output format fixed: saved history + bookmarks hold encoded addresses. Bundler only strips types (oxc-transform); `tsc` type checks. Vite dev server no rebuild of these, so run `bun run build:configs` after editing `misc/config/`.
+`misc/config/bundle.ts` builds these outside Vite with Rolldown: service worker (`service/sw.ts` → `sw.js`), `scramjet_init.js`, bare-mux transport module. First two carry URL codec (`shared/xorCodec.ts`). Its `encode`/`decode` must stay self-contained: scramjet controller copies them into proxied frames as source text. Output format fixed: saved history + bookmarks hold encoded addresses. Bundler only strips types (Rolldown built-in); `tsc` type checks. Vite dev server no rebuild of these, so run `bun run build:configs` after editing `misc/config/`.
 
 Public names stay neutral because installed filter extensions scan them (`docs/research/`). Page loads engine through `/_runtime/*` (`shared/runtimeScripts.ts`); `misc/runtimeScripts.ts` renames engine globals, IndexedDB name, DOM attributes in served bytes (`neutralizeEngineNames`); proxied frames live under `PROXY_PREFIX`. Scramjet bump that adds an engine-named identifier fails `misc/runtimeScripts.test.ts`: extend the rename table, load a proxied page in a real browser, never leave upstream name. `$scramjet$` message keys (`$scramjet$data`, `$scramjet$messagetype`) stay: service worker + extension shim read them.
 
@@ -113,7 +113,7 @@ After `vite build`, `misc/vite/obfuscateAssets.ts` obfuscates `dist/client/_buil
 
 ## Tests
 
-- `vitest.config.ts` deliberately no reuse of `vite.config.ts` (no router codegen, start mode, Nitro). Shares only Solid JSX transform, redeclares aliases.
+- `vitest.config.ts` deliberately no reuse of `vite.config.ts` (no router codegen, start mode). Shares only Solid JSX transform, redeclares aliases.
 - Tests in `tests/` and beside sources in `src/`, `misc/` as `*.test.ts` / `*.test.tsx`. Default env `node`; DOM tests start with `// @vitest-environment happy-dom`.
 - Component tests mount with `renderSolid` from `$tests/helpers/renderSolid`, not testing library; must call `unmount()`.
 - `tests/setup.ts` fills placeholder credentials (Postgres + Redis drivers connect lazily), sets vanilla-extract file scope so `.css.ts` modules import clean.
@@ -122,7 +122,7 @@ After `vite build`, `misc/vite/obfuscateAssets.ts` obfuscates `dist/client/_buil
 
 ## Conventions
 
-- Aliases: `~/` = `src/`, `$config/` = `misc/config/`, `$tests/` = `tests/`. `tsconfig.json` + `vitest.config.ts` declare all three; `misc/config/bundle.js` declares `$config/`.
+- Aliases: `~/` = `src/`, `$config/` = `misc/config/`, `$tests/` = `tests/`. `tsconfig.json` + `vitest.config.ts` declare all three; `misc/config/bundle.ts` declares `$config/`.
 - oxfmt: 4-space indent, 80 cols, `arrowParens: "avoid"`, sorted imports. Markdown + YAML hand-laid, excluded.
 - `oxlint.config.ts` + `.fallowrc.json` explain every exception in comment. New exceptions get reason same way.
 - Comments explain why: incident, constraint, failed alternative. Match.
@@ -137,12 +137,14 @@ After `vite build`, `misc/vite/obfuscateAssets.ts` obfuscates `dist/client/_buil
 - Playwright MCP screenshots → `.playwright-mcp/` (gitignored), absolute paths.
 - Every subagent run `/caveman ultra` whole run, skill-asked or started for speed. Subagent writing/changing code also run `/ponytail full` with Caveman.
 - Real-creativity work (e.g. UI redesign) → `/adhd` skill.
-- UI redesign: Taste (`design-taste-frontend`) + Impeccable skills with `/adhd`. Unless owner named 2+ liked reference sites, run `/interview-me` to find them, then pull design components via `/extract-design` + other Designlang commands. Add other skills where help.
+- UI redesign: Taste (`design-taste-frontend`) + Impeccable skills with `/adhd`. Unless owner named 2+ liked reference sites, run `/grill-me` to find them, then pull design components via `/extract-design` + other Designlang commands. Add other skills where help.
 - Request or stored memory about how people actually use Civil → check PostHog for evidence via PostHog skills.
 - All saves to Hindsight compressed with Caveman first, save tokens on Hindsight Cloud account. Uncompressed Hindsight memory/document → compress with Caveman too.
 - Functions, variables, other code → look up via JCodeMunch MCP server. Stuff likely deep in Markdown file >50 lines → JDocMunch MCP server.
 - Before any Fallow task, check Fallow skills (`fallow`, `fallow-review`, `fallow-setup`, rest) for one covering it; use it.
 - Fallow health stays 100: no function, `describe` or `it` callback >60 lines. Hoist test tables to module scope.
+- Repeated workflows live in `.claude/skills/civil-*/SKILL.md`: deps upgrade, upstream sync, Fallow health, UI verify, filter research, PostHog triage, obfuscatti, doc compression. Read the matching one first. Commit via `.claude/commands/ship.md`, checks via `precommit.md`. Path rules: `.claude/rules/`. Hooks: `.claude/settings.json` + `.claude/hooks/civil-hooks.ts`.
+- `caveman-blocks` not on PATH → `~/.local/share/caveman-blocks/bin/caveman-blocks` (where `caveman-blocks hooks install` puts it).
 
 ## Gotchas
 
@@ -156,3 +158,7 @@ After `vite build`, `misc/vite/obfuscateAssets.ts` obfuscates `dist/client/_buil
 - Dev server without backend = expected noise: bare-mux worker fetch failures, 404s for `/sw.js`, `/scramjet/*`, `/baremux/*`, `/suggestions` WebSocket never connects, failed `/wisp/` probe in setup (then picks Bare). Filter check page logs `chrome-extension://invalid` errors by design. `[STRICT_READ_UNTRACKED] ... in
   <Document>` and "Hydration completed with 1 unclaimed server-rendered node(s)" also expected in dev.
 - `/setup` only catches visitors with neither `civil:setup-complete` nor `browser-session` in localStorage. Remove both keys to see again.
+
+<!-- caveman-blocks:start -->
+Blocks: read .blocks/INDEX.md before writing a script.
+<!-- caveman-blocks:end -->

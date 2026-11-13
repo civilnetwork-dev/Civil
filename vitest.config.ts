@@ -22,8 +22,8 @@ if (!(process.env.NODE_OPTIONS ?? "").includes(experimentalFlag)) {
 /**
  * Deliberately does NOT reuse vite.config.ts.
  *
- * That config runs the TanStack Router codegen, @solidjs/vite-plugin's start
- * mode, and Nitro, none of which a unit test run needs, and Nitro would try to
+ * That config runs the TanStack Router codegen and @solidjs/vite-plugin's start
+ * mode, neither of which a unit test run needs, and start mode would try to
  * build a server bundle. Only the bare Solid JSX transform is shared, because
  * compiling Solid JSX is the one thing component tests genuinely require.
  */

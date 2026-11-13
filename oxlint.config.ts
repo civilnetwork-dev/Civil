@@ -78,8 +78,8 @@ export default defineConfig({
         // practices prescribe for a custom dropdown; oxlint's port of this
         // rule does not carry eslint-plugin-jsx-a11y's default allowances.
         "jsx-a11y/no-noninteractive-element-to-interactive-role": "off",
-        // Every hit is a deliberate side-effect import: dotenv/config, the
-        // vanilla-extract global stylesheet, the font subsets.
+        // Every hit is a deliberate side-effect import: the vanilla-extract
+        // global stylesheet, the font subsets.
         "import/no-unassigned-import": "off",
         // Aimed at O(n^2) accumulator spreads; here it only catches the
         // fixed-size `{ ...item, field }` immutable update this codebase uses

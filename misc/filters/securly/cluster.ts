@@ -43,9 +43,10 @@ const DEFAULT_CLUSTER_URL = `https://${SECURLY_FILTER_CLUSTERS[0]}/crextn`;
  *  - or be the literal status `UNKNOWN_SCHOOL` / `AVOID_OS` / `unknown`,
  *  - otherwise it is a `https://<host>.securly.com/crextn` base URL.
  * The `/crextn` path is preserved; only the origin is normalized to https.
- * Falls back to the dominant regional cluster when nothing usable is present.
+ * Explicit unavailable statuses stop the broker lookup. Malformed addresses
+ * still fall back to the dominant regional cluster.
  */
-function normalizeClusterUrl(raw: string): string {
+function normalizeClusterUrl(raw: string): string | null {
     let text = (raw ?? "").trim();
 
     for (const marker of ["_disableIWF", "_updateIWF"]) {
@@ -54,13 +55,13 @@ function normalizeClusterUrl(raw: string): string {
     }
 
     if (
-        !text ||
         text === "unknown" ||
         text === "UNKNOWN_SCHOOL" ||
-        text.startsWith("AVOID_OS")
+        text === "AVOID_OS"
     ) {
-        return DEFAULT_CLUSTER_URL;
+        return null;
     }
+    if (!text) return DEFAULT_CLUSTER_URL;
 
     try {
         const url = new URL(text.startsWith("http") ? text : `https://${text}`);
@@ -96,7 +97,9 @@ function getDomain(email: Email) {
           });
 }
 
-export function getCluster(email: Email): ResultAsync<string, ClusterError> {
+export function getCluster(
+    email: Email,
+): ResultAsync<string | null, ClusterError> {
     const domainResult = getDomain(email);
 
     if (domainResult.isErr()) {

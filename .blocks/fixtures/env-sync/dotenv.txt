@@ -1,0 +1,9 @@
+# PostgreSQL
+DATABASE_URL=postgresql://civil:changeme@localhost:5432/civil
+
+# Redis
+REDIS_URL=redis://:changeme@localhost:6379
+
+# Optional
+BETTER_AUTH_SECRET=
+PORT=9876

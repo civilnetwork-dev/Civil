@@ -183,11 +183,8 @@ function normalizeVerdict(value: unknown): Verdict {
                 return "BLOCK";
             case 1:
                 return "ALLOW";
-            case 2:
-                return "WARN";
-            case 3:
-                return "BYPASS";
             default:
+                // The Connect worker's numeric enum contains only 0 and 1.
                 return "UNKNOWN";
         }
     }
@@ -689,13 +686,16 @@ class LinewizeFilterChecker {
         const verdict = normalizeVerdict(parsed.data.verdict);
         const categories = toCategories(normalizeCategories(parsed.data));
 
-        // `method: "fallback"` is the verdict server declining to classify
-        // (no signature, allow by default), not an allow it stands behind.
-        if (parsed.data.method === "fallback")
+        // A fallback allow carries no affirmative rating. The worker can
+        // also produce an explicit fallback block with a local block page.
+        const fallback =
+            parsed.data.method === "fallback" ||
+            parsed.data.signatures?.signature === "Fallback";
+        if (fallback && verdict !== "BLOCK")
             return ok({
                 status: "unknown",
                 categories,
-                detail: "Linewize's verdict server declined to classify it and allows it by default.",
+                detail: "Linewize returned a fallback without an affirmative rating.",
                 matched: [],
             });
 

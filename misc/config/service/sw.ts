@@ -1,4 +1,4 @@
-import mime from "mime/lite";
+import { lookup } from "mrmime";
 import {
     navConditionMatches,
     navRedirectTarget,
@@ -172,8 +172,7 @@ async function serveCivilExt(request: Request): Promise<Response | null> {
         const opfsRoot = await navigator.storage.getDirectory();
         const file = await getExtensionFile(extId, filePath);
 
-        const contentType =
-            mime.getType(filePath) ?? "application/octet-stream";
+        const contentType = lookup(filePath) ?? "application/octet-stream";
 
         if (contentType === "text/html") {
             const html = await withExtensionShim(
@@ -203,6 +202,14 @@ async function serveCivilExt(request: Request): Promise<Response | null> {
     }
 }
 
+// Keep protocol notes outside injected text: Lightspeed's helper scans inline
+// script contents, including comments, for engine signatures.
+// Save native BroadcastChannel before Scramjet wraps its prototype.postMessage.
+// Scramjet rewrites BroadcastChannel.prototype.postMessage to inject a
+// $scramjet$messagetype wrapper around every message payload.  Our extension
+// bus messages must be delivered unwrapped, so we capture the native
+// constructor and the native postMessage/addEventListener here, before
+// Scramjet's controller.inject.js runs.
 const CIVIL_CHII_PREAMBLE = `<script>
 (function(){
   try {
@@ -221,12 +228,6 @@ const CIVIL_CHII_PREAMBLE = `<script>
     if (!window.__civilNativeMessagePort) {
       window.__civilNativeMessagePort = window.MessagePort;
     }
-    // Save native BroadcastChannel before Scramjet wraps its prototype.postMessage.
-    // Scramjet rewrites BroadcastChannel.prototype.postMessage to inject a
-    // $scramjet$messagetype wrapper around every message payload.  Our extension
-    // bus messages must be delivered unwrapped, so we capture the native
-    // constructor and the native postMessage/addEventListener here, before
-    // Scramjet's controller.inject.js runs.
     if (!window.__civilNativeBroadcastChannel && window.BroadcastChannel) {
       window.__civilNativeBroadcastChannel = window.BroadcastChannel;
       try {
@@ -276,6 +277,10 @@ const CIVIL_CHII_PREAMBLE = `<script>
  *   - The full shim (injected after load) replaces window.chrome entirely;
  *     __civil_chrome_injected stays unset so the full shim initialises normally.
  */
+// Use native BroadcastChannel saved by CIVIL_CHII_PREAMBLE before Scramjet
+// wraps BroadcastChannel.prototype.postMessage.  Scramjet's wrapper injects
+// a {$scramjet$messagetype, $scramjet$data} envelope around every message,
+// which breaks the extension bus protocol (runtime.ts checks data.kind).
 const CIVIL_EXT_DETECT_STUB = `<script>
 (function() {
   // Relay a log message to Civil's top-level window console (visible in main
@@ -298,10 +303,6 @@ const CIVIL_EXT_DETECT_STUB = `<script>
     // Mark so the stub doesn't self-overwrite if this block somehow runs twice.
     if (window.chrome.runtime.__civil_stub) return;
     window.chrome.runtime.__civil_stub = true;
-    // Use native BroadcastChannel saved by CIVIL_CHII_PREAMBLE before Scramjet
-    // wraps BroadcastChannel.prototype.postMessage.  Scramjet's wrapper injects
-    // a {$scramjet$messagetype, $scramjet$data} envelope around every message,
-    // which breaks the extension bus protocol (runtime.ts checks data.kind).
     var _NativeBC = window.__civilNativeBroadcastChannel || (typeof BroadcastChannel !== 'undefined' ? BroadcastChannel : null);
     var _nativeBCPost = window.__civilNativeBCPostMessage || (_NativeBC && _NativeBC.prototype.postMessage);
     var _nativeBCListen = window.__civilNativeBCAddEventListener || (_NativeBC && _NativeBC.prototype.addEventListener);
@@ -514,7 +515,10 @@ async function checkBanned(originalUrl: string): Promise<boolean> {
         const res = await fetch(
             `/api/checkBanned?url=${encodeURIComponent(originalUrl)}`,
         );
-        const data: { banned: boolean } = await res.json();
+        if (!res.ok) return false;
+        const data = await res.json();
+        // Only a verdict from the expected response may affect later requests.
+        if (typeof data?.banned !== "boolean") return false;
         bannedCache.set(hostname, {
             banned: data.banned,
             expiresAt: Date.now() + 5 * 60 * 1000,

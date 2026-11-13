@@ -91,7 +91,9 @@ describe("public runtime scripts", () => {
         expect(engine).toContain("$scramjet$data");
         expect(engine).toContain("$scramjet$messagetype");
     });
+});
 
+describe("public runtime responses", () => {
     it("serves the WebAssembly module under its neutral URL", async () => {
         const response = await runtimeScriptRoutes.request(runtimeScripts.wasm);
         expect(response.status).toBe(200);

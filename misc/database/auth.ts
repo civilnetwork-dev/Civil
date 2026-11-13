@@ -1,10 +1,19 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { deleteSessionCookie, setSessionCookie } from "better-auth/cookies";
 import { anonymous, genericOAuth, patreon } from "better-auth/plugins";
 
-import { optionalEnv, requireEnv } from "../env";
+import { getClassLinkConfig, optionalEnv, requireEnv } from "../env";
+import { convertAnonymousUser } from "./anonymousConversion";
+import {
+    classLinkAccountLinking,
+    classLinkGuard,
+    classLinkProvider,
+} from "./classlink";
 import { db } from "./db";
 import { accounts, sessions, users, verifications } from "./schema";
+
+export const classLinkConfig = getClassLinkConfig();
 
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
@@ -45,10 +54,35 @@ export const auth = betterAuth({
             ipAddressHeaders: ["x-forwarded-for", "x-real-ip"],
         },
     },
+    account: { accountLinking: classLinkAccountLinking },
+    hooks: { before: classLinkGuard(classLinkConfig) },
     plugins: [
-        anonymous(),
+        anonymous({
+            onLinkAccount: async ({ anonymousUser, newUser, ctx }) => {
+                try {
+                    const ban = await convertAnonymousUser(
+                        anonymousUser.user.id,
+                        newUser.user.id,
+                    );
+                    if (ban) {
+                        Object.assign(newUser.user, ban);
+                        await setSessionCookie(ctx, newUser);
+                    }
+                } catch (error) {
+                    // A failed transfer must not leave a usable, unbanned session.
+                    deleteSessionCookie(ctx);
+                    await ctx.context.internalAdapter.deleteSession(
+                        newUser.session.token,
+                    );
+                    throw error;
+                }
+            },
+        }),
         genericOAuth({
             config: [
+                ...(classLinkConfig
+                    ? [classLinkProvider(classLinkConfig)]
+                    : []),
                 patreon({
                     clientId: requireEnv("PATREON_CLIENT_ID"),
                     clientSecret: requireEnv("PATREON_CLIENT_SECRET"),
@@ -70,11 +104,32 @@ export const auth = betterAuth({
                 type: "boolean",
                 defaultValue: false,
                 returned: true,
+                input: false,
             },
-            isAdmin: { type: "boolean", defaultValue: false, returned: true },
-            isBanned: { type: "boolean", defaultValue: false, returned: true },
-            banReason: { type: "string", required: false, returned: true },
-            bannedAt: { type: "date", required: false, returned: true },
+            isAdmin: {
+                type: "boolean",
+                defaultValue: false,
+                returned: true,
+                input: false,
+            },
+            isBanned: {
+                type: "boolean",
+                defaultValue: false,
+                returned: true,
+                input: false,
+            },
+            banReason: {
+                type: "string",
+                required: false,
+                returned: true,
+                input: false,
+            },
+            bannedAt: {
+                type: "date",
+                required: false,
+                returned: true,
+                input: false,
+            },
         },
     },
     telemetry: {

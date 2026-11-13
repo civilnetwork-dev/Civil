@@ -20,6 +20,15 @@
  * shayderrr's `idk` (github.com/shayderrr/idk, `filters/aristotle.js`), whose
  * `cmd`/response shape matches the confirmed enums above.
  *
+ * Follow-up on 1 November: 23.19.0 `Lr` constructs `ly` with MessagePack
+ * enabled. `ly.sendMessage` sends binary frames, while replies remain JSON.
+ * `Lr.serverRPC` adds `_msgId` and resolves only a reply echoing its identifier.
+ * The socket query and authentication `guid` share the same session identifier.
+ * This checker now follows those framing and correlation rules. The earlier
+ * auth-metadata limitation above is superseded: the extension sends `user` and
+ * `device`, rather than this standalone probe's `os` and `user_id`. Whether the
+ * server accepts those optional probe fields remains unverified.
+ *
  * ## The auth secret is not derived: it's shipped, per district
  *
  * `~/extensions/aristotleStudent/config.json` (the installed extension's own,
@@ -36,6 +45,7 @@
 
 import { randomUUID } from "node:crypto";
 
+import { encode } from "@msgpack/msgpack";
 import { err, ok, type Result, ResultAsync } from "neverthrow";
 import { WebSocket } from "ws";
 
@@ -51,13 +61,13 @@ const DEFAULT_SECRET =
 const AUTH_KEY = "aristotle-chrome-agent";
 const CONNECT_TIMEOUT_MS = 10_000;
 
-function authenticateMessage(secret: string): string {
-    return JSON.stringify({
+function authenticateMessage(secret: string, sessionId: string): Uint8Array {
+    return encode({
         cmd: CMD.AUTHENTICATE,
         auth: true,
         key: AUTH_KEY,
         secret,
-        guid: randomUUID(),
+        guid: sessionId,
         os: "win",
         user_id: "civil-probe",
         connect_time: new Date().toUTCString(),
@@ -75,6 +85,7 @@ function onReply(
     ws: WebSocket,
     raw: WebSocket.RawData,
     target: string,
+    requestId: string,
     finish: Finish,
 ): void {
     try {
@@ -92,14 +103,18 @@ function onReply(
 
         if (data.authenticated === true) {
             ws.send(
-                JSON.stringify({
+                encode({
                     cmd: CMD.CHECK_URL,
                     url: target,
                     type: "main_frame",
+                    _msgId: requestId,
                 }),
             );
             return;
         }
+
+        // Lr.serverRPC resolves only the reply echoing its request identifier.
+        if ((data.requestId || data._msgId) !== requestId) return;
 
         // A FilterResult reply: only a definite `block` is actionable.
         if (typeof data.block === "boolean") {
@@ -145,16 +160,20 @@ export function checkAristotleFilter(
                 resolve(result);
             };
 
-            const ws = new WebSocket(
-                `wss://${host}/wss/wf?ssId=${randomUUID()}`,
-            );
+            const sessionId = randomUUID();
+            const requestId = randomUUID();
+            const ws = new WebSocket(`wss://${host}/wss/wf?ssId=${sessionId}`);
             const timer = setTimeout(
                 () => finish(networkError("Aristotle didn't answer in time.")),
                 CONNECT_TIMEOUT_MS,
             );
 
-            ws.on("open", () => ws.send(authenticateMessage(secret)));
-            ws.on("message", raw => onReply(ws, raw, target, finish));
+            ws.on("open", () =>
+                ws.send(authenticateMessage(secret, sessionId)),
+            );
+            ws.on("message", raw =>
+                onReply(ws, raw, target, requestId, finish),
+            );
             ws.on("error", error => finish(networkError(error.message)));
             ws.on("close", () =>
                 finish(networkError("Aristotle closed the socket unanswered.")),

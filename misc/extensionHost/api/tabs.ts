@@ -1,7 +1,7 @@
 /**
  * chrome.tabs, reduced to the one thing that's real in this host: a single
  * synthetic tab representing "the page under test", whose URL the harness
- * controls via `setTabUrl`. There is no real window/tab management (no
+ * controls via a synthetic navigation. There is no real window/tab management (no
  * navigation, no opening new tabs) because there is no browser underneath.
  *
  * ponytail: multi-tab support is out of scope. Every filter-check extension
@@ -60,12 +60,10 @@ function tabQueries(getTab: () => SyntheticTab) {
 }
 
 /**
- * Navigation and tab lifecycle: there is one synthetic tab and no browser to
- * act on, so these record nothing and change nothing. They return the tab
- * where Chrome returns a tab, so a caller that reads the result back gets an
- * object rather than undefined.
+ * Navigation and tab lifecycle for the one synthetic tab. Record removal
+ * requests for that tab without simulating a browser window.
  */
-function tabLifecycle(getTab: () => SyntheticTab) {
+function tabLifecycle(getTab: () => SyntheticTab, onRemove: () => void) {
     return {
         create: async () => getTab(),
         // `update(tabId, props)` or `update(props)` for the active tab:
@@ -85,7 +83,10 @@ function tabLifecycle(getTab: () => SyntheticTab) {
             return tab;
         },
         reload: async () => {},
-        remove: async () => {},
+        remove: async (tabIds: number | number[]) => {
+            const ids = Array.isArray(tabIds) ? tabIds : [tabIds];
+            if (ids.includes(getTab().id)) onRemove();
+        },
         discard: async () => getTab(),
         duplicate: async () => getTab(),
         highlight: async () => ({ id: 1, tabs: [getTab()] }),
@@ -99,10 +100,10 @@ function tabLifecycle(getTab: () => SyntheticTab) {
     };
 }
 
-export function buildTabs(getTab: () => SyntheticTab) {
+export function buildTabs(getTab: () => SyntheticTab, onRemove: () => void) {
     return {
         ...tabQueries(getTab),
-        ...tabLifecycle(getTab),
+        ...tabLifecycle(getTab, onRemove),
         onCreated: silentEvent(),
         onUpdated: silentEvent(),
         onActivated: silentEvent(),

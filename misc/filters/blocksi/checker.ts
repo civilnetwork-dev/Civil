@@ -381,17 +381,6 @@ const DEFAULT_CATEGORY_ACTIONS: Partial<Record<number, BlocksiAction>> = {
     312: BlocksiAction.Block,
 };
 
-type BlocksiRatingResponse = {
-    Category?: unknown;
-    category?: unknown;
-    cat?: unknown;
-    data?: {
-        Category?: unknown;
-        category?: unknown;
-        cat?: unknown;
-    };
-};
-
 function normalizeHost(input: string): string {
     try {
         const value = /^https?:\/\//i.test(input) ? input : `https://${input}`;
@@ -442,18 +431,10 @@ function toAction(value: UrlListRule["Action"]): BlocksiAction {
         : BlocksiAction.Empty;
 }
 
-function extractCategoryId(response: BlocksiRatingResponse): number | null {
-    const value =
-        response.Category ??
-        response.category ??
-        response.cat ??
-        response.data?.Category ??
-        response.data?.category ??
-        response.data?.cat;
-
-    const parsed = Number(value);
-
-    return Number.isInteger(parsed) ? parsed : null;
+function extractCategoryId(response: unknown): number | null {
+    if (response === null || typeof response !== "object") return null;
+    const value = (response as { Category?: unknown }).Category;
+    return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
 function byAction(
@@ -596,7 +577,7 @@ class BlocksiFilterChecker {
         if (categoryId == null || categoryId < 0) {
             return createDecision({
                 url,
-                action: BlocksiAction.Allow,
+                action: BlocksiAction.Empty,
                 matchedFilter: "Web Filter",
                 filterQueue,
                 reason: "No category was returned.",
@@ -738,7 +719,7 @@ class BlocksiFilterChecker {
 
         for (let attempt = 1; attempt <= this.options.retries; attempt++) {
             try {
-                const response = await this.http.get<BlocksiRatingResponse>(
+                const response = await this.http.get<unknown>(
                     `${this.options.ratingBaseUrl.replace(/\/$/, "")}/getRating.json`,
                     {
                         params: {
@@ -747,19 +728,21 @@ class BlocksiFilterChecker {
                     },
                 );
 
-                return extractCategoryId(response.data);
+                const categoryId = extractCategoryId(response.data);
+                if (categoryId !== null) return categoryId;
+                lastError = undefined;
             } catch (error) {
                 lastError = error;
-
-                if (attempt < this.options.retries) {
-                    await new Promise(resolve =>
-                        setTimeout(resolve, attempt * 500),
-                    );
-                }
+            }
+            if (attempt < this.options.retries) {
+                await new Promise(resolve =>
+                    setTimeout(resolve, attempt * 500),
+                );
             }
         }
 
-        throw lastError;
+        if (lastError !== undefined) throw lastError;
+        return null;
     }
 }
 

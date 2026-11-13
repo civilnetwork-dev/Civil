@@ -10,8 +10,6 @@ import {
 } from "../verdict";
 import { generateGoGuardianAuthToken } from "./generateAuthToken";
 
-type GoGuardianVerdict = "ALLOW" | "BLOCK" | "UNKNOWN";
-
 type GoGuardianError =
     | { type: "INVALID_URL"; message: string; input: string }
     | { type: "NETWORK"; message: string; status?: number; body?: unknown }
@@ -32,7 +30,6 @@ interface GoGuardianCheckResult {
     normalizedUrl: string;
     hostname: string;
     domain: string | null;
-    verdict: GoGuardianVerdict;
     matchedProxyKeywords: string[];
     matchedThreatKeywords: string[];
     proxyModelVersion?: string;
@@ -211,17 +208,11 @@ function scoreAgainstModels(
         threatKeywordsOf(threatsParsed.data),
     );
 
-    const verdict: GoGuardianVerdict =
-        matchedProxyKeywords.length > 0 || matchedThreatKeywords.length > 0
-            ? "BLOCK"
-            : "UNKNOWN";
-
     return ok({
         inputUrl: input.url,
         normalizedUrl: normalized.href,
         hostname: normalized.hostname,
         domain: getDomain(normalized.hostname),
-        verdict,
         matchedProxyKeywords,
         matchedThreatKeywords,
         proxyModelVersion: proxyVersion,
@@ -268,28 +259,21 @@ function fetchAndScore(
 }
 
 /**
- * GoGuardian's models only ever match: a page no keyword hits is decided by
- * the school's policy, which the models can't see, so it reads as unknown.
- * The proxy model's keywords are what make a page "Proxy & VPN"; the threats
- * model names no category.
+ * The legacy models supply keyword evidence. Enforcement also depends on the
+ * school's policy and enabled triggers, which this checker does not have.
  */
 function toVerdict(result: GoGuardianCheckResult): FilterVerdict {
     const matched = [
         ...result.matchedProxyKeywords,
         ...result.matchedThreatKeywords,
     ];
-    if (result.verdict !== "BLOCK")
-        return {
-            status: "unknown",
-            categories: [],
-            detail: "No keyword in GoGuardian's models matched, so the school's own policy decides.",
-            matched,
-        };
     return {
-        status: "blocked",
+        status: "unknown",
         categories:
             result.matchedProxyKeywords.length > 0 ? ["Proxy & VPN"] : [],
-        detail: `Matched GoGuardian's keyword models: ${matched.join(", ")}.`,
+        detail: matched.length
+            ? `Matched GoGuardian's legacy keyword models: ${matched.join(", ")}. The school's policy determines enforcement.`
+            : "No keyword in GoGuardian's legacy models matched. The school's policy determines enforcement.",
         matched,
     };
 }

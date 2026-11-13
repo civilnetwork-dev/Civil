@@ -33,7 +33,13 @@ export const FILTER_ID_MAP = new Map<string, string[]>([
             "aceopacgaepdcelohobicpffbbejnfac",
         ],
     ],
-    ["iboss", ["kmffehbidlalibfeklaefnckpidbodff"]],
+    [
+        "iboss",
+        [
+            "mkhjobnjhllkhekbbedlkmgcglgaeidc",
+            "kmffehbidlalibfeklaefnckpidbodff",
+        ],
+    ],
     ["lightspeedDigitalInsightAgent", ["njdniclgegijdcdliklgieicanpmcngj"]],
     [
         "lightspeedFilterAgent",
@@ -47,6 +53,11 @@ export const FILTER_ID_MAP = new Map<string, string[]>([
     ["intersafeGatewayConnectionAgent", ["ecjoghccnjlodjlmkgmnbnkdcbnjgden"]],
     ["loiLoWebFilters", ["pabjlbjcgldndnpjnokjakbdofjgnfia"]],
     ["gopherBuddy", ["cgbbbjmgdpnifijconhamggjehlamcif"]],
+    ["prismaBrowser", ["dbpnkcjkchadgbgihmmolkjcgjkodoaf"]],
+    ["dyknowCloud", ["ehldjdeaoebgafllfobddbfbfpmammmc"]],
+    ["gopherBuddyPremium", ["becdplfalooflanipjoblcmpaekkbbhe"]],
+    ["classlinkAnalyticsPlus", ["ihidolefpgnimlmgfljonacidpkmbhcl"]],
+    ["classlinkOneClick", ["jgfbgkjjlonelmpenhpfeeljjlcgnkpe"]],
     ["lanschoolWebHelper", ["honjcnefekfnompampcpmcdadibmjhlk"]],
     ["imtLazarus", ["cgigopjakkeclhggchgnhmpmhghcbnaf"]],
     ["imperoBackdrop", ["jjpmjccpemllnmgiaojaocgnakpmfgjg"]],
@@ -66,7 +77,7 @@ export const FILTER_ID_MAP = new Map<string, string[]>([
 
 export const FILTER_WAR_MAP = new Map<string, string | string[]>([
     ["securly", "fonts/Metropolis.css"],
-    ["goguardian", "icons/enabled-dark-128.png"],
+    ["goguardian", ["icons/enabled-light-128.png", "icons/enabled-dark-128.png"]],
     ["lanschool", "blocked.html"],
     ["linewize", "background/assets/pages/default-blocked.html"],
     ["blocksi", "images/icons/yt-denied.png"],
@@ -75,7 +86,7 @@ export const FILTER_WAR_MAP = new Map<string, string | string[]>([
     ["ciscoUmbrella", "blocked.html"],
     ["contentkeeper", "img/ckauth19x.png"],
     ["ckAuthenticatorG3", "img/ckauth19x.png"],
-    ["securlyClassroom", "notfound.html"],
+    ["securlyClassroom", ["disconnected.html", "notfound.html"]],
     ["hapara", "blocked.html"],
     ["iboss", "restricted.html"],
     ["lightspeedDigitalInsightAgent", "js/speed_test.js"],
@@ -85,8 +96,11 @@ export const FILTER_WAR_MAP = new Map<string, string | string[]>([
     ["intersafeGatewayConnectionAgent", "resources/options.js"],
     ["loiLoWebFilters", "image/allow_icon/shield_green_128x128.png"],
     ["gopherBuddy", "images/gopher-buddy_128x128_color.png"],
+    ["prismaBrowser", "block.html"],
+    ["classlinkOneClick", "images/128x128.png"],
+    // Dyknow, Gopher Premium and Analytics+ expose no web-accessible resources.
     ["lanschoolWebHelper", "blocked.html"],
-    ["imtLazarus", "models/model.json"],
+    ["imtLazarus", ["css/blocked_overlay.css", "models/model.json"]],
     ["imperoBackdrop", "licenses.html"],
     ["mobileGuardian", "block.html"],
     ["netsupportSchoolStudent", "_locales/lt/messages.json"],

@@ -1,0 +1,10 @@
+{
+    "name": "fixture",
+    "overrides": {
+        "@tanstack/router-core": "1.171.22",
+        "seroval": "1.6.7"
+    },
+    "patchedDependencies": {
+        "untun@0.2.2": "patches/untun@0.2.2.patch"
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "manifest_version": 3,
+    "name": "MessageChannel content script fixture",
+    "version": "1.0.0",
+    "background": { "service_worker": "background.js" },
+    "content_scripts": [
+        { "matches": ["<all_urls>"], "js": ["content.js"] },
+        {
+            "matches": ["https://probe.invalid/*"],
+            "run_at": "document_idle",
+            "js": ["./content.js"]
+        },
+        {
+            "matches": ["https://probe.invalid/*"],
+            "run_at": "document_start",
+            "js": ["start.js"]
+        }
+    ]
+}

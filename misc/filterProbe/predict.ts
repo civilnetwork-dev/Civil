@@ -242,6 +242,14 @@ function signalSuggestions(
             );
         case "dnr-block":
             return dnrBlockSuggestions(vendor, route, signal, civilDir);
+        case "web-request-block":
+            return [
+                {
+                    ...handlerSuggestion(vendor, civilDir),
+                    reason: `${vendor} cancelled the request before rendering. Inspect its request policy; page markup alone does not establish the cause.`,
+                    rank: 90,
+                },
+            ];
         default:
             return inPlaceBlockSuggestions(vendor, route, signal, civilDir);
     }

@@ -8,7 +8,6 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { vanillaExtractPlugin as vanillaExtract } from "@vanilla-extract/vite-plugin";
 import browserslist from "browserslist";
 import { browserslistToTargets } from "lightningcss";
-import { nitro } from "nitro/vite";
 import { rolldown } from "rolldown";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
@@ -77,6 +76,37 @@ function civilExtShimPlugin(): Plugin {
                 _cached = "";
             }
             return `export default ${JSON.stringify(_cached)};`;
+        },
+    };
+}
+
+/**
+ * Answer a request for a missing file with a 404 under `vite dev`, as Nitro's
+ * dev server did. @solidjs/vite-plugin renders the app for any GET whose
+ * Accept header allows any type, so /sw.js and the proxy runtime scripts (only
+ * run.ts serves them) came back as the HTML page and threw "Unexpected token
+ * '<'".
+ *
+ * A post middleware, so Vite serves modules and public/ first; "pre" and ahead
+ * of solid() in the plugin list, so it runs before the plugin's page renderer.
+ */
+function devMissingFile404(): Plugin {
+    return {
+        name: "civil-dev-missing-file-404",
+        apply: "serve",
+        enforce: "pre",
+        configureServer(server) {
+            return () => {
+                server.middlewares.use((req, res, next) => {
+                    const { pathname } = new URL(
+                        req.url ?? "/",
+                        "http://localhost",
+                    );
+                    if (!/\.\w+$/.test(pathname)) return next();
+                    res.statusCode = 404;
+                    res.end();
+                });
+            };
         },
     };
 }
@@ -174,20 +204,10 @@ function plugins() {
     return [
         civilExtShimPlugin(),
         tanstackRouter({ target: "solid", autoCodeSplitting: true }),
+        devMissingFile404(),
+        // `vite build` writes the client to dist/client and the SSR handler
+        // run.ts serves to dist/server/server.js.
         solid({ ssr: true, start: true }),
-        nitro({
-            preset: "node",
-            exportConditions: ["solid"],
-            output: {
-                dir: "dist",
-                serverDir: "dist/server",
-                publicDir: "dist/client",
-            },
-            buildDir: "dist/nitro",
-            rolldownConfig: {
-                external: ["@better-auth/kysely-adapter", "kysely"],
-            },
-        }),
         vanillaExtract(),
         sitemap({
             hostname: "https://civil.quartinal.me",
@@ -210,6 +230,11 @@ export default defineConfig(() => {
     return {
         resolve: resolveConfig,
         environments,
+        // Nitro used to set this: one resolved config, so one instance of each
+        // plugin, serves the client and the SSR build. Vite's default
+        // evaluates this file again per environment, and obfuscateAssets'
+        // run-once guard would then obfuscate dist/client twice.
+        builder: { sharedConfigBuild: true },
         build: buildConfig,
         css: cssConfig,
         plugins: plugins(),

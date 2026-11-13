@@ -4,11 +4,11 @@
     // Everything the repo actually starts from that fallow does not detect on
     // its own. The build scripts and runnable per-vendor examples are listed
     // because nothing imports them: they are invoked as `bun <file>` or named
-    // as an input inside bundle.js.
+    // as an input inside bundle.ts.
     "entry": [
         "src/entry-client.tsx",
         "src/entry-server.tsx",
-        "misc/config/bundle.js",
+        "misc/config/bundle.ts",
         "misc/config/baremux/transport.ts",
         "misc/config/scramjet/scramjetInit.ts",
         "misc/config/service/*.ts",
@@ -16,7 +16,9 @@
         "misc/filterProbe/harness.ts",
         "misc/filterProbe/downloadBundles.ts",
         "misc/filters/**/example.ts",
-        "tests/**/*.test.{ts,tsx}"
+        "tests/**/*.test.{ts,tsx}",
+        // Claude Code runs it as `bun <file>` from .claude/settings.json.
+        ".claude/hooks/*.ts"
     ],
 
     // Tracked files that are generated or served as they are. Build output is
@@ -99,12 +101,7 @@
         "@mercuryworkshop/epoxy-transport",
         "@mercuryworkshop/libcurl-transport",
         "@mercuryworkshop/scramjet-controller",
-        "@rollup/plugin-alias",
-        "@rollup/plugin-commonjs",
-        "@rollup/plugin-node-resolve",
-        "@rollup/plugin-terser",
         "fake-indexeddb",
-        "rollup-plugin-polyfill-node",
         "rollup-plugin-visualizer"
     ],
 

@@ -21,14 +21,29 @@ export interface RuntimeDeps {
 export async function dispatchMessage(
     state: ExtensionState,
     message: unknown,
+    sender = state.messageSender,
 ): Promise<{ response: unknown; handled: boolean }> {
+    const pending: Promise<{ response: unknown; handled: boolean }>[] = [];
     for (const listener of state.messageListeners) {
         let responded = false;
         let response: unknown;
-        const keepAsync = listener(message, state.messageSender, r => {
+        const keepAsync = listener(message, sender, r => {
             responded = true;
             response = crossRealm(r);
         });
+        if (
+            keepAsync &&
+            typeof keepAsync === "object" &&
+            typeof keepAsync.then === "function"
+        ) {
+            const reply = Promise.resolve(keepAsync).then(value => ({
+                response: responded ? response : crossRealm(value ?? null),
+                handled: true,
+            }));
+            // A later listener may reply synchronously before this settles.
+            void reply.catch(() => {});
+            pending.push(reply);
+        }
         if (responded) return { response, handled: true };
         // A listener returning `true` means it will call sendResponse
         // asynchronously (the real chrome.runtime contract). This host runs
@@ -41,6 +56,7 @@ export async function dispatchMessage(
             if (responded) return { response, handled: true };
         }
     }
+    if (pending.length > 0) return Promise.race(pending);
     return { response: undefined, handled: false };
 }
 
@@ -78,7 +94,7 @@ const silentEvent = () => ({
     hasListener: () => false,
 });
 
-function registry<T>(set: Set<T>) {
+export function registry<T>(set: Set<T>) {
     return {
         addListener: (cb: T) => set.add(cb),
         removeListener: (cb: T) => set.delete(cb),

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: civil
+
+  app:
+    environment:
+      PORT: 9876
+      DATABASE_URL: postgresql://civil:${DB_PASSWORD}@postgres:5432/civil
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+
+  drizzle-studio:
+    environment:
+      OTHER: x

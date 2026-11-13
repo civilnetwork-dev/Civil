@@ -1,16 +1,17 @@
 /**
  * The tracked filters, keyed by *vendor* rather than by extension id.
  *
- * Several vendors ship more than one extension against the same backend:
+ * Several vendors ship more than one extension against related backends:
  * Cisco's Security and Umbrella, Lightspeed's Filter and Insight, Securly's
- * core and Classroom, LanSchool's three, Aristotle's two, GoGuardian's
- * GoGuardian + Gopher Buddy. The filter route test suite tests each *vendor*
- * once (the task's "every filter, not every id"), so this map, folder →
- * vendor, is what collapses the twenty-eight `~/extensions` folders and the
- * twenty-eight `Filter-Sources` entries down to the eighteen vendors that
- * actually differ.
+ * core and Classroom, LanSchool's three, and Aristotle's two. Gopher Buddy
+ * retains its own group despite its historical GoGuardian branding; its
+ * premium successor keeps a separate catalog and detection identity.
+ * The route test suite runs each vendor once. This map assigns the original
+ * twenty-eight catalog folders and additional authenticated extensions to
+ * the twenty-two groups used by the probe. A group does not establish
+ * protocol equivalence or permit reusing a live classifier.
  *
- * The same eighteen keys appear in `filterVendorDomains`
+ * The same twenty-two keys appear in `filterVendorDomains`
  * (misc/filters/filterBlockerMiddleware.ts) and in `probeData.json`; this file
  * is the one place the id→vendor collapse is written down.
  */
@@ -29,7 +30,12 @@ export const FOLDER_TO_VENDOR: Record<string, string> = {
     netsupport: "netsupport",
     fortiguard: "fortiguard",
     goguardian: "goguardian",
-    gopherbuddy: "goguardian",
+    gopherbuddy: "gopherbuddy",
+    gopherBuddyPremium: "gopherbuddy",
+    prismaBrowser: "prisma",
+    dyknowCloud: "dyknow",
+    classlinkAnalyticsPlus: "classlink",
+    classlinkOneClick: "classlink",
     haparahighlights: "hapara",
     iboss: "iboss",
     impero: "impero",
@@ -56,6 +62,10 @@ export const VENDOR_DISPLAY_NAMES: Record<string, string> = {
     contentkeeper: "ContentKeeper",
     fortiguard: "FortiGuard",
     goguardian: "GoGuardian",
+    gopherbuddy: "Gopher Buddy",
+    prisma: "Prisma Browser",
+    dyknow: "Dyknow Cloud",
+    classlink: "ClassLink",
     hapara: "Hāpara",
     iboss: "iboss",
     impero: "Impero",
@@ -87,6 +97,10 @@ export const VENDOR_PRIMARY_FOLDER: Record<string, string> = {
     contentkeeper: "ckauthenticatorg3",
     fortiguard: "fortiguard",
     goguardian: "goguardian",
+    gopherbuddy: "gopherBuddyPremium",
+    prisma: "prismaBrowser",
+    dyknow: "dyknowCloud",
+    classlink: "classlinkAnalyticsPlus",
     hapara: "haparahighlights",
     iboss: "iboss",
     impero: "impero",

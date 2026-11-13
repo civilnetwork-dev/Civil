@@ -1,0 +1,17 @@
+# Caveman Blocks repo policy (docs/FORMAT.md). Every key is optional; these are the defaults.
+
+# How a promoted block lands: "commit" on the current branch.
+promote = "commit"
+
+# Effects blocks may use beyond read, write-workspace and exec: "network", "external".
+# caveman-blocks run reads this from the committed file at HEAD; an uncommitted edit grants nothing.
+allow_effects = []
+
+# Most blocks listed in the index.
+index_max = 20
+
+# "inline" writes the index into AGENTS.md; "import" writes a pointer to .blocks/INDEX.md instead.
+section = "import"
+
+# false keeps capture and stats but shows the agent no hints.
+hint = true

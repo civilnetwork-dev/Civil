@@ -132,6 +132,10 @@ export type IbossError =
           message: string;
       }
     | {
+          type: "PARSE_ERROR";
+          message: string;
+      }
+    | {
           type: "FILTER_REQUEST_FAILED";
           message: string;
           status?: number;
@@ -469,7 +473,24 @@ class IbossFilterChecker {
     ): ResultAsync<IbossFilteringResponse, IbossError> {
         return ResultAsync.fromPromise(this.fetchWithRetries(endpoint), cause =>
             toRequestError(cause, "Failed to reach the iboss cloud filter."),
-        );
+        ).andThen(response => {
+            // The connector reads blockUrl from the cloud reply. A missing
+            // decision is not evidence that the cloud allows this URL.
+            if (
+                !response ||
+                typeof response !== "object" ||
+                Array.isArray(response) ||
+                (response.errorCode == null &&
+                    !Number.isFinite(response.blockUrl))
+            ) {
+                return err({
+                    type: "PARSE_ERROR" as const,
+                    message:
+                        "iboss cloud reply did not include a numeric blockUrl.",
+                });
+            }
+            return ok(response);
+        });
     }
 
     private async fetchWithRetries(

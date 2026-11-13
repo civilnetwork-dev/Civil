@@ -1,4 +1,5 @@
 import { PROXY_PREFIX } from "../config/shared/runtimeScripts";
+import { encode } from "../config/shared/xorCodec";
 
 /**
  * The Civil routes the harness exercises against each filter.
@@ -27,6 +28,14 @@ export interface CivilRoute {
     proxyTarget?: string;
 }
 
+export function probeRouteUrl(
+    baseUrl: string,
+    path: string,
+    proxyTarget?: string,
+): string {
+    return `${baseUrl.replace(/\/$/, "")}${path}${proxyTarget ? encode(proxyTarget) : ""}`;
+}
+
 export const CIVIL_ROUTES: readonly CivilRoute[] = [
     { path: "/", label: "landing" },
     { path: "/newTab", label: "new tab" },
@@ -34,12 +43,14 @@ export const CIVIL_ROUTES: readonly CivilRoute[] = [
     { path: "/bookmarks", label: "bookmarks" },
     { path: "/history", label: "history" },
     { path: "/extensions", label: "extensions" },
+    { path: "/settings", label: "settings" },
+    { path: "/setup", label: "setup" },
+    { path: "/connectionError", label: "connection error" },
     { path: "/checkFilters", label: "filter check" },
+    { path: "/ban", label: "ban" },
     { path: "/banInfo", label: "ban info" },
-    // The proxy itself, exercising a real third-party site through Civil's
-    // Scramjet path: the case a filter is likeliest to catch. `example.com`
-    // is chosen because it is inoffensive and always up; the point is the
-    // *proxying*, not the destination.
+    // This path requires a browser-controlled service worker to produce the
+    // rewritten document. An HTTP-only sweep reports the cell as incomplete.
     {
         path: PROXY_PREFIX,
         label: "proxy (scramjet)",

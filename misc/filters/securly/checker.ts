@@ -35,6 +35,14 @@ const ANSWERS: Record<
 };
 
 function toVerdict(response: BrokerResponse): FilterVerdict {
+    if (response.kind === "cluster_unavailable")
+        return {
+            status: "unknown",
+            categories: [],
+            detail: "Securly did not provide a filtering cluster.",
+            matched: [],
+        };
+
     if (response.kind === "failed_open")
         return {
             status: "unknown",

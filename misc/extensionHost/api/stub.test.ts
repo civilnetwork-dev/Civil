@@ -41,6 +41,12 @@ describe("withFallback", () => {
         expect(api.runtime.id).toBe("abc");
     });
 
+    it("leaves the Prisma Browser namespace absent on Chrome", () => {
+        const api = withFallback({ runtime: { id: "abc" } });
+        expect(Reflect.get(api, "talon")).toBeUndefined();
+        expect("talon" in api).toBe(false);
+    });
+
     it("stubs any namespace the real implementation doesn't have", async () => {
         const api = withFallback({ runtime: { id: "abc" } }) as Record<
             string,

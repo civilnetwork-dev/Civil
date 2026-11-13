@@ -1,0 +1,4 @@
+{"type": "user", "session": "s1", "text": "run the tests"}
+{"type": "assistant", "session": "s1", "usage": {"input": 1200, "output": 80}}
+{"type": "tool", "session": "s1", "tool": "Bash", "ms": 412}
+{"type": "assistant", "session": "s2", "usage": {"input": 900, "output": 40}}

@@ -8,6 +8,9 @@ import { expect, it, vi } from "vitest";
  */
 vi.stubEnv("NODE_ENV", "production");
 vi.stubEnv("TEST", "");
+vi.stubEnv("CLASSLINK_ISSUER", "");
+vi.stubEnv("CLASSLINK_CLIENT_ID", "");
+vi.stubEnv("CLASSLINK_CLIENT_SECRET", "");
 const { auth } = await import("../misc/database/auth");
 
 /**
@@ -52,4 +55,86 @@ it("trusts a POST from the host Civil was reached by", async () => {
 
 it("refuses a POST from another site", async () => {
     expect((await signOutFrom("https://evil.example")).status).toBe(403);
+});
+
+it("keeps ClassLink disabled while retaining Patreon and anonymous login", async () => {
+    const ctx = await auth.$context;
+    expect(ctx.socialProviders.map(provider => provider.id)).toContain(
+        "patreon",
+    );
+    expect(ctx.socialProviders.map(provider => provider.id)).not.toContain(
+        "classlink",
+    );
+    const response = await auth.handler(
+        new Request("http://localhost:9876/api/auth/sign-in/social", {
+            method: "POST",
+            headers: {
+                origin: "http://localhost:9876",
+                "content-type": "application/json",
+            },
+            body: JSON.stringify({
+                provider: "classlink",
+                callbackURL: "/settings",
+            }),
+        }),
+    );
+    expect(response.status).toBe(403);
+});
+
+it("never accepts administration or ban fields from a user request", async () => {
+    const { betterAuth } = await import("better-auth");
+    const { memoryAdapter } = await import("better-auth/adapters/memory");
+    const database: import("better-auth/adapters/memory").MemoryDB = {
+        user: [],
+        session: [],
+        account: [],
+        verification: [],
+    };
+    const memoryAuth = betterAuth({
+        ...auth.options,
+        database: memoryAdapter(database),
+    });
+    const anonymous = await memoryAuth.handler(
+        new Request("http://localhost:9876/api/auth/sign-in/anonymous", {
+            method: "POST",
+            headers: {
+                origin: "http://localhost:9876",
+                "content-type": "application/json",
+            },
+            body: "{}",
+        }),
+    );
+    expect(anonymous.status).toBe(200);
+    const cookie = anonymous.headers
+        .getSetCookie()
+        .map(value => value.split(";")[0])
+        .join("; ");
+    const ctx = await memoryAuth.$context;
+    await ctx.internalAdapter.updateUser(database.user[0].id, {
+        isBanned: true,
+        banReason: "admin ban",
+    });
+    await memoryAuth.handler(
+        new Request("http://localhost:9876/api/auth/update-user", {
+            method: "POST",
+            headers: {
+                origin: "http://localhost:9876",
+                "content-type": "application/json",
+                cookie,
+            },
+            body: JSON.stringify({
+                name: "New name",
+                isAdmin: true,
+                isBanned: false,
+                banReason: null,
+                isAnonymous: false,
+            }),
+        }),
+    );
+    expect(database.user[0]).toMatchObject({
+        isAdmin: false,
+        isBanned: true,
+        banReason: "admin ban",
+        isAnonymous: true,
+    });
 });

@@ -35,6 +35,7 @@ describe("classifyDomain", () => {
         ]);
         expect(r.blocked).toBe(true);
         expect(r.by).toEqual(["b", "d"]);
+        expect(r.allowedBy).toEqual(["a"]);
     });
 
     it("survives when nothing blocks (ALLOW/UNKNOWN only)", async () => {
@@ -44,6 +45,7 @@ describe("classifyDomain", () => {
         ]);
         expect(r.blocked).toBe(false);
         expect(r.by).toEqual([]);
+        expect(r.allowedBy).toEqual(["a"]);
     });
 
     it("treats a throwing checker as UNKNOWN, not a block", async () => {
@@ -55,6 +57,7 @@ describe("classifyDomain", () => {
         };
         const r = await classifyDomain("x.com", [boom, stub("a", "ALLOW")]);
         expect(r.blocked).toBe(false);
+        expect(r.allowedBy).toEqual(["a"]);
     });
 });
 

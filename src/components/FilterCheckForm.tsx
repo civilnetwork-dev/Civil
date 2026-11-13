@@ -16,6 +16,7 @@ export default function FilterCheckForm(props: {
     email: string;
     url: string;
     loading: boolean;
+    hasFilters: boolean;
     onEmail: (value: string) => void;
     onUrl: (value: string) => void;
     onSubmit: () => void;
@@ -49,7 +50,11 @@ export default function FilterCheckForm(props: {
                 placeholder="https://example.com"
                 required
             />
-            <button class={s.submit} type="submit" disabled={props.loading}>
+            <button
+                class={s.submit}
+                type="submit"
+                disabled={props.loading || !props.hasFilters}
+            >
                 <Show when={props.loading} fallback="Check this site">
                     <IconLoaderDots size={14} class={s.spinner} /> Checking…
                 </Show>

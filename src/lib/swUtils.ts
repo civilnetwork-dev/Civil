@@ -1,4 +1,5 @@
 import { getFilters } from "$config/service/filterDetect";
+import { runtimeAssets } from "$config/shared/runtimeScripts";
 import * as BareMux from "@mercuryworkshop/bare-mux";
 
 import { getSetting } from "~/lib/settings";
@@ -140,14 +141,17 @@ async function setupBareMux(): Promise<void> {
         return;
     }
 
-    const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
+    const connection = new BareMux.BareMuxConnection(
+        `${runtimeAssets.mux}/worker.js`,
+    );
     forgetBareMuxPath();
     const bareServerUrl = `${location.origin}/bare/`;
 
     async function setTransport(): Promise<void> {
-        await connection.setTransport("/baremuxTransport/index.mjs", [
-            bareServerUrl,
-        ]);
+        await connection.setTransport(
+            `${runtimeAssets.muxTransport}/index.mjs`,
+            [bareServerUrl],
+        );
         forgetBareMuxPath();
     }
 

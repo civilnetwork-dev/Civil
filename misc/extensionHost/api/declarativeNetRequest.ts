@@ -175,13 +175,10 @@ export function matchUrl(
             redirectUrl: winner.action.redirect?.url,
         };
     }
-    if (
-        winner.action.type === "block" ||
-        winner.action.type === "upgradeScheme"
-    ) {
+    if (winner.action.type === "block") {
         return { action: "block", matchedRuleId: winner.id };
     }
-    // modifyHeaders doesn't block or allow on its own.
+    // Scheme upgrades and header changes alone give no policy verdict.
     return { action: "none", matchedRuleId: null };
 }
 
@@ -193,13 +190,20 @@ export function buildDeclarativeNetRequest(state: ExtensionState) {
             addRules?: DNRRuleset[];
         },
     ): void {
-        for (const id of options.removeRuleIds ?? []) target.delete(id);
+        // Chrome rejects the entire replacement if any addition fails.
+        const removed = new Set(options.removeRuleIds);
+        const added = new Map<number, DNRRuleset>();
         for (const rule of options.addRules ?? []) {
-            if (target.has(rule.id)) {
+            if (
+                added.has(rule.id) ||
+                (target.has(rule.id) && !removed.has(rule.id))
+            ) {
                 throw new Error(`Rule with id ${rule.id} already exists`);
             }
-            target.set(rule.id, crossRealm(rule));
+            added.set(rule.id, crossRealm(rule));
         }
+        for (const id of removed) target.delete(id);
+        for (const [id, rule] of added) target.set(id, rule);
     }
 
     return {

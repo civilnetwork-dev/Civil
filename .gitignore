@@ -63,8 +63,7 @@ zig-out/
 
 # Maintenance Files
 MAINTENANCE.md
-# Agent scratch: worktrees and per-session state
-.claude/*
+# Superpowers Miscellaneous Stuff
 .superpowers/
 
 # local .env backups taken before dev-only edits
@@ -110,8 +109,8 @@ graphify-out/
 # Future Folders
 .understand-anything/
 
-# Keep Claude Launch for other contributors
-!.claude/launch.json
-
 # Random Secret Files
 NUL
+
+# A SQLite fixture is an exception
+!.blocks/fixtures/districts-sentinel/districts.sqlite

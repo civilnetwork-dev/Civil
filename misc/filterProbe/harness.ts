@@ -74,11 +74,16 @@ import {
     sweepTunnelOrphans,
     type Tunnel,
 } from "../tunnel";
-import { detectFlagging, type PageObservation, type Verdict } from "./detect";
+import {
+    detectFlagging,
+    type PageObservation,
+    probeFailure,
+    type Verdict,
+} from "./detect";
 import { type DockerStackHandle, startDockerStack } from "./dockerStack";
 import { checkGoGuardianRoute } from "./goguardianCheck";
 import { predictFix, type Suggestion } from "./predict";
-import { CIVIL_ROUTES, type CivilRoute } from "./routes";
+import { CIVIL_ROUTES, type CivilRoute, probeRouteUrl } from "./routes";
 import { observeRoute, type SandboxOptions } from "./sandbox";
 import { VENDOR_PRIMARY_FOLDER, VENDORS } from "./vendors";
 
@@ -281,20 +286,6 @@ async function waitForTunnelReady(
     );
 }
 
-/** A probe that never actually rendered the page: distinct from a filter's
- *  own clean verdict, and must never be reported as one (see detect.ts's own
- *  matching check, which this mirrors so a surviving bad observation can't
- *  slip through as "ok" even if the retry loop below gives up on it). */
-function isInfraFailure(observation: PageObservation): string | undefined {
-    if (observation.fetchError) return observation.fetchError;
-    if (
-        observation.status !== undefined &&
-        (observation.status === 0 || observation.status >= 500)
-    )
-        return `HTTP ${observation.status}`;
-    return undefined;
-}
-
 const INFRA_RETRY_ATTEMPTS = 3;
 const INFRA_RETRY_DELAY_MS = 1_000;
 /** Extra wait for the clean-result recheck, on top of the configured
@@ -310,7 +301,7 @@ async function observeWithRetries(
     let infraError: string | undefined;
     for (let attempt = 1; attempt <= INFRA_RETRY_ATTEMPTS; attempt++) {
         const observation = await observeRoute({ ...options, waitMs });
-        infraError = isInfraFailure(observation);
+        infraError = probeFailure(observation);
         if (!infraError) return observation;
         if (attempt < INFRA_RETRY_ATTEMPTS)
             await sleep(INFRA_RETRY_DELAY_MS * attempt);
@@ -351,6 +342,11 @@ async function probeVendorRoute(
         waitMs: number;
     },
 ): Promise<Verdict> {
+    if (route.proxyTarget) {
+        throw new Error(
+            "The proxy route requires a rewritten document from Civil's browser service worker",
+        );
+    }
     // tunnelAwareFetch, not plain fetch: see its own doc comment.
     // Everything that actually hits the tunnel over the network goes
     // through it, or the retries built to survive a stuck edge session
@@ -362,9 +358,7 @@ async function probeVendorRoute(
     );
 
     if (vendor === "goguardian") {
-        const url = route.proxyTarget
-            ? `${ctx.tunnelUrl.replace(/\/$/, "")}${route.path}${encodeURIComponent(route.proxyTarget)}`
-            : `${ctx.tunnelUrl.replace(/\/$/, "")}${route.path}`;
+        const url = probeRouteUrl(ctx.tunnelUrl, route.path);
         return checkGoGuardianRoute(url, route.path, fetchImpl);
     }
 
@@ -372,15 +366,14 @@ async function probeVendorRoute(
         extensionDir: join(ctx.bundleRoot, folder),
         baseUrl: ctx.tunnelUrl,
         route: route.path,
-        proxyTarget: route.proxyTarget,
         fetchImpl,
     };
 
     const observation = await observeWithRetries(options, ctx.waitMs);
-
     const first = detectFlagging(observation, vendor);
     if (first.flagged) return first;
 
+    // An inconclusive vendor error also needs a conclusive recheck.
     // Clean so far: recheck once with a longer wait before trusting it. A
     // flaky recheck (its own infra hiccup) doesn't undo an otherwise-good
     // first read; it just means this particular recheck carries no signal.
@@ -388,9 +381,15 @@ async function probeVendorRoute(
         ...options,
         waitMs: ctx.waitMs + RECHECK_EXTRA_WAIT_MS,
     });
-    if (isInfraFailure(recheck)) return first;
+    if (probeFailure(recheck)) {
+        if (first.inconclusive) throw new Error(first.inconclusive);
+        return first;
+    }
     const second = detectFlagging(recheck, vendor);
-    return second.flagged ? second : first;
+    if (second.inconclusive) throw new Error(second.inconclusive);
+    if (observation.tabRemoved && !second.flagged)
+        throw new Error(first.inconclusive);
+    return second.flagged || first.inconclusive ? second : first;
 }
 
 /**
@@ -677,6 +676,8 @@ function describeSignal(verdict: Verdict): string {
         return `keyword match: ${s.keywords.join(", ")}`;
     if (s.kind === "dnr-block")
         return `blocked by its own declarativeNetRequest rule #${s.matchedRuleId}`;
+    if (s.kind === "web-request-block")
+        return "cancelled by its blocking request listener";
     if (s.kind === "dom-replaced")
         return `page replaced in place (${s.originalLength} chars -> ${s.finalLength} chars)`;
     if (s.kind === "domain-rating")

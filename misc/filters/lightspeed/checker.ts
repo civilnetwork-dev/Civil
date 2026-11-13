@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { err, errAsync, ok, ResultAsync } from "neverthrow";
 import { WebSocket } from "ws";
 import xior, { type XiorError } from "xior";
@@ -10,6 +12,7 @@ import {
     type FilterVerdict,
     toFilterError,
 } from "../verdict";
+import { verifyRelayReply } from "./replySignature";
 
 export type LightspeedError =
     | { type: "INVALID_URL"; message: string; input: string }
@@ -27,6 +30,7 @@ export interface LightspeedRelayConfig {
     customerId?: string;
     agentType?: string;
     agentVersion?: string;
+    publicKey?: string;
 }
 
 export interface LightspeedCheckerOptions {
@@ -48,6 +52,8 @@ const RELAY_AUTH =
 const RELAY_CUSTOMER_ID = process.env.LIGHTSPEED_CUSTOMER_ID ?? "62-2124-A000";
 const AGENT_TYPE = "chrome";
 const AGENT_VERSION = "4.4.1";
+// Both acquired agents use this production Ed25519 response key.
+const RELAY_PUBLIC_KEY = "EL37vf6CEFtOP+141jvhQhNmHTQtQovjLxdTPBlZYTw=";
 
 const LIGHTSPEED_TAXONOMY_URL =
     "https://lsrelay-config-production.s3.amazonaws.com/84e747afc7d98b7854c513fbceec22dc1535b9f4b0112cbb9e3bf6d8a2b18185/categories.json";
@@ -128,17 +134,29 @@ function fetchLightspeedTaxonomy(
     });
 }
 
-type HostLookupReply = {
+type HostLookupReply = Record<string, unknown> & {
     action?: string;
     request?: { host?: string };
+    nonce?: string;
     cat?: number;
     cats?: number[];
 };
 
 /** The category ids in a reply to our lookup of `host`, or null for any other message. */
-function categoryIdsFor(raw: WebSocket.RawData, host: string): number[] | null {
+function categoryIdsFor(
+    raw: WebSocket.RawData,
+    host: string,
+    nonce: string,
+    relay: LightspeedRelayConfig,
+): number[] | null {
     const msg = JSON.parse(raw.toString()) as HostLookupReply;
-    if (msg.action !== "host_lookup" || msg.request?.host !== host) return null;
+    if (
+        msg.action !== "host_lookup" ||
+        msg.request?.host !== host ||
+        msg.nonce !== nonce ||
+        !verifyRelayReply(msg, relay.publicKey ?? RELAY_PUBLIC_KEY)
+    )
+        return null;
 
     const ids = new Set<number>();
     if (typeof msg.cat === "number") ids.add(msg.cat);
@@ -158,21 +176,18 @@ function relayLookupHost(
     return new Promise<number[]>(resolve => {
         const customerId = relay.customerId ?? RELAY_CUSTOMER_ID;
         const agentVersion = relay.agentVersion ?? AGENT_VERSION;
-
         const qs = new URLSearchParams({
             a: relay.auth ?? RELAY_AUTH,
             customer_id: customerId,
             agentType: relay.agentType ?? AGENT_TYPE,
             agentVersion,
         });
-
         let ws: WebSocket;
         try {
             ws = new WebSocket(`${relay.uri ?? RELAY_URI}/?${qs.toString()}`);
         } catch {
             return resolve([]);
         }
-
         let done = false;
         const finish = (v: number[]) => {
             if (done) return;
@@ -185,9 +200,12 @@ function relayLookupHost(
         };
         const timer = setTimeout(() => finish([]), timeoutMs);
 
+        // Both acquired agent versions correlate host replies with a UUID.
+        const nonce = randomUUID();
         const lookup = JSON.stringify({
             action: "dy_lookup",
             host,
+            nonce,
             customerId,
             agentVersion,
             os: "cros",
@@ -202,7 +220,7 @@ function relayLookupHost(
         });
         ws.on("message", data => {
             try {
-                const ids = categoryIdsFor(data, host);
+                const ids = categoryIdsFor(data, host, nonce, relay);
                 if (ids) finish(ids);
             } catch {}
         });

@@ -1,0 +1,14 @@
+{
+    "manifest_version": 3,
+    "name": "Content script scope fixture",
+    "version": "1.0.0",
+    "content_scripts": [
+        {
+            "matches": ["https://*/*"],
+            "exclude_matches": ["https://www.probe.invalid/private/*"],
+            "include_globs": ["https://www.probe.?nvalid/*"],
+            "exclude_globs": ["*/skip+me*", "*/newTab\\?blocked=yes"],
+            "js": ["content.js"]
+        }
+    ]
+}

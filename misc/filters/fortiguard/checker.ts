@@ -621,6 +621,7 @@ async function requestRating(
     config: ResolvedFortiGuardConfig,
     http: XiorInstance,
     timeoutOverrideMs?: number,
+    trimmed = false,
 ): Promise<unknown> {
     const normalized = normalizeUrl(input);
     if (normalized.isErr()) throw normalized.error;
@@ -641,9 +642,29 @@ async function requestRating(
     const response = await http.get(ratingUrl.href, {
         timeout: timeoutOverrideMs ?? config.timeoutMs,
         responseType: "json",
-        validateStatus: () => true,
+        validateResponse: reply => reply.status === 200 || reply.status === 414,
     });
 
+    const parsed = ResponseSchema.safeParse(response.data);
+    const retryable =
+        response.status === 414 ||
+        (response.status === 200 &&
+            parsed.success &&
+            (parsed.data.status === 2 || parsed.data.status === 3));
+    // FortiClient 2.0.0.0017 retries these failures once without path/query.
+    if (retryable && !trimmed) {
+        return requestRating(
+            normalized.value.origin,
+            config,
+            http,
+            timeoutOverrideMs,
+            true,
+        );
+    }
+    if (response.status !== 200)
+        throw new Error(
+            `FortiGuard rating request failed (${response.status})`,
+        );
     return response.data;
 }
 

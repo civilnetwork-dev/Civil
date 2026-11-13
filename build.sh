@@ -2,7 +2,7 @@
 
 cd misc/config
 
-bun bundle.js
+bun bundle.ts
 
 cd ../..
 

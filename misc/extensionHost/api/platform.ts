@@ -36,10 +36,11 @@
  */
 
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
+import type { Window } from "happy-dom";
 import UserAgent from "user-agents";
 
 import type { ExtensionTarget } from "../types";
@@ -62,6 +63,7 @@ export interface PlatformOptions {
     /** Where `self.location` points: the background entry's own URL. */
     backgroundPath: string;
     timers: Set<TimerHandle>;
+    onError?: (error: unknown) => void;
 }
 
 /** What `setTimeout`/`setInterval` hand back.
@@ -88,6 +90,9 @@ export interface Platform {
      * `[0].parentNode`, and an empty document makes that a TypeError.
      */
     addScriptElement(src: string): void;
+    observePackagedScripts?(
+        execute: (code: string, path: string) => void,
+    ): void;
     dispose(): void;
 }
 
@@ -611,7 +616,59 @@ export function buildNavigator(target: ExtensionTarget) {
 /** ServiceWorkerGlobalScope members an MV3 background reaches for. Registry
  *  objects rather than stubs, so `addEventListener("install", ...)` and
  *  `clients.matchAll()` behave like a worker nobody has woken. */
-function buildServiceWorkerScope() {
+function workerEvents(onError: (error: unknown) => void) {
+    // Dispatch is real; worker lifecycle events are not synthesized.
+    const target = new EventTarget();
+    const listeners = new WeakMap<
+        EventListenerOrEventListenerObject,
+        EventListener
+    >();
+    const wrap = (
+        listener: EventListenerOrEventListenerObject,
+    ): EventListener => {
+        let wrapped = listeners.get(listener);
+        if (!wrapped) {
+            wrapped = event => {
+                try {
+                    const result =
+                        typeof listener === "function"
+                            ? listener.call(target, event)
+                            : listener.handleEvent(event);
+                    void Promise.resolve(result).catch(onError);
+                } catch (error) {
+                    onError(error);
+                }
+            };
+            listeners.set(listener, wrapped);
+        }
+        return wrapped;
+    };
+    return {
+        addEventListener(
+            type: string,
+            listener: EventListenerOrEventListenerObject | null,
+            options?: AddEventListenerOptions | boolean,
+        ) {
+            if (listener)
+                target.addEventListener(type, wrap(listener), options);
+        },
+        removeEventListener(
+            type: string,
+            listener: EventListenerOrEventListenerObject | null,
+            options?: EventListenerOptions | boolean,
+        ) {
+            if (listener)
+                target.removeEventListener(
+                    type,
+                    listeners.get(listener) ?? listener,
+                    options,
+                );
+        },
+        dispatchEvent: target.dispatchEvent.bind(target),
+    };
+}
+
+function buildServiceWorkerScope(onError: (error: unknown) => void) {
     // Libraries detect a worker by `typeof WorkerGlobalScope` (TensorFlow.js
     // picks its platform this way: with neither this nor `window` present it
     // registers none, and securly's image classifier then dies on
@@ -628,6 +685,7 @@ function buildServiceWorkerScope() {
     return {
         WorkerGlobalScope,
         ServiceWorkerGlobalScope,
+        ...workerEvents(onError),
         clients: {
             claim: async () => {},
             get: async () => undefined,
@@ -691,6 +749,7 @@ function nodeWebGlobals(): Record<string, unknown> {
         TextEncoder,
         TextDecoder,
         URL,
+        URLPattern,
         URLSearchParams,
         structuredClone,
         queueMicrotask,
@@ -775,7 +834,15 @@ export function buildFreshConsole(): Console {
  * its bundle never declares), so it belongs with the rest of that vendor's
  * output.
  */
-function trackedTimers(timers: Set<TimerHandle>, vendorConsole: Console) {
+function trackedTimers(
+    timers: Set<TimerHandle>,
+    vendorConsole: Console,
+    onError?: (error: unknown) => void,
+) {
+    const reportError = (error: unknown) => {
+        vendorConsole.error(error);
+        onError?.(error);
+    };
     const track = <T extends TimerHandle>(handle: T): T => {
         timers.add(handle);
         return handle;
@@ -785,9 +852,10 @@ function trackedTimers(timers: Set<TimerHandle>, vendorConsole: Console) {
         args: unknown[],
     ): void => {
         try {
-            fn(...args);
+            const result = fn(...args);
+            void Promise.resolve(result).catch(reportError);
         } catch (error) {
-            vendorConsole.error(error);
+            reportError(error);
         }
     };
 
@@ -887,6 +955,64 @@ function copyWindowGlobals(
     }
 }
 
+function observePackagedScripts(
+    window: Window,
+    { extensionId, extensionDir }: PlatformOptions,
+    execute: (code: string, path: string) => void,
+): () => void {
+    const head = window.document.head;
+    if (!head) return () => {};
+    const appendChild = head.appendChild.bind(head);
+    const started = new WeakSet<object>();
+    const prefix = `chrome-extension://${extensionId}/`;
+    let active = true;
+
+    async function load(src: string): Promise<"load" | "error"> {
+        try {
+            const file = src.startsWith(prefix)
+                ? extensionFile(src.slice(prefix.length), extensionDir)
+                : null;
+            if (!file) return "error";
+            const [root, path] = await Promise.all([
+                realpath(extensionDir),
+                realpath(file.path),
+            ]);
+            if (!path.startsWith(root + sep)) return "error";
+            const code = await readFile(path, "utf8");
+            if (active) execute(code, path);
+            return "load";
+        } catch {
+            return "error";
+        }
+    }
+
+    head.appendChild = node => {
+        if (!(node instanceof window.HTMLScriptElement) || !node.src)
+            return appendChild(node);
+        const type = node.getAttribute("type");
+        if (type && type !== "text/javascript") return appendChild(node);
+        const src = node.src;
+        // Suppress Happy DOM's disabled-loader error while inserting the tag.
+        node.type = "application/x-civil-script";
+        try {
+            appendChild(node);
+        } finally {
+            if (type === null) node.removeAttribute("type");
+            else node.type = type;
+        }
+        if (!started.has(node)) {
+            started.add(node);
+            void load(src).then(event => {
+                if (active) node.dispatchEvent(new window.Event(event));
+            });
+        }
+        return node;
+    };
+    return () => {
+        active = false;
+    };
+}
+
 /** An MV2 background page: the same globals, plus a real DOM. */
 async function buildBackgroundPage(
     options: PlatformOptions,
@@ -913,6 +1039,9 @@ async function buildBackgroundPage(
         },
     });
 
+    window.addEventListener("error", event => {
+        if (event instanceof window.ErrorEvent) options.onError?.(event.error);
+    });
     copyWindowGlobals(window, globals);
     // `window` is deliberately NOT set here. In a real page `window` *is* the
     // global object, so the caller aliases it to the sandbox itself, which
@@ -922,6 +1051,7 @@ async function buildBackgroundPage(
     // it at all.
     globals.document = window.document;
 
+    let stopPackagedScripts: (() => void) | undefined;
     return {
         globals,
         addScriptElement: (src: string) => {
@@ -929,9 +1059,19 @@ async function buildBackgroundPage(
             element.setAttribute("src", src);
             window.document.head.appendChild(element);
         },
+        observePackagedScripts: execute => {
+            stopPackagedScripts = observePackagedScripts(
+                window,
+                options,
+                execute,
+            );
+        },
         // happy-dom runs its own timer queue, which outlives the sandbox
         // unless the window is closed.
-        dispose: () => void window.close(),
+        dispose: () => {
+            stopPackagedScripts?.();
+            void window.close();
+        },
     };
 }
 
@@ -939,17 +1079,40 @@ export async function buildPlatform(
     options: PlatformOptions,
 ): Promise<Platform> {
     const vendorConsole = buildFreshConsole();
+    const channels: MessageChannel[] = [];
     const globals: Record<string, unknown> = {
         ...nodeWebGlobals(),
         console: vendorConsole,
-        ...trackedTimers(options.timers, vendorConsole),
+        ...trackedTimers(options.timers, vendorConsole, options.onError),
         ...browserGlobals(options),
+        // Webpack-loaded React schedulers can keep a Node port alive.
+        MessageChannel: class extends MessageChannel {
+            constructor() {
+                super();
+                channels.push(this);
+            }
+        },
     };
 
-    if (!options.dom) {
-        Object.assign(globals, buildServiceWorkerScope());
-        return { globals, addScriptElement: () => {}, dispose: () => {} };
-    }
+    if (!options.dom)
+        Object.assign(
+            globals,
+            buildServiceWorkerScope(
+                options.onError ?? (error => vendorConsole.error(error)),
+            ),
+        );
+    const platform = options.dom
+        ? await buildBackgroundPage(options, globals)
+        : { globals, addScriptElement: () => {}, dispose: () => {} };
 
-    return buildBackgroundPage(options, globals);
+    return {
+        ...platform,
+        dispose() {
+            for (const { port1, port2 } of channels) {
+                port1.close();
+                port2.close();
+            }
+            platform.dispose();
+        },
+    };
 }

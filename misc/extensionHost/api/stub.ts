@@ -46,7 +46,7 @@ export function universalStub(member = ""): unknown {
             if (prop === "then") return undefined;
             // Same rule as withFallback: a stub of a stub must not claim to
             // be an ES module or an already-promisified API either.
-            if (isIntrospectionProbe(prop)) return undefined;
+            if (shouldLeaveMissing(prop)) return undefined;
             return universalStub(typeof prop === "string" ? prop : "");
         },
         apply(_target, _thisArg, args: unknown[]) {
@@ -87,6 +87,8 @@ export function universalStub(member = ""): unknown {
  *     and no recognisable clue away from the cause.
  *   - Any other `__dunder__` is tooling protocol for the same reason.
  *   - `default` is the other half of that interop pair.
+ *   - `talon` is a private Prisma Browser capability. On Chrome the vendor
+ *     worker checks its absence before reading a browser-lifetime preference.
  *
  * The rule these share: the stub exists so an API this host doesn't
  * implement does nothing instead of throwing. It does not exist to claim the
@@ -99,9 +101,9 @@ export function universalStub(member = ""): unknown {
  * hard `is not a function` where a stub would have absorbed it. Stubbing it
  * costs nothing that was observed; withholding it cost goguardian.
  */
-function isIntrospectionProbe(prop: string | symbol): boolean {
+export function shouldLeaveMissing(prop: string | symbol): boolean {
     if (typeof prop !== "string") return false;
-    return prop.startsWith("__") || prop === "default";
+    return prop.startsWith("__") || prop === "default" || prop === "talon";
 }
 
 export function withFallback<T extends object>(implemented: T): T {
@@ -109,7 +111,7 @@ export function withFallback<T extends object>(implemented: T): T {
         get(target, prop, receiver) {
             if (Reflect.has(target, prop))
                 return Reflect.get(target, prop, receiver);
-            if (isIntrospectionProbe(prop)) return undefined;
+            if (shouldLeaveMissing(prop)) return undefined;
             return universalStub(typeof prop === "string" ? prop : "");
         },
     });

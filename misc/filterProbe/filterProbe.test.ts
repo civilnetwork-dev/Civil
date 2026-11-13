@@ -22,6 +22,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { PROXY_PREFIX } from "../config/shared/runtimeScripts";
+import { decode } from "../config/shared/xorCodec";
 import { filterVendorDomains } from "../filters/filterBlockerMiddleware";
 import { detectFlagging, type PageObservation, PROBE_DATA } from "./detect";
 import { predictFix } from "./predict";
@@ -29,6 +31,23 @@ import { observeRoute } from "./sandbox";
 import { FOLDER_TO_VENDOR, VENDOR_PRIMARY_FOLDER, VENDORS } from "./vendors";
 
 const CIVIL_DIR = join(import.meta.dirname, "..", "..");
+const INTERCLASS_BLOCK_MODES = [
+    "blocked",
+    "outoftime",
+    "safetyinput",
+    "cumulativelimit",
+];
+const INTERCLASS_ERROR_MODES = [
+    "errorpage",
+    "clienterror",
+    "servererror",
+    "paramerror",
+    "cantinitialize",
+    "toolongurl",
+    "brouseruserinfoerror",
+    "unknown",
+    "",
+];
 
 function observe(partial: Partial<PageObservation>): PageObservation {
     return {
@@ -108,6 +127,24 @@ describe("detectFlagging", () => {
         expect(verdict.flagged).toBe(true);
         expect(verdict.signal).toEqual({ kind: "marker", marker });
     });
+
+    it.each([
+        {
+            pageText:
+                "Web Page Blocked! The FortiGuard URL rating service is inaccessible.",
+            originalLength: 5000,
+        },
+        {
+            finalUrl: "chrome-extension://fortiguard/blocked_page_FGD_down.htm",
+            extensionId: "fortiguard",
+        },
+    ])("separates a FortiGuard rating outage from URL policy (%j)", fields => {
+        expect(detectFlagging(observe(fields), "fortiguard")).toMatchObject({
+            flagged: false,
+            inconclusive:
+                "FortiGuard blocked access while its URL rating service was unavailable",
+        });
+    });
 });
 
 describe("detectFlagging attribution and failures", () => {
@@ -137,7 +174,10 @@ describe("detectFlagging attribution and failures", () => {
     });
 
     it("treats an unknown vendor as no-data rather than throwing", () => {
-        expect(detectFlagging(observe({}), "not-a-vendor").flagged).toBe(false);
+        expect(detectFlagging(observe({}), "not-a-vendor")).toMatchObject({
+            flagged: false,
+            inconclusive: "No probe data for not-a-vendor",
+        });
     });
 
     it("never lets a broken probe (fetch failure) read as clean", () => {
@@ -151,12 +191,13 @@ describe("detectFlagging attribution and failures", () => {
             "securly",
         );
         expect(verdict.flagged).toBe(false);
+        expect(verdict.inconclusive).toBe("fetch failed: ECONNRESET");
     });
 
     it("never lets a 5xx from Civil itself read as clean", () => {
         expect(
-            detectFlagging(observe({ status: 502 }), "securly").flagged,
-        ).toBe(false);
+            detectFlagging(observe({ status: 502 }), "securly"),
+        ).toMatchObject({ flagged: false, inconclusive: "HTTP 502" });
     });
 });
 
@@ -172,7 +213,9 @@ describe("detectFlagging declarativeNetRequest", () => {
             matchedRuleId: 7,
         });
     });
+});
 
+describe("detectFlagging declarativeNetRequest redirects", () => {
     it("flags a declarativeNetRequest redirect rule onto a known vendor domain", () => {
         const verdict = detectFlagging(
             observe({
@@ -210,6 +253,20 @@ describe("detectFlagging declarativeNetRequest", () => {
             finalHost: "new-block-host.example",
         });
     });
+
+    it("ignores a DNR redirect when no rule matched", () => {
+        const verdict = detectFlagging(
+            observe({
+                dnrMatch: {
+                    action: "redirect",
+                    matchedRuleId: null,
+                    redirectUrl: "https://deviceconsole.securly.com/blocked",
+                },
+            }),
+            "securly",
+        );
+        expect(verdict.flagged).toBe(false);
+    });
 });
 
 /**
@@ -221,7 +278,10 @@ describe("detectFlagging block pages", () => {
     it("flags a tab sent to the block page inside the vendor's extension", () => {
         const finalUrl =
             "chrome-extension://ponmlkjihgfedcba/blocked.html?index=2";
-        const verdict = detectFlagging(observe({ finalUrl }), "lanschool");
+        const verdict = detectFlagging(
+            observe({ finalUrl, extensionId: "ponmlkjihgfedcba" }),
+            "lanschool",
+        );
         expect(verdict.signal).toEqual({
             kind: "block-page",
             page: "chrome-extension:blocked.html",
@@ -237,11 +297,13 @@ describe("detectFlagging block pages", () => {
         ).toBe("block-page");
     });
 
-    it("leaves another vendor's extension page alone", () => {
-        const finalUrl = "chrome-extension://ponmlkjihgfedcba/options.html";
-        expect(detectFlagging(observe({ finalUrl }), "lanschool").flagged).toBe(
-            false,
+    it("does not attribute another extension's identically named block page", () => {
+        const finalUrl = "chrome-extension://ponmlkjihgfedcba/blocked.html";
+        const verdict = detectFlagging(
+            observe({ finalUrl, extensionId: "abcdefghijklmnop" }),
+            "lanschool",
         );
+        expect(verdict.flagged).toBe(false);
     });
 
     it("names a declarativeNetRequest redirect into the extension's own block page", () => {
@@ -258,6 +320,121 @@ describe("detectFlagging block pages", () => {
             page: "chrome-extension:blockPage.html",
             finalUrl: redirectUrl,
         });
+    });
+});
+
+function interclassPage(mode: string): PageObservation {
+    return observe({
+        finalUrl: `chrome-extension://abcdefghijklmnop/pages/message-page.html?mode=${mode}`,
+        pageText: PROBE_DATA.interclass!.blockMarkers[0]!,
+        originalLength: 5000,
+    });
+}
+
+it("uses the browser's URL codec for proxy route observations", async () => {
+    const proxyTarget = "https://example.com/page?q=a%20b";
+    const observation = await observeRoute({
+        extensionDir: join(import.meta.dirname, "fixtures", "noop-extension"),
+        baseUrl: "https://probe.invalid/",
+        route: PROXY_PREFIX,
+        proxyTarget,
+        waitMs: 0,
+        fetchImpl: (async (url: string) => {
+            const { pathname, search } = new URL(url);
+            expect(pathname.startsWith(PROXY_PREFIX)).toBe(true);
+            expect(search).toBe("");
+            expect(decode(pathname.slice(PROXY_PREFIX.length))).toBe(
+                proxyTarget,
+            );
+            return new Response("<body>Rewritten fixture</body>");
+        }) as unknown as typeof fetch,
+    });
+    expect(observation.pageText).toContain("Rewritten fixture");
+});
+
+it.each([
+    "gcjpefhffmcgplgklffgbebganmhffje",
+    "mpkdoimpgkhjcicmhmlmgboelebflpla",
+])(
+    "flags a redirect to NetSupport's approved-sites policy page (%s)",
+    extensionId => {
+        const finalUrl = `chrome-extension://${extensionId}/ApprovedWebList.htm`;
+        const verdict = detectFlagging(
+            observe({ extensionId, finalUrl }),
+            "netsupport",
+        );
+        expect(verdict.signal).toEqual({
+            kind: "block-page",
+            page: "chrome-extension:ApprovedWebList.htm",
+            finalUrl,
+        });
+    },
+);
+
+describe("InterCLASS message-page modes", () => {
+    it.each(INTERCLASS_ERROR_MODES)(
+        "keeps error or unknown mode %s inconclusive before marker/shrinkage checks",
+        mode => {
+            const verdict = detectFlagging(interclassPage(mode), "interclass");
+            expect(verdict.flagged).toBe(false);
+            expect(verdict.signal).toBeUndefined();
+            expect(verdict.inconclusive).toContain("InterCLASS");
+        },
+    );
+
+    it.each(INTERCLASS_BLOCK_MODES)("flags policy mode %s", mode => {
+        const verdict = detectFlagging(interclassPage(mode), "interclass");
+        expect(verdict.flagged).toBe(true);
+        expect(verdict.signal?.kind).toBe("block-page");
+        expect(verdict.inconclusive).toBeUndefined();
+    });
+});
+
+describe("InterCLASS message-page DNR", () => {
+    it.each([4, null])(
+        "only treats a DNR redirect to an error page as evidence with a matched rule (%s)",
+        matchedRuleId => {
+            const verdict = detectFlagging(
+                observe({
+                    dnrMatch: {
+                        action: "redirect",
+                        matchedRuleId,
+                        redirectUrl: interclassPage("servererror").finalUrl,
+                    },
+                }),
+                "interclass",
+            );
+            expect(verdict.flagged).toBe(false);
+            if (matchedRuleId === null) {
+                expect(verdict.inconclusive).toBeUndefined();
+            } else {
+                expect(verdict.inconclusive).toContain("InterCLASS");
+            }
+        },
+    );
+
+    it("requires a matched DNR rule before overriding an error page", () => {
+        const verdict = detectFlagging(
+            {
+                ...interclassPage("servererror"),
+                dnrMatch: { action: "block", matchedRuleId: null },
+            },
+            "interclass",
+        );
+        expect(verdict.flagged).toBe(false);
+        expect(verdict.inconclusive).toContain("InterCLASS");
+    });
+
+    it("preserves a direct DNR block despite a later error page", () => {
+        const verdict = detectFlagging(
+            {
+                ...interclassPage("servererror"),
+                dnrMatch: { action: "block", matchedRuleId: 4 },
+            },
+            "interclass",
+        );
+        expect(verdict.signal).toEqual({ kind: "dnr-block", matchedRuleId: 4 });
+        expect(verdict.inconclusive).toBeUndefined();
     });
 });
 
@@ -400,6 +577,26 @@ describe("predictFix gaps and DNR", () => {
 // ---------------------------------------------------------------------------
 
 describe("sandbox observeRoute", () => {
+    it.each(["missing-worker", "missing-content-script"])(
+        "keeps a benign page inconclusive when an extension script is missing (%s)",
+        async fixture => {
+            const observation = await observeRoute({
+                extensionDir: join(import.meta.dirname, "fixtures", fixture),
+                baseUrl: "https://abc.mooo.com",
+                route: "/newTab",
+                waitMs: 0,
+                fetchImpl: (async () =>
+                    new Response(
+                        "<body>Civil new tab</body>",
+                    )) as unknown as typeof fetch,
+            });
+            expect(observation.pageText).toContain("Civil new tab");
+            const verdict = detectFlagging(observation, "securly");
+            expect(verdict.flagged).toBe(false);
+            expect(verdict.inconclusive).toContain("missing.js");
+        },
+    );
+
     it("reports the served text and a clean verdict for a benign page", async () => {
         // A throwaway extension with no content scripts: the sandbox should
         // fetch the page, load nothing, and report it verbatim.
@@ -420,16 +617,15 @@ describe("sandbox observeRoute", () => {
     });
 
     it("catches an image-only block overlay through alt/aria/title text, not just innerText", async () => {
-        const dir = join(import.meta.dirname, "fixtures", "noop-extension");
+        const dir = join(import.meta.dirname, "fixtures", "message-channel");
         const observation = await observeRoute({
             extensionDir: dir,
-            baseUrl: "https://abc.mooo.com",
+            baseUrl: "https://probe.invalid",
             route: "/newTab",
-            waitMs: 0,
+            waitMs: 100,
             fetchImpl: (async () =>
                 new Response(
-                    '<body><img src="shield.png" alt="This site has been blocked by a teacher"></body>',
-                    { status: 200 },
+                    "<body>Civil new tab</body>",
                 )) as unknown as typeof fetch,
         });
         // No visible text run at all: textContent alone would be empty.
@@ -438,6 +634,105 @@ describe("sandbox observeRoute", () => {
         );
         expect(detectFlagging(observation, "securly").flagged).toBe(true);
     });
+});
+
+it.each([
+    [
+        "https://deviceconsole.securly.com/blocked",
+        "https://deviceconsole.securly.com/blocked",
+    ],
+    ["/setup", "https://probe.invalid/setup"],
+])(
+    "reports a network redirect without attributing it to the extension (%s)",
+    async (location, destination) => {
+        const observation = await observeRoute({
+            extensionDir: join(
+                import.meta.dirname,
+                "fixtures",
+                "missing-worker",
+            ),
+            baseUrl: "https://probe.invalid",
+            route: "/newTab",
+            fetchImpl: (async (_url: unknown, init: RequestInit) => {
+                expect(init.redirect).toBe("manual");
+                return new Response("This site has been blocked by a teacher", {
+                    status: 302,
+                    headers: { location },
+                });
+            }) as unknown as typeof fetch,
+        });
+        expect(observation.finalUrl).toBe(destination);
+        expect(observation.backgroundError).toBeUndefined();
+        expect(detectFlagging(observation, "securly")).toMatchObject({
+            flagged: false,
+            inconclusive: `Page fetch redirected to ${destination}`,
+        });
+    },
+);
+
+it("does not attribute block text already present in the fetched page to the filter", async () => {
+    const marker = PROBE_DATA.securly!.blockMarkers[0]!;
+    const observation = await observeRoute({
+        extensionDir: join(import.meta.dirname, "fixtures", "noop-extension"),
+        baseUrl: "https://probe.invalid",
+        route: "/newTab",
+        waitMs: 0,
+        fetchImpl: (async () =>
+            new Response(
+                `<title>${marker}</title><body>Blocked by GoGuardian</body>`,
+            )) as unknown as typeof fetch,
+    });
+    expect(observation.originalPageText).toBe(observation.pageText);
+    expect(detectFlagging(observation, "securly").flagged).toBe(false);
+    expect(detectFlagging(observation, "goguardian").flagged).toBe(false);
+});
+
+it("passes page sender metadata to a worker that controls the content-script block", async () => {
+    const observation = await observeRoute({
+        extensionDir: join(import.meta.dirname, "fixtures", "message-channel"),
+        baseUrl: "https://probe.invalid",
+        route: "/newTab",
+        waitMs: 100,
+        fetchImpl: (async () =>
+            new Response(
+                "<body>Civil new tab</body>",
+            )) as unknown as typeof fetch,
+    });
+    expect(observation.contentScriptError).toBeUndefined();
+    expect(detectFlagging(observation, "securly").signal?.kind).toBe("marker");
+});
+
+it.each([
+    ["https://www.probe.invalid", "/newTab", true],
+    ["https://WWW.PROBE.INVALID", "/newTab", true],
+    ["https://www.probe.invalid", "/skipme", true],
+    ["https://www.probe.nvalid", "/newTab", true],
+    ["https://www.probe.invalid", "/newTabXblocked=yes", true],
+    ["http://www.probe.invalid", "/newTab", false],
+    ["https://other.probe.invalid", "/newTab", false],
+    ["https://www.probe.innvalid", "/newTab", false],
+    ["https://www.probe.invalid", "/private/newTab", false],
+    ["https://www.probe.invalid", "/skip+me", false],
+    ["https://www.probe.invalid", "/newTab?blocked=yes", false],
+])("scopes manifest content scripts for %s%s", async (baseUrl, route, runs) => {
+    const observation = await observeRoute({
+        extensionDir: join(
+            import.meta.dirname,
+            "fixtures",
+            "content-script-scope",
+        ),
+        baseUrl,
+        route,
+        waitMs: 0,
+        fetchImpl: (async () =>
+            new Response(
+                "<body>Original page</body>",
+            )) as unknown as typeof fetch,
+    });
+    expect(observation.contentScriptError).toBeUndefined();
+    expect(observation.pageText).toBe(
+        runs ? "Scoped content script ran" : "Original page",
+    );
 });
 
 describe("sandbox observeRoute verdicts", () => {
@@ -478,6 +773,90 @@ describe("sandbox observeRoute verdicts", () => {
         expect(observation.fetchError).toContain("ECONNRESET");
         expect(detectFlagging(observation, "securly").flagged).toBe(false);
     });
+});
+
+it("observes a block issued by a top-frame navigation listener", async () => {
+    const extensionId = "b".repeat(32);
+    const observation = await observeRoute({
+        extensionDir: join(import.meta.dirname, "fixtures", "dnr-extension"),
+        extensionId,
+        baseUrl: "https://nav-blocked.example",
+        route: "/newTab",
+        waitMs: 0,
+        fetchImpl: (async () =>
+            new Response("<body>irrelevant</body>")) as unknown as typeof fetch,
+    });
+    expect(detectFlagging(observation, "netsupport").signal).toEqual({
+        kind: "block-page",
+        page: "chrome-extension:weblock.html",
+        finalUrl: `chrome-extension://${extensionId}/weblock.html`,
+    });
+});
+
+it.each([
+    ["close-observed.example", true],
+    ["close-other.example", false],
+] as const)(
+    "reports closure only for the observed tab (%s)",
+    async (hostname, removed) => {
+        const observation = await observeRoute({
+            extensionDir: join(
+                import.meta.dirname,
+                "fixtures",
+                "dnr-extension",
+            ),
+            baseUrl: `https://${hostname}`,
+            route: "/newTab",
+            waitMs: 0,
+            fetchImpl: (async () =>
+                new Response(
+                    "<body>irrelevant</body>",
+                )) as unknown as typeof fetch,
+        });
+        const verdict = detectFlagging(observation, "iboss");
+        expect(observation.tabRemoved).toBe(removed);
+        expect(verdict.flagged).toBe(false);
+        expect(verdict.inconclusive).toBe(
+            removed
+                ? "Filter closed the observed tab without a policy signal"
+                : undefined,
+        );
+    },
+);
+
+it("uses catalog identity and fixture policy for a relocated bundle", async () => {
+    const extensionId = "b".repeat(32);
+    const observation = await observeRoute({
+        extensionDir: join(import.meta.dirname, "fixtures", "dnr-extension"),
+        extensionFolder: "fortiguard",
+        extensionId,
+        baseUrl: "https://dnr-managed.example",
+        route: "/newTab",
+        waitMs: 0,
+        fetchImpl: (async () =>
+            new Response("<body>irrelevant</body>")) as unknown as typeof fetch,
+    });
+    expect(observation.extensionId).toBe(extensionId);
+    expect(observation.dnrMatch).toEqual({
+        action: "block",
+        matchedRuleId: 3,
+    });
+});
+
+it("does not report an HTTP scheme upgrade as a block", async () => {
+    const observation = await observeRoute({
+        extensionDir: join(import.meta.dirname, "fixtures", "dnr-extension"),
+        baseUrl: "http://dnr-upgrade.example",
+        route: "/newTab",
+        waitMs: 0,
+        fetchImpl: (async () =>
+            new Response("<body>irrelevant</body>")) as unknown as typeof fetch,
+    });
+    expect(observation.dnrMatch).toEqual({
+        action: "none",
+        matchedRuleId: null,
+    });
+    expect(detectFlagging(observation, "securly").flagged).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -523,12 +902,12 @@ describe.skipIf(!haveBundles)("real filter bundles", () => {
             expect(clean.pageText).toContain("Civil: new tab");
             expect(detectFlagging(clean, vendor).flagged).toBe(false);
 
-            // Positive control, where this vendor has a marker of its own: the
-            // same path over its real block text must reach "flagged".
+            // Text served by the original page cannot establish a filter block.
             const marker = PROBE_DATA[vendor]!.blockMarkers[0];
             if (marker) {
-                const blocked = await observeWithBody(dir, marker);
-                expect(detectFlagging(blocked, vendor).flagged).toBe(true);
+                const upstream = await observeWithBody(dir, marker);
+                expect(upstream.originalPageText).toContain(marker);
+                expect(detectFlagging(upstream, vendor).flagged).toBe(false);
             }
         },
         30_000,

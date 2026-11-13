@@ -61,6 +61,11 @@ describe("securly", () => {
         Object.assign(securly, { decision: "UNKNOWN", categoryId: "-1" });
         expect(await check("securly")).toBe("UNKNOWN");
     });
+
+    it("does not count a student browsing pause as an affirmative rating", async () => {
+        Object.assign(securly, { decision: "PAUSE", categoryId: "4" });
+        expect(await check("securly")).toBe("UNKNOWN");
+    });
 });
 
 describe("no data is not ALLOW", () => {

@@ -2,9 +2,12 @@
 import {
     engineNames,
     PROXY_PREFIX,
+    runtimeAssets,
     runtimeScripts,
 } from "$config/shared/runtimeScripts";
 import { decode, encode } from "$config/shared/xorCodec";
+
+import { retireLegacyDatabase } from "./cookieMigration";
 
 declare global {
     interface Window {
@@ -54,7 +57,7 @@ async function buildTransport(key: string, wispUrl: string) {
     switch (key) {
         case "bare": {
             const { default: BareTransport } = await import(
-                `${location.origin}/bareTransport/index.mjs`
+                `${location.origin}${runtimeAssets.bare}/index.mjs`
             );
             const t = new BareTransport(new URL(`${location.origin}/bare/`));
             await t.init();
@@ -62,7 +65,7 @@ async function buildTransport(key: string, wispUrl: string) {
         }
         case "libcurl": {
             const { default: LibcurlTransport } = await import(
-                `${location.origin}/libcurl/index.mjs`
+                `${location.origin}${runtimeAssets.libcurl}/index.mjs`
             );
             const t = new LibcurlTransport({ wisp: wispUrl });
             await t.init();
@@ -70,7 +73,7 @@ async function buildTransport(key: string, wispUrl: string) {
         }
         default: {
             const { default: EpoxyTransport } = await import(
-                `${location.origin}/epoxy/index.mjs`
+                `${location.origin}${runtimeAssets.epoxy}/index.mjs`
             );
             // "epoxy@2" speaks Wisp version 2. Civil's server (run.ts) answers
             // in version 2 only when the socket asks for a subprotocol, so the
@@ -174,69 +177,6 @@ function createController(
             siteFlags: defaultConfig.siteFlags,
         },
     });
-}
-
-function openCookieStore(name: string): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-        // Version and store name are the controller's own: it opens the same
-        // database with the same schema.
-        const request = indexedDB.open(name, 1);
-        request.onupgradeneeded = () => {
-            if (!request.result.objectStoreNames.contains("state")) {
-                request.result.createObjectStore("state");
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-}
-
-function cookieRecord(
-    db: IDBDatabase,
-    mode: IDBTransactionMode,
-    use: (store: IDBObjectStore) => IDBRequest,
-): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-        const request = use(db.transaction("state", mode).objectStore("state"));
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-}
-
-/**
- * The controller keeps proxied sites' cookies in IndexedDB. Earlier builds
- * named that database after the engine, and Aristotle Student matches
- * /scramjet/ against `indexedDB.databases()`. Move the saved cookies to the
- * neutral name once, then delete the old database, so nobody loses a login.
- */
-async function retireLegacyDatabase(): Promise<void> {
-    const { database, legacyDatabase } = engineNames;
-    try {
-        const known = await indexedDB.databases?.();
-        if (known && !known.some(db => db.name === legacyDatabase)) return;
-
-        const legacy = await openCookieStore(legacyDatabase);
-        const saved = await cookieRecord(legacy, "readonly", store =>
-            store.get("cookies"),
-        );
-        legacy.close();
-        if (saved) {
-            const current = await openCookieStore(database);
-            // Keep newer cookies if this build already saved some.
-            const existing = await cookieRecord(current, "readonly", store =>
-                store.get("cookies"),
-            );
-            if (!existing) {
-                await cookieRecord(current, "readwrite", store =>
-                    store.put(saved, "cookies"),
-                );
-            }
-            current.close();
-        }
-    } catch (error) {
-        console.warn("[civil] could not move saved cookies", error);
-    }
-    indexedDB.deleteDatabase(legacyDatabase);
 }
 
 async function initScramjet() {

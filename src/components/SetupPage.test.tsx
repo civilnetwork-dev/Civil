@@ -3,6 +3,10 @@ import { renderSolid } from "$tests/helpers/renderSolid";
 import { IDBFactory } from "fake-indexeddb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("./ui/ClassLinkAccount", () => ({
+    default: (props: { page: string }) => <span data-auth-page={props.page} />,
+}));
+
 // An Edge window on a short screen whose network blocks WebSockets.
 vi.mock("~/lib/setupDefaults", async importOriginal => ({
     ...(await importOriginal<typeof import("~/lib/setupDefaults")>()),
@@ -33,6 +37,17 @@ const buttonNamed = (root: HTMLElement, text: string) => {
 beforeEach(() => {
     localStorage.clear();
     globalThis.indexedDB = new IDBFactory();
+});
+
+it("offers ClassLink only on welcome and keeps setup optional", async () => {
+    const { container, unmount } = renderSolid(() => <SetupPage />);
+    expect(container.querySelector('[data-auth-page="/setup"]')).not.toBeNull();
+    expect(buttonNamed(container, "Pick for me")).toBeDefined();
+    buttonNamed(container, "Set up Civil").click();
+    await vi.waitFor(() =>
+        expect(container.querySelector("[data-auth-page]")).toBeNull(),
+    );
+    unmount();
 });
 
 describe("SetupPage", () => {

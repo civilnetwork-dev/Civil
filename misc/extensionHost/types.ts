@@ -10,6 +10,7 @@
  */
 
 import type { ChromeManifest } from "../browserApiEmulators/extensions/chrome/types";
+import type { RequestDispatchResult } from "./api/webRequest";
 
 /** Which extension runtime surface to expose: Chrome's `chrome.*` (callback
  *  or promise) or WebKit/Firefox's `browser.*` (promise-only). Safari Web
@@ -136,9 +137,8 @@ export interface ExtensionHandle {
      *  whole observation). */
     readonly storage: unknown;
 
-    /** Delivers a message to the extension's runtime.onMessage listeners and
-     *  returns what (if anything) they responded with. */
-    sendMessage(message: unknown): Promise<CapturedMessage>;
+    /** Delivers a message to runtime.onMessage, optionally from the observed page. */
+    sendMessage(message: unknown, pageUrl?: string): Promise<CapturedMessage>;
 
     /** Matches a URL against the extension's registered DNR rules. */
     matchRequest(
@@ -146,13 +146,27 @@ export interface ExtensionHandle {
         opts?: { resourceType?: string; initiator?: string; method?: string },
     ): DNRMatchResult;
 
-    /** The synthetic tab's current URL. `"about:blank"` until the
-     *  background calls `chrome.tabs.update({url})`, the mechanism several
+    /** A registered onBeforeRequest handler could block this top-frame request. */
+    hasUnreplayedBlockingRequest(url: string): boolean;
+
+    /** Invokes matching request listeners with one synthetic GET navigation. */
+    dispatchRequest(url: string): RequestDispatchResult;
+
+    /** Sends one synthetic top-frame navigation to background listeners. */
+    notifyBeforeNavigate(url: string, onError: (error: unknown) => void): void;
+
+    /** The synthetic tab's current URL, set by navigation or by the
+     *  background calling `chrome.tabs.update({url})`, the mechanism several
      *  filters (lanschoolWebHelper, mobileguardian) actually block through
      *  instead of a content script. A caller with a real page to compare
      *  against (misc/filterProbe/sandbox.ts) treats a change here the same
      *  way it treats a content script's own `location.href` write. */
     readonly tabUrl: string;
+    /** The extension requested removal of the tab being observed. */
+    readonly tabRemoved: boolean;
+    /** First deferred startup/timer failure in this extension's background. */
+    readonly runtimeError?: string;
+    readonly asyncContainmentIncomplete?: string;
 
     readonly actionCalls: readonly ActionCall[];
 

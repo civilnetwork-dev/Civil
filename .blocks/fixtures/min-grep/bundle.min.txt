@@ -1,0 +1,1 @@
+!function(){var e=window,t="$scramjetController";e[t]||(e[t]={}),localStorage.setItem("bare-mux-path","/baremux/worker.js");var n=indexedDB.open("$scramjet");n.onsuccess=function(){}}();

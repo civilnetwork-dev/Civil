@@ -28,5 +28,8 @@ export default defineConfig({
         "misc/database/migrations",
         "src/routeTree.gen.ts",
         "public/assets/civil-wordmark.svg",
+        // caveman-blocks owns .blocks/: its verify stamps hash the fixtures,
+        // so reformatting a fixture would stale every stamp.
+        ".blocks",
     ],
 });
