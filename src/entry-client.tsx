@@ -92,6 +92,12 @@ async function applyAnalytics(): Promise<void> {
     }
     if (!analyticsStarted) {
         analyticsStarted = true;
+        // Bundle the session recorder instead of letting the SDK fetch it at
+        // runtime. EasyPrivacy and AdGuard block `/posthog-recorder.js` on any
+        // host, relay included, so visitors with uBlock Origin sent events
+        // but never recorded a replay. Must load before init, or the SDK
+        // fetches the blocked file itself.
+        await import("posthog-js/dist/posthog-recorder");
         startPostHog(posthog);
     }
     // An opt-out persists in PostHog's own storage across visits.
