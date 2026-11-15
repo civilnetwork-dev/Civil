@@ -43,6 +43,38 @@ function MethodKeys(props: { failed?: TransportName }) {
 }
 
 /**
+ * The proxy engine failed to start in this browser (scramjetInit.ts), so no
+ * site can load and no connection method can change that. Seen on iOS, where
+ * every browser runs WebKit.
+ */
+function EngineUnavailable(props: { url: string }) {
+    return (
+        <Sheet>
+            <TitleBlock
+                title="Proxy unavailable"
+                meta={displayUrl(props.url)}
+                icon={IconAlert}
+                tint="sandstone"
+            />
+
+            <p class={schematic.lede}>
+                Civil's proxy couldn't start in this browser, so it can't open
+                pages here. Reload Civil to try again. If that fails, use
+                another browser or device.
+            </p>
+
+            <button
+                type="button"
+                class={s.key}
+                onClick={() => window.top?.location.reload()}
+            >
+                Reload Civil
+            </button>
+        </Sheet>
+    );
+}
+
+/**
  * What a tab shows when a proxied page never arrived (useIframeManager.ts's
  * load watchdog). Rendered into the frame itself rather than over it: the
  * frame is the thing that failed, and an overlay would leave a blank page
@@ -52,10 +84,14 @@ function MethodKeys(props: { failed?: TransportName }) {
 export default function ConnectionErrorPage({
     url,
     used,
+    reason,
 }: {
     url: string;
     used: string;
+    reason?: "engine";
 }) {
+    if (reason === "engine") return <EngineUnavailable url={url} />;
+
     const failed = TRANSPORT_OPTIONS.find(
         option => isTransport(used) && option.value === used,
     );

@@ -17,6 +17,7 @@ beforeEach(() => {
     localStorage.clear();
     delete (window as any).scramjet;
     delete (window as any).scramjetReady;
+    delete (window as any).scramjetError;
     delete (window as any).__civilGetTransport;
 });
 
@@ -124,5 +125,32 @@ describe("SearchBar.submitFrame proxy readiness", () => {
 
         expect((window as any).scramjet.createFrame).toHaveBeenCalledTimes(1);
         expect(sframe.go).toHaveBeenCalledWith("https://example.com");
+    });
+});
+
+/**
+ * When the engine fails to start (seen on iOS WebKit), scramjetReady still
+ * resolves but window.scramjet stays unset. Each submit used to throw an
+ * unhandled "scramjet not ready" while the tab hung on "Loading…".
+ */
+describe("SearchBar.submitFrame when the engine failed to start", () => {
+    it("emits unavailable instead of throwing", async () => {
+        (window as any).scramjetReady = Promise.resolve();
+        (window as any).scramjetError = new TypeError("start failed");
+        const bar = searchBar();
+        const unavailable = vi.fn();
+        bar.on("unavailable", unavailable);
+        const frame = {} as any;
+
+        await expect(
+            bar.submitFrame(frame, "example.com"),
+        ).resolves.toBeUndefined();
+
+        // tseep pads listener arguments, so compare the two it was given.
+        expect(unavailable).toHaveBeenCalledTimes(1);
+        expect(unavailable.mock.calls[0]?.slice(0, 2)).toEqual([
+            frame,
+            "example.com",
+        ]);
     });
 });
