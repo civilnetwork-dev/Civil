@@ -305,13 +305,13 @@ class IframeManager {
         target: string,
     ): void => {
         const id = [...this.iframeMap].find(([, el]) => el === iframe)?.[0];
-        if (id) {
-            this.clearNavTimer(id);
-            tabManager.updateTab(id, {
-                isLoading: false,
-                title: "Proxy unavailable",
-            });
-        }
+        const currentUrl = id && tabManager.tabs.find(t => t.id === id)?.url;
+        if (!id || !currentUrl || normalizeNav(currentUrl) !== target) return;
+        this.clearNavTimer(id);
+        tabManager.updateTab(id, {
+            isLoading: false,
+            title: "Proxy unavailable",
+        });
         iframe.src = connectionErrorUrl(target, undefined, "engine");
     };
 
