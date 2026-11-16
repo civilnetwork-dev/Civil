@@ -40,8 +40,16 @@ const renames: [pattern: RegExp, name: string][] = [
     [/\$scramitize/g, "$rtFlag"],
 ];
 
+// The engine's CSS rewriter matches `url(` with the RegExp modifier group
+// `(?i:url)`. iOS 18 WebKit has no modifier groups and rejects the whole
+// engine bundle at parse time, so no tab on any iOS 18 browser can load a
+// site. Character classes match the same text and add no capture group.
+const syntaxRewrites: [pattern: RegExp, replacement: string][] = [
+    [/\(\?i:url\)/g, "[uU][rR][lL]"],
+];
+
 export function neutralizeEngineNames(source: string): string {
-    return renames.reduce(
+    return [...renames, ...syntaxRewrites].reduce(
         (text, [pattern, name]) => text.replace(pattern, name),
         source,
     );
