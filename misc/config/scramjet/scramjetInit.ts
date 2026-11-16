@@ -14,6 +14,9 @@ declare global {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         scramjet: any;
         scramjetReady: Promise<void>;
+        /** Why the engine failed to start. scramjetReady still resolves, so
+         *  SearchBar reads this to show the failure instead of navigating. */
+        scramjetError?: unknown;
     }
 }
 
@@ -214,5 +217,6 @@ async function initScramjet() {
 }
 
 window.scramjetReady = initScramjet().catch(error => {
+    window.scramjetError = error;
     console.error("[civil] scramjet failed to start:", error);
 });

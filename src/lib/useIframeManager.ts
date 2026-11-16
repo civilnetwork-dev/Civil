@@ -75,9 +75,15 @@ function extensionTab(
 
 const CONNECTION_ERROR_PATH = "/connectionError";
 
-/** The page (src/routes/connectionError.tsx) offering every method by hand. */
-function connectionErrorUrl(url: string, used?: TransportName): string {
+/** The page (src/routes/connectionError.tsx) offering every method by hand,
+ *  or, for `reason: "engine"`, saying the proxy cannot start here at all. */
+function connectionErrorUrl(
+    url: string,
+    used?: TransportName,
+    reason?: "engine",
+): string {
     const search = new URLSearchParams({ url, used: used ?? "" });
+    if (reason) search.set("reason", reason);
     return `${window.location.origin}${CONNECTION_ERROR_PATH}?${search}`;
 }
 
@@ -288,7 +294,26 @@ class IframeManager {
     constructor(
         private readonly bar: BarInstance,
         private readonly push: (id: string, url: string) => void,
-    ) {}
+    ) {
+        bar.on("unavailable", this.showEngineUnavailable);
+    }
+
+    /** No transport can help when the engine itself never started, so this
+     *  skips the watchdog's failover and shows the reason at once. */
+    private readonly showEngineUnavailable = (
+        iframe: HTMLIFrameElement,
+        target: string,
+    ): void => {
+        const id = [...this.iframeMap].find(([, el]) => el === iframe)?.[0];
+        if (id) {
+            this.clearNavTimer(id);
+            tabManager.updateTab(id, {
+                isLoading: false,
+                title: "Proxy unavailable",
+            });
+        }
+        iframe.src = connectionErrorUrl(target, undefined, "engine");
+    };
 
     private clearNavTimer(id: string): void {
         const timer = this.navTimers.get(id);

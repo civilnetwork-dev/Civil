@@ -15,8 +15,11 @@ function isNavigableUrl(term: string): boolean {
 
 class SearchBar extends EventEmitter<{
     submit: (frame: HTMLIFrameElement, term: string) => void;
+    /** The engine failed to start, so `term` cannot load in `frame`. */
+    unavailable: (frame: HTMLIFrameElement, term: string) => void;
 }> {
     ready: Promise<void>;
+    private reportedStartFailure = false;
 
     constructor() {
         super();
@@ -86,6 +89,16 @@ class SearchBar extends EventEmitter<{
         );
     }
 
+    private reportStartFailure() {
+        if (this.reportedStartFailure) return;
+        this.reportedStartFailure = true;
+        if (window.location.host !== "civil.quartinal.me") return;
+        window.posthog?.captureException(
+            window.scramjetError ?? new Error("scramjet did not start"),
+            { scramjet_start_failed: true },
+        );
+    }
+
     private async applyFrameTransport(sframe: any, key: string): Promise<void> {
         try {
             const getT = (window as any).__civilGetTransport as
@@ -112,7 +125,14 @@ class SearchBar extends EventEmitter<{
         }
 
         const controller = window.scramjet;
-        if (!controller) throw new Error("scramjet not ready");
+        if (!controller) {
+            // Every navigation used to throw here, unhandled, while the tab
+            // sat on "Loading…". The engine never retries its start, so each
+            // submit would fail the same way: report the cause once.
+            this.reportStartFailure();
+            this.emit("unavailable", frame, term);
+            return;
+        }
         const existing = controller.frames?.find(
             (f: any) => f.element === frame,
         );
