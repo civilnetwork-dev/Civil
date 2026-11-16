@@ -86,6 +86,12 @@ describe("public runtime scripts", () => {
         expect(controller).toContain(`"${engineNames.database}"`);
     });
 
+    it("serves no RegExp modifier groups, which iOS 18 WebKit cannot parse", async () => {
+        for (const [script] of SOURCES) {
+            expect(await served(script)).not.toMatch(/\(\?-?[ims]+-?[ims]*:/);
+        }
+    });
+
     it("keeps the message keys the service worker reads", async () => {
         const engine = await served(runtimeScripts.engine);
         expect(engine).toContain("$scramjet$data");
